@@ -16,49 +16,69 @@ import {
   ExamMark, 
   UserProfile 
 } from '../types';
+import {
+  DEFAULT_INSTITUTES,
+  DEFAULT_TRADES,
+  DEFAULT_BATCHES,
+  generate20TraineesForBatch,
+  generateSampleAttendance
+} from './demoTraineesSeed';
+import { toTimestampNumber } from './dateUtils';
 
-// Set of known demo IDs to completely remove and prevent from loading
-export const DEMO_IDS = new Set([
-  'INS-01', 'INS-02', 'INS-HLG-01', 'INS-DHB-02',
-  'TRD-01', 'TRD-02', 'TRD-03', 'TRD-CAG-01', 'TRD-HWE-02', 'TRD-TLS-03',
-  'BAT-01', 'BAT-02', 'BAT-03',
-  'TRN-01', 'TRN-02', 'TRN-03', 'TRN-04',
-  'EXM-01', 'EXM-02',
-  'MRK-01', 'MRK-02', 'MRK-03',
-  'USR-DIR', 'USR-FMA', 'USR-TRN1'
-]);
+/**
+ * Normalizes document data coming from Firestore or cache so missing fields or alternative names
+ * never cause frontend runtime errors.
+ */
+function normalizeDoc<T extends { id: string }>(col: string, data: any, docId: string): T {
+  const item: any = { ...data, id: data.id || docId };
 
-// Helper to filter out any demo records (by ID pattern or known demo ID)
-function isDemoItem(item: any): boolean {
-  if (!item || !item.id) return false;
-  if (DEMO_IDS.has(item.id)) return true;
-  if (typeof item.id === 'string' && item.id.startsWith('TR-10')) return true;
-  if (typeof item.registrationNumber === 'string' && item.registrationNumber.startsWith('REG-BNFE-2024')) return true;
-  return false;
+  if (col === 'institutes') {
+    item.name = item.name || item.instituteName || item.nameBn || item.nameEn || 'নামবিহীন প্রতিষ্ঠান';
+    item.address = item.address || '';
+    item.code = item.code || `INS-${item.id.slice(-4)}`;
+    item.contactPerson = item.contactPerson || '';
+    item.phone = item.phone || '';
+    item.email = item.email || '';
+    item.status = item.status || 'Active';
+    item.createdAt = toTimestampNumber(item.createdAt);
+  } else if (col === 'trades') {
+    item.name = item.name || item.tradeName || item.nameBn || item.nameEn || 'নামবিহীন ট্রেড';
+    item.code = item.code || item.tradeCode || `TRD-${item.id.slice(-4)}`;
+    item.description = item.description || '';
+    item.duration = item.duration || '৬ মাস (৩৬০ ঘণ্টা)';
+    item.status = item.status || 'Active';
+    item.createdAt = toTimestampNumber(item.createdAt);
+  } else if (col === 'batches') {
+    item.name = item.name || item.batchName || item.nameBn || 'নামবিহীন ব্যাচ';
+    item.instituteId = item.instituteId || item.institute || '';
+    item.tradeId = item.tradeId || item.trade || '';
+    item.startDate = toTimestampNumber(item.startDate);
+    item.endDate = toTimestampNumber(item.endDate);
+    item.maxTrainees = Number(item.maxTrainees) || 30;
+    item.status = item.status || 'Active';
+    item.createdAt = toTimestampNumber(item.createdAt);
+  } else if (col === 'trainees') {
+    item.nameBn = item.nameBn || item.name || item.nameEn || '';
+    item.nameEn = item.nameEn || item.name || item.nameBn || '';
+    item.traineeId = item.traineeId || `TR-${item.id.slice(-4)}`;
+    item.registrationNumber = item.registrationNumber || `REG-${item.id.slice(-4)}`;
+    item.instituteId = item.instituteId || '';
+    item.tradeId = item.tradeId || '';
+    item.batchId = item.batchId || '';
+    item.status = item.status || 'Active';
+    item.createdAt = toTimestampNumber(item.createdAt);
+  } else if (col === 'attendance') {
+    item.date = item.date || new Date().toISOString().slice(0, 10);
+    item.status = item.status || 'Present';
+    item.createdAt = toTimestampNumber(item.createdAt);
+  }
+
+  return item as T;
 }
-
-// Auto-purge any cached demo data on startup
-try {
-  const collections = ['institutes', 'trades', 'batches', 'trainees', 'attendance', 'exams', 'marks', 'users', 'activityLogs'];
-  collections.forEach(col => {
-    const storageKey = `bnfe_cache_${col}`;
-    const raw = localStorage.getItem(storageKey);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter(item => !isDemoItem(item));
-          localStorage.setItem(storageKey, JSON.stringify(cleaned));
-        }
-      } catch (e) {}
-    }
-  });
-} catch (e) {}
 
 export const dataService = {
   /**
    * Fetch items for a collection, querying Firestore with graceful offline caching fallback.
-   * Strips out any demo data completely.
    */
   async getItems<T extends { id: string }>(collectionName: string): Promise<T[]> {
     const storageKey = `bnfe_cache_${collectionName}`;
@@ -67,8 +87,8 @@ export const dataService = {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          cachedList = parsed.filter(item => !isDemoItem(item));
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          cachedList = parsed.map(item => normalizeDoc<T>(collectionName, item, item.id));
         }
       }
     } catch (e) {
@@ -77,21 +97,137 @@ export const dataService = {
 
     try {
       const snap = await getDocs(collection(db, collectionName));
-      if (snap && snap.docs) {
-        const firestoreList = snap.docs
-          .map(d => ({ id: d.id, ...d.data() } as T))
-          .filter(item => !isDemoItem(item));
+      if (snap && snap.docs && snap.docs.length > 0) {
+        const firestoreList = snap.docs.map(d => normalizeDoc<T>(collectionName, d.data(), d.id));
         
+        // Merge Firestore items with cached items
+        const itemMap = new Map<string, T>();
+        cachedList.forEach(c => itemMap.set(c.id, c));
+        firestoreList.forEach(f => itemMap.set(f.id, f));
+        cachedList = Array.from(itemMap.values());
+
         try {
-          localStorage.setItem(storageKey, JSON.stringify(firestoreList));
+          localStorage.setItem(storageKey, JSON.stringify(cachedList));
         } catch (e) {}
-        return firestoreList;
       }
     } catch (firestoreErr) {
-      console.warn(`Firestore getItems for ${collectionName} handled via offline fallback:`, firestoreErr);
+      // offline mode or permission notice (expected when rules require auth)
+    }
+
+    // Default initialization if still empty
+    if (cachedList.length === 0) {
+      if (collectionName === 'institutes') {
+        cachedList = DEFAULT_INSTITUTES as unknown as T[];
+        try { localStorage.setItem(storageKey, JSON.stringify(cachedList)); } catch (e) {}
+      } else if (collectionName === 'trades') {
+        cachedList = DEFAULT_TRADES as unknown as T[];
+        try { localStorage.setItem(storageKey, JSON.stringify(cachedList)); } catch (e) {}
+      } else if (collectionName === 'batches') {
+        // If we have institutes, assign batches to the real institute IDs
+        const existingInsts = await this.getItems<Institute>('institutes');
+        const instId1 = existingInsts[0]?.id || 'INS-HLG-01';
+        const instId2 = existingInsts[1]?.id || instId1;
+        
+        const initialBatches: Batch[] = DEFAULT_BATCHES.map((b, idx) => ({
+          ...b,
+          instituteId: idx === 2 ? instId2 : instId1
+        }));
+
+        cachedList = initialBatches as unknown as T[];
+        try { localStorage.setItem(storageKey, JSON.stringify(cachedList)); } catch (e) {}
+      } else if (collectionName === 'trainees') {
+        // Automatically seed 20 demo trainees for every batch
+        const seeded = await this.seedDemoTraineesForAllBatches();
+        return seeded as unknown as T[];
+      }
+    } else if (collectionName === 'trainees') {
+      // Check if any existing batch has 0 trainees; if so, populate demo trainees
+      const batches = await this.getItems<Batch>('batches');
+      const existingTrainees = cachedList as unknown as Trainee[];
+      const batchesNeedingTrainees = batches.filter(b => 
+        !existingTrainees.some(t => t.batchId === b.id)
+      );
+
+      if (batchesNeedingTrainees.length > 0) {
+        const updated = await this.seedDemoTraineesForAllBatches(false);
+        return updated as unknown as T[];
+      }
     }
 
     return cachedList;
+  },
+
+  /**
+   * Seed exactly 20 demo trainees for every batch in the system.
+   * If a batch already has 20 trainees, it leaves them unless forceRecreate is true.
+   */
+  async seedDemoTraineesForAllBatches(forceRecreate = false): Promise<Trainee[]> {
+    // 1. Ensure institutes, trades, and batches exist
+    let batches = await this.getItems<Batch>('batches');
+    if (!batches || batches.length === 0) {
+      batches = DEFAULT_BATCHES;
+      try {
+        localStorage.setItem('bnfe_cache_batches', JSON.stringify(batches));
+      } catch (e) {}
+    }
+
+    const traineesStorageKey = 'bnfe_cache_trainees';
+    let currentTrainees: Trainee[] = [];
+    try {
+      const raw = localStorage.getItem(traineesStorageKey);
+      if (raw) currentTrainees = JSON.parse(raw);
+    } catch (e) {}
+
+    let globalStartIndex = currentTrainees.length;
+    const allNewTrainees: Trainee[] = [];
+    const allNewAttendance: AttendanceRecord[] = [];
+
+    let updatedTraineesList = forceRecreate ? [] : [...currentTrainees];
+
+    batches.forEach((batch, bIdx) => {
+      const existingInBatch = updatedTraineesList.filter(t => t.batchId === batch.id);
+
+      if (forceRecreate || existingInBatch.length < 20) {
+        // Generate full set of 20 demo trainees for this batch
+        const generated = generate20TraineesForBatch(batch, bIdx, globalStartIndex);
+        globalStartIndex += 20;
+
+        if (forceRecreate) {
+          updatedTraineesList = updatedTraineesList.filter(t => t.batchId !== batch.id).concat(generated);
+        } else if (existingInBatch.length === 0) {
+          updatedTraineesList.push(...generated);
+        } else {
+          const needed = 20 - existingInBatch.length;
+          const sliceToAdd = generated.slice(0, needed);
+          updatedTraineesList.push(...sliceToAdd);
+        }
+
+        allNewTrainees.push(...generated);
+
+        // Generate sample attendance records for this month
+        const attendanceSample = generateSampleAttendance(batch, generated);
+        allNewAttendance.push(...attendanceSample);
+      }
+    });
+
+    // Save trainees to cache
+    try {
+      localStorage.setItem(traineesStorageKey, JSON.stringify(updatedTraineesList));
+    } catch (e) {}
+
+    // Save attendance to cache
+    if (allNewAttendance.length > 0) {
+      await this.saveAttendanceBatch(allNewAttendance);
+    }
+
+    // Background sync to Firestore if possible
+    setTimeout(() => {
+      allNewTrainees.forEach(t => {
+        setDoc(doc(db, 'trainees', t.id), t, { merge: true }).catch(() => {});
+      });
+    }, 100);
+
+    return updatedTraineesList;
   },
 
   /**
@@ -164,53 +300,15 @@ export const dataService = {
     } catch (e) {}
 
     records.forEach(r => {
-      setDoc(doc(db, 'attendance', r.id), r, { merge: true }).catch(err => {
-        console.warn("Firestore attendance record sync notice:", err);
-      });
+      setDoc(doc(db, 'attendance', r.id), r, { merge: true }).catch(() => {});
     });
   },
 
   /**
-   * Completely remove all demo data from local storage and firestore
+   * Clear all demo data
    */
   async clearAllDemoData(): Promise<void> {
-    const collections = ['institutes', 'trades', 'batches', 'trainees', 'attendance', 'exams', 'marks', 'users', 'activityLogs'];
-    collections.forEach(col => {
-      try {
-        const storageKey = `bnfe_cache_${col}`;
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-          const items = JSON.parse(raw);
-          if (Array.isArray(items)) {
-            const cleaned = items.filter(item => !isDemoItem(item));
-            localStorage.setItem(storageKey, JSON.stringify(cleaned));
-          }
-        }
-      } catch (e) {}
-    });
-
-    const demoIdsByCol: Record<string, string[]> = {
-      institutes: ['INS-01', 'INS-02', 'INS-HLG-01', 'INS-DHB-02'],
-      trades: ['TRD-01', 'TRD-02', 'TRD-03', 'TRD-CAG-01', 'TRD-HWE-02', 'TRD-TLS-03'],
-      batches: ['BAT-01', 'BAT-02', 'BAT-03'],
-      trainees: [
-        'TRN-01', 'TRN-02', 'TRN-03', 'TRN-04',
-        ...Array.from({ length: 25 }, (_, i) => `TR-${1001 + i}`)
-      ],
-      exams: ['EXM-01', 'EXM-02'],
-      marks: ['MRK-01', 'MRK-02', 'MRK-03'],
-      users: ['USR-DIR', 'USR-FMA', 'USR-TRN1'],
-    };
-
-    for (const [col, ids] of Object.entries(demoIdsByCol)) {
-      for (const id of ids) {
-        try {
-          await deleteDoc(doc(db, col, id));
-        } catch (e) {
-          // offline/permission ignore
-        }
-      }
-    }
+    this.clearAllLocalData();
   },
 
   /**

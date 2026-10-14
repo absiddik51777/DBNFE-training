@@ -34,6 +34,9 @@ const TraineeForm: React.FC = () => {
     nidOrBirthRegistration: '',
     mobileNumber: '',
     address: '',
+    permanentAddress: '',
+    presentAddress: '',
+    sameAsPermanentAddress: false,
     lastClassCompleted: 'Class 7 (৭ম শ্রেণি)',
     previousSchoolName: '',
     yearOfDropout: '2023',
@@ -67,23 +70,47 @@ const TraineeForm: React.FC = () => {
       if (id) {
         const found = traineesList.find(t => t.id === id);
         if (found) {
-          setFormData(found);
+          const perm = found.permanentAddress || found.address || '';
+          const pres = found.presentAddress || found.address || '';
+          const same = found.sameAsPermanentAddress ?? (perm === pres && perm.length > 0);
+          setFormData({
+            ...found,
+            permanentAddress: perm,
+            presentAddress: pres,
+            sameAsPermanentAddress: same,
+          });
         } else {
           setError('প্রশিক্ষণার্থী পাওয়া যায়নি।');
         }
       } else {
-        const randomNum = Math.floor(100000 + Math.random() * 900000);
+        // Auto-generate Trainee ID sequentially (TR-1001, TR-1002, ...)
+        const existingNumbers = traineesList
+          .map(t => {
+            const match = t.traineeId?.match(/\d+/);
+            return match ? parseInt(match[0], 10) : 0;
+          })
+          .filter(n => !isNaN(n) && n > 0);
+
+        const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 1000;
+        const nextIdNumber = maxNumber >= 1000 ? maxNumber + 1 : 1001;
+        const autoTraineeId = `TR-${nextIdNumber}`;
+
         const assignedInst = userProfile?.instituteId || (instList[0]?.id || '');
-        const assignedTrade = trdList[0]?.id || '';
+        const assignedBatchId = (userProfile?.role === 'Trainer' && userProfile?.batchId) || '';
+        const assignedBatchObj = btcList.find(b => b.id === assignedBatchId);
+        const assignedTrade = assignedBatchObj?.tradeId || trdList[0]?.id || '';
         const matchingBatches = btcList.filter(b => b.instituteId === assignedInst && b.tradeId === assignedTrade);
 
         setFormData(prev => ({
           ...prev,
-          traineeId: `TR-${randomNum.toString().slice(-4)}`,
-          registrationNumber: `REG-BNFE-${randomNum}`,
+          traineeId: autoTraineeId,
+          registrationNumber: '',
+          permanentAddress: '',
+          presentAddress: '',
+          sameAsPermanentAddress: false,
           instituteId: assignedInst,
           tradeId: assignedTrade,
-          batchId: matchingBatches[0]?.id || btcList[0]?.id || '',
+          batchId: assignedBatchId || matchingBatches[0]?.id || btcList[0]?.id || '',
         }));
       }
     } catch (err) {
@@ -98,11 +125,49 @@ const TraineeForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePermanentAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      permanentAddress: value,
+      presentAddress: prev.sameAsPermanentAddress ? value : prev.presentAddress,
+      address: prev.sameAsPermanentAddress ? value : (prev.presentAddress || value)
+    }));
+  };
+
+  const handlePresentAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      presentAddress: value,
+      sameAsPermanentAddress: false,
+      address: value || prev.permanentAddress || ''
+    }));
+  };
+
+  const handleSameAddressToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    setFormData(prev => {
+      const perm = prev.permanentAddress || '';
+      return {
+        ...prev,
+        sameAsPermanentAddress: isChecked,
+        presentAddress: isChecked ? perm : prev.presentAddress,
+        address: isChecked ? perm : (prev.presentAddress || perm)
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Validation
+    if (!formData.registrationNumber || !formData.registrationNumber.trim()) {
+      setError('প্রশিক্ষণার্থীর রেজিস্ট্রেশন নম্বর প্রদান করুন।');
+      return;
+    }
+
     if (!formData.mobileNumber || formData.mobileNumber.length < 11) {
       setError('সঠিক ১১ ডিজিটের মোবাইল নম্বর প্রদান করুন।');
       return;
@@ -113,13 +178,26 @@ const TraineeForm: React.FC = () => {
       return;
     }
 
+    if (!formData.permanentAddress?.trim() && !formData.address?.trim()) {
+      setError('স্থায়ী ঠিকানা পূরণ করুন।');
+      return;
+    }
+
+    if (!formData.presentAddress?.trim() && !formData.sameAsPermanentAddress && !formData.address?.trim()) {
+      setError('বর্তমান ঠিকানা পূরণ করুন অথবা "স্থায়ী ঠিকানার অনুরূপ" নির্বাচন করুন।');
+      return;
+    }
+
     setSaving(true);
     try {
       const traineeIdToSave = id || `TRN-${Date.now().toString().slice(-5)}`;
+      const permAddr = formData.permanentAddress?.trim() || formData.address?.trim() || '';
+      const presAddr = formData.sameAsPermanentAddress ? permAddr : (formData.presentAddress?.trim() || permAddr);
+
       const savedTrainee: Trainee = {
         id: traineeIdToSave,
         traineeId: formData.traineeId || `TR-${Date.now().toString().slice(-4)}`,
-        registrationNumber: formData.registrationNumber || `REG-${Date.now().toString().slice(-6)}`,
+        registrationNumber: formData.registrationNumber.trim(),
         nameEn: formData.nameEn || '',
         nameBn: formData.nameBn || '',
         fatherNameEn: formData.fatherNameEn || '',
@@ -130,7 +208,10 @@ const TraineeForm: React.FC = () => {
         gender: (formData.gender as any) || 'Male',
         nidOrBirthRegistration: formData.nidOrBirthRegistration || '',
         mobileNumber: formData.mobileNumber || '',
-        address: formData.address || '',
+        address: presAddr || permAddr,
+        permanentAddress: permAddr,
+        presentAddress: presAddr,
+        sameAsPermanentAddress: !!formData.sameAsPermanentAddress,
         photoUrl: formData.photoUrl || '',
         lastClassCompleted: formData.lastClassCompleted || '',
         previousSchoolName: formData.previousSchoolName || '',
@@ -217,26 +298,37 @@ const TraineeForm: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">রেজিস্ট্রেশন নম্বর (Auto)</label>
-              <input
-                type="text"
-                readOnly
-                value={formData.registrationNumber}
-                className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono text-slate-700"
-              />
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                প্রশিক্ষণার্থী আইডি (Trainee ID - Auto)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  readOnly
+                  value={formData.traineeId}
+                  className="w-full px-3 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl text-sm font-mono text-emerald-800 font-semibold focus:outline-none"
+                />
+                <span className="absolute right-2.5 top-2 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-sans font-medium">
+                  স্বয়ংক্রিয়
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">আইডি স্বয়ংক্রিয়ভাবে নির্ধারিত</p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">প্রশিক্ষণার্থী আইডি (Trainee ID)</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                রেজিস্ট্রেশন নম্বর (Registration No) *
+              </label>
               <input
                 type="text"
                 required
-                name="traineeId"
-                value={formData.traineeId}
+                name="registrationNumber"
+                value={formData.registrationNumber || ''}
                 onChange={handleChange}
-                placeholder="TR-1001"
+                placeholder="যেমন: REG-10025 বা বোর্ড নম্বর"
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
+              <p className="text-[11px] text-slate-400 mt-1">রেজিস্ট্রেশন নম্বর টাইপ করুন (ম্যানুয়াল)</p>
             </div>
 
             <div>
@@ -440,17 +532,69 @@ const TraineeForm: React.FC = () => {
               />
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">বর্তমান ও স্থায়ী ঠিকানা *</label>
-              <textarea
-                required
-                rows={2}
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
+            {/* Separate Permanent and Present Address with 'Same as Permanent Address' checkbox */}
+            <div className="sm:col-span-2 space-y-3 pt-3 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700">
+                  ঠিকানা সংক্রান্ত তথ্য (Address Details)
+                </span>
+                
+                <label className="inline-flex items-center space-x-2 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100/70 px-3 py-1.5 rounded-lg border border-emerald-200/80 cursor-pointer transition select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.sameAsPermanentAddress}
+                    onChange={handleSameAddressToggle}
+                    className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500"
+                  />
+                  <span>স্থায়ী ঠিকানার অনুরূপ (Same as Permanent Address)</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Permanent Address */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    স্থায়ী ঠিকানা (Permanent Address) *
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    name="permanentAddress"
+                    value={formData.permanentAddress || ''}
+                    onChange={handlePermanentAddressChange}
+                    placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Present Address */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-600">
+                      বর্তমান ঠিকানা (Present Address) *
+                    </label>
+                    {formData.sameAsPermanentAddress && (
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        স্থায়ী ঠিকানার সাথে সংযুক্ত
+                      </span>
+                    )}
+                  </div>
+                  <textarea
+                    required
+                    rows={3}
+                    name="presentAddress"
+                    value={formData.presentAddress || ''}
+                    onChange={handlePresentAddressChange}
+                    readOnly={formData.sameAsPermanentAddress}
+                    placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা"
+                    className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none ${
+                      formData.sameAsPermanentAddress
+                        ? 'bg-slate-50 border-slate-200 text-slate-600 cursor-not-allowed'
+                        : 'border-slate-300 text-slate-800'
+                    }`}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

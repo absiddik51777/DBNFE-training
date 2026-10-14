@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { 
   Building2, 
   Wrench, 
@@ -11,7 +11,12 @@ import {
   AlertCircle,
   PlusCircle,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  Calendar,
+  RefreshCw,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -23,7 +28,8 @@ import {
   CartesianGrid, 
   PieChart, 
   Pie, 
-  Cell 
+  Cell,
+  Legend
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -38,12 +44,26 @@ import {
   ActivityLog 
 } from '../types';
 import { dataService } from '../lib/dataService';
+import { safeFormatDate } from '../lib/dateUtils';
+import { DEFAULT_INSTITUTES, DEFAULT_TRADES } from '../lib/demoTraineesSeed';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
 
 const Dashboard: React.FC = () => {
   const { userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [institutes, setInstitutes] = useState<Institute[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [marks, setMarks] = useState<ExamMark[]>([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
+
+  // Selected date for batch-wise attendance inspection (defaults to today)
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const [stats, setStats] = useState({
     totalInstitutes: 0,
@@ -59,7 +79,6 @@ const Dashboard: React.FC = () => {
   });
 
   const [tradeDistribution, setTradeDistribution] = useState<{ name: string; count: number }[]>([]);
-  const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -88,6 +107,17 @@ const Dashboard: React.FC = () => {
         dataService.getItems<ActivityLog>('activityLogs')
       ]);
 
+      const effectiveInstitutes = institutesList.length > 0 ? institutesList : DEFAULT_INSTITUTES;
+      const effectiveTrades = tradesList.length > 0 ? tradesList : DEFAULT_TRADES;
+
+      setInstitutes(effectiveInstitutes);
+      setTrades(effectiveTrades);
+      setBatches(batchesList);
+      setTrainees(traineesList);
+      setAttendance(attendanceList);
+      setMarks(marksList);
+      setRecentActivities(activitiesList.slice(0, 5));
+
       const activeCount = traineesList.filter(t => t.status === 'Active').length;
       const todayRecords = attendanceList.filter(a => a.date === todayStr);
       const presentCount = todayRecords.filter(a => a.status === 'Present').length;
@@ -100,8 +130,8 @@ const Dashboard: React.FC = () => {
       const failedCount = marksList.filter(m => m.result === 'Fail').length;
 
       setStats({
-        totalInstitutes: institutesList.length,
-        totalTrades: tradesList.length,
+        totalInstitutes: effectiveInstitutes.length,
+        totalTrades: effectiveTrades.length,
         totalBatches: batchesList.length,
         totalTrainees: traineesList.length,
         activeTrainees: activeCount,
@@ -115,7 +145,7 @@ const Dashboard: React.FC = () => {
       // Trade distribution from real trainees
       const tradeMap: Record<string, number> = {};
       traineesList.forEach((t) => {
-        const trade = tradesList.find(tr => tr.id === t.tradeId);
+        const trade = effectiveTrades.find(tr => tr.id === t.tradeId);
         const name = trade ? trade.name : 'অন্যান্য ট্রেড';
         tradeMap[name] = (tradeMap[name] || 0) + 1;
       });
@@ -126,8 +156,6 @@ const Dashboard: React.FC = () => {
       }));
       setTradeDistribution(tradeData);
 
-      setRecentActivities(activitiesList.slice(0, 5));
-
     } catch (err) {
       console.warn("Notice loading dashboard data:", err);
     } finally {
@@ -135,14 +163,82 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Real attendance trend from actual data if available, otherwise empty
-  const monthlyAttendanceTrend: { month: string; present: number; absent: number }[] = [];
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setTimeout(() => setRefreshing(false), 400);
+  };
+
+  // Compute batch-wise attendance statistics for the selected date
+  const batchAttendanceStats = useMemo(() => {
+    return batches.map(batch => {
+      const batchTrainees = trainees.filter(t => t.batchId === batch.id && (!t.status || t.status === 'Active'));
+      const totalEnrolled = batchTrainees.length;
+      
+      const recordsForDate = attendance.filter(a => a.batchId === batch.id && a.date === selectedDate);
+      const present = recordsForDate.filter(a => a.status === 'Present').length;
+      const absent = recordsForDate.filter(a => a.status === 'Absent').length;
+      const leave = recordsForDate.filter(a => a.status === 'Leave').length;
+      const recordedCount = recordsForDate.length;
+
+      const rate = recordedCount > 0 
+        ? Math.round((present / (present + absent || 1)) * 100) 
+        : 0;
+
+      const instituteObj = institutes.find(i => i.id === batch.instituteId) || DEFAULT_INSTITUTES.find(i => i.id === batch.instituteId);
+      const tradeObj = trades.find(t => t.id === batch.tradeId) || DEFAULT_TRADES.find(t => t.id === batch.tradeId);
+
+      return {
+        batchId: batch.id,
+        batchName: batch.name,
+        instituteName: instituteObj?.name || 'প্রতিষ্ঠান',
+        tradeName: tradeObj?.name || 'ট্রেড',
+        totalEnrolled,
+        present,
+        absent,
+        leave,
+        recordedCount,
+        rate,
+        isRecorded: recordedCount > 0,
+      };
+    });
+  }, [batches, trainees, attendance, selectedDate, institutes, trades]);
+
+  // Aggregate stats across batches for the selected date
+  const selectedDateSummary = useMemo(() => {
+    let totalPres = 0;
+    let totalAbs = 0;
+    let totalLev = 0;
+    let totalRec = 0;
+
+    batchAttendanceStats.forEach(b => {
+      totalPres += b.present;
+      totalAbs += b.absent;
+      totalLev += b.leave;
+      totalRec += b.recordedCount;
+    });
+
+    const overallRate = totalRec > 0 ? Math.round((totalPres / (totalPres + totalAbs || 1)) * 100) : 0;
+
+    return { totalPres, totalAbs, totalLev, totalRec, overallRate };
+  }, [batchAttendanceStats]);
+
+  // Prepare chart data for batch comparison
+  const batchChartData = useMemo(() => {
+    return batchAttendanceStats.map(b => ({
+      name: b.batchName.length > 20 ? b.batchName.slice(0, 18) + '...' : b.batchName,
+      fullName: b.batchName,
+      উপস্থিত: b.present,
+      অনুপস্থিত: b.absent,
+      ছুটি: b.leave,
+    }));
+  }, [batchAttendanceStats]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500">
         <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-sm font-medium">তথ্য লোড হচ্ছে (Loading statistics)...</p>
+        <p className="text-sm font-medium">ড্যাশবোর্ড তথ্য লোড হচ্ছে (Loading statistics)...</p>
       </div>
     );
   }
@@ -159,25 +255,34 @@ const Dashboard: React.FC = () => {
             ড্যাশবোর্ড ওভারভিউ (Dashboard)
           </h1>
           <p className="text-emerald-100 text-sm mt-1 max-w-xl">
-            বাংলাদেশ উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE) এর ঝরে পড়া শিক্ষার্থীদের প্রশিক্ষণ কর্মসূচি ব্যবস্থাপনা পোর্টালে আপনাকে স্বাগতম।
+            বাংলাদেশ উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE) এর ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ ব্যবস্থাপনা পোর্টাল।
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2.5">
+        {/* Quick Actions & Refresh */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 border border-white/20"
+            title="তথ্য রিফ্রেশ করুন"
+          >
+            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+            <span>রিফ্রেশ</span>
+          </button>
           <Link
             to="/trainees/add"
             className="px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 shadow-sm"
           >
             <PlusCircle size={16} />
-            <span>নতুন প্রশিক্ষণার্থী</span>
+            <span>নতুন শিক্ষার্থী</span>
           </Link>
           <Link
             to="/attendance"
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 border border-white/20"
           >
             <CalendarCheck size={16} />
-            <span>উপস্থিতি নিন</span>
+            <span>হাজিরা গ্রহণ</span>
           </Link>
         </div>
       </div>
@@ -185,140 +290,262 @@ const Dashboard: React.FC = () => {
       {/* Primary KPI Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Institutes */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <Link to="/institutes" className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4 hover:border-blue-300 transition group">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition flex items-center justify-center shrink-0">
             <Building2 size={24} />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">মোট প্রতিষ্ঠান</p>
             <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{stats.totalInstitutes}</h3>
-            <span className="text-[11px] text-slate-400">Institutes</span>
+            <span className="text-[11px] text-blue-600 font-medium flex items-center space-x-0.5">
+              <span>তালিকা দেখুন</span>
+              <ChevronRight size={12} />
+            </span>
           </div>
-        </div>
+        </Link>
 
         {/* Total Trades */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+        <Link to="/trades" className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4 hover:border-amber-300 transition group">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition flex items-center justify-center shrink-0">
             <Wrench size={24} />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">মোট ট্রেড</p>
             <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{stats.totalTrades}</h3>
-            <span className="text-[11px] text-slate-400">Vocational Trades</span>
+            <span className="text-[11px] text-amber-600 font-medium flex items-center space-x-0.5">
+              <span>ট্রেড দেখুন</span>
+              <ChevronRight size={12} />
+            </span>
           </div>
-        </div>
-
-        {/* Total Trainees */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <Users size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">মোট প্রশিক্ষণার্থী</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{stats.totalTrainees}</h3>
-            <span className="text-[11px] text-emerald-600 font-medium">সক্রিয়: {stats.activeTrainees}</span>
-          </div>
-        </div>
+        </Link>
 
         {/* Total Batches */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+        <Link to="/batches" className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4 hover:border-purple-300 transition group">
+          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition flex items-center justify-center shrink-0">
             <Layers size={24} />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">মোট ব্যাচ</p>
             <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{stats.totalBatches}</h3>
-            <span className="text-[11px] text-slate-400">Training Batches</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Secondary Status Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Today Present */}
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500">আজ উপস্থিত</span>
-            <h4 className="text-xl font-bold text-emerald-600 mt-0.5">{stats.todayPresent} জন</h4>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <UserCheck size={20} />
-          </div>
-        </div>
-
-        {/* Today Absent */}
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500">আজ অনুপস্থিত</span>
-            <h4 className="text-xl font-bold text-red-600 mt-0.5">{stats.todayAbsent} জন</h4>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-            <UserX size={20} />
-          </div>
-        </div>
-
-        {/* Total Passed */}
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500">মোট পাসকৃত</span>
-            <h4 className="text-xl font-bold text-blue-600 mt-0.5">{stats.totalPassed} জন</h4>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Award size={20} />
-          </div>
-        </div>
-
-        {/* Total Failed */}
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500">মোট ফেলকৃত</span>
-            <h4 className="text-xl font-bold text-amber-600 mt-0.5">{stats.totalFailed} জন</h4>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <AlertCircle size={20} />
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Attendance Trends */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-slate-800 text-base">মাসিক উপস্থিতির হার (Monthly Attendance Trend)</h3>
-              <p className="text-xs text-slate-500 mt-0.5">গত কয়েক মাসের গড় উপস্থিতি শতকরা (%) হিসেবে</p>
-            </div>
-            <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200/60">
-              বর্তমান হার: {stats.attendanceRate}%
+            <span className="text-[11px] text-purple-600 font-medium flex items-center space-x-0.5">
+              <span>ব্যাচ পরিচালনা</span>
+              <ChevronRight size={12} />
             </span>
           </div>
-          {monthlyAttendanceTrend.length === 0 ? (
-            <div className="h-64 w-full flex flex-col items-center justify-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
-              <CalendarCheck size={36} className="text-slate-300 mb-2" />
-              <p className="font-medium text-slate-600">এখনো কোনো উপস্থিতির তথ্য নথিভুক্ত হয়নি</p>
-              <Link to="/attendance" className="text-emerald-600 hover:underline mt-1 font-semibold">
-                উপস্থিতি গ্রহণ করুন
-              </Link>
+        </Link>
+
+        {/* Total Trainees */}
+        <Link to="/trainees" className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4 hover:border-emerald-300 transition group">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition flex items-center justify-center shrink-0">
+            <Users size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">মোট প্রশিক্ষণার্থী</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{stats.totalTrainees}</h3>
+            <span className="text-[11px] text-emerald-600 font-medium">সক্রিয়: {stats.activeTrainees} জন</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 2. BATCH-WISE ATTENDANCE BREAKDOWN (ব্যাচ অনুসারে উপস্থিত ও অনুপস্থিত) */}
+      {/* ======================================================== */}
+      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center space-x-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <CalendarCheck size={20} />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800">
+                ব্যাচ অনুসারে উপস্থিতি ও অনুপস্থিতি (Batch-wise Attendance Breakdown)
+              </h2>
             </div>
-          ) : (
+            <p className="text-xs text-slate-500 mt-1">
+              সিলেক্ট করা তারিখ অনুযায়ী প্রতিটি ব্যাচের উপস্থিত ও অনুপস্থিত শিক্ষার্থীর বিশদ বিবরণ
+            </p>
+          </div>
+
+          {/* Date Selector Filter */}
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+              <Calendar size={15} className="text-slate-400" />
+              <span>তারিখ:</span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer"
+              />
+            </div>
+            {selectedDate !== format(new Date(), 'yyyy-MM-dd') && (
+              <button
+                onClick={() => setSelectedDate(format(new Date(), 'yyyy-MM-dd'))}
+                className="px-2.5 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition"
+              >
+                আজ
+              </button>
+            )}
+            <Link
+              to="/attendance-sheet"
+              className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition flex items-center space-x-1"
+            >
+              <CalendarDays size={14} />
+              <span>মাসিক শিট</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Aggregate Stats for the Selected Date */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/70 p-4 rounded-xl border border-slate-100 text-xs">
+          <div className="p-2.5 bg-white rounded-lg border border-slate-200/60">
+            <span className="text-slate-500 block">নির্বাচিত তারিখে মোট উপস্থিত</span>
+            <span className="text-lg font-bold text-emerald-600 mt-0.5 block">{selectedDateSummary.totalPres} জন</span>
+          </div>
+          <div className="p-2.5 bg-white rounded-lg border border-slate-200/60">
+            <span className="text-slate-500 block">নির্বাচিত তারিখে মোট অনুপস্থিত</span>
+            <span className="text-lg font-bold text-red-600 mt-0.5 block">{selectedDateSummary.totalAbs} জন</span>
+          </div>
+          <div className="p-2.5 bg-white rounded-lg border border-slate-200/60">
+            <span className="text-slate-500 block">অনুমোদিত ছুটি</span>
+            <span className="text-lg font-bold text-amber-600 mt-0.5 block">{selectedDateSummary.totalLev} জন</span>
+          </div>
+          <div className="p-2.5 bg-white rounded-lg border border-slate-200/60">
+            <span className="text-slate-500 block">গড় উপস্থিতির হার</span>
+            <span className="text-lg font-bold text-purple-600 mt-0.5 block">{selectedDateSummary.overallRate}%</span>
+          </div>
+        </div>
+
+        {/* Batch-wise Cards Grid */}
+        {batchAttendanceStats.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+            <Layers size={32} className="mx-auto text-slate-300 mb-2" />
+            <p className="font-semibold text-slate-700">কোনো ব্যাচ পাওয়া যায়নি</p>
+            <p className="mt-0.5">প্রথমে প্রতিষ্ঠান ও ট্রেড তৈরি করে ব্যাচ যুক্ত করুন।</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {batchAttendanceStats.map((item) => (
+              <div 
+                key={item.batchId} 
+                className="bg-white rounded-xl border border-slate-200 p-4.5 hover:shadow-sm hover:border-emerald-300 transition flex flex-col justify-between space-y-3.5"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-slate-800 text-sm leading-tight">
+                      {item.batchName}
+                    </h3>
+                    {item.isRecorded ? (
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-md shrink-0">
+                        {item.rate}% উপস্থিত
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-semibold rounded-md shrink-0">
+                        এন্ট্রি বাকি
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 truncate">
+                    {item.tradeName} • {item.instituteName}
+                  </p>
+                </div>
+
+                {/* Status Numbers */}
+                <div className="grid grid-cols-3 gap-2 py-2 px-2.5 bg-slate-50 rounded-lg text-center text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">উপস্থিত (P)</span>
+                    <strong className="text-emerald-700 text-sm font-bold block">{item.present}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">অনুপস্থিত (A)</span>
+                    <strong className="text-red-600 text-sm font-bold block">{item.absent}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">মোট শিক্ষার্থী</span>
+                    <strong className="text-slate-700 text-sm font-bold block">{item.totalEnrolled}</strong>
+                  </div>
+                </div>
+
+                {/* Ratio Bar */}
+                <div className="space-y-1">
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                    {item.recordedCount > 0 ? (
+                      <>
+                        <div 
+                          style={{ width: `${(item.present / item.recordedCount) * 100}%` }} 
+                          className="bg-emerald-500 h-full"
+                          title={`উপস্থিত: ${item.present} জন`}
+                        />
+                        <div 
+                          style={{ width: `${(item.absent / item.recordedCount) * 100}%` }} 
+                          className="bg-red-500 h-full"
+                          title={`অনুপস্থিত: ${item.absent} জন`}
+                        />
+                        <div 
+                          style={{ width: `${(item.leave / item.recordedCount) * 100}%` }} 
+                          className="bg-amber-400 h-full"
+                          title={`ছুটি: ${item.leave} জন`}
+                        />
+                      </>
+                    ) : (
+                      <div className="w-full bg-slate-200 h-full" />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>তারিখ: {safeFormatDate(selectedDate, 'dd/MM/yyyy')}</span>
+                    {item.leave > 0 && <span className="text-amber-600">ছুটিতে: {item.leave} জন</span>}
+                  </div>
+                </div>
+
+                {/* Card footer link */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <Link
+                    to="/attendance"
+                    className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center space-x-1"
+                  >
+                    <span>হাজিরা এন্ট্রি</span>
+                    <ChevronRight size={13} />
+                  </Link>
+                  <Link
+                    to="/attendance-sheet"
+                    className="text-slate-500 hover:text-slate-700 font-medium"
+                  >
+                    রেজিস্টার শিট
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Visual Bar Chart Comparing Batches */}
+        {batchChartData.length > 0 && (
+          <div className="pt-4 border-t border-slate-100">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+              ব্যাচভিত্তিক উপস্থিত ও অনুপস্থিত তুলনা চিত্র
+            </h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyAttendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={batchChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 12 }} />
-                  <YAxis unit="%" tick={{ fill: '#64748b', fontSize: 12 }} domain={[0, 100]} />
+                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} angle={-15} textAnchor="end" />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                   <Tooltip 
-                    formatter={(val: any) => [`${val}%`, 'উপস্থিতি হার']}
                     contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}
                   />
-                  <Bar dataKey="present" fill="#10b981" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
+                  <Bar dataKey="উপস্থিত" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="অনুপস্থিত" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="ছুটি" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
+      {/* Analytics Charts (Trades distribution & Exam pass/fail) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Trainees by Trade */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="mb-4">
@@ -370,15 +597,91 @@ const Dashboard: React.FC = () => {
             </>
           )}
         </div>
+
+        {/* Exam Results Summary */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="mb-4">
+              <h3 className="font-bold text-slate-800 text-base">পরীক্ষার ফলাফল চিত্র (Results)</h3>
+              <p className="text-xs text-slate-500 mt-0.5">প্রশিক্ষণার্থীদের মূল্যায়নে পাস ও ফেলের অনুপাত</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 py-3">
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
+                  <Award size={20} />
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 block">মোট পাস</span>
+                  <span className="text-xl font-bold text-blue-700">{stats.totalPassed} জন</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold">
+                  <AlertCircle size={20} />
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 block">অকৃতকার্য/ফেল</span>
+                  <span className="text-xl font-bold text-amber-700">{stats.totalFailed} জন</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100">
+            <Link
+              to="/results"
+              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1 transition"
+            >
+              <span>বিস্তারিত ফলাফল দেখুন</span>
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Quick Links & Info */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base mb-1">প্রয়োজনীয় মডিউল লিঙ্ক</h3>
+            <p className="text-xs text-slate-500 mb-3">দ্রুত কার্যসম্পাদনের শর্টকাট:</p>
+            <div className="space-y-2">
+              <Link to="/attendance-sheet" className="p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition flex items-center justify-between text-xs font-semibold">
+                <div className="flex items-center space-x-2">
+                  <CalendarDays size={16} className="text-emerald-600" />
+                  <span>মাসিক হাজিরা খাতা (Register)</span>
+                </div>
+                <ChevronRight size={14} />
+              </Link>
+              <Link to="/trainees" className="p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition flex items-center justify-between text-xs font-semibold">
+                <div className="flex items-center space-x-2">
+                  <Users size={16} className="text-blue-600" />
+                  <span>প্রশিক্ষণার্থী তালিকা ও প্রোফাইল</span>
+                </div>
+                <ChevronRight size={14} />
+              </Link>
+              <Link to="/reports" className="p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition flex items-center justify-between text-xs font-semibold">
+                <div className="flex items-center space-x-2">
+                  <Award size={16} className="text-purple-600" />
+                  <span>প্রতিবেদন ও সার্টিফিকেট</span>
+                </div>
+                <ChevronRight size={14} />
+              </Link>
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 text-center">
+            <span className="text-[11px] text-slate-400">BNFE কারিগরি প্রশিক্ষণ ব্যবস্থাপনা পোর্টাল</span>
+          </div>
+        </div>
       </div>
 
-      {/* Recent Activity Log and Quick Links */}
+      {/* Recent Activity Log and Workflow Guide */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-slate-800 text-base">সাম্প্রতিক কার্যক্রম (Recent Activities)</h3>
             <Link to="/settings" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center space-x-1">
-              <span>সকল সেটিংস দেখুন</span>
+              <span>সকল সেটিংস ও লগ দেখুন</span>
               <ArrowUpRight size={14} />
             </Link>
           </div>
@@ -400,7 +703,7 @@ const Dashboard: React.FC = () => {
                     </p>
                   </div>
                   <span className="text-[11px] text-slate-400 shrink-0">
-                    {format(log.timestamp, 'dd MMM, hh:mm a')}
+                    {safeFormatDate(log.timestamp, 'dd MMM, hh:mm a')}
                   </span>
                 </div>
               ))}

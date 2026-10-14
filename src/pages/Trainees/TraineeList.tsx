@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { logActivity } from '../../lib/firebase';
-import { Plus, Edit2, Trash2, Eye, Search, Filter, Download, UserCheck, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, Search, Filter, Download, UserCheck, ShieldAlert, ChevronLeft, ChevronRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Trainee, Institute, Trade, Batch } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -15,6 +15,8 @@ const TraineeList: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Filters
@@ -50,10 +52,14 @@ const TraineeList: React.FC = () => {
 
       let list = traineesData;
       
-      // If user is a Trainer with assigned institute, auto-filter to their institute
-      if (userProfile?.role === 'Trainer' && userProfile.instituteId) {
-        list = list.filter(t => t.instituteId === userProfile.instituteId);
-        setFilterInstitute(userProfile.instituteId);
+      // If user is a Trainer with assigned institute or batch, auto-filter
+      if (userProfile?.role === 'Trainer') {
+        if (userProfile.instituteId) {
+          setFilterInstitute(userProfile.instituteId);
+        }
+        if (userProfile.batchId) {
+          setFilterBatch(userProfile.batchId);
+        }
       }
 
       setTrainees(list);
@@ -112,18 +118,42 @@ const TraineeList: React.FC = () => {
     }
   };
 
+  const handleSeedDemoTrainees = async () => {
+    setSeeding(true);
+    setSeedMessage('');
+    try {
+      await dataService.seedDemoTraineesForAllBatches(false);
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'User',
+        'সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী যোগ করা হয়েছে',
+        'Trainees',
+        'seed_demo_trainees'
+      );
+      await fetchData();
+      setSeedMessage('সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী সফলভাবে যোগ করা হয়েছে!');
+      setTimeout(() => setSeedMessage(''), 5000);
+    } catch (error) {
+      console.warn("Notice seeding demo trainees:", error);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const exportCSV = () => {
     if (filteredTrainees.length === 0) {
       alert("কোনো তথ্য নেই।");
       return;
     }
 
-    let csv = 'ID,Registration No,Name (EN),Name (BN),Mobile,Gender,Institute,Trade,Batch,Status\n';
+    let csv = 'ID,Registration No,Name (EN),Name (BN),Mobile,Gender,Institute,Trade,Batch,Permanent Address,Present Address,Status\n';
     filteredTrainees.forEach((t) => {
       const inst = institutes.find(i => i.id === t.instituteId)?.name || '';
       const trd = trades.find(tr => tr.id === t.tradeId)?.name || '';
       const btc = batches.find(b => b.id === t.batchId)?.name || '';
-      csv += `"${t.traineeId || ''}","${t.registrationNumber}","${t.nameEn}","${t.nameBn}","${t.mobileNumber}","${t.gender}","${inst}","${trd}","${btc}","${t.status}"\n`;
+      const perm = t.permanentAddress || t.address || '';
+      const pres = t.presentAddress || t.address || '';
+      csv += `"${t.traineeId || ''}","${t.registrationNumber}","${t.nameEn}","${t.nameBn}","${t.mobileNumber}","${t.gender}","${inst}","${trd}","${btc}","${perm}","${pres}","${t.status}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -158,7 +188,18 @@ const TraineeList: React.FC = () => {
             মোট নথিভুক্ত শিক্ষার্থী: {trainees.length} জন (ফিল্টারকৃত: {filteredTrainees.length} জন)
           </p>
         </div>
-        <div className="flex items-center space-x-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit && (
+            <button
+              onClick={handleSeedDemoTrainees}
+              disabled={seeding}
+              className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 rounded-xl text-sm font-semibold flex items-center space-x-1.5 shadow-2xs transition disabled:opacity-50"
+              title="সকল ব্যাচে ২০ জন করে ডেমো শিক্ষার্থী যোগ করুন"
+            >
+              <Sparkles size={16} className="text-purple-600" />
+              <span>{seeding ? 'যোগ করা হচ্ছে...' : '২০ জন ডেমো শিক্ষার্থী যোগ করুন'}</span>
+            </button>
+          )}
           <button
             onClick={exportCSV}
             className="px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold flex items-center space-x-1.5 shadow-2xs transition"
@@ -175,6 +216,13 @@ const TraineeList: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      {seedMessage && (
+        <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-sm flex items-center space-x-2.5 animate-fadeIn">
+          <CheckCircle2 size={18} className="text-purple-600 shrink-0" />
+          <span>{seedMessage}</span>
+        </div>
+      )}
 
       {/* Search and Filters Bar */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">

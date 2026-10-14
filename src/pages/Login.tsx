@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Institute, UserRole } from '../types';
+import { Institute, UserRole, Batch, Trade } from '../types';
 import { dataService } from '../lib/dataService';
 import { 
   Building2, 
@@ -12,7 +12,8 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Layers
 } from 'lucide-react';
 
 const Login: React.FC = () => {
@@ -31,26 +32,41 @@ const Login: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regRole, setRegRole] = useState<UserRole>('Course Director');
   const [regInstituteId, setRegInstituteId] = useState('');
+  const [regBatchId, setRegBatchId] = useState('');
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Fetch real institutes for Trainer assignment
+  // Fetch institutes, batches, trades for Trainer assignment
   useEffect(() => {
-    const fetchInsts = async () => {
+    const fetchData = async () => {
       try {
-        const list = await dataService.getItems<Institute>('institutes');
-        setInstitutes(list);
-        if (list.length > 0 && !regInstituteId) {
-          setRegInstituteId(list[0].id);
+        const [instList, batchList, tradeList] = await Promise.all([
+          dataService.getItems<Institute>('institutes'),
+          dataService.getItems<Batch>('batches'),
+          dataService.getItems<Trade>('trades')
+        ]);
+        setInstitutes(instList);
+        setBatches(batchList);
+        setTrades(tradeList);
+        if (instList.length > 0 && !regInstituteId) {
+          setRegInstituteId(instList[0].id);
+          const matching = batchList.filter(b => b.instituteId === instList[0].id);
+          if (matching.length > 0) {
+            setRegBatchId(matching[0].id);
+          }
         }
       } catch (err) {
         setInstitutes([]);
+        setBatches([]);
+        setTrades([]);
       }
     };
-    fetchInsts();
+    fetchData();
   }, []);
 
   // Redirect if logged in
@@ -107,6 +123,7 @@ const Login: React.FC = () => {
         phone: regPhone,
         role: regRole,
         instituteId: regRole === 'Trainer' ? regInstituteId : undefined,
+        batchId: regRole === 'Trainer' ? regBatchId : undefined,
       });
       setSuccessMsg('নিবন্ধন সফল হয়েছে! সিস্টেমে প্রবেশ করা হচ্ছে...');
       setTimeout(() => {
@@ -340,23 +357,73 @@ const Login: React.FC = () => {
               </div>
 
               {regRole === 'Trainer' && (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                    নির্ধারিত প্রতিষ্ঠান (Assigned Institute)
-                  </label>
-                  <select
-                    value={regInstituteId}
-                    onChange={(e) => setRegInstituteId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
-                  >
-                    {institutes.length === 0 ? (
-                      <option value="">প্রতিষ্ঠান এখনও তৈরি করা হয়নি (পরে সংযুক্ত করা যাবে)</option>
-                    ) : (
-                      institutes.map(inst => (
-                        <option key={inst.id} value={inst.id}>{inst.name}</option>
-                      ))
-                    )}
-                  </select>
+                <div className="space-y-3 p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
+                  <div className="text-xs font-bold text-emerald-800 flex items-center space-x-1.5">
+                    <Building2 size={15} />
+                    <span>প্রশিক্ষকের নির্ধারিত প্রতিষ্ঠান ও ব্যাচ (Institute & Batch)</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                      নির্ধারিত প্রতিষ্ঠান (Assigned Institute) *
+                    </label>
+                    <select
+                      value={regInstituteId}
+                      onChange={(e) => {
+                        const newInstId = e.target.value;
+                        setRegInstituteId(newInstId);
+                        const matching = batches.filter(b => b.instituteId === newInstId);
+                        if (matching.length > 0) {
+                          setRegBatchId(matching[0].id);
+                        } else {
+                          setRegBatchId('');
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                    >
+                      {institutes.length === 0 ? (
+                        <option value="">প্রতিষ্ঠান এখনও তৈরি করা হয়নি (পরে সংযুক্ত করা যাবে)</option>
+                      ) : (
+                        institutes.map(inst => (
+                          <option key={inst.id} value={inst.id}>{inst.name}</option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                      নির্ধারিত ব্যাচ (Assigned Batch) *
+                    </label>
+                    <select
+                      value={regBatchId}
+                      onChange={(e) => setRegBatchId(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                    >
+                      {(() => {
+                        const matchingBatches = batches.filter(b => !regInstituteId || b.instituteId === regInstituteId);
+                        if (matchingBatches.length === 0) {
+                          return <option value="">এই প্রতিষ্ঠানের কোনো ব্যাচ পাওয়া যায়নি</option>;
+                        }
+                        return (
+                          <>
+                            <option value="">ব্যাচ নির্বাচন করুন (Select Batch)</option>
+                            {matchingBatches.map(b => {
+                              const tradeName = trades.find(t => t.id === b.tradeId)?.name;
+                              return (
+                                <option key={b.id} value={b.id}>
+                                  {b.name} {tradeName ? `(${tradeName})` : ''}
+                                </option>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </select>
+                    <p className="text-[11px] text-emerald-700/90 mt-1 font-medium">
+                      ✓ উপস্থিতি (Attendance) মডিউলে প্রশিক্ষক সরাসরি এই নির্ধারিত ব্যাচের শিক্ষার্থীদের দেখতে পাবেন।
+                    </p>
+                  </div>
                 </div>
               )}
 

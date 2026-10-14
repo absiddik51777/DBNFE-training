@@ -193,11 +193,28 @@ const TraineeProfile: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs text-slate-600">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs text-slate-600 space-y-2.5">
             <div className="flex items-start space-x-2">
-              <MapPin size={15} className="text-slate-400 shrink-0 mt-0.5" />
-              <span>{trainee.address}</span>
+              <MapPin size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-slate-700 block">স্থায়ী ঠিকানা:</span>
+                <span className="text-slate-600">{trainee.permanentAddress || trainee.address}</span>
+              </div>
             </div>
+            {(trainee.presentAddress || trainee.sameAsPermanentAddress) && (
+              <div className="flex items-start space-x-2 pt-2 border-t border-slate-200/60">
+                <MapPin size={15} className="text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="font-semibold text-slate-700">বর্তমান ঠিকানা:</span>
+                    {trainee.sameAsPermanentAddress && (
+                      <span className="text-[10px] text-emerald-700 bg-emerald-100/70 px-1 rounded">অনুরূপ</span>
+                    )}
+                  </div>
+                  <span className="text-slate-600">{trainee.presentAddress || trainee.permanentAddress || trainee.address}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

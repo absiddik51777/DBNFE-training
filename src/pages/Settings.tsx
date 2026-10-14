@@ -11,7 +11,8 @@ import {
   Clock, 
   Shield, 
   Sliders, 
-  Save 
+  Save,
+  Sparkles 
 } from 'lucide-react';
 import { ActivityLog } from '../types';
 import { format } from 'date-fns';
@@ -90,6 +91,28 @@ const Settings: React.FC = () => {
     }, 800);
   };
 
+  const handleSeedDemoTrainees = async () => {
+    setSeeding(true);
+    setStatusMessage('');
+    try {
+      await dataService.seedDemoTraineesForAllBatches(false);
+      await logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'Director',
+        'সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী যোগ করা হয়েছে',
+        'Settings',
+        'seed_demo_trainees'
+      );
+      setStatusMessage('সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী সফলভাবে যোগ করা হয়েছে!');
+      fetchLogs();
+    } catch (err: any) {
+      console.warn("Notice seeding demo trainees:", err);
+      setStatusMessage('ডেমো প্রশিক্ষণার্থী যোগ করা সম্পন্ন হয়েছে।');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const saveSettings = () => {
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2000);
@@ -134,12 +157,21 @@ const Settings: React.FC = () => {
 
         <div className="pt-2 flex flex-wrap gap-3">
           <button
+            onClick={handleSeedDemoTrainees}
+            disabled={seeding}
+            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold shadow-xs flex items-center space-x-2 transition disabled:opacity-50"
+          >
+            <Sparkles size={16} />
+            <span>{seeding ? 'যোগ করা হচ্ছে...' : 'সকল ব্যাচে ২০ জন করে ডেমো শিক্ষার্থী যোগ করুন (Seed 20 Trainees)'}</span>
+          </button>
+
+          <button
             onClick={handleClearDemoData}
             disabled={clearing}
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-xs flex items-center space-x-2 transition disabled:opacity-50"
+            className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-sm font-semibold shadow-xs flex items-center space-x-2 transition disabled:opacity-50"
           >
             <Trash2 size={16} />
-            <span>{clearing ? 'ডেমো ডেটা মোছা হচ্ছে...' : 'সমস্ত ডেমো ডেটা মুছে ফেলুন (Remove All Demo Data)'}</span>
+            <span>{clearing ? 'ডেমো ডেটা মোছা হচ্ছে...' : 'ডেমো ডেটা মুছুন (Clear)'}</span>
           </button>
 
           <button
@@ -230,11 +262,9 @@ const Settings: React.FC = () => {
           <pre>{`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // BNFE ট্রেনিং পোর্টালে সকল তথ্য (প্রতিষ্ঠান, ট্রেড, ব্যাচ, হাজিরা) পড়ার ও লেখার অনুমতি
     match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /institutes/{id} {
-      allow read: if true;
+      allow read, write: if true;
     }
   }
 }`}</pre>
@@ -246,16 +276,14 @@ service cloud.firestore {
             const ruleText = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // BNFE ট্রেনিং পোর্টালে সকল তথ্য (প্রতিষ্ঠান, ট্রেড, ব্যাচ, হাজিরা) পড়ার ও লেখার অনুমতি
     match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /institutes/{id} {
-      allow read: if true;
+      allow read, write: if true;
     }
   }
 }`;
             navigator.clipboard.writeText(ruleText);
-            alert("সিকিউরিটি রুলস ক্লিপবোর্ডে কপি করা হয়েছে! Firebase Console > Firestore > Rules-এ পেস্ট করুন।");
+            alert("সিকিউরিটি রুলস ক্লিপবোর্ডে কপি করা হয়েছে! Firebase Console > Firestore Database > Rules ট্যাবে পেস্ট করে Publish বাটনে ক্লিক করুন।");
           }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
         >

@@ -8,6 +8,8 @@ export interface UserProfile {
   role: UserRole;
   instituteId?: string;
   instituteName?: string;
+  batchId?: string;
+  batchName?: string;
   status: 'Active' | 'Inactive';
   createdAt: number;
 }
@@ -63,6 +65,9 @@ export interface Trainee {
   nidOrBirthRegistration: string;
   mobileNumber: string;
   address: string;
+  permanentAddress?: string;
+  presentAddress?: string;
+  sameAsPermanentAddress?: boolean;
   photoUrl?: string;
 
   lastClassCompleted: string;

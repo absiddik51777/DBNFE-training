@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserProfile, UserRole } from '../types';
+import { dataService } from '../lib/dataService';
 
 interface AuthContextType {
   user: User | null;
@@ -22,6 +23,7 @@ interface AuthContextType {
     phone: string;
     role: UserRole;
     instituteId?: string;
+    batchId?: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -210,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone: string;
     role: UserRole;
     instituteId?: string;
+    batchId?: string;
   }) => {
     isRegisteringRef.current = true;
     const cleanEmail = params.email.trim().toLowerCase();
@@ -224,6 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: params.phone.trim(),
         role: params.role,
         instituteId: params.instituteId || '',
+        batchId: params.batchId || '',
         status: 'Active',
         createdAt: Date.now(),
       };
@@ -237,6 +241,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPermissionError(false);
       } catch (firestoreErr: any) {
         console.warn("Profile saved locally, Firestore remote sync pending rules:", firestoreErr);
+      }
+
+      try {
+        await dataService.saveItem('users', newProfile);
+      } catch (e) {
+        console.warn("Could not save profile into dataService:", e);
       }
     } finally {
       isRegisteringRef.current = false;

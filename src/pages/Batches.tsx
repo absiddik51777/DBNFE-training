@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { logActivity } from '../lib/firebase';
-import { Plus, Edit2, Trash2, Layers, Calendar, Users, X } from 'lucide-react';
-import { Batch, Institute, Trade } from '../types';
+import { Plus, Edit2, Trash2, Layers, Calendar, Users, X, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Batch, Institute, Trade, Trainee } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
+import { safeFormatDate } from '../lib/dateUtils';
+import { DEFAULT_INSTITUTES, DEFAULT_TRADES } from '../lib/demoTraineesSeed';
 
 const Batches: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState('');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
@@ -30,25 +35,31 @@ const Batches: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [userProfile]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [bList, iList, tList] = await Promise.all([
+      const [bList, iList, tList, trnList] = await Promise.all([
         dataService.getItems<Batch>('batches'),
         dataService.getItems<Institute>('institutes'),
         dataService.getItems<Trade>('trades'),
+        dataService.getItems<Trainee>('trainees'),
       ]);
 
       setBatches(bList);
-      setInstitutes(iList);
-      setTrades(tList);
-      if (iList.length > 0 && !formData.instituteId) {
-        setFormData(prev => ({ ...prev, instituteId: iList[0].id }));
+      setInstitutes(iList.length > 0 ? iList : DEFAULT_INSTITUTES);
+      setTrades(tList.length > 0 ? tList : DEFAULT_TRADES);
+      setTrainees(trnList);
+
+      const effectiveInstList = iList.length > 0 ? iList : DEFAULT_INSTITUTES;
+      const effectiveTradeList = tList.length > 0 ? tList : DEFAULT_TRADES;
+
+      if (effectiveInstList.length > 0 && !formData.instituteId) {
+        setFormData(prev => ({ ...prev, instituteId: effectiveInstList[0].id }));
       }
-      if (tList.length > 0 && !formData.tradeId) {
-        setFormData(prev => ({ ...prev, tradeId: tList[0].id }));
+      if (effectiveTradeList.length > 0 && !formData.tradeId) {
+        setFormData(prev => ({ ...prev, tradeId: effectiveTradeList[0].id }));
       }
     } catch (error) {
       console.warn("Notice fetching batches:", error);
@@ -57,15 +68,40 @@ const Batches: React.FC = () => {
     }
   };
 
+  const handleSeedDemoTrainees = async () => {
+    setSeeding(true);
+    setSeedMessage('');
+    try {
+      await dataService.seedDemoTraineesForAllBatches(false);
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'User',
+        'সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী যোগ করা হয়েছে',
+        'Batches',
+        'seed_demo_trainees'
+      );
+      await fetchData();
+      setSeedMessage('সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী সফলভাবে যোগ করা হয়েছে!');
+      setTimeout(() => setSeedMessage(''), 5000);
+    } catch (error) {
+      console.warn("Notice seeding demo trainees in Batches:", error);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const handleOpenModal = (b?: Batch) => {
+    const availableInstitutes = institutes.length > 0 ? institutes : DEFAULT_INSTITUTES;
+    const availableTrades = trades.length > 0 ? trades : DEFAULT_TRADES;
+
     if (b) {
       setEditingBatch(b);
       setFormData({
         name: b.name,
-        instituteId: b.instituteId,
-        tradeId: b.tradeId,
-        startDate: format(b.startDate, 'yyyy-MM-dd'),
-        endDate: format(b.endDate, 'yyyy-MM-dd'),
+        instituteId: b.instituteId || availableInstitutes[0]?.id || '',
+        tradeId: b.tradeId || availableTrades[0]?.id || '',
+        startDate: safeFormatDate(b.startDate, 'yyyy-MM-dd'),
+        endDate: safeFormatDate(b.endDate, 'yyyy-MM-dd'),
         maxTrainees: b.maxTrainees,
         status: b.status,
       });
@@ -73,8 +109,8 @@ const Batches: React.FC = () => {
       setEditingBatch(null);
       setFormData({
         name: '',
-        instituteId: institutes[0]?.id || '',
-        tradeId: trades[0]?.id || '',
+        instituteId: availableInstitutes[0]?.id || '',
+        tradeId: availableTrades[0]?.id || '',
         startDate: format(new Date(), 'yyyy-MM-dd'),
         endDate: format(new Date(Date.now() + 180 * 86400000), 'yyyy-MM-dd'),
         maxTrainees: 30,
@@ -138,8 +174,15 @@ const Batches: React.FC = () => {
     }
   };
 
-  const getInstituteName = (id: string) => institutes.find(i => i.id === id)?.name || id;
-  const getTradeName = (id: string) => trades.find(t => t.id === id)?.name || id;
+  const getInstituteName = (id: string) => 
+    institutes.find(i => i.id === id)?.name || 
+    DEFAULT_INSTITUTES.find(i => i.id === id)?.name || 
+    id || '-';
+
+  const getTradeName = (id: string) => 
+    trades.find(t => t.id === id)?.name || 
+    DEFAULT_TRADES.find(t => t.id === id)?.name || 
+    id || '-';
 
   if (loading) {
     return (
@@ -157,52 +200,84 @@ const Batches: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800">প্রশিক্ষণ ব্যাচ (Training Batches)</h1>
           <p className="text-sm text-slate-500 mt-0.5">প্রতিষ্ঠান ও ট্রেড অনুযায়ী প্রশিক্ষণার্থীদের ব্যাচ পরিচালনা</p>
         </div>
-        {canEdit && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => handleOpenModal()}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-600/20"
+            onClick={() => fetchData()}
+            disabled={loading}
+            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition"
+            title="তথ্য রিফ্রেশ করুন"
           >
-            <Plus size={18} />
-            <span>নতুন ব্যাচ যুক্ত করুন</span>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
-        )}
+          {canEdit && (
+            <button
+              onClick={handleSeedDemoTrainees}
+              disabled={seeding}
+              className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-2xs disabled:opacity-50"
+              title="সকল ব্যাচে ২০ জন করে ডেমো শিক্ষার্থী যোগ করুন"
+            >
+              <Sparkles size={16} className="text-purple-600" />
+              <span>{seeding ? 'যোগ করা হচ্ছে...' : 'সকল ব্যাচে ২০ জন ডেমো শিক্ষার্থী যোগ করুন'}</span>
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-600/20"
+            >
+              <Plus size={18} />
+              <span>নতুন ব্যাচ যুক্ত করুন</span>
+            </button>
+          )}
+        </div>
       </div>
 
+      {seedMessage && (
+        <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-sm flex items-center space-x-2.5 animate-fadeIn">
+          <CheckCircle2 size={18} className="text-purple-600 shrink-0" />
+          <span>{seedMessage}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {batches.map((b) => (
-          <div key={b.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                  <Layers size={22} />
-                </div>
-                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                  b.status === 'Active' ? 'bg-emerald-100 text-emerald-800' :
-                  b.status === 'Upcoming' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'
-                }`}>
-                  {b.status === 'Active' ? 'চলমান' : b.status === 'Upcoming' ? 'আসন্ন' : 'সম্পন্ন'}
-                </span>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-slate-800 text-base">{b.name}</h3>
-                <span className="text-xs text-emerald-700 font-medium block mt-0.5">{getTradeName(b.tradeId)}</span>
-                <span className="text-xs text-slate-500 block truncate">{getInstituteName(b.instituteId)}</span>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <div className="flex items-center space-x-2">
-                  <Calendar size={14} className="text-slate-400 shrink-0" />
-                  <span>
-                    {format(b.startDate, 'dd MMM yyyy')} - {format(b.endDate, 'dd MMM yyyy')}
+        {batches.map((b) => {
+          const batchTraineesCount = trainees.filter(t => t.batchId === b.id).length;
+          return (
+            <div key={b.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                    <Layers size={22} />
+                  </div>
+                  <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                    b.status === 'Active' ? 'bg-emerald-100 text-emerald-800' :
+                    b.status === 'Upcoming' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'
+                  }`}>
+                    {b.status === 'Active' ? 'চলমান' : b.status === 'Upcoming' ? 'আসন্ন' : 'সম্পন্ন'}
                   </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Users size={14} className="text-slate-400 shrink-0" />
-                  <span>সর্বোচ্চ আসন: {b.maxTrainees} জন</span>
+
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">{b.name}</h3>
+                  <span className="text-xs text-emerald-700 font-medium block mt-0.5">{getTradeName(b.tradeId)}</span>
+                  <span className="text-xs text-slate-500 block truncate">{getInstituteName(b.instituteId)}</span>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                  <div className="flex items-center space-x-2">
+                    <Calendar size={14} className="text-slate-400 shrink-0" />
+                    <span>
+                      {safeFormatDate(b.startDate)} - {safeFormatDate(b.endDate)}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Users size={14} className="text-slate-400 shrink-0" />
+                    <span>
+                      বর্তমান শিক্ষার্থী: <strong className="text-emerald-700 font-semibold">{batchTraineesCount} জন</strong> (আসন: {b.maxTrainees})
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
             {canEdit && (
               <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
@@ -223,7 +298,8 @@ const Batches: React.FC = () => {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Modal */}
@@ -260,7 +336,10 @@ const Batches: React.FC = () => {
                   onChange={e => setFormData({ ...formData, instituteId: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
-                  {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  <option value="">-- প্রতিষ্ঠান নির্বাচন করুন --</option>
+                  {(institutes.length > 0 ? institutes : DEFAULT_INSTITUTES).map(i => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -272,7 +351,10 @@ const Batches: React.FC = () => {
                   onChange={e => setFormData({ ...formData, tradeId: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
-                  {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  <option value="">-- ট্রেড নির্বাচন করুন --</option>
+                  {(trades.length > 0 ? trades : DEFAULT_TRADES).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
                 </select>
               </div>
 

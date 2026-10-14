@@ -9,6 +9,7 @@ import Trades from './pages/Trades';
 import Batches from './pages/Batches';
 import Trainees from './pages/Trainees';
 import Attendance from './pages/Attendance';
+import AttendanceSheet from './pages/AttendanceSheet';
 import Exams from './pages/Exams';
 import Results from './pages/Results';
 import Reports from './pages/Reports';
@@ -47,6 +48,7 @@ const AppRoutes = () => {
         <Route path="batches" element={<Batches />} />
         <Route path="trainees/*" element={<Trainees />} />
         <Route path="attendance" element={<Attendance />} />
+        <Route path="attendance-sheet" element={<AttendanceSheet />} />
         <Route path="exams" element={<Exams />} />
         <Route path="results" element={<Results />} />
         <Route path="reports" element={<Reports />} />
