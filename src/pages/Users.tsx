@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { logActivity } from '../lib/firebase';
 import { UserProfile, UserRole, Institute, Batch, Trade } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search } from 'lucide-react';
+import { usePermissions } from '../contexts/PermissionsContext';
+import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search, SlidersHorizontal } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 
 const UsersPage: React.FC = () => {
   const { userProfile, refreshProfile } = useAuth();
+  const { roles, hasPermission, isCourseDirector } = usePermissions();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -42,7 +45,6 @@ const UsersPage: React.FC = () => {
     status: 'Active' as 'Active' | 'Inactive',
   });
 
-  const isCourseDirector = userProfile?.role === 'Course Director';
   const isFMA = userProfile?.role === 'FMA';
 
   useEffect(() => {
@@ -220,26 +222,38 @@ const UsersPage: React.FC = () => {
           </p>
         </div>
 
-        {(isCourseDirector || isFMA) && (
-          <button
-            onClick={() => {
-              setAddFormData({
-                name: '',
-                email: '',
-                phone: '',
-                role: 'Trainer',
-                instituteId: institutes[0]?.id || '',
-                batchId: '',
-                status: 'Active',
-              });
-              setIsAddModalOpen(true);
-            }}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-2 transition"
-          >
-            <UserPlus size={18} />
-            <span>নতুন প্রশিক্ষক / ব্যবহারকারী যোগ করুন</span>
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {isCourseDirector && (
+            <Link
+              to="/roles"
+              className="px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-sm font-semibold flex items-center space-x-2 transition"
+            >
+              <Shield size={18} />
+              <span>রোল ও পারমিশন টেবিল (Roles Table)</span>
+            </Link>
+          )}
+
+          {hasPermission('create_user') && (
+            <button
+              onClick={() => {
+                setAddFormData({
+                  name: '',
+                  email: '',
+                  phone: '',
+                  role: 'Trainer',
+                  instituteId: institutes[0]?.id || '',
+                  batchId: '',
+                  status: 'Active',
+                });
+                setIsAddModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-2 transition"
+            >
+              <UserPlus size={18} />
+              <span>নতুন প্রশিক্ষক / ব্যবহারকারী যোগ করুন</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -263,9 +277,11 @@ const UsersPage: React.FC = () => {
             className="px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none w-full sm:w-auto"
           >
             <option value="All">সকল পদবী ({users.length})</option>
-            <option value="Trainer">প্রশিক্ষক - Trainer ({users.filter(u => u.role === 'Trainer').length})</option>
-            <option value="Course Director">কোর্স পরিচালক - Course Director ({users.filter(u => u.role === 'Course Director').length})</option>
-            <option value="FMA">FMA ({users.filter(u => u.role === 'FMA').length})</option>
+            {roles.map(r => (
+              <option key={r.id} value={r.name}>
+                {r.nameBn || r.name} ({users.filter(u => u.role === r.name).length})
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -421,9 +437,11 @@ const UsersPage: React.FC = () => {
                   disabled={!isCourseDirector}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
-                  <option value="Trainer">Trainer (প্রশিক্ষক)</option>
-                  <option value="Course Director">Course Director (কোর্স পরিচালক)</option>
-                  <option value="FMA">FMA (ফিল্ড মনিটরিং অ্যাসোসিয়েট)</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.name}>
+                      {r.name} ({r.nameBn || r.name})
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -569,12 +587,18 @@ const UsersPage: React.FC = () => {
                   onChange={e => setAddFormData({ ...addFormData, role: e.target.value as UserRole })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
-                  <option value="Trainer">Trainer (প্রশিক্ষক - প্রতিষ্ঠান ও ব্যাচ ভিত্তিক)</option>
-                  {isCourseDirector && (
-                    <>
-                      <option value="Course Director">Course Director (কোর্স পরিচালক)</option>
-                      <option value="FMA">FMA (ফিল্ড মনিটরিং অ্যাসোসিয়েট)</option>
-                    </>
+                  {isCourseDirector ? (
+                    roles.map(r => (
+                      <option key={r.id} value={r.name}>
+                        {r.name} ({r.nameBn || r.name})
+                      </option>
+                    ))
+                  ) : (
+                    roles.filter(r => r.name === 'Trainer' || r.code === 'trainer').map(r => (
+                      <option key={r.id} value={r.name}>
+                        {r.name} ({r.nameBn || r.name})
+                      </option>
+                    ))
                   )}
                 </select>
               </div>

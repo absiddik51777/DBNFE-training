@@ -57,3 +57,32 @@ export function toTimestampNumber(val: any): number {
   }
   return Date.now();
 }
+
+/**
+ * Converts Western digits to Bengali numerals.
+ */
+export function toBn(num: number | string | undefined | null): string {
+  if (num === undefined || num === null) return '০';
+  const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(num).replace(/[0-9]/g, d => bnDigits[parseInt(d, 10)]);
+}
+
+/**
+ * Format date string (YYYY-MM-DD) into Bengali readable string (e.g. ১৫ অক্টোবর ২০২৬, বৃহস্পতিবার)
+ */
+export function formatBengaliDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      const BN_MONTHS = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+      const BN_DAYS = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+      return `${toBn(day)} ${BN_MONTHS[month]} ${toBn(year)}, ${BN_DAYS[d.getDay()]}`;
+    }
+  } catch (e) {}
+  return dateStr;
+}

@@ -21,13 +21,16 @@ import {
   GraduationCap
 } from 'lucide-react';
 
+import { usePermissions } from '../contexts/PermissionsContext';
+
 const Layout: React.FC = () => {
   const { userProfile, signOut, permissionError } = useAuth();
+  const { canViewPage, isCourseDirector } = usePermissions();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dismissPermNotice, setDismissPermNotice] = useState(false);
 
-  const menuItems = [
+  const baseMenuItems = [
     { path: '/', name: 'ড্যাশবোর্ড', sub: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { path: '/institutes', name: 'প্রতিষ্ঠান', sub: 'Institutes', icon: <Building2 size={20} /> },
     { path: '/trades', name: 'ট্রেড', sub: 'Trades', icon: <Wrench size={20} /> },
@@ -39,16 +42,19 @@ const Layout: React.FC = () => {
     { path: '/results', name: 'ফলাফল', sub: 'Results', icon: <BarChart size={20} /> },
     { path: '/reports', name: 'প্রতিবেদন', sub: 'Reports', icon: <FileText size={20} /> },
     { path: '/certificates', name: 'সার্টিফিকেট', sub: 'Certificates', icon: <Award size={20} /> },
+    { path: '/users', name: 'ব্যবহারকারী', sub: 'Users', icon: <UserCheck size={20} /> },
   ];
 
-  // User management visible for Course Director and FMA
-  const showUserMgmt = userProfile?.role === 'Course Director' || userProfile?.role === 'FMA';
-  if (showUserMgmt) {
-    menuItems.push({ path: '/users', name: 'ব্যবহারকারী', sub: 'Users', icon: <UserCheck size={20} /> });
+  // Role and Permission management: STRICTLY for Course Director only
+  if (isCourseDirector) {
+    baseMenuItems.push({ path: '/roles', name: 'রোল ও পারমিশন', sub: 'Roles & Perms', icon: <Shield size={20} /> });
   }
 
   // Settings
-  menuItems.push({ path: '/settings', name: 'সেটিংস', sub: 'Settings', icon: <Settings size={20} /> });
+  baseMenuItems.push({ path: '/settings', name: 'সেটিংস', sub: 'Settings', icon: <Settings size={20} /> });
+
+  // Filter menu items dynamically according to role's page view permissions
+  const menuItems = baseMenuItems.filter(item => canViewPage(item.path));
 
   const getRoleBadge = (role?: string) => {
     switch (role) {
@@ -59,7 +65,7 @@ const Layout: React.FC = () => {
       case 'Trainer':
         return <span className="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">প্রশিক্ষক</span>;
       default:
-        return null;
+        return role ? <span className="bg-slate-100 text-slate-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">{role}</span> : null;
     }
   };
 

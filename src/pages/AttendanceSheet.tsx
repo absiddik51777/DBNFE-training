@@ -16,6 +16,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
 import { dataService } from '../lib/dataService';
 import { Institute, Batch, Trainee, AttendanceRecord, Trade } from '../types';
 
@@ -29,6 +30,8 @@ const WEEKDAY_NAMES_BN = ['রবি', 'সোম', 'মঙ্গল', 'বু�
 
 export default function AttendanceSheet() {
   const { userProfile } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canExport = hasPermission('export_attendance_sheet');
 
   const [loading, setLoading] = useState(true);
   const [fetchingData, setFetchingData] = useState(false);
@@ -359,14 +362,16 @@ export default function AttendanceSheet() {
             <span>দৈনিক হাজিরা নিন</span>
           </Link>
 
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
-            title="প্রিন্ট করুন বা পিডিএফ সংরক্ষণ করুন"
-          >
-            <Printer size={16} />
-            <span>শিট প্রিন্ট করুন</span>
-          </button>
+          {canExport && (
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+              title="প্রিন্ট করুন বা পিডিএফ সংরক্ষণ করুন"
+            >
+              <Printer size={16} />
+              <span>শিট প্রিন্ট করুন</span>
+            </button>
+          )}
         </div>
       </div>
 

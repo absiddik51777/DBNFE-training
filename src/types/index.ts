@@ -1,4 +1,27 @@
-export type UserRole = 'Course Director' | 'FMA' | 'Trainer';
+export type UserRole = 'Course Director' | 'FMA' | 'Trainer' | string;
+
+export interface PermissionDefinition {
+  key: string;
+  nameBn: string;
+  nameEn: string;
+  descriptionBn: string;
+  module: string;
+  moduleBn: string;
+  isPageView?: boolean;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  nameBn: string;
+  code: string;
+  description: string;
+  isSystem: boolean; // System roles cannot be deleted
+  permissions: string[];
+  defaultLandingRoute?: string;
+  createdAt: number;
+  updatedAt?: number;
+}
 
 export interface UserProfile {
   id: string;
@@ -29,23 +52,29 @@ export interface Institute {
 export interface Trade {
   id: string;
   name: string;
+  nameEn?: string;
   code: string;
   description: string;
-  duration: string; // e.g., '6 Months'
+  duration: string; // e.g., '৬ মাস (৩৬০ ঘণ্টা)'
   status: 'Active' | 'Inactive';
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface Batch {
   id: string;
   name: string;
+  batchCode?: string;
   instituteId: string;
   tradeId: string;
+  fiscalYear?: string; // e.g., '2025-2026'
   startDate: number;
   endDate: number;
   maxTrainees: number;
-  status: 'Upcoming' | 'Active' | 'Completed';
+  status: 'Upcoming' | 'Active' | 'Completed' | 'Archived' | 'Cancelled';
+  cancellationReason?: string;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export type TraineeStatus = 'Active' | 'Completed' | 'Dropped Out';
@@ -84,6 +113,7 @@ export interface Trainee {
   status: TraineeStatus;
   
   createdAt: number;
+  updatedAt?: number;
 }
 
 export type AttendanceStatus = 'Present' | 'Absent' | 'Leave';
@@ -143,10 +173,15 @@ export interface ActivityLog {
 }
 
 export interface SystemSettings {
+  allowDataDeletion: boolean; // Controls whether deletion of data (trainees, batches, trades, institutes, attendance, exams) is permitted
+  deletionLockedReason?: string;
   minAttendancePercentForCert: number;
   passMarkPercent: number;
-  gradingRules: {
+  gradingRules?: {
     grade: string;
     minPercent: number;
   }[];
+  updatedAt?: number;
+  updatedBy?: string;
 }
+

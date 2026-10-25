@@ -14,10 +14,13 @@ import {
   Download
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePermissions } from '../contexts/PermissionsContext';
 import { dataService } from '../lib/dataService';
 
 const Results: React.FC = () => {
   const { userProfile } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canEnterMarks = hasPermission('enter_marks') || hasPermission('edit_marks');
   
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -269,7 +272,7 @@ const Results: React.FC = () => {
             </button>
           </div>
 
-          {trainees.length > 0 && activeTab === 'entry' && (
+          {trainees.length > 0 && activeTab === 'entry' && canEnterMarks && (
             <button
               onClick={handleSave}
               disabled={saving}
@@ -464,16 +467,18 @@ const Results: React.FC = () => {
               </table>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center space-x-2 transition disabled:opacity-50"
-              >
-                <Save size={18} />
-                <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'ফলাফল সংরক্ষণ করুন'}</span>
-              </button>
-            </div>
+            {canEnterMarks && (
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center space-x-2 transition disabled:opacity-50"
+                >
+                  <Save size={18} />
+                  <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'ফলাফল সংরক্ষণ করুন'}</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           /* Printable Result Sheet View */

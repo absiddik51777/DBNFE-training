@@ -3,6 +3,8 @@ import { logActivity } from '../lib/firebase';
 import { Plus, Edit2, Trash2, Building2, MapPin, Phone, Mail, X } from 'lucide-react';
 import { Institute } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
+import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { dataService } from '../lib/dataService';
 
 const Institutes: React.FC = () => {
@@ -11,6 +13,11 @@ const Institutes: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInstitute, setEditingInstitute] = useState<Institute | null>(null);
   const { userProfile } = useAuth();
+  const { hasPermission, isCourseDirector } = usePermissions();
+  const { isDeletionAllowed } = useSystemSettings();
+  
+  const [statusMessage, setStatusMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -22,11 +29,28 @@ const Institutes: React.FC = () => {
     status: 'Active' as 'Active' | 'Inactive',
   });
 
-  const canEdit = userProfile?.role === 'Course Director' || userProfile?.role === 'FMA';
+  const isDirector = isCourseDirector || userProfile?.role === 'Course Director';
+  const canCreate = hasPermission('create_institute') || isDirector;
+  const canEdit = hasPermission('edit_institute') || isDirector;
+  const canDelete = hasPermission('delete_institute') || isDirector;
 
   useEffect(() => {
     fetchInstitutes();
   }, []);
+
+  const handleSeedDefaults = async () => {
+    try {
+      setLoading(true);
+      await dataService.seedDefaultInstitutes();
+      await fetchInstitutes();
+      setStatusMessage('ডিফল্ট প্রতিষ্ঠান তালিকা সফলভাবে লোড করা হয়েছে।');
+      setTimeout(() => setStatusMessage(''), 3000);
+    } catch (e: any) {
+      setErrorMessage("ডিফল্ট প্রতিষ্ঠান লোড করতে সমস্যা হয়েছে: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchInstitutes = async () => {
     setLoading(true);
@@ -98,20 +122,30 @@ const Institutes: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!canEdit) return;
+    if (!canDelete && !canEdit) {
+      alert("আপনার প্রতিষ্ঠান মুছে ফেলার অনুমতি নেই।");
+      return;
+    }
+    if (!isDeletionAllowed) {
+      alert("🔒 সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      return;
+    }
     if (window.confirm(`আপনি কি নিশ্চিতভাবে "${name}" প্রতিষ্ঠানটি মুছে ফেলতে চান? (Are you sure you want to delete this institute?)`)) {
       try {
-        await dataService.deleteItem('institutes', id);
-        logActivity(
+        await dataService.deleteInstitute(id);
+        await logActivity(
           userProfile?.id || '',
           userProfile?.name || 'User',
           `প্রতিষ্ঠান মুছে ফেলা হয়েছে: ${name}`,
           'Institutes',
           id
         );
-        fetchInstitutes();
-      } catch (error) {
+        setStatusMessage(`"${name}" প্রতিষ্ঠানটি সফলভাবে মুছে ফেলা হয়েছে।`);
+        setTimeout(() => setStatusMessage(''), 3500);
+        await fetchInstitutes();
+      } catch (error: any) {
         console.warn("Notice deleting institute:", error);
+        setErrorMessage("প্রতিষ্ঠান ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error));
       }
     }
   };
@@ -127,84 +161,133 @@ const Institutes: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Status Messages */}
+      {statusMessage && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2">
+          <span>✓ {statusMessage}</span>
+        </div>
+      )}
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-center space-x-2">
+          <span>⚠️ {errorMessage}</span>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">প্রশিক্ষণ প্রতিষ্ঠান (Training Institutes)</h1>
           <p className="text-sm text-slate-500 mt-0.5">ডিবিএনএফই আওতাধীন প্রশিক্ষণ কেন্দ্র সমূহের বিবরণ</p>
         </div>
-        {canEdit && (
-          <button
-            onClick={() => handleOpenModal()}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-600/20"
-          >
-            <Plus size={18} />
-            <span>নতুন প্রতিষ্ঠান যুক্ত করুন</span>
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {canCreate && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-600/20"
+            >
+              <Plus size={18} />
+              <span>নতুন প্রতিষ্ঠান যুক্ত করুন</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Institutes Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {institutes.map((inst) => (
-          <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                    <Building2 size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
-                    <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
-                  </div>
-                </div>
-                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                  inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <div className="flex items-center space-x-2">
-                  <MapPin size={15} className="text-slate-400 shrink-0" />
-                  <span className="truncate">{inst.address}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Phone size={15} className="text-slate-400 shrink-0" />
-                  <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
-                </div>
-                {inst.email && (
-                  <div className="flex items-center space-x-2">
-                    <Mail size={15} className="text-slate-400 shrink-0" />
-                    <span>{inst.email}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {canEdit && (
-              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
-                <button
-                  onClick={() => handleOpenModal(inst)}
-                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                  title="সম্পাদন"
-                >
-                  <Edit2 size={16} />
-                </button>
-                <button
-                  onClick={() => handleDelete(inst.id, inst.name)}
-                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                  title="মুছুন"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            )}
+      {/* Empty State */}
+      {institutes.length === 0 ? (
+        <div className="bg-white p-12 text-center text-slate-500 rounded-2xl border border-dashed border-slate-200 text-sm space-y-3">
+          <Building2 size={40} className="mx-auto text-slate-300" />
+          <div>
+            <p className="font-bold text-slate-700 text-base">কোনো প্রশিক্ষণ প্রতিষ্ঠান পাওয়া যায়নি</p>
+            <p className="text-xs text-slate-400 mt-1">সব প্রতিষ্ঠান মুছে ফেলা হয়েছে অথবা এখনো কোনো প্রতিষ্ঠান যোগ করা হয়নি।</p>
           </div>
-        ))}
-      </div>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => handleOpenModal()}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs"
+            >
+              নতুন প্রতিষ্ঠান তৈরি করুন
+            </button>
+            <button
+              type="button"
+              onClick={handleSeedDefaults}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200"
+            >
+              ডিফল্ট প্রতিষ্ঠান তালিকা লোড করুন (Seed Defaults)
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Institutes Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {institutes.map((inst) => (
+            <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                      <Building2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
+                      <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                    inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                  <div className="flex items-center space-x-2">
+                    <MapPin size={15} className="text-slate-400 shrink-0" />
+                    <span className="truncate">{inst.address}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Phone size={15} className="text-slate-400 shrink-0" />
+                    <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
+                  </div>
+                  {inst.email && (
+                    <div className="flex items-center space-x-2">
+                      <Mail size={15} className="text-slate-400 shrink-0" />
+                      <span>{inst.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {(canEdit || canDelete) && (
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
+                  {canEdit && (
+                    <button
+                      onClick={() => handleOpenModal(inst)}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                      title="সম্পাদন"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(inst.id, inst.name)}
+                      className={`p-1.5 rounded-lg transition ${
+                        !isDeletionAllowed
+                          ? 'text-slate-400 hover:bg-slate-100 opacity-60 cursor-not-allowed'
+                          : 'text-red-600 hover:bg-red-50'
+                      }`}
+                      title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে 🔒' : 'মুছুন'}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Modal */}
       {isModalOpen && (

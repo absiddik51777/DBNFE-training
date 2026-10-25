@@ -3,6 +3,8 @@ import { logActivity } from '../lib/firebase';
 import { Plus, Edit2, Trash2, FileText, Calendar, Award, BookOpen, X } from 'lucide-react';
 import { Exam, Institute, Trade, Batch } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
+import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
 
@@ -29,7 +31,12 @@ const Exams: React.FC = () => {
     description: '',
   });
 
-  const canEdit = userProfile?.role === 'Course Director' || userProfile?.role === 'FMA' || userProfile?.role === 'Trainer';
+  const { hasPermission } = usePermissions();
+  const { isDeletionAllowed } = useSystemSettings();
+
+  const canCreate = hasPermission('create_exam');
+  const canEdit = hasPermission('edit_exam');
+  const canDelete = hasPermission('delete_exam');
 
   useEffect(() => {
     fetchData();
@@ -126,7 +133,11 @@ const Exams: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!canEdit) return;
+    if (!canDelete && !canEdit) return;
+    if (!isDeletionAllowed) {
+      alert("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      return;
+    }
     if (window.confirm(`আপনি কি নিশ্চিতভাবে "${name}" পরীক্ষাটি মুছে ফেলতে চান?`)) {
       try {
         await dataService.deleteItem('exams', id);
@@ -164,7 +175,7 @@ const Exams: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800">পরীক্ষা ব্যবস্থাপনা (Examination Management)</h1>
           <p className="text-sm text-slate-500 mt-0.5">মাসিক মূল্যায়ন, মিড-টার্ম ও চূড়ান্ত পরীক্ষা তৈরি ও সময়সূচি</p>
         </div>
-        {canEdit && (
+        {canCreate && (
           <button
             onClick={() => handleOpenModal()}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition"
@@ -200,7 +211,7 @@ const Exams: React.FC = () => {
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">প্রতিষ্ঠান ও ব্যাচ</th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">তারিখ</th>
                   <th className="px-6 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">নম্বর বণ্টন</th>
-                  {canEdit && <th className="px-6 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">অ্যাকশন</th>}
+                  {(canEdit || canDelete) && <th className="px-6 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">অ্যাকশন</th>}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
@@ -226,22 +237,26 @@ const Exams: React.FC = () => {
                       <div className="font-bold text-slate-800">মোট: {exam.totalMarks}</div>
                       <div className="text-emerald-600 font-medium">পাস: {exam.passMarks}</div>
                     </td>
-                    {canEdit && (
+                    {(canEdit || canDelete) && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleOpenModal(exam)}
-                          className="text-blue-600 hover:text-blue-900 mr-3 p-1 rounded hover:bg-blue-50 transition"
-                          title="সম্পাদনা"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(exam.id, exam.name)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition"
-                          title="মুছে ফেলুন"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleOpenModal(exam)}
+                            className="text-blue-600 hover:text-blue-900 mr-3 p-1 rounded hover:bg-blue-50 transition"
+                            title="সম্পাদনা"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(exam.id, exam.name)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition"
+                            title="মুছে ফেলুন"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>

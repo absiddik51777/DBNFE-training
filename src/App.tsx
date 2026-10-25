@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PermissionsProvider, usePermissions } from './contexts/PermissionsContext';
+import { SystemSettingsProvider } from './contexts/SystemSettingsContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -15,10 +17,11 @@ import Results from './pages/Results';
 import Reports from './pages/Reports';
 import Certificates from './pages/Certificates';
 import UsersPage from './pages/Users';
+import RolesPage from './pages/Roles';
 import Settings from './pages/Settings';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, userProfile, loading } = useAuth();
+  const { userProfile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -29,11 +32,69 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!user || !userProfile) {
+  if (!userProfile) {
     return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
+};
+
+import { ShieldAlert } from 'lucide-react';
+
+const RootRouteHandler = () => {
+  const { canViewPage, getDefaultLandingRoute, loading } = usePermissions();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
+        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+        <span className="text-sm">লোড হচ্ছে...</span>
+      </div>
+    );
+  }
+
+  // If user has permission to view root Dashboard, render it
+  if (canViewPage('/')) {
+    return <Dashboard />;
+  }
+
+  // Otherwise, automatically redirect to the role's configured or first accessible landing page (e.g. /attendance)
+  const fallback = getDefaultLandingRoute('/');
+  if (fallback && fallback !== '/') {
+    return <Navigate to={fallback} replace />;
+  }
+
+  // Graceful universal fallback for non-dashboard roles (such as Trainer)
+  return <Navigate to="/attendance" replace />;
+};
+
+const PageGuard = ({ path, children }: { path: string; children: React.ReactNode }) => {
+  const { canViewPage, getDefaultLandingRoute, loading } = usePermissions();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
+        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+        <span className="text-sm">যাচাই করা হচ্ছে...</span>
+      </div>
+    );
+  }
+
+  if (!canViewPage(path)) {
+    const fallback = getDefaultLandingRoute(path);
+    if (fallback && fallback !== path) {
+      return <Navigate to={fallback} replace />;
+    }
+    return <Navigate to="/attendance" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const CatchAllRedirect = () => {
+  const { getDefaultLandingRoute } = usePermissions();
+  const fallback = getDefaultLandingRoute('/');
+  return <Navigate to={fallback} replace />;
 };
 
 const AppRoutes = () => {
@@ -42,20 +103,21 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<Dashboard />} />
-        <Route path="institutes" element={<Institutes />} />
-        <Route path="trades" element={<Trades />} />
-        <Route path="batches" element={<Batches />} />
-        <Route path="trainees/*" element={<Trainees />} />
-        <Route path="attendance" element={<Attendance />} />
-        <Route path="attendance-sheet" element={<AttendanceSheet />} />
-        <Route path="exams" element={<Exams />} />
-        <Route path="results" element={<Results />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="certificates" element={<Certificates />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route index element={<RootRouteHandler />} />
+        <Route path="institutes" element={<PageGuard path="/institutes"><Institutes /></PageGuard>} />
+        <Route path="trades" element={<PageGuard path="/trades"><Trades /></PageGuard>} />
+        <Route path="batches" element={<PageGuard path="/batches"><Batches /></PageGuard>} />
+        <Route path="trainees/*" element={<PageGuard path="/trainees"><Trainees /></PageGuard>} />
+        <Route path="attendance" element={<PageGuard path="/attendance"><Attendance /></PageGuard>} />
+        <Route path="attendance-sheet" element={<PageGuard path="/attendance-sheet"><AttendanceSheet /></PageGuard>} />
+        <Route path="exams" element={<PageGuard path="/exams"><Exams /></PageGuard>} />
+        <Route path="results" element={<PageGuard path="/results"><Results /></PageGuard>} />
+        <Route path="reports" element={<PageGuard path="/reports"><Reports /></PageGuard>} />
+        <Route path="certificates" element={<PageGuard path="/certificates"><Certificates /></PageGuard>} />
+        <Route path="users" element={<PageGuard path="/users"><UsersPage /></PageGuard>} />
+        <Route path="roles" element={<RolesPage />} />
+        <Route path="settings" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
+        <Route path="*" element={<CatchAllRedirect />} />
       </Route>
     </Routes>
   );
@@ -64,9 +126,13 @@ const AppRoutes = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <PermissionsProvider>
+        <SystemSettingsProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </SystemSettingsProvider>
+      </PermissionsProvider>
     </AuthProvider>
   );
 }

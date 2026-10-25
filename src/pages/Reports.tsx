@@ -12,6 +12,7 @@ import {
   Layers 
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePermissions } from '../contexts/PermissionsContext';
 import { dataService } from '../lib/dataService';
 
 type ReportType = 
@@ -23,6 +24,8 @@ type ReportType =
   | 'completion_certificates';
 
 const Reports: React.FC = () => {
+  const { hasPermission } = usePermissions();
+  const canExport = hasPermission('export_reports');
   const [reportType, setReportType] = useState<ReportType>('trainees_master');
   
   const [institutes, setInstitutes] = useState<Institute[]>([]);
@@ -152,22 +155,24 @@ const Reports: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2.5">
-          <button
-            onClick={exportCurrentReportCSV}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition"
-          >
-            <Download size={16} />
-            <span>এক্সপোর্ট (CSV)</span>
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition"
-          >
-            <Printer size={16} />
-            <span>প্রিন্ট করুন</span>
-          </button>
-        </div>
+        {canExport && (
+          <div className="flex items-center space-x-2.5">
+            <button
+              onClick={exportCurrentReportCSV}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition"
+            >
+              <Download size={16} />
+              <span>এক্সপোর্ট (CSV)</span>
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition"
+            >
+              <Printer size={16} />
+              <span>প্রিন্ট করুন</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Report Selection Tabs */}

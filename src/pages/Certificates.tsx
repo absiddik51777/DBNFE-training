@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trainee, Institute, Trade, Batch, AttendanceRecord, ExamMark } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
 import { 
   Award, 
   CheckCircle2, 
@@ -19,6 +20,8 @@ const MIN_ATTENDANCE_REQUIRED = 75; // 75% minimum attendance required
 
 const Certificates: React.FC = () => {
   const { userProfile } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canGenerate = hasPermission('generate_certificate');
   
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
@@ -126,7 +129,7 @@ const Certificates: React.FC = () => {
           </p>
         </div>
 
-        {selectedTraineeForCert && (
+        {selectedTraineeForCert && canGenerate && (
           <button
             onClick={() => window.print()}
             className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition"

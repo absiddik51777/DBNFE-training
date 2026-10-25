@@ -59,9 +59,10 @@ const TraineeProfile: React.FC = () => {
       }
 
       setTrainee(t);
-      setInstitute(institutes.find(i => i.id === t.instituteId) || null);
-      setTrade(trades.find(tr => tr.id === t.tradeId) || null);
-      setBatch(batches.find(b => b.id === t.batchId) || null);
+      const tBatch = batches.find(b => b.id === t.batchId) || null;
+      setBatch(tBatch);
+      setInstitute(institutes.find(i => i.id === t.instituteId) || (tBatch ? institutes.find(i => i.id === tBatch.instituteId) : null) || null);
+      setTrade(trades.find(tr => tr.id === t.tradeId) || (tBatch ? trades.find(tr => tr.id === tBatch.tradeId) : null) || null);
 
       const attList = allAtt.filter(a => a.traineeId === id);
       setAttendanceRecords(attList);
