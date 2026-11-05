@@ -14,13 +14,12 @@ import {
   CheckCircle2, 
   AlertCircle,
   ArrowRight,
-  Sparkles,
-  Zap
+  Sparkles
 } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
-  const { signIn, signInWithGoogle, quickLoginAsRole, signUp, userProfile } = useAuth();
+  const { signIn, signInWithGoogle, signUp, userProfile } = useAuth();
   const { getDefaultLandingRoute } = usePermissions();
   const navigate = useNavigate();
 
@@ -42,7 +41,6 @@ const Login: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [quickLoading, setQuickLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -74,11 +72,14 @@ const Login: React.FC = () => {
     fetchData();
   }, []);
 
-  // Redirect if logged in to role's authorized landing page
+  // Redirect if logged in to role's authorized landing page (Trainers -> Trainer Dashboard, Others -> Overview Dashboard)
   useEffect(() => {
     if (userProfile) {
-      const target = getDefaultLandingRoute('/');
-      navigate(target || '/attendance', { replace: true });
+      if (userProfile.role === 'Trainer') {
+        navigate('/trainer-dashboard', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     }
   }, [userProfile]);
 
@@ -88,8 +89,6 @@ const Login: React.FC = () => {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      const target = getDefaultLandingRoute('/');
-      navigate(target || '/attendance', { replace: true });
     } catch (err: any) {
       console.warn("Google sign in notice:", err?.message || err);
       if (err.code === 'auth/popup-closed-by-user') {
@@ -97,27 +96,12 @@ const Login: React.FC = () => {
       } else if (err.code === 'auth/cancelled-popup-request') {
         // Ignored
       } else if (err.code === 'auth/operation-not-allowed') {
-        setError('ফায়ারবেস কনসোলে Google সাইন-ইন সক্রিয় করা প্রয়োজন। নিচে দ্রুত ভূমিকা নির্বাচন থেকে সরাসরি প্রবেশ করুন।');
+        setError('ফায়ারবেস কনসোলে Google সাইন-ইন সক্রিয় করা প্রয়োজন। অনুগ্রহ করে ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন।');
       } else {
         setError(err.message || 'Google দিয়ে লগইন ব্যর্থ হয়েছে। পুনরায় চেষ্টা করুন।');
       }
     } finally {
       setGoogleLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (role: UserRole, name?: string, instId?: string, bId?: string) => {
-    setError('');
-    setSuccessMsg('');
-    setQuickLoading(true);
-    try {
-      await quickLoginAsRole(role, name, instId, bId);
-      const target = getDefaultLandingRoute('/');
-      navigate(target || '/attendance', { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'দ্রুত প্রবেশে সমস্যা হয়েছে।');
-    } finally {
-      setQuickLoading(false);
     }
   };
 
@@ -129,8 +113,6 @@ const Login: React.FC = () => {
 
     try {
       await signIn(loginIdentifier, loginPassword);
-      const target = getDefaultLandingRoute('/');
-      navigate(target || '/attendance', { replace: true });
     } catch (err: any) {
       console.warn("Login attempt notice:", err?.message || err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
@@ -172,9 +154,9 @@ const Login: React.FC = () => {
         batchId: regRole === 'Trainer' ? regBatchId : undefined,
       });
       setSuccessMsg('নিবন্ধন সফল হয়েছে! সিস্টেমে প্রবেশ করা হচ্ছে...');
-      const target = getDefaultLandingRoute('/');
+      const target = regRole === 'Trainer' ? '/trainer-dashboard' : '/';
       setTimeout(() => {
-        navigate(target || '/attendance', { replace: true });
+        navigate(target, { replace: true });
       }, 800);
     } catch (err: any) {
       console.warn("Register attempt notice:", err?.message || err);
@@ -211,7 +193,7 @@ const Login: React.FC = () => {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading || quickLoading}
+            disabled={googleLoading || loading}
             className="w-full py-3 px-4 bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-700 font-bold rounded-xl border border-slate-300 shadow-xs flex items-center justify-center space-x-3 transition disabled:opacity-60 cursor-pointer"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -312,7 +294,7 @@ const Login: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={loading || googleLoading || quickLoading}
+                disabled={loading || googleLoading}
                 className="w-full mt-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs shadow-emerald-600/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:opacity-50 flex items-center justify-center space-x-2 text-xs sm:text-sm cursor-pointer"
               >
                 {loading ? (
@@ -463,7 +445,7 @@ const Login: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={loading || googleLoading || quickLoading}
+                disabled={loading || googleLoading}
                 className="w-full mt-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs shadow-emerald-600/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:opacity-50 text-xs flex items-center justify-center space-x-2 cursor-pointer"
               >
                 {loading ? (
@@ -477,61 +459,6 @@ const Login: React.FC = () => {
               </button>
             </form>
           )}
-
-          {/* Quick 1-Click Role Access Section */}
-          <div className="mt-5 pt-4 border-t border-slate-200/80">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center space-x-1">
-                <Zap size={13} className="text-amber-500" />
-                <span>দ্রুত ভূমিকা নির্বাচন (1-Click Instant Entry)</span>
-              </span>
-              <span className="text-[10px] text-slate-400">পাসওয়ার্ড ছাড়া</span>
-            </div>
-
-            <div className="space-y-1.5">
-              {/* Course Director */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('Course Director', 'কোর্স পরিচালক (অফিস মনিটরিং)')}
-                disabled={quickLoading || loading}
-                className="w-full px-3 py-2 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 border border-slate-200 rounded-xl text-left transition flex items-center justify-between text-xs group cursor-pointer"
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 group-hover:scale-125 transition"></span>
-                  <span className="font-bold text-slate-700 group-hover:text-blue-900">কোর্স পরিচালক (Course Director)</span>
-                </div>
-                <span className="text-[10px] text-blue-700 font-semibold bg-blue-100/70 px-2 py-0.5 rounded">মনিটরিং ড্যাশবোর্ড</span>
-              </button>
-
-              {/* Trainer 1: Haluaghat Computer */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('Trainer', 'মোঃ শফিকুল ইসলাম (প্রশিক্ষক)', 'INS-HLG-01', 'BAT-01')}
-                disabled={quickLoading || loading}
-                className="w-full px-3 py-2 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 border border-slate-200 rounded-xl text-left transition flex items-center justify-between text-xs group cursor-pointer"
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 group-hover:scale-125 transition"></span>
-                  <span className="font-bold text-slate-700 group-hover:text-emerald-900">হালুয়াঘাট প্রশিক্ষক (কম্পিউটার ব্যাচ-০১)</span>
-                </div>
-                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100/70 px-2 py-0.5 rounded">হাজিরা এন্ট্রি</span>
-              </button>
-
-              {/* Trainer 2: Dhobaura Electrical */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('Trainer', 'মোসাম্মৎ পারভীন আক্তার (প্রশিক্ষক)', 'INS-DHB-02', 'BAT-02')}
-                disabled={quickLoading || loading}
-                className="w-full px-3 py-2 bg-slate-50 hover:bg-purple-50 hover:border-purple-300 border border-slate-200 rounded-xl text-left transition flex items-center justify-between text-xs group cursor-pointer"
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-purple-500 group-hover:scale-125 transition"></span>
-                  <span className="font-bold text-slate-700 group-hover:text-purple-900">ধোবাউড়া প্রশিক্ষক (ইলেকট্রিক্যাল ব্যাচ-০২)</span>
-                </div>
-                <span className="text-[10px] text-purple-700 font-semibold bg-purple-100/70 px-2 py-0.5 rounded">হাজিরা এন্ট্রি</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -40,6 +40,7 @@ const Results: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'entry' | 'sheet'>('entry');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     fetchInitialData();
@@ -59,14 +60,30 @@ const Results: React.FC = () => {
       setBatches(btcData);
       setExams(exmData);
 
-      const defaultInst = userProfile?.instituteId || (instData[0]?.id || '');
-      setSelectedInstitute(defaultInst);
-      if (trdData.length > 0) setSelectedTrade(trdData[0].id);
+      let defaultInst = userProfile?.instituteId || (instData[0]?.id || '');
+      let defaultBatch = '';
 
-      const matchingBatches = btcData.filter(b => b.instituteId === defaultInst);
-      if (matchingBatches.length > 0) {
-        setSelectedBatch(matchingBatches[0].id);
-        const matchingExams = exmData.filter(e => e.batchId === matchingBatches[0].id);
+      if (userProfile?.role === 'Trainer') {
+        if (userProfile.batchId) {
+          defaultBatch = userProfile.batchId;
+          const assigned = btcData.find(b => b.id === userProfile.batchId);
+          if (assigned) {
+            defaultInst = assigned.instituteId || defaultInst;
+            if (assigned.tradeId) setSelectedTrade(assigned.tradeId);
+          }
+        } else {
+          const matchingBatches = btcData.filter(b => b.instituteId === defaultInst);
+          if (matchingBatches.length > 0) defaultBatch = matchingBatches[0].id;
+        }
+      } else {
+        const matchingBatches = btcData.filter(b => b.instituteId === defaultInst);
+        if (matchingBatches.length > 0) defaultBatch = matchingBatches[0].id;
+      }
+
+      setSelectedInstitute(defaultInst);
+      setSelectedBatch(defaultBatch);
+      if (defaultBatch) {
+        const matchingExams = exmData.filter(e => e.batchId === defaultBatch);
         if (matchingExams.length > 0) setSelectedExam(matchingExams[0].id);
       }
     } catch (error) {
@@ -180,6 +197,12 @@ const Results: React.FC = () => {
   };
 
   const handleSave = async () => {
+    setSaveError('');
+    if (userProfile?.role === 'Trainer' && userProfile.batchId && selectedBatch !== userProfile.batchId) {
+      setSaveError("অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের পরীক্ষার নম্বর সংরক্ষণ করতে পারেন।");
+      return;
+    }
+
     setSaving(true);
     setSaveSuccess(false);
     try {
@@ -302,51 +325,63 @@ const Results: React.FC = () => {
         </div>
       )}
 
+      {saveError && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-center space-x-2.5 print:hidden">
+          <AlertCircle size={18} className="text-red-600 shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
       {/* Selectors Bar */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান *</label>
-            <select 
-              value={selectedInstitute} 
-              onChange={e => setSelectedInstitute(e.target.value)} 
-              disabled={userProfile?.role === 'Trainer' && !!userProfile.instituteId}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="">প্রতিষ্ঠান নির্বাচন করুন</option>
-              {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-          </div>
+        <div className={`grid ${userProfile?.role === 'Trainer' ? 'grid-cols-1 max-w-sm' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} gap-4`}>
+          {userProfile?.role !== 'Trainer' && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান *</label>
+                <select 
+                  value={selectedInstitute} 
+                  onChange={e => setSelectedInstitute(e.target.value)} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="">প্রতিষ্ঠান নির্বাচন করুন</option>
+                  {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">ট্রেড *</label>
-            <select 
-              value={selectedTrade} 
-              onChange={e => setSelectedTrade(e.target.value)} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="">ট্রেড নির্বাচন করুন</option>
-              {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">ট্রেড *</label>
+                <select 
+                  value={selectedTrade} 
+                  onChange={e => setSelectedTrade(e.target.value)} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="">ট্রেড নির্বাচন করুন</option>
+                  {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">ব্যাচ *</label>
-            <select 
-              value={selectedBatch} 
-              onChange={e => {
-                setSelectedBatch(e.target.value);
-                const matchingExams = exams.filter(ex => ex.batchId === e.target.value);
-                if (matchingExams.length > 0) setSelectedExam(matchingExams[0].id);
-              }} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="">ব্যাচ নির্বাচন করুন</option>
-              {batches
-                .filter(b => (!selectedInstitute || b.instituteId === selectedInstitute))
-                .map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  ব্যাচ *
+                </label>
+                <select 
+                  value={selectedBatch} 
+                  onChange={e => {
+                    setSelectedBatch(e.target.value);
+                    const matchingExams = exams.filter(ex => ex.batchId === e.target.value);
+                    if (matchingExams.length > 0) setSelectedExam(matchingExams[0].id);
+                  }} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="">ব্যাচ নির্বাচন করুন</option>
+                  {batches
+                    .filter(b => (!selectedInstitute || b.instituteId === selectedInstitute))
+                    .map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">পরীক্ষা *</label>

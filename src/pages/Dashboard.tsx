@@ -30,7 +30,10 @@ import {
   BarChart3,
   PieChart as PieIcon,
   HelpCircle,
-  Phone
+  Phone,
+  ChevronLeft,
+  Search,
+  ExternalLink
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -92,6 +95,17 @@ const Dashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
   const [batchFilter, setBatchFilter] = useState<'all' | 'pending' | 'low_attendance' | 'my_batch'>('all');
   const [alertsDismissed, setAlertsDismissed] = useState(false);
+
+  // Dropout Risk Table States
+  const [dropoutSearch, setDropoutSearch] = useState('');
+  const [dropoutRiskFilter, setDropoutRiskFilter] = useState<'all' | 'critical' | 'moderate' | 'warning' | 'dropped'>('all');
+  const [dropoutBatchFilter, setDropoutBatchFilter] = useState<string>('all');
+  const [dropoutPage, setDropoutPage] = useState(1);
+  const [dropoutPageSize, setDropoutPageSize] = useState(5);
+
+  // Admin view switcher to inspect/preview Trainer Dashboard
+  const [adminViewMode, setAdminViewMode] = useState<'overview' | 'trainer'>('overview');
+  const [adminSelectedBatchId, setAdminSelectedBatchId] = useState<string>('');
 
   // Initial load and Real-time Live Cloud Subscriptions
   useEffect(() => {
@@ -213,18 +227,134 @@ const Dashboard: React.FC = () => {
   const canViewReports = hasPermission('view_reports');
   const isTrainer = userProfile?.role === 'Trainer';
   const trainerBatchId = userProfile?.batchId;
+  const isTrainerView = isTrainer || adminViewMode === 'trainer';
+
+  // Active batch for trainer view
+  const activeTrainerBatch = useMemo(() => {
+    if (isTrainer) {
+      if (trainerBatchId) {
+        const found = batches.find(b => b.id === trainerBatchId);
+        if (found) return found;
+      }
+      if (userProfile?.instituteId) {
+        const found = batches.find(b => b.instituteId === userProfile.instituteId);
+        if (found) return found;
+      }
+      return batches[0] || null;
+    }
+    // Admin in trainer mode
+    if (adminSelectedBatchId) {
+      const found = batches.find(b => b.id === adminSelectedBatchId);
+      if (found) return found;
+    }
+    return batches[0] || null;
+  }, [isTrainer, trainerBatchId, userProfile, batches, adminSelectedBatchId]);
+
+  const activeTrainerBatchId = activeTrainerBatch?.id || '';
+
+  // Dedicated Trainer Metrics (Scoped strictly to the assigned batch)
+  const trainerMetrics = useMemo(() => {
+    if (!activeTrainerBatch) return null;
+
+    const bTrainees = trainees.filter(t => t.batchId === activeTrainerBatch.id && !t.isArchived);
+    const totalEnrolled = bTrainees.length;
+    const activeCount = bTrainees.filter(t => !t.status || t.status === 'Active').length;
+    const droppedCount = bTrainees.filter(t => t.status === 'Dropped Out').length;
+    const femaleCount = bTrainees.filter(t => t.gender === 'Female').length;
+    const maleCount = bTrainees.filter(t => t.gender === 'Male').length;
+
+    const bAttendance = attendance.filter(a => a.batchId === activeTrainerBatch.id);
+    const todayRecs = bAttendance.filter(a => a.date === todayIso);
+    const isTodayRecorded = todayRecs.length > 0;
+    const todayPresent = todayRecs.filter(a => a.status === 'Present').length;
+    const todayAbsent = todayRecs.filter(a => a.status === 'Absent').length;
+    const todayLeave = todayRecs.filter(a => a.status === 'Leave').length;
+    const todayTotal = todayPresent + todayAbsent;
+    const todayRate = todayTotal > 0 ? Math.round((todayPresent / todayTotal) * 100) : 0;
+
+    // Monthly attendance
+    const now = new Date();
+    const currentMonthPrefix = format(now, 'yyyy-MM');
+    const monthRecs = bAttendance.filter(a => a.date && a.date.startsWith(currentMonthPrefix));
+    const monthPresent = monthRecs.filter(a => a.status === 'Present').length;
+    const monthAbsent = monthRecs.filter(a => a.status === 'Absent').length;
+    const monthRecorded = monthPresent + monthAbsent;
+    const monthRate = monthRecorded > 0 ? Math.round((monthPresent / monthRecorded) * 100) : 0;
+    const monthDaysCount = new Set(monthRecs.map(a => a.date)).size;
+
+    // Timeline
+    const startDate = activeTrainerBatch.startDate || Date.now() - 30 * 86400000;
+    const endDate = activeTrainerBatch.endDate || Date.now() + 150 * 86400000;
+    const totalDays = Math.max(1, Math.round((endDate - startDate) / 86400000));
+    const elapsedDays = Math.max(0, Math.min(totalDays, Math.round((Date.now() - startDate) / 86400000)));
+    const timelinePercent = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+
+    // Inst & Trade
+    const instituteObj = institutes.find(i => i.id === activeTrainerBatch.instituteId);
+    const tradeObj = trades.find(t => t.id === activeTrainerBatch.tradeId);
+
+    // Batch exams
+    const batchExams = exams.filter(e => e.batchId === activeTrainerBatch.id);
+
+    return {
+      batchId: activeTrainerBatch.id,
+      batchName: activeTrainerBatch.name,
+      capacity: activeTrainerBatch.maxTrainees || 30,
+      instituteName: instituteObj?.name || 'প্রশিক্ষণ কেন্দ্র',
+      tradeName: tradeObj?.name || 'বৃত্তিমূলক ট্রেড',
+      totalEnrolled,
+      activeCount,
+      droppedCount,
+      femaleCount,
+      maleCount,
+      isTodayRecorded,
+      todayPresent,
+      todayAbsent,
+      todayLeave,
+      todayRate,
+      monthRate,
+      monthDaysCount,
+      totalDays,
+      elapsedDays,
+      timelinePercent,
+      batchExamsCount: batchExams.length
+    };
+  }, [activeTrainerBatch, trainees, attendance, todayIso, institutes, trades, exams]);
 
   // Active batches list
   const activeBatchesList = useMemo(() => {
     return batches.filter(b => !b.status || b.status === 'Active');
   }, [batches]);
 
-  // Aggregate Key Statistics
+  // Aggregate Key Statistics (Using data from Firestore)
   const stats = useMemo(() => {
     const totalTrainees = trainees.length;
     const activeTrainees = trainees.filter(t => !t.status || t.status === 'Active').length;
     const droppedTrainees = trainees.filter(t => t.status === 'Dropped Out').length;
     const completedTrainees = trainees.filter(t => t.status === 'Completed').length;
+    const activePercentage = totalTrainees > 0 ? Math.round((activeTrainees / totalTrainees) * 100) : 0;
+
+    // Ongoing and status-wise batches
+    const ongoingBatches = batches.filter(b => !b.status || b.status === 'Active');
+    const upcomingBatches = batches.filter(b => b.status === 'Upcoming');
+    const completedBatches = batches.filter(b => b.status === 'Completed');
+    const ongoingCapacity = ongoingBatches.reduce((acc, b) => acc + (b.maxTrainees || 0), 0);
+
+    // Current Month Attendance Calculations from Firestore
+    const now = new Date();
+    const currentMonthPrefix = format(now, 'yyyy-MM');
+    const BN_MONTHS = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    const currentMonthName = `${BN_MONTHS[now.getMonth()]} ${toBn(now.getFullYear())}`;
+
+    const currentMonthRecords = attendance.filter(a => a.date && a.date.startsWith(currentMonthPrefix));
+    const currentMonthPresent = currentMonthRecords.filter(a => a.status === 'Present').length;
+    const currentMonthAbsent = currentMonthRecords.filter(a => a.status === 'Absent').length;
+    const currentMonthLeave = currentMonthRecords.filter(a => a.status === 'Leave').length;
+    const currentMonthRecorded = currentMonthPresent + currentMonthAbsent;
+    const currentMonthAttendanceRate = currentMonthRecorded > 0 
+      ? Math.round((currentMonthPresent / currentMonthRecorded) * 100) 
+      : 0;
+    const currentMonthUniqueDays = new Set(currentMonthRecords.map(a => a.date)).size;
 
     // Today's attendance
     const todayRecords = attendance.filter(a => a.date === todayIso);
@@ -245,10 +375,24 @@ const Dashboard: React.FC = () => {
       totalTrades: trades.length,
       totalBatches: batches.length,
       activeBatches: activeBatchesList.length,
+      ongoingBatchesCount: ongoingBatches.length,
+      upcomingBatchesCount: upcomingBatches.length,
+      completedBatchesCount: completedBatches.length,
+      ongoingCapacity,
       totalTrainees,
       activeTrainees,
+      activePercentage,
       droppedTrainees,
       completedTrainees,
+      currentMonthPrefix,
+      currentMonthName,
+      currentMonthPresent,
+      currentMonthAbsent,
+      currentMonthLeave,
+      currentMonthRecorded,
+      currentMonthAttendanceRate,
+      currentMonthRecordsTotal: currentMonthRecords.length,
+      currentMonthUniqueDays,
       todayPresent,
       todayAbsent,
       todayLeave,
@@ -481,12 +625,656 @@ const Dashboard: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Auto-reset dropout pagination on filter or search changes
+  useEffect(() => {
+    setDropoutPage(1);
+  }, [dropoutSearch, dropoutRiskFilter, dropoutBatchFilter, dropoutPageSize]);
+
+  // Trainees at risk of dropout
+  const dropoutRiskData = useMemo(() => {
+    const candidateTrainees = isTrainerView && activeTrainerBatchId
+      ? trainees.filter(t => t.batchId === activeTrainerBatchId && !t.isArchived)
+      : trainees.filter(t => !t.isArchived);
+
+    const relevantAttendance = isTrainerView && activeTrainerBatchId
+      ? attendance.filter(a => a.batchId === activeTrainerBatchId)
+      : attendance;
+
+    const attendanceByTrainee: Record<string, { present: number; absent: number; leave: number; total: number }> = {};
+    
+    relevantAttendance.forEach(rec => {
+      if (!rec.traineeId) return;
+      if (!attendanceByTrainee[rec.traineeId]) {
+        attendanceByTrainee[rec.traineeId] = { present: 0, absent: 0, leave: 0, total: 0 };
+      }
+      attendanceByTrainee[rec.traineeId].total += 1;
+      if (rec.status === 'Present') attendanceByTrainee[rec.traineeId].present += 1;
+      else if (rec.status === 'Absent') attendanceByTrainee[rec.traineeId].absent += 1;
+      else if (rec.status === 'Leave') attendanceByTrainee[rec.traineeId].leave += 1;
+    });
+
+    const instituteMap = new Map(institutes.map(i => [i.id, i.name]));
+    const batchMap = new Map(batches.map(b => [b.id, b.name]));
+    const tradeMap = new Map(trades.map(t => [t.id, t.name]));
+
+    const riskList = candidateTrainees
+      .map(t => {
+        const att = attendanceByTrainee[t.id] || { present: 0, absent: 0, leave: 0, total: 0 };
+        const recordedCount = att.present + att.absent;
+        const rate = recordedCount > 0 ? Math.round((att.present / recordedCount) * 100) : (t.status === 'Dropped Out' ? 0 : 100);
+
+        // Determine if at risk
+        const isDroppedOut = t.status === 'Dropped Out';
+        const isLowAttendance = (recordedCount > 0 && rate < 75) || att.absent >= 3;
+        const isRisk = isDroppedOut || isLowAttendance;
+
+        // Risk level
+        let riskLevel: 'critical' | 'moderate' | 'warning' | 'dropped' = 'warning';
+        if (isDroppedOut) {
+          riskLevel = 'dropped';
+        } else if (rate < 50 || att.absent >= 5) {
+          riskLevel = 'critical';
+        } else if (rate < 65 || att.absent >= 3) {
+          riskLevel = 'moderate';
+        } else if (rate < 75) {
+          riskLevel = 'warning';
+        }
+
+        return {
+          id: t.id,
+          traineeId: t.traineeId,
+          registrationNumber: t.registrationNumber || t.traineeId,
+          nameBn: t.nameBn,
+          nameEn: t.nameEn,
+          gender: t.gender,
+          mobileNumber: t.mobileNumber,
+          fatherNameBn: t.fatherNameBn,
+          batchId: t.batchId,
+          instituteId: t.instituteId,
+          tradeId: t.tradeId,
+          batchName: batchMap.get(t.batchId) || 'অনির্ধারিত ব্যাচ',
+          instituteName: instituteMap.get(t.instituteId) || 'অনির্ধারিত কেন্দ্র',
+          tradeName: tradeMap.get(t.tradeId) || 'ট্রেড',
+          photoUrl: t.photoUrl,
+          status: t.status,
+          totalRecorded: recordedCount,
+          present: att.present,
+          absent: att.absent,
+          leave: att.leave,
+          rate,
+          riskLevel,
+          isRisk
+        };
+      })
+      .filter(t => t.isRisk);
+
+    // Sort: dropped and critical risk first, then lowest attendance rate
+    riskList.sort((a, b) => {
+      const priorityOrder: Record<string, number> = { dropped: 1, critical: 2, moderate: 3, warning: 4 };
+      const diff = (priorityOrder[a.riskLevel] || 9) - (priorityOrder[b.riskLevel] || 9);
+      if (diff !== 0) return diff;
+      return a.rate - b.rate;
+    });
+
+    return riskList;
+  }, [trainees, attendance, institutes, batches, trades, isTrainerView, activeTrainerBatchId]);
+
+  // Risk counts summary
+  const dropoutRiskCounts = useMemo(() => {
+    let critical = 0;
+    let moderate = 0;
+    let warning = 0;
+    let dropped = 0;
+    dropoutRiskData.forEach(item => {
+      if (item.riskLevel === 'critical') critical += 1;
+      else if (item.riskLevel === 'moderate') moderate += 1;
+      else if (item.riskLevel === 'warning') warning += 1;
+      else if (item.riskLevel === 'dropped') dropped += 1;
+    });
+    return { critical, moderate, warning, dropped, total: dropoutRiskData.length };
+  }, [dropoutRiskData]);
+
+  // Filtered Dropout Risk List
+  const filteredDropoutList = useMemo(() => {
+    return dropoutRiskData.filter(item => {
+      if (dropoutSearch.trim()) {
+        const query = dropoutSearch.toLowerCase().trim();
+        const matchNameBn = item.nameBn?.toLowerCase().includes(query);
+        const matchNameEn = item.nameEn?.toLowerCase().includes(query);
+        const matchReg = item.registrationNumber?.toLowerCase().includes(query);
+        const matchPhone = item.mobileNumber?.toLowerCase().includes(query);
+        const matchBatch = item.batchName?.toLowerCase().includes(query);
+        const matchInst = item.instituteName?.toLowerCase().includes(query);
+        if (!matchNameBn && !matchNameEn && !matchReg && !matchPhone && !matchBatch && !matchInst) {
+          return false;
+        }
+      }
+
+      if (dropoutRiskFilter !== 'all' && item.riskLevel !== dropoutRiskFilter) {
+        return false;
+      }
+
+      if (!isTrainerView && dropoutBatchFilter !== 'all' && item.batchId !== dropoutBatchFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [dropoutRiskData, dropoutSearch, dropoutRiskFilter, dropoutBatchFilter, isTrainerView]);
+
+  // Pagination calculations
+  const totalDropoutPages = Math.max(1, Math.ceil(filteredDropoutList.length / dropoutPageSize));
+  const currentDropoutPage = Math.min(dropoutPage, totalDropoutPages);
+  const paginatedDropoutList = useMemo(() => {
+    const startIndex = (currentDropoutPage - 1) * dropoutPageSize;
+    return filteredDropoutList.slice(startIndex, startIndex + dropoutPageSize);
+  }, [filteredDropoutList, currentDropoutPage, dropoutPageSize]);
+
+  // Export CSV for dropout risk
+  const exportDropoutRiskCSV = () => {
+    const headers = [
+      'ক্রমিক',
+      'রেজিস্ট্রেশন নং',
+      'নাম (বাংলা)',
+      'নাম (ইংরেজি)',
+      'মোবাইল নম্বর',
+      'পিতা/অভিভাবক',
+      'প্রতিষ্ঠান',
+      'ট্রেড',
+      'ব্যাচ',
+      'মোট ক্লাস',
+      'উপস্থিতি',
+      'অনুপস্থিতি',
+      'ছুটি',
+      'হাজিরার হার (%)',
+      'ঝুঁকির স্তর',
+      'স্ট্যাটাস'
+    ];
+
+    const rows = filteredDropoutList.map((t, idx) => [
+      idx + 1,
+      `"${(t.registrationNumber || '').replace(/"/g, '""')}"`,
+      `"${(t.nameBn || '').replace(/"/g, '""')}"`,
+      `"${(t.nameEn || '').replace(/"/g, '""')}"`,
+      `"${(t.mobileNumber || '').replace(/"/g, '""')}"`,
+      `"${(t.fatherNameBn || '').replace(/"/g, '""')}"`,
+      `"${(t.instituteName || '').replace(/"/g, '""')}"`,
+      `"${(t.tradeName || '').replace(/"/g, '""')}"`,
+      `"${(t.batchName || '').replace(/"/g, '""')}"`,
+      t.totalRecorded,
+      t.present,
+      t.absent,
+      t.leave,
+      `${t.rate}%`,
+      t.riskLevel === 'dropped' ? 'ড্রপআউট' : t.riskLevel === 'critical' ? 'উচ্চ ঝুঁকি' : t.riskLevel === 'moderate' ? 'মাঝারি ঝুঁকি' : 'সতর্কতা',
+      t.status
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BNFE_Dropout_Risk_Trainees_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Reusable Dropout Risk Monitoring Paginated Table
+  const renderDropoutRiskTable = (isPrimary: boolean = false) => {
+    return (
+      <div className={`bg-white rounded-2xl border shadow-xs overflow-hidden print:hidden space-y-0 ${
+        isPrimary ? 'border-rose-300 ring-2 ring-rose-500/15' : 'border-rose-200/90'
+      }`}>
+        {/* Header bar */}
+        <div className={`p-5 sm:p-6 border-b border-rose-100 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+          isPrimary 
+            ? 'bg-gradient-to-r from-rose-100/90 via-rose-50/50 to-amber-50/60' 
+            : 'bg-gradient-to-r from-rose-50/80 via-white to-amber-50/40'
+        }`}>
+          <div className="flex items-start sm:items-center space-x-3.5">
+            <div className={`w-11 h-11 rounded-xl text-white flex items-center justify-center font-bold shadow-xs shrink-0 ${
+              isPrimary ? 'bg-rose-600 ring-4 ring-rose-200' : 'bg-rose-600'
+            }`}>
+              <UserX size={22} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                  {isPrimary 
+                    ? 'ঝরে পড়ার ঝুঁকিপূর্ণ শিক্ষার্থী পর্যবেক্ষণ • প্রাইমারি ড্যাশবোর্ড' 
+                    : 'ঝরে পড়ার ঝুঁকিপূর্ণ শিক্ষার্থী পর্যবেক্ষণ'}
+                </h2>
+                {isPrimary ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-600 text-white shadow-2xs">
+                    ব্যাচের প্রধান অগ্রাধিকার
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-500 font-normal hidden sm:inline">(Dropout Risk Trainees)</span>
+                )}
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                  {toBn(filteredDropoutList.length)} জন
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-1">
+                {isPrimary
+                  ? `${activeTrainerBatch?.name || 'নির্ধারিত ব্যাচের'} যেসকল শিক্ষার্থীর উপস্থিতি ৭৫% এর নিচে অথবা ৩ দিনের বেশি অনুপস্থিত রয়েছে, তাদের তাৎক্ষণিক কাউন্সেলিং ও যোগাযোগ নিশ্চিত করুন।`
+                  : 'উপস্থিতির হার ৭৫% এর নিচে থাকা অথবা ড্রপআউট ঝুঁকিতে থাকা শিক্ষার্থীদের তালিকা ও জরুরি যোগাযোগ ব্যবস্থা'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={exportDropoutRiskCSV}
+              disabled={filteredDropoutList.length === 0}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="ঝুঁকিপূর্ণ শিক্ষার্থীদের তালিকা সিএসভি ফাইলে ডাউনলোড করুন"
+            >
+              <Download size={14} className="text-rose-600" />
+              <span>ঝুঁকি তালিকা এক্সপোর্ট</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick summary status tags */}
+        <div className="px-5 py-3 bg-slate-50/60 border-b border-slate-100 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+          <span className="text-slate-500 font-medium">ঝুঁকির ধরন:</span>
+          <button
+            onClick={() => setDropoutRiskFilter('all')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+              dropoutRiskFilter === 'all'
+                ? 'bg-slate-800 text-white shadow-2xs'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            সকল ({toBn(dropoutRiskCounts.total)})
+          </button>
+          <button
+            onClick={() => setDropoutRiskFilter('critical')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+              dropoutRiskFilter === 'critical'
+                ? 'bg-rose-600 text-white shadow-2xs'
+                : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            <span>উচ্চ ঝুঁকি &lt; ৫০% ({toBn(dropoutRiskCounts.critical)})</span>
+          </button>
+          <button
+            onClick={() => setDropoutRiskFilter('moderate')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+              dropoutRiskFilter === 'moderate'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <span>মাঝারি ঝুঁকি ৫০-৬৪% ({toBn(dropoutRiskCounts.moderate)})</span>
+          </button>
+          <button
+            onClick={() => setDropoutRiskFilter('warning')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+              dropoutRiskFilter === 'warning'
+                ? 'bg-yellow-600 text-white shadow-2xs'
+                : 'bg-yellow-50 text-yellow-900 border border-yellow-200 hover:bg-yellow-100'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+            <span>সতর্কতা ৬৫-৭৪% ({toBn(dropoutRiskCounts.warning)})</span>
+          </button>
+          {dropoutRiskCounts.dropped > 0 && (
+            <button
+              onClick={() => setDropoutRiskFilter('dropped')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+                dropoutRiskFilter === 'dropped'
+                  ? 'bg-slate-700 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+              <span>ড্রপআউট ({toBn(dropoutRiskCounts.dropped)})</span>
+            </button>
+          )}
+        </div>
+
+        {/* Filter & Search Bar */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
+          <div className="flex-1 relative max-w-md">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={dropoutSearch}
+              onChange={e => setDropoutSearch(e.target.value)}
+              placeholder="শিক্ষার্থীর নাম, আইডি, মোবাইল বা অভিভাবক খুঁজুন..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+            />
+            {dropoutSearch && (
+              <button
+                onClick={() => setDropoutSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2.5 flex-wrap gap-2">
+            {/* Show batch filter dropdown only for non-trainer general view */}
+            {!isTrainerView && (
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs text-slate-500">ব্যাচ:</span>
+                <select
+                  value={dropoutBatchFilter}
+                  onChange={e => setDropoutBatchFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                >
+                  <option value="all">সকল ব্যাচ</option>
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Rows per page */}
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs text-slate-500">প্রতি পৃষ্ঠায়:</span>
+              <select
+                value={dropoutPageSize}
+                onChange={e => setDropoutPageSize(Number(e.target.value))}
+                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-500"
+              >
+                <option value={5}>৫</option>
+                <option value={10}>১০</option>
+                <option value={15}>১৫</option>
+                <option value={20}>২০</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Table Content */}
+        <div className="overflow-x-auto">
+          {paginatedDropoutList.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 size={24} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">
+                {dropoutSearch || dropoutRiskFilter !== 'all' 
+                  ? 'কোনো ঝুঁকিপূর্ণ শিক্ষার্থী পাওয়া যায়নি' 
+                  : 'চমৎকার! বর্তমানে কোনো শিক্ষার্থী ঝরে পড়ার ঝুঁকিতে নেই'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {dropoutSearch || dropoutRiskFilter !== 'all'
+                  ? 'আপনার সার্চ ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী নেই।'
+                  : isPrimary
+                  ? 'এই ব্যাচের সকল প্রশিক্ষণার্থীর উপস্থিতি সন্তোষজনক ও নিয়মিত রয়েছে।'
+                  : 'সকল কেন্দ্রে প্রশিক্ষণার্থীদের উপস্থিতি ৭৫% বা তার উপরে রয়েছে।'}
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-[11px] uppercase tracking-wider font-bold">
+                  <th className="py-3 px-4 text-center w-12">#</th>
+                  <th className="py-3 px-4">প্রশিক্ষণার্থী</th>
+                  {!isTrainerView && <th className="py-3 px-4">ব্যাচ ও কেন্দ্র</th>}
+                  <th className="py-3 px-4">অভিভাবক ও যোগাযোগ</th>
+                  <th className="py-3 px-4 text-center">উপস্থিতি বিবরণ</th>
+                  <th className="py-3 px-4">উপস্থিতির হার</th>
+                  <th className="py-3 px-4 text-center">ঝুঁকির স্তর</th>
+                  <th className="py-3 px-4 text-right">পদক্ষেপ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedDropoutList.map((item, idx) => {
+                  const globalIndex = (currentDropoutPage - 1) * dropoutPageSize + idx + 1;
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-slate-50/80 transition ${
+                        item.riskLevel === 'dropped'
+                          ? 'bg-slate-50/40'
+                          : item.riskLevel === 'critical'
+                          ? 'bg-rose-50/25'
+                          : ''
+                      }`}
+                    >
+                      {/* # Index */}
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-400">
+                        {toBn(globalIndex)}
+                      </td>
+
+                      {/* Trainee Profile */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center space-x-3">
+                          {item.photoUrl ? (
+                            <img
+                              src={item.photoUrl}
+                              alt={item.nameBn}
+                              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200">
+                              {item.nameBn ? item.nameBn.charAt(0) : 'শি'}
+                            </div>
+                          )}
+                          <div className="overflow-hidden">
+                            <p className="font-bold text-slate-900 truncate">{item.nameBn}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{item.nameEn}</p>
+                            <div className="flex items-center space-x-1 mt-0.5">
+                              <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded">
+                                {item.registrationNumber}
+                              </span>
+                              <span className="text-[10px] text-slate-400">•</span>
+                              <span className="text-[10px] text-slate-500">
+                                {item.gender === 'Female' ? 'নারী' : item.gender === 'Male' ? 'পুরুষ' : 'অন্যান্য'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Batch & Institute (Shown only in general overview) */}
+                      {!isTrainerView && (
+                        <td className="py-3.5 px-4">
+                          <p className="font-semibold text-slate-800 leading-tight">{item.batchName}</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">{item.tradeName}</p>
+                          <p className="text-[10px] text-emerald-700 font-medium truncate">{item.instituteName}</p>
+                        </td>
+                      )}
+
+                      {/* Contact & Guardian */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1">
+                          {item.fatherNameBn && (
+                            <p className="text-[11px] text-slate-600">
+                              পিতা: <span className="font-medium text-slate-800">{item.fatherNameBn}</span>
+                            </p>
+                          )}
+                          {item.mobileNumber ? (
+                            <div className="flex items-center space-x-1.5">
+                              <a
+                                href={`tel:${item.mobileNumber}`}
+                                className="inline-flex items-center space-x-1 text-emerald-700 hover:text-emerald-800 font-mono font-bold bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded text-[11px] border border-emerald-200 transition"
+                                title="সরাসরি কল করুন"
+                              >
+                                <Phone size={11} />
+                                <span>{item.mobileNumber}</span>
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">মোবাইল নেই</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Attendance Breakdown */}
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="inline-flex items-center gap-1.5 text-center">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200" title="উপস্থিত">
+                            {toBn(item.present)} উ
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[11px] border border-rose-200" title="অনুপস্থিত">
+                            {toBn(item.absent)} অ
+                          </span>
+                          {item.leave > 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[11px] border border-amber-200" title="ছুটি">
+                              {toBn(item.leave)} ছু
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">মোট ক্লাস: {toBn(item.totalRecorded)} দিন</p>
+                      </td>
+
+                      {/* Attendance Rate */}
+                      <td className="py-3.5 px-4 min-w-[130px]">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className={item.rate < 50 ? 'text-rose-700' : item.rate < 75 ? 'text-amber-700' : 'text-emerald-700'}>
+                              {toBn(item.rate)}%
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              (লক্ষ্যমাত্রা ৭৫%)
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                item.rate < 50 ? 'bg-rose-600' : item.rate < 65 ? 'bg-amber-500' : 'bg-yellow-500'
+                              }`}
+                              style={{ width: `${Math.min(100, item.rate)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Risk Level Badge */}
+                      <td className="py-3.5 px-4 text-center">
+                        {item.riskLevel === 'dropped' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                            ড্রপআউট
+                          </span>
+                        ) : item.riskLevel === 'critical' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                            উচ্চ ঝুঁকি
+                          </span>
+                        ) : item.riskLevel === 'moderate' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            মাঝারি ঝুঁকি
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-900 border border-yellow-300">
+                            সতর্কতা
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {item.mobileNumber && (
+                            <a
+                              href={`tel:${item.mobileNumber}`}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition"
+                              title="অভিভাবক/শিক্ষার্থীকে কল দিন"
+                            >
+                              <Phone size={13} />
+                            </a>
+                          )}
+                          <Link
+                            to="/trainees"
+                            className="p-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 transition flex items-center space-x-1 text-xs font-semibold"
+                            title="প্রশিক্ষণার্থী বিস্তারিত দেখুন"
+                          >
+                            <ExternalLink size={13} />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination Bar */}
+        {filteredDropoutList.length > 0 && (
+          <div className="p-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+            <div>
+              <span>মোট </span>
+              <strong className="text-slate-900 font-bold">{toBn(filteredDropoutList.length)}</strong>
+              <span> জন শিক্ষার্থীর মধ্যে </span>
+              <strong className="text-slate-900 font-bold">
+                {toBn((currentDropoutPage - 1) * dropoutPageSize + 1)} - {toBn(Math.min(currentDropoutPage * dropoutPageSize, filteredDropoutList.length))}
+              </strong>
+              <span> দেখানো হচ্ছে (পৃষ্ঠা {toBn(currentDropoutPage)}/{toBn(totalDropoutPages)})</span>
+            </div>
+
+            {/* Page Buttons */}
+            <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+              <div className="flex items-center space-x-1 shrink-0 min-w-max">
+                <button
+                  onClick={() => setDropoutPage(p => Math.max(1, p - 1))}
+                  disabled={currentDropoutPage === 1}
+                  className="shrink-0 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  title="পূর্ববর্তী পৃষ্ঠা"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {Array.from({ length: totalDropoutPages }, (_, i) => i + 1)
+                  .filter(page => {
+                    return page === 1 || page === totalDropoutPages || Math.abs(page - currentDropoutPage) <= 1;
+                  })
+                  .map((page, idx, arr) => {
+                    const showEllipsisBefore = idx > 0 && page - arr[idx - 1] > 1;
+                    return (
+                      <React.Fragment key={page}>
+                        {showEllipsisBefore && (
+                          <span className="shrink-0 px-1 text-slate-400">...</span>
+                        )}
+                        <button
+                          onClick={() => setDropoutPage(page)}
+                          className={`shrink-0 min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition ${
+                            currentDropoutPage === page
+                              ? 'bg-rose-600 text-white shadow-xs'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {toBn(page)}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+
+                <button
+                  onClick={() => setDropoutPage(p => Math.min(totalDropoutPages, p + 1))}
+                  disabled={currentDropoutPage === totalDropoutPages}
+                  className="shrink-0 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  title="পরবর্তী পৃষ্ঠা"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[55vh] text-slate-500">
         <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
         <p className="text-sm font-semibold text-slate-700">ড্যাশবোর্ড তথ্য লোড হচ্ছে...</p>
-        <span className="text-xs text-slate-400 mt-1">উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE) ডাটাবেজ সমন্বয় হচ্ছে</span>
+        <span className="text-xs text-slate-400 mt-1">সর্বশেষ তথ্য আপডেট হচ্ছে...</span>
       </div>
     );
   }
@@ -494,211 +1282,123 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 pb-12 print:p-0 print:space-y-4">
       {/* ======================================================== */}
-      {/* 0. PROMINENT MULTI-USER DATA SYNC STRIP AT DASHBOARD TOP */}
+      {/* 1. PROFESSIONAL EXECUTIVE DASHBOARD HEADER               */}
       {/* ======================================================== */}
-      <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border-2 border-emerald-500/50 rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs print:hidden">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-            <RefreshCw size={20} className={syncing ? 'animate-spin' : ''} />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h2 className="text-sm font-bold text-slate-800">
-                কেন্দ্রীয় ডাটাবেজ সমন্বয় ও লাইভ সিঙ্ক (Multi-User Live Sync)
-              </h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping mr-1"></span>
-                রিয়েলটাইম সক্রিয়
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 mt-0.5">
-              প্রশিক্ষক বা অন্যান্য কেন্দ্র থেকে সংরক্ষিত নতুন হাজিরা অবিলম্বে দেখতে বাটনে ক্লিক করুন। 
-              সর্বশেষ সিঙ্ক: <strong className="font-mono text-emerald-900 font-bold">{format(lastSyncTime, 'hh:mm:ss a')}</strong>
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleLiveSync}
-          disabled={syncing}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm border border-emerald-700 disabled:opacity-75 cursor-pointer shrink-0"
-          title="ডাটাবেজ থেকে তাৎক্ষণিক সকল আপডেট সিঙ্ক করুন"
-        >
-          <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
-          <span>{syncing ? 'ডাটা সিঙ্ক হচ্ছে...' : 'ডাটা সিঙ্ক করুন (Sync Data)'}</span>
-        </button>
-      </div>
-
-      {/* ======================================================== */}
-      {/* 1. OFFICIAL BANGLADESH GOV & BNFE HEADER BANNER          */}
-      {/* ======================================================== */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-2xl p-6 sm:p-7 text-white shadow-md shadow-emerald-950/10 border border-emerald-900/30 print:bg-white print:text-black print:border-b-2 print:border-emerald-800 print:shadow-none">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div>
-            {/* Government Seal & Official Tagline */}
-            <div className="flex items-center space-x-2 text-emerald-100 text-xs font-semibold tracking-wide mb-1.5 print:text-slate-600">
-              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse print:hidden"></span>
-              <span>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার • উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</span>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                প্রশিক্ষণ ব্যবস্থাপনা ড্যাশবোর্ড
-              </h1>
-              <span className="hidden sm:inline-block px-2.5 py-0.5 bg-emerald-600/60 border border-emerald-400/40 text-[11px] font-semibold rounded-full text-emerald-100 print:hidden">
-                ময়মনসিংহ জেলা
-              </span>
-            </div>
-
-            <p className="text-emerald-100/90 text-xs sm:text-sm mt-1 max-w-2xl print:text-slate-700">
-              অষ্টম শ্রেণির পূর্বে ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ কর্মসূচি।
-            </p>
-
-            {/* Current user badge & session info */}
-            <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-emerald-600/50 text-xs text-emerald-200 print:hidden">
-              <span>ব্যবহারকারী: <strong className="text-white font-semibold">{userProfile?.name}</strong></span>
-              <span>•</span>
-              <span className="px-2 py-0.5 rounded-md bg-white/10 text-white font-medium border border-white/20">
-                পদবী: {userProfile?.role}
-              </span>
-              <span>•</span>
-              <span>সেশন: ২০২৫-২০২৬</span>
-              <span>•</span>
-              <span>তারিখ: {safeFormatDate(new Date(), 'dd MMMM yyyy')}</span>
-            </div>
-          </div>
-
-          {/* Action Bar (Live Sync, Print, Export & Role-aware Buttons) */}
-          <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-center shrink-0 print:hidden">
-            {/* Prominent Live Cloud Sync Button */}
-            <button
-              onClick={handleLiveSync}
-              disabled={syncing}
-              className="px-4 py-2 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-900 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm border border-amber-300 disabled:opacity-75"
-              title="ক্লাউড ডাটাবেজ থেকে সরাসরি সর্বশেষ ডেটা সিঙ্ক করুন"
-            >
-              <RefreshCw size={15} className={syncing ? 'animate-spin text-slate-900' : 'text-slate-900'} />
-              <span>{syncing ? 'সিঙ্ক হচ্ছে...' : 'ডাটা সিঙ্ক করুন (Live Sync)'}</span>
-            </button>
-
-            <button
-              onClick={handlePrint}
-              className="px-3 py-2 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-white/20"
-              title="ড্যাশবোর্ড সারসংক্ষেপ প্রিন্ট করুন"
-            >
-              <Printer size={14} />
-              <span>প্রিন্ট সামারি</span>
-            </button>
-
-            <button
-              onClick={handleExportCSV}
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-emerald-400/30 shadow-xs"
-              title="হাজিরা সারাংশ সিএসভি এক্সপোর্ট করুন"
-            >
-              <Download size={14} />
-              <span>এক্সপোর্ট</span>
-            </button>
-
-            {canTakeAttendance && (
-              <Link
-                to="/attendance"
-                className="px-3.5 py-2 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
-              >
-                <CalendarCheck size={15} className="text-emerald-700" />
-                <span>হাজিরা এন্ট্রি</span>
-              </Link>
-            )}
-
-            {canRegisterTrainee && (
-              <Link
-                to="/trainees/add"
-                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
-              >
-                <PlusCircle size={15} />
-                <span>নতুন ভর্তি</span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Live Sync Status & Instant Confirmation Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-600 print:hidden">
-        <div className="flex items-center space-x-2">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="font-semibold text-emerald-800">রিয়েলটাইম ক্লাউড সিঙ্ক সক্রিয়</span>
-          <span className="text-slate-300">•</span>
-          <span className="text-slate-500">
-            সর্বশেষ সিঙ্ক: <strong className="text-slate-700 font-mono">{format(lastSyncTime, 'hh:mm:ss a')}</strong>
-          </span>
-        </div>
-
-        {syncSuccessMsg && (
-          <div className="px-3 py-1 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-2xs animate-in fade-in">
-            <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-            <span>{syncSuccessMsg}</span>
-          </div>
-        )}
-      </div>
-
-      {/* ======================================================== */}
-      {/* 2. TRAINER CONTEXT HERO CARD (For logged-in Trainers)    */}
-      {/* ======================================================== */}
-      {isTrainer && (
-        <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-emerald-200/90 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start space-x-3.5">
-            <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-              <UserCheck size={22} />
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-3">
+            <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+              <BarChart3 size={22} />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
-                  প্রশিক্ষক স্পেশাল প্যানেল
+              <div className="flex items-center space-x-2.5">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  ড্যাশবোর্ড ওভারভিউ
+                </h1>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
+                  সক্রিয়
                 </span>
-                {trainerBatch?.isTodayRecorded ? (
-                  <span className="flex items-center space-x-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                    <CheckCircle2 size={12} />
-                    <span>আজকের হাজিরা সম্পন্ন</span>
-                  </span>
-                ) : (
-                  <span className="flex items-center space-x-1 text-[11px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-md">
-                    <AlertCircle size={12} />
-                    <span>আজকের হাজিরা বাকি</span>
-                  </span>
-                )}
               </div>
-              <h2 className="text-base font-bold text-slate-800 mt-1">
-                নির্ধারিত ব্যাচ: {trainerBatch?.batchName || userProfile?.batchName || 'ব্যাচ নির্ধারিত নেই'}
-              </h2>
-              <p className="text-xs text-slate-600 mt-0.5">
-                প্রতিষ্ঠান: <span className="font-semibold">{trainerBatch?.instituteName || userProfile?.instituteName || 'ডিফল্ট কেন্দ্র'}</span> • 
-                ট্রেড: <span className="font-semibold">{trainerBatch?.tradeName || 'বৃত্তিমূলক ট্রেড'}</span> • 
-                মোট শিক্ষার্থী: <strong className="text-emerald-800 font-bold">{toBn(trainerBatch?.totalEnrolled || 0)} জন</strong>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                প্রশিক্ষণ কার্যক্রম, ব্যাচ হাজিরা ও সামগ্রিক পারফরম্যান্স ট্র্যাকিং
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 shrink-0">
-            <Link
-              to="/attendance"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-xs"
-            >
-              <CalendarCheck size={14} />
-              <span>{trainerBatch?.isTodayRecorded ? 'হাজিরা সংশোধন' : 'আজকের হাজিরা নিন'}</span>
-            </Link>
-            <Link
-              to="/results"
-              className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1"
-            >
-              <Award size={14} className="text-blue-600" />
-              <span>নম্বর এন্ট্রি</span>
-            </Link>
+          {/* Session & User Info */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+            <span className="flex items-center space-x-1.5">
+              <span>ব্যবহারকারী: <strong className="text-slate-900 font-semibold">{userProfile?.name}</strong></span>
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200">
+              {userProfile?.role}
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="flex items-center space-x-1">
+              <Calendar size={13} className="text-slate-400" />
+              <span>{safeFormatDate(new Date(), 'dd MMMM yyyy')}</span>
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-400 text-[11px]">
+              সিঙ্ক: <span className="font-mono text-slate-600 font-semibold">{format(lastSyncTime, 'hh:mm a')}</span>
+            </span>
+            {syncSuccessMsg && (
+              <>
+                <span className="text-slate-300">•</span>
+                <span className="text-emerald-700 font-semibold flex items-center space-x-1">
+                  <CheckCircle2 size={13} className="text-emerald-600" />
+                  <span>{syncSuccessMsg}</span>
+                </span>
+              </>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2 self-start lg:self-center shrink-0 print:hidden">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || syncing}
+            className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs disabled:opacity-60 cursor-pointer"
+            title="ডাটা রিফ্রেশ করুন"
+          >
+            <RefreshCw size={14} className={refreshing || syncing ? 'animate-spin text-emerald-600' : 'text-slate-500'} />
+            <span>{refreshing || syncing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}</span>
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs cursor-pointer"
+            title="ড্যাশবোর্ড সারসংক্ষেপ প্রিন্ট করুন"
+          >
+            <Printer size={14} className="text-slate-500" />
+            <span>প্রিন্ট</span>
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs cursor-pointer"
+            title="হাজিরা সারাংশ সিএসভি এক্সপোর্ট করুন"
+          >
+            <Download size={14} className="text-slate-500" />
+            <span>এক্সপোর্ট</span>
+          </button>
+
+          {canTakeAttendance && (
+            <Link
+              to="/attendance"
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs"
+            >
+              <CalendarCheck size={14} />
+              <span>হাজিরা এন্ট্রি</span>
+            </Link>
+          )}
+
+          {canRegisterTrainee && (
+            <Link
+              to="/trainees/add"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs"
+            >
+              <PlusCircle size={14} />
+              <span>নতুন ভর্তি</span>
+            </Link>
+          )}
+
+          {/* Link to Dedicated Trainer Dashboard */}
+          {(isCourseDirector || userProfile?.role === 'FMA' || isTrainer) && (
+            <Link
+              to="/trainer-dashboard"
+              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border border-indigo-200 shadow-2xs"
+              title="প্রশিক্ষকদের জন্য তৈরি আলাদা ড্যাশবোর্ডে প্রবেশ করুন"
+            >
+              <UserCheck size={14} className="text-indigo-600" />
+              <span>প্রশিক্ষক ড্যাশবোর্ড</span>
+            </Link>
+          )}
+        </div>
+      </div>
 
       {/* ======================================================== */}
       {/* 3. ACTIONABLE EXCEPTIONS & OPERATIONAL ALERTS            */}
@@ -775,101 +1475,227 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 4. EXECUTIVE SUMMARY METRICS (ACTIONABLE OPERATIONAL KPI) */}
+      {/* 4. SUMMARY STATS CARD SECTION                            */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Total Trainees */}
-        <Link 
-          to="/trainees" 
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-blue-400 hover:shadow-sm transition group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">মোট প্রশিক্ষণার্থী</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition shadow-2xs">
-              <Users size={18} />
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+          <div>
+            <div className="flex items-center space-x-2">
+              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <BarChart3 size={18} />
+              </div>
+              <h2 className="text-base font-bold text-slate-800">
+                কার্যক্রম সারসংক্ষেপ ও অগ্রগতি সূচক
+              </h2>
             </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              সক্রিয় প্রশিক্ষণার্থী, চলমান ব্যাচ ও দৈনিক-মাসিক উপস্থিতির সার্বিক পরিসংখ্যান
+            </p>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-              {toBn(stats.totalTrainees)} <span className="text-sm font-bold text-slate-500">জন</span>
-            </h3>
-            <span className="text-[11px] text-blue-700 font-semibold mt-1 block">
-              সক্রিয়: {toBn(stats.activeTrainees)} জন • সম্পন্ন: {toBn(stats.completedTrainees)} জন
+          <div className="flex items-center space-x-2 self-start sm:self-auto">
+            <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs flex items-center space-x-1.5">
+              <Calendar size={13} className="text-emerald-600" />
+              <span>চলতি মাস: <strong className="text-slate-900 font-bold">{stats.currentMonthName}</strong></span>
             </span>
           </div>
-        </Link>
+        </div>
 
-        {/* Today's Attendance Rate */}
-        <Link 
-          to="/attendance" 
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-400 hover:shadow-sm transition group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">আজকের উপস্থিতি হার</span>
-            <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition shadow-2xs">
-              <TrendingUp size={18} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          {/* Card 1: Total Active Trainees */}
+          <Link 
+            to="/trainees" 
+            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-emerald-500 hover:shadow-md transition group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">মোট সক্রিয় প্রশিক্ষণার্থী</span>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition shadow-2xs">
+                  <Users size={20} />
+                </div>
+              </div>
+              <div className="mt-2.5">
+                <div className="flex items-baseline space-x-2">
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                    {toBn(stats.activeTrainees)}
+                  </h3>
+                  <span className="text-sm font-bold text-slate-500">জন সক্রিয়</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 ml-auto">
+                    {toBn(stats.activePercentage)}%
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${Math.min(100, stats.activePercentage)}%` }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="mt-3">
-            <div className="flex items-baseline space-x-2">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-                {toBn(stats.todayAttendanceRate)}%
-              </h3>
-              {stats.todayRecordedTotal > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                  stats.todayAttendanceRate >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {stats.todayAttendanceRate >= 75 ? 'সন্তোষজনক' : 'মনোযোগ প্রয়োজন'}
+
+            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>সর্বমোট নিবন্ধিত:</span>
+                <strong className="text-slate-800 font-bold">{toBn(stats.totalTrainees)} জন</strong>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                <span>সম্পন্ন: <strong className="text-emerald-700">{toBn(stats.completedTrainees)}</strong> জন</span>
+                <span>•</span>
+                <span>ড্রপআউট: <strong className="text-amber-700">{toBn(stats.droppedTrainees)}</strong> জন</span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 2: Ongoing Batches */}
+          <Link 
+            to="/batches" 
+            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-blue-500 hover:shadow-md transition group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">চলমান ব্যাচসমূহ</span>
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition shadow-2xs">
+                  <Layers size={20} />
+                </div>
+              </div>
+              <div className="mt-2.5">
+                <div className="flex items-baseline space-x-2">
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                    {toBn(stats.ongoingBatchesCount)}
+                  </h3>
+                  <span className="text-sm font-bold text-slate-500">টি ব্যাচ</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 ml-auto">
+                    সক্রিয় ক্লাস
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="bg-blue-500 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${stats.totalBatches > 0 ? Math.round((stats.ongoingBatchesCount / stats.totalBatches) * 100) : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>সর্বমোট ব্যাচ:</span>
+                <strong className="text-slate-800 font-bold">{toBn(stats.totalBatches)} টি</strong>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                <span>আসন্ন: <strong className="text-blue-700">{toBn(stats.upcomingBatchesCount)}</strong> টি</span>
+                <span>•</span>
+                <span>সমাপ্ত: <strong className="text-slate-600">{toBn(stats.completedBatchesCount)}</strong> টি</span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 3: Attendance Percentages for Current Month */}
+          <Link 
+            to="/attendance" 
+            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-purple-500 hover:shadow-md transition group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">চলতি মাসের উপস্থিতি হার</span>
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition shadow-2xs">
+                  <CalendarCheck size={20} />
+                </div>
+              </div>
+              <div className="mt-2.5">
+                <div className="flex items-baseline space-x-2">
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                    {toBn(stats.currentMonthAttendanceRate)}%
+                  </h3>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto ${
+                    stats.currentMonthAttendanceRate >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {stats.currentMonthAttendanceRate >= 75 ? 'সন্তোষজনক' : 'মনোযোগ আবশ্যক'}
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      stats.currentMonthAttendanceRate >= 75 ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`} 
+                    style={{ width: `${Math.min(100, stats.currentMonthAttendanceRate)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-slate-600">
+                <span className="flex items-center space-x-1">
+                  <span>উপস্থিত:</span>
+                  <strong className="text-emerald-700 font-bold">{toBn(stats.currentMonthPresent)}</strong>
                 </span>
-              )}
+                <span className="text-slate-300">•</span>
+                <span className="flex items-center space-x-1">
+                  <span>অনুপস্থিত:</span>
+                  <strong className="text-rose-600 font-bold">{toBn(stats.currentMonthAbsent)}</strong>
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="flex items-center space-x-1">
+                  <span>ছুটি:</span>
+                  <strong className="text-amber-700 font-bold">{toBn(stats.currentMonthLeave)}</strong>
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 text-[10px] pt-0.5">
+                <span>মাসিক মোট রেকর্ড: <strong className="text-slate-700">{toBn(stats.currentMonthRecordsTotal)} টি</strong></span>
+                <span>({toBn(stats.currentMonthUniqueDays)} দিন ক্লাস)</span>
+              </div>
             </div>
-            <span className="text-[11px] text-teal-700 font-semibold mt-1 block">
-              মোট রেকর্ড: {toBn(stats.todayRecordedTotal)} জন
-            </span>
-          </div>
-        </Link>
+          </Link>
 
-        {/* Today's Present Trainees */}
-        <Link 
-          to="/attendance" 
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-emerald-400 hover:shadow-sm transition group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">আজ উপস্থিত শিক্ষার্থী</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition shadow-2xs">
-              <UserCheck size={18} />
+          {/* Card 4: Today's Live Attendance */}
+          <Link 
+            to="/attendance" 
+            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-500 hover:shadow-md transition group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">আজকের উপস্থিতি হার</span>
+                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition shadow-2xs">
+                  <TrendingUp size={20} />
+                </div>
+              </div>
+              <div className="mt-2.5">
+                <div className="flex items-baseline space-x-2">
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                    {toBn(stats.todayAttendanceRate)}%
+                  </h3>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto ${
+                    stats.todayAttendanceRate >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {stats.todayAttendanceRate >= 75 ? 'সন্তোষজনক' : 'মনোযোগ প্রয়োজন'}
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="bg-teal-500 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${Math.min(100, stats.todayAttendanceRate)}%` }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-700 tracking-tight">
-              {toBn(stats.todayPresent)} <span className="text-sm font-bold text-slate-600">জন</span>
-            </h3>
-            <span className="text-[11px] text-emerald-700 font-semibold mt-1 block">
-              {stats.todayLeave > 0 ? `ছুটিতে: ${toBn(stats.todayLeave)} জন` : 'প্রশিক্ষণ কেন্দ্রে উপস্থিত'}
-            </span>
-          </div>
-        </Link>
 
-        {/* Today's Absent Trainees */}
-        <Link 
-          to="/attendance" 
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-red-400 hover:shadow-sm transition group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">আজ অনুপস্থিত</span>
-            <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition shadow-2xs">
-              <UserX size={18} />
+            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>আজকের উপস্থিতি:</span>
+                <strong className="text-emerald-700 font-bold">{toBn(stats.todayPresent)} জন</strong>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                <span>অনুপস্থিত: <strong className="text-rose-600">{toBn(stats.todayAbsent)}</strong> জন</span>
+                <span>•</span>
+                <span>আজকের মোট এন্ট্রি: <strong className="text-slate-700">{toBn(stats.todayRecordedTotal)}</strong> জন</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl sm:text-3xl font-black text-red-600 tracking-tight">
-              {toBn(stats.todayAbsent)} <span className="text-sm font-bold text-slate-600">জন</span>
-            </h3>
-            <span className="text-[11px] text-red-600 font-semibold mt-1 block">
-              {stats.todayAbsent > 0 ? 'ঝরে পড়া রোধে ফলোআপ প্রয়োজন' : 'সকল শিক্ষার্থী ক্লাসে উপস্থিত'}
-            </span>
-          </div>
-        </Link>
+          </Link>
+        </div>
       </div>
 
       {/* ======================================================== */}
@@ -1279,7 +2105,12 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 9. PRINT-ONLY EXECUTIVE BRIEFING FORMAT (OFFICIAL A4)     */}
+      {/* 9. DROPOUT RISK MONITORING PAGINATED TABLE                */}
+      {/* ======================================================== */}
+      {renderDropoutRiskTable(false)}
+
+      {/* ======================================================== */}
+      {/* 10. PRINT-ONLY EXECUTIVE BRIEFING FORMAT (OFFICIAL A4)    */}
       {/* ======================================================== */}
       <div className="hidden print:block pt-6 border-t-2 border-slate-800 text-black text-xs space-y-4">
         <div className="text-center pb-3 border-b border-slate-300">

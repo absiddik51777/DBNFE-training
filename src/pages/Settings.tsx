@@ -5,6 +5,7 @@ import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { 
   Settings as SettingsIcon, 
   Database, 
@@ -41,9 +42,7 @@ const Settings: React.FC = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
 
-  const { roles, setRoleLandingRoute } = usePermissions();
-  const [savingLandingRoleId, setSavingLandingRoleId] = useState<string | null>(null);
-  const [landingSavedNotice, setLandingSavedNotice] = useState('');
+  const { roles } = usePermissions();
 
   // System Settings Hook
   const { 
@@ -59,6 +58,7 @@ const Settings: React.FC = () => {
     deleteAllBatches,
     purgeAllSystemData 
   } = useSystemSettings();
+  const { confirm } = useConfirm();
 
   // Settings configuration state
   const [minAttendance, setMinAttendance] = useState(settings.minAttendancePercentForCert || 75);
@@ -150,18 +150,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleLandingRouteChange = async (roleId: string, route: string) => {
-    setSavingLandingRoleId(roleId);
-    try {
-      await setRoleLandingRoute(roleId, route);
-      setLandingSavedNotice('ডিফল্ট ল্যান্ডিং পেজ সফলভাবে আপডেট করা হয়েছে!');
-      setTimeout(() => setLandingSavedNotice(''), 3000);
-    } catch (e: any) {
-      console.warn("Could not update role landing route:", e);
-    } finally {
-      setSavingLandingRoleId(null);
-    }
-  };
 
   const handleToggleDeletion = async () => {
     setTogglingDeletion(true);
@@ -310,8 +298,16 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleResetLocalCache = () => {
-    if (!window.confirm("আপনি কি নিশ্চিতভাবে সমস্ত লোকাল ক্যাশ ডেটা মুছে ফ্রেশ শুরু করতে চান?")) {
+  const handleResetLocalCache = async () => {
+    const confirmed = await confirm({
+      title: 'লোকাল ব্রাউজার ক্যাশ রিসেট',
+      message: 'আপনি কি নিশ্চিতভাবে সমস্ত লোকাল ক্যাশ ডেটা মুছে ফ্রেশ শুরু করতে চান?',
+      detail: 'এর ফলে ব্রাউজারে সংরক্ষিত অফলাইন ক্যাশ মেমোরি পরিষ্কার হবে এবং সম্পূর্ণ ডেটাবেজ থেকে নতুন করে ফ্রেশ ডাটা লোড হবে।',
+      confirmText: 'হ্যাঁ, ক্যাশ মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      variant: 'warning'
+    });
+    if (!confirmed) {
       return;
     }
     dataService.clearAllLocalData();
@@ -424,7 +420,7 @@ const Settings: React.FC = () => {
           <div className="mt-4 p-3 rounded-xl bg-white border border-emerald-200/80 text-xs text-emerald-900 flex items-center space-x-2">
             <Shield size={16} className="text-emerald-600 shrink-0" />
             <span>
-              <strong>সুরক্ষা সক্রিয়:</strong> দৈনিক হাজিরা, শিক্ষার্থী, ব্যাচ, প্রতিষ্ঠান সহ সকল ডিলিট বাটন নিষ্ক্রিয় করা আছে।
+              <strong>সুরক্ষা ও ফলব্যাক সক্রিয়:</strong> স্থায়ী ডাটা ডিলিট বন্ধ থাকায় কোনো রেকর্ড ডিলিটের অনুরোধ জানানো হলে তা স্থায়ীভাবে না মুছে স্বয়ংক্রিয়ভাবে সংরক্ষণাগারে (Archive Record) স্থানান্তরিত হবে।
             </span>
           </div>
         )}
@@ -1058,77 +1054,6 @@ const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* Role Landing Pages */}
-      {isCourseDirector && (
-        <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                <Navigation size={22} />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-800">
-                  ভূমিকাভিত্তিক ডিফল্ট ল্যান্ডিং পেজ (Role Landing Pages)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  লগইনের পর কোন রোলের ব্যবহারকারী সরাসরি কোন পেজে প্রবেশ করবেন তা নির্ধারণ করুন
-                </p>
-              </div>
-            </div>
-            {landingSavedNotice && (
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                {landingSavedNotice}
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {roles.map(role => {
-              const currentLanding = role.defaultLandingRoute || (role.code === 'trainer' ? '/attendance' : '/');
-              return (
-                <div key={role.id} className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 block">
-                        {role.nameBn || role.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {role.code}
-                      </span>
-                    </div>
-                    {role.code === 'trainer' && (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">
-                        হাজিরা ফলব্যাক সক্রিয়
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2 pt-1">
-                    <select
-                      value={currentLanding}
-                      onChange={(e) => handleLandingRouteChange(role.id, e.target.value)}
-                      disabled={savingLandingRoleId === role.id}
-                      className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="/">ড্যাশবোর্ড (Dashboard - /)</option>
-                      <option value="/attendance">দৈনিক হাজিরা (Daily Attendance - /attendance)</option>
-                      <option value="/attendance-sheet">হাজিরা শিট (Attendance Sheet - /attendance-sheet)</option>
-                      <option value="/batches">প্রশিক্ষণ ব্যাচ (Batches - /batches)</option>
-                      <option value="/trainees">প্রশিক্ষণার্থী তালিকা (Trainees - /trainees)</option>
-                      <option value="/institutes">প্রশিক্ষণ প্রতিষ্ঠান (Institutes - /institutes)</option>
-                      <option value="/trades">বৃত্তিমূলক ট্রেড (Trades - /trades)</option>
-                      <option value="/exams">পরীক্ষা ও মূল্যায়ন (Exams - /exams)</option>
-                      <option value="/results">ফলাফল (Results - /results)</option>
-                      <option value="/reports">প্রতিবেদন ও অ্যানালিটিক্স (Reports - /reports)</option>
-                      <option value="/certificates">সার্টিফিকেট (Certificates - /certificates)</option>
-                    </select>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ======================================================== */}
       {/* 6. CERTIFICATE & GRADING RULES                          */}

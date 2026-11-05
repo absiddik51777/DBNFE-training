@@ -6,10 +6,13 @@ import { SystemSettingsProvider } from './contexts/SystemSettingsContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import TrainerDashboard from './pages/TrainerDashboard';
 import Institutes from './pages/Institutes';
 import Trades from './pages/Trades';
 import Batches from './pages/Batches';
 import Trainees from './pages/Trainees';
+import ShikhonCalendar from './pages/ShikhonCalendar';
+import TradeCalendar from './pages/TradeCalendar';
 import Attendance from './pages/Attendance';
 import AttendanceSheet from './pages/AttendanceSheet';
 import Exams from './pages/Exams';
@@ -42,6 +45,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 import { ShieldAlert } from 'lucide-react';
 
 const RootRouteHandler = () => {
+  const { userProfile } = useAuth();
   const { canViewPage, getDefaultLandingRoute, loading } = usePermissions();
 
   if (loading) {
@@ -51,6 +55,11 @@ const RootRouteHandler = () => {
         <span className="text-sm">লোড হচ্ছে...</span>
       </div>
     );
+  }
+
+  // If user is a Trainer, render the dedicated Trainer Dashboard
+  if (userProfile?.role === 'Trainer') {
+    return <TrainerDashboard />;
   }
 
   // If user has permission to view root Dashboard, render it
@@ -64,7 +73,7 @@ const RootRouteHandler = () => {
     return <Navigate to={fallback} replace />;
   }
 
-  // Graceful universal fallback for non-dashboard roles (such as Trainer)
+  // Graceful universal fallback
   return <Navigate to="/attendance" replace />;
 };
 
@@ -104,10 +113,13 @@ const AppRoutes = () => {
       
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<RootRouteHandler />} />
+        <Route path="trainer-dashboard" element={<PageGuard path="/trainer-dashboard"><TrainerDashboard /></PageGuard>} />
         <Route path="institutes" element={<PageGuard path="/institutes"><Institutes /></PageGuard>} />
         <Route path="trades" element={<PageGuard path="/trades"><Trades /></PageGuard>} />
         <Route path="batches" element={<PageGuard path="/batches"><Batches /></PageGuard>} />
         <Route path="trainees/*" element={<PageGuard path="/trainees"><Trainees /></PageGuard>} />
+        <Route path="shikhon-calendar" element={<PageGuard path="/shikhon-calendar"><ShikhonCalendar /></PageGuard>} />
+        <Route path="trade-calendar" element={<PageGuard path="/trade-calendar"><TradeCalendar /></PageGuard>} />
         <Route path="attendance" element={<PageGuard path="/attendance"><Attendance /></PageGuard>} />
         <Route path="attendance-sheet" element={<PageGuard path="/attendance-sheet"><AttendanceSheet /></PageGuard>} />
         <Route path="exams" element={<PageGuard path="/exams"><Exams /></PageGuard>} />
@@ -123,14 +135,18 @@ const AppRoutes = () => {
   );
 };
 
+import { ConfirmationProvider } from './contexts/ConfirmationContext';
+
 export default function App() {
   return (
     <AuthProvider>
       <PermissionsProvider>
         <SystemSettingsProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <ConfirmationProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </ConfirmationProvider>
         </SystemSettingsProvider>
       </PermissionsProvider>
     </AuthProvider>

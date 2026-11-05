@@ -209,30 +209,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(profile);
   };
 
-  const quickLoginAsRole = async (role: UserRole, customName?: string, instituteId?: string, batchId?: string) => {
-    const isTrainer = role === 'Trainer';
-    const cleanId = `usr_${role.toLowerCase().replace(/\s+/g, '_')}_${batchId || 'main'}`;
-
-    const profile: UserProfile = {
-      id: cleanId,
-      name: customName || (role === 'Course Director' ? 'কোর্স পরিচালক (মনিটরিং)' : role === 'Trainer' ? 'প্রশিক্ষক (হাজিরা এন্ট্রি)' : 'কর্মকর্তা'),
-      email: role === 'Course Director' ? 'unfeohaluaghat@gmail.com' : `${cleanId}@bnfe.gov.bd`,
-      phone: '01712-345678',
-      role,
-      instituteId: instituteId || (isTrainer ? 'INS-HLG-01' : ''),
-      instituteName: isTrainer ? 'হালুয়াঘাট কারিগরি প্রশিক্ষণ কেন্দ্র' : '',
-      batchId: batchId || (isTrainer ? 'BAT-01' : ''),
-      batchName: isTrainer ? 'কম্পিউটার অফিস অ্যাপ্লিকেশান (ব্যাচ-০১)' : '',
-      status: 'Active',
-      createdAt: Date.now()
-    };
-
-    setCachedProfile(profile);
-    setUserProfile(profile);
-    try {
-      await setDoc(doc(db, 'users', profile.id), profile, { merge: true });
-      await dataService.saveItem('users', profile);
-    } catch (e) {}
+  const quickLoginAsRole = async (_role: UserRole, _customName?: string, _instituteId?: string, _batchId?: string) => {
+    // 1-Click instant entry has been disabled as requested
   };
 
   const signIn = async (emailOrPhone: string, password: string) => {
@@ -278,29 +256,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           uid: matched.id,
           email: matched.email,
           displayName: matched.name,
-          emailVerified: true
-        } as unknown as User);
-        return;
-      }
-
-      if (emailToAuth.toLowerCase() === 'unfeohaluaghat@gmail.com' || emailToAuth.toLowerCase() === 'director@bnfe.gov.bd') {
-        const directorProfile: UserProfile = {
-          id: 'usr_director_unfe',
-          name: 'উপজেলা প্রোগ্রাম অফিসার (কোর্স পরিচালক)',
-          email: emailToAuth.toLowerCase(),
-          phone: '01712-345678',
-          role: 'Course Director',
-          status: 'Active',
-          createdAt: Date.now()
-        };
-        await setDoc(doc(db, 'users', directorProfile.id), directorProfile, { merge: true });
-        await dataService.saveItem('users', directorProfile);
-        setCachedProfile(directorProfile);
-        setUserProfile(directorProfile);
-        setUser({
-          uid: directorProfile.id,
-          email: directorProfile.email,
-          displayName: directorProfile.name,
           emailVerified: true
         } as unknown as User);
         return;

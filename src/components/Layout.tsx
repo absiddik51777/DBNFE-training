@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -18,10 +18,12 @@ import {
   X,
   UserCheck,
   Shield,
-  GraduationCap
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 
 import { usePermissions } from '../contexts/PermissionsContext';
+import { SHOW_CALENDAR_MODULES } from '../config/features';
 
 const Layout: React.FC = () => {
   const { userProfile, signOut, permissionError } = useAuth();
@@ -30,28 +32,72 @@ const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dismissPermNotice, setDismissPermNotice] = useState(false);
 
-  const baseMenuItems = [
-    { path: '/', name: 'ড্যাশবোর্ড', sub: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/institutes', name: 'প্রতিষ্ঠান', sub: 'Institutes', icon: <Building2 size={20} /> },
-    { path: '/trades', name: 'ট্রেড', sub: 'Trades', icon: <Wrench size={20} /> },
-    { path: '/batches', name: 'ব্যাচ', sub: 'Batches', icon: <Layers size={20} /> },
-    { path: '/trainees', name: 'প্রশিক্ষণার্থী', sub: 'Trainees', icon: <Users size={20} /> },
-    { path: '/attendance', name: 'দৈনিক হাজিরা', sub: 'Daily Attendance', icon: <CalendarCheck size={20} /> },
-    { path: '/attendance-sheet', name: 'হাজিরা শিট', sub: 'Attendance Sheet', icon: <CalendarDays size={20} /> },
-    { path: '/exams', name: 'পরীক্ষা', sub: 'Exams', icon: <FileText size={20} /> },
-    { path: '/results', name: 'ফলাফল', sub: 'Results', icon: <BarChart size={20} /> },
-    { path: '/reports', name: 'প্রতিবেদন', sub: 'Reports', icon: <FileText size={20} /> },
-    { path: '/certificates', name: 'সার্টিফিকেট', sub: 'Certificates', icon: <Award size={20} /> },
-    { path: '/users', name: 'ব্যবহারকারী', sub: 'Users', icon: <UserCheck size={20} /> },
-  ];
+  const isTrainer = userProfile?.role === 'Trainer';
 
-  // Role and Permission management: STRICTLY for Course Director only
-  if (isCourseDirector) {
-    baseMenuItems.push({ path: '/roles', name: 'রোল ও পারমিশন', sub: 'Roles & Perms', icon: <Shield size={20} /> });
-  }
+  const baseMenuItems = useMemo(() => {
+    const items = [];
 
-  // Settings
-  baseMenuItems.push({ path: '/settings', name: 'সেটিংস', sub: 'Settings', icon: <Settings size={20} /> });
+    if (isTrainer) {
+      items.push({ 
+        path: '/trainer-dashboard', 
+        name: 'প্রশিক্ষক ড্যাশবোর্ড', 
+        sub: 'Trainer Dashboard', 
+        icon: <LayoutDashboard size={20} /> 
+      });
+    } else {
+      items.push({ 
+        path: '/', 
+        name: 'সার্বিক ড্যাশবোর্ড', 
+        sub: 'Overview Dashboard', 
+        icon: <LayoutDashboard size={20} /> 
+      });
+      // Course Director and FMA can also access Trainer Dashboard to inspect any batch
+      items.push({ 
+        path: '/trainer-dashboard', 
+        name: 'প্রশিক্ষক ড্যাশবোর্ড', 
+        sub: 'Trainer Dashboard', 
+        icon: <UserCheck size={20} /> 
+      });
+    }
+
+    items.push(
+      { path: '/institutes', name: 'প্রতিষ্ঠান', sub: 'Institutes', icon: <Building2 size={20} /> },
+      { path: '/trades', name: 'ট্রেড', sub: 'Trades', icon: <Wrench size={20} /> }
+    );
+
+    if (SHOW_CALENDAR_MODULES) {
+      items.push({ path: '/trade-calendar', name: 'ট্রেড কারিকুলাম', sub: 'Trade Curriculum', icon: <GraduationCap size={20} /> });
+    }
+
+    items.push(
+      { path: '/batches', name: 'ব্যাচ', sub: 'Batches', icon: <Layers size={20} /> },
+      { path: '/trainees', name: 'প্রশিক্ষণার্থী', sub: 'Trainees', icon: <Users size={20} /> }
+    );
+
+    if (SHOW_CALENDAR_MODULES) {
+      items.push({ path: '/shikhon-calendar', name: 'ব্যাচ শিখন ক্যালেন্ডার', sub: 'Batch Calendar', icon: <BookOpen size={20} /> });
+    }
+
+    items.push(
+      { path: '/attendance', name: 'দৈনিক হাজিরা', sub: 'Daily Attendance', icon: <CalendarCheck size={20} /> },
+      { path: '/attendance-sheet', name: 'হাজিরা শিট', sub: 'Attendance Sheet', icon: <CalendarDays size={20} /> },
+      { path: '/exams', name: 'পরীক্ষা', sub: 'Exams', icon: <FileText size={20} /> },
+      { path: '/results', name: 'ফলাফল', sub: 'Results', icon: <BarChart size={20} /> },
+      { path: '/reports', name: 'প্রতিবেদন', sub: 'Reports', icon: <FileText size={20} /> },
+      { path: '/certificates', name: 'সার্টিফিকেট', sub: 'Certificates', icon: <Award size={20} /> },
+      { path: '/users', name: 'ব্যবহারকারী', sub: 'Users', icon: <UserCheck size={20} /> }
+    );
+
+    // Role and Permission management: STRICTLY for Course Director only
+    if (isCourseDirector) {
+      items.push({ path: '/roles', name: 'রোল ও পারমিশন', sub: 'Roles & Perms', icon: <Shield size={20} /> });
+    }
+
+    // Settings
+    items.push({ path: '/settings', name: 'সেটিংস', sub: 'Settings', icon: <Settings size={20} /> });
+
+    return items;
+  }, [isTrainer, isCourseDirector]);
 
   // Filter menu items dynamically according to role's page view permissions
   const menuItems = baseMenuItems.filter(item => canViewPage(item.path));

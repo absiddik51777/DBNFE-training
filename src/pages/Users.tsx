@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { logActivity } from '../lib/firebase';
-import { UserProfile, UserRole, Institute, Batch, Trade } from '../types';
+import { UserProfile, UserRole, Institute, Batch, Trade, TrainerType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
-import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search, SlidersHorizontal } from 'lucide-react';
+import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search, SlidersHorizontal, Wrench, BookOpen } from 'lucide-react';
 import { dataService } from '../lib/dataService';
+import { useConfirm } from '../contexts/ConfirmationContext';
 
 const UsersPage: React.FC = () => {
   const { userProfile, refreshProfile } = useAuth();
   const { roles, hasPermission, isCourseDirector } = usePermissions();
+  const { showAlert } = useConfirm();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -29,6 +31,7 @@ const UsersPage: React.FC = () => {
     email: '',
     phone: '',
     role: 'Trainer' as UserRole,
+    trainerType: 'Skill Trainer' as TrainerType,
     instituteId: '',
     batchId: '',
     status: 'Active' as 'Active' | 'Inactive',
@@ -40,6 +43,7 @@ const UsersPage: React.FC = () => {
     email: '',
     phone: '',
     role: 'Trainer' as UserRole,
+    trainerType: 'Skill Trainer' as TrainerType,
     instituteId: '',
     batchId: '',
     status: 'Active' as 'Active' | 'Inactive',
@@ -75,7 +79,11 @@ const UsersPage: React.FC = () => {
   const handleEditClick = (u: UserProfile) => {
     // FMA can only edit Trainer
     if (isFMA && u.role !== 'Trainer') {
-      alert("FMA শুধুমাত্র প্রশিক্ষক (Trainer) পরিচালনা করতে পারবেন।");
+      showAlert({
+        title: 'সীমাবদ্ধ অনুমতি',
+        message: 'FMA শুধুমাত্র প্রশিক্ষক (Trainer) পরিচালনা করতে পারবেন।',
+        variant: 'warning'
+      });
       return;
     }
     setEditingUser(u);
@@ -84,6 +92,7 @@ const UsersPage: React.FC = () => {
       email: u.email,
       phone: u.phone,
       role: u.role,
+      trainerType: u.trainerType || 'Skill Trainer',
       instituteId: u.instituteId || '',
       batchId: u.batchId || '',
       status: u.status,
@@ -100,6 +109,7 @@ const UsersPage: React.FC = () => {
         ...editingUser,
         name: editFormData.name.trim(),
         role: editFormData.role,
+        trainerType: editFormData.role === 'Trainer' ? editFormData.trainerType : undefined,
         instituteId: editFormData.role === 'Trainer' ? editFormData.instituteId : '',
         batchId: editFormData.role === 'Trainer' ? editFormData.batchId : '',
         status: editFormData.status,
@@ -117,7 +127,7 @@ const UsersPage: React.FC = () => {
       logActivity(
         userProfile?.id || '',
         userProfile?.name || 'User',
-        `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name} (${editFormData.role}) - ব্যাচ: ${editFormData.batchId || 'N/A'}`,
+        `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name} (${editFormData.role}${editFormData.role === 'Trainer' ? ` - ${editFormData.trainerType}` : ''}) - ব্যাচ: ${editFormData.batchId || 'N/A'}`,
         'Users',
         editingUser.id
       );
@@ -143,6 +153,7 @@ const UsersPage: React.FC = () => {
         email: addFormData.email.trim().toLowerCase(),
         phone: addFormData.phone.trim(),
         role: addFormData.role,
+        trainerType: addFormData.role === 'Trainer' ? addFormData.trainerType : undefined,
         instituteId: addFormData.role === 'Trainer' ? addFormData.instituteId : '',
         batchId: addFormData.role === 'Trainer' ? addFormData.batchId : '',
         status: addFormData.status,
@@ -154,7 +165,7 @@ const UsersPage: React.FC = () => {
       logActivity(
         userProfile?.id || '',
         userProfile?.name || 'User',
-        `নতুন ${addFormData.role === 'Trainer' ? 'প্রশিক্ষক' : 'ব্যবহারকারী'} নিবন্ধন: ${newUser.name} (${newUser.email})`,
+        `নতুন ${addFormData.role === 'Trainer' ? (addFormData.trainerType === 'Literacy Trainer' ? 'লিটারেসি প্রশিক্ষক' : 'স্কিল প্রশিক্ষক') : 'ব্যবহারকারী'} নিবন্ধন: ${newUser.name} (${newUser.email})`,
         'Users',
         newId
       );
@@ -165,6 +176,7 @@ const UsersPage: React.FC = () => {
         email: '',
         phone: '',
         role: 'Trainer',
+        trainerType: 'Skill Trainer',
         instituteId: institutes[0]?.id || '',
         batchId: '',
         status: 'Active',
@@ -241,6 +253,7 @@ const UsersPage: React.FC = () => {
                   email: '',
                   phone: '',
                   role: 'Trainer',
+                  trainerType: 'Skill Trainer',
                   instituteId: institutes[0]?.id || '',
                   batchId: '',
                   status: 'Active',
@@ -323,9 +336,12 @@ const UsersPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
                           u.role === 'Course Director' ? 'bg-purple-100 text-purple-800' :
-                          u.role === 'FMA' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                          u.role === 'FMA' ? 'bg-blue-100 text-blue-800' : 
+                          u.trainerType === 'Literacy Trainer' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'
                         }`}>
-                          {u.role === 'Trainer' ? 'প্রশিক্ষক (Trainer)' : u.role === 'Course Director' ? 'কোর্স পরিচালক' : 'FMA'}
+                          {u.role === 'Trainer' 
+                            ? (u.trainerType === 'Literacy Trainer' ? 'লিটারেসি প্রশিক্ষক (Literacy)' : 'স্কিল প্রশিক্ষক (Skill)')
+                            : u.role === 'Course Director' ? 'কোর্স পরিচালক' : 'FMA'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
@@ -449,7 +465,24 @@ const UsersPage: React.FC = () => {
                 <div className="space-y-3 p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
                   <div className="text-xs font-bold text-emerald-800 flex items-center space-x-1.5">
                     <Building2 size={15} />
-                    <span>প্রশিক্ষকের প্রতিষ্ঠান ও ব্যাচ অ্যাসাইনমেন্ট</span>
+                    <span>প্রশিক্ষকের ধরন ও ব্যাচ অ্যাসাইনমেন্ট</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">প্রশিক্ষকের ধরন (Trainer Type) *</label>
+                    <select
+                      value={editFormData.trainerType}
+                      onChange={e => setEditFormData({ ...editFormData, trainerType: e.target.value as TrainerType })}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    >
+                      <option value="Skill Trainer">স্কিল ট্রেইনার (Skill Trainer - বৃত্তিমূলক ট্রেড)</option>
+                      <option value="Literacy Trainer">লিটারেসি ট্রেইনার (Literacy Trainer - সাক্ষরতা ও জীবন দক্ষতা)</option>
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {editFormData.trainerType === 'Skill Trainer' 
+                        ? '✓ এই প্রশিক্ষক বৃত্তিমূলক ট্রেডের স্কিল মডিউল পরিচালনা করবেন।' 
+                        : '✓ এই প্রশিক্ষক সাক্ষরতা ও জীবন দক্ষতা মডিউল পরিচালনা করবেন।'}
+                    </p>
                   </div>
 
                   <div>
@@ -607,7 +640,24 @@ const UsersPage: React.FC = () => {
                 <div className="space-y-3 p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
                   <div className="text-xs font-bold text-emerald-800 flex items-center space-x-1.5">
                     <Building2 size={15} />
-                    <span>প্রশিক্ষকের প্রতিষ্ঠান ও ব্যাচ নির্বাচন</span>
+                    <span>প্রশিক্ষকের ধরন ও ব্যাচ নির্বাচন</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">প্রশিক্ষকের ধরন (Trainer Type) *</label>
+                    <select
+                      value={addFormData.trainerType}
+                      onChange={e => setAddFormData({ ...addFormData, trainerType: e.target.value as TrainerType })}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    >
+                      <option value="Skill Trainer">স্কিল ট্রেইনার (Skill Trainer - বৃত্তিমূলক ট্রেড)</option>
+                      <option value="Literacy Trainer">লিটারেসি ট্রেইনার (Literacy Trainer - সাক্ষরতা ও জীবন দক্ষতা)</option>
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {addFormData.trainerType === 'Skill Trainer' 
+                        ? '✓ এই প্রশিক্ষক বৃত্তিমূলক ট্রেডের স্কিল মডিউল পরিচালনা করবেন।' 
+                        : '✓ এই প্রশিক্ষক সাক্ষরতা ও জীবন দক্ষতা মডিউল পরিচালনা করবেন।'}
+                    </p>
                   </div>
 
                   <div>

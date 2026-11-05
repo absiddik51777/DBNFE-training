@@ -30,25 +30,50 @@ import {
   FileText,
   AlertCircle,
   TrendingUp,
-  UserPlus
+  UserPlus,
+  BookOpen,
+  Activity,
+  Download,
+  UserCheck,
+  XCircle,
+  ArrowRight,
+  ExternalLink
 } from 'lucide-react';
-import { Batch, Institute, Trade, Trainee, AttendanceRecord, Exam } from '../types';
+import { Batch, Institute, Trade, Trainee, AttendanceRecord, Exam, UserProfile } from '../types';
+import { CalendarProgressLog } from '../types/calendar';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { Link } from 'react-router-dom';
+import { SHOW_CALENDAR_MODULES } from '../config/features';
 
 const FISCAL_YEARS = ['২০২৫-২০২৬', '২০২৪-২০২৫', '২০২৬-২০২৭'];
 const ITEMS_PER_PAGE = 6;
+const LOGS_PER_PAGE = 10;
 
 const Batches: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  
+  // Main Tab Navigation: 'batches' | 'activity_logs'
+  const [activeMainTab, setActiveMainTab] = useState<'batches' | 'activity_logs'>('batches');
+
+  // Dedicated Activity Log State (tracks trainer module completion updates for accountability)
+  const [progressLogs, setProgressLogs] = useState<CalendarProgressLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logSelectedBatch, setLogSelectedBatch] = useState<string>('all');
+  const [logModuleType, setLogModuleType] = useState<'all' | 'skill' | 'literacy'>('all');
+  const [logTrainerFilter, setLogTrainerFilter] = useState<string>('all');
+  const [logStatusFilter, setLogStatusFilter] = useState<'all' | 'completed' | 'cancelled'>('all');
+  const [logSearchQuery, setLogSearchQuery] = useState<string>('');
+  const [logCurrentPage, setLogCurrentPage] = useState<number>(1);
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,6 +101,8 @@ const Batches: React.FC = () => {
     batchCode: '',
     instituteId: '',
     tradeId: '',
+    skillTrainerId: '',
+    literacyTrainerId: '',
     fiscalYear: '২০২৫-২০২৬',
     startDate: '',
     endDate: '',
@@ -99,6 +126,7 @@ const Batches: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission, isCourseDirector } = usePermissions();
   const { isDeletionAllowed } = useSystemSettings();
+  const { confirm, showAlert } = useConfirm();
 
   const isDirector = isCourseDirector || userProfile?.role === 'Course Director';
   const canCreate = hasPermission('create_batch') || isDirector;
@@ -113,17 +141,21 @@ const Batches: React.FC = () => {
   const fetchBatchesData = async () => {
     setLoading(true);
     try {
-      const [bList, iList, tList, trnList] = await Promise.all([
+      const [bList, iList, tList, trnList, uList, logsList] = await Promise.all([
         dataService.getItems<Batch>('batches'),
         dataService.getItems<Institute>('institutes'),
         dataService.getItems<Trade>('trades'),
         dataService.getItems<Trainee>('trainees'),
+        dataService.getItems<UserProfile>('users'),
+        dataService.getCalendarProgressLogs(),
       ]);
 
       setBatches(bList);
       setInstitutes(iList);
       setTrades(tList);
       setTrainees(trnList);
+      setUsers(uList);
+      setProgressLogs(logsList);
     } catch (error) {
       console.warn("Notice fetching batches:", error);
     } finally {
@@ -131,10 +163,197 @@ const Batches: React.FC = () => {
     }
   };
 
+  const loadActivityLogsOnly = async () => {
+    setLogsLoading(true);
+    try {
+      const logs = await dataService.getCalendarProgressLogs();
+      setProgressLogs(logs);
+    } catch (e) {
+      console.warn("Notice loading activity logs:", e);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchBatchesData();
     setTimeout(() => setRefreshing(false), 400);
+  };
+
+  // Unique trainers who have recorded logs
+  const reportingTrainers = useMemo(() => {
+    const trainersMap = new Map<string, string>();
+    progressLogs.forEach(l => {
+      const name = l.trainerName || l.trainerId;
+      if (name) {
+        trainersMap.set(l.trainerId || name, name);
+      }
+    });
+    return Array.from(trainersMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [progressLogs]);
+
+  // Filtered Activity Logs
+  const filteredProgressLogs = useMemo(() => {
+    return progressLogs.filter(log => {
+      if (logSelectedBatch !== 'all' && log.batchId !== logSelectedBatch) return false;
+      if (logModuleType !== 'all' && log.moduleType !== logModuleType) return false;
+      if (logTrainerFilter !== 'all') {
+        const matchesTrainer = log.trainerId === logTrainerFilter || log.trainerName === logTrainerFilter;
+        if (!matchesTrainer) return false;
+      }
+      if (logStatusFilter === 'completed' && !log.isCompleted) return false;
+      if (logStatusFilter === 'cancelled' && log.isCompleted) return false;
+
+      if (logSearchQuery.trim()) {
+        const q = logSearchQuery.toLowerCase().trim();
+        const batchName = (log.batchName || '').toLowerCase();
+        const tradeName = (log.tradeName || '').toLowerCase();
+        const trainerName = (log.trainerName || '').toLowerCase();
+        const trainerId = (log.trainerId || '').toLowerCase();
+        const topic = (log.topic || '').toLowerCase();
+        const taskNo = (log.taskNo || '').toLowerCase();
+        const remarks = (log.remarks || '').toLowerCase();
+        const dayStr = log.dayNumber ? log.dayNumber.toString() : '';
+        const dayBnStr = log.dayNumber ? toBn(log.dayNumber) : '';
+
+        const match = batchName.includes(q) ||
+          tradeName.includes(q) ||
+          trainerName.includes(q) ||
+          trainerId.includes(q) ||
+          topic.includes(q) ||
+          taskNo.includes(q) ||
+          remarks.includes(q) ||
+          dayStr.includes(q) ||
+          dayBnStr.includes(q);
+
+        if (!match) return false;
+      }
+
+      return true;
+    });
+  }, [progressLogs, logSelectedBatch, logModuleType, logTrainerFilter, logStatusFilter, logSearchQuery]);
+
+  // Activity Log Pagination
+  const totalLogPages = Math.ceil(filteredProgressLogs.length / LOGS_PER_PAGE) || 1;
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (logCurrentPage - 1) * LOGS_PER_PAGE;
+    return filteredProgressLogs.slice(startIndex, startIndex + LOGS_PER_PAGE);
+  }, [filteredProgressLogs, logCurrentPage]);
+
+  // Reset Activity Log filters
+  const resetLogFilters = () => {
+    setLogSelectedBatch('all');
+    setLogModuleType('all');
+    setLogTrainerFilter('all');
+    setLogStatusFilter('all');
+    setLogSearchQuery('');
+    setLogCurrentPage(1);
+  };
+
+  // Export Activity Logs to CSV
+  const exportActivityLogsCSV = () => {
+    if (filteredProgressLogs.length === 0) return;
+
+    const headers = [
+      "তারিখ (Date)",
+      "কার্যদিবস নং (Day)",
+      "ব্যাচ আইডি (Batch ID)",
+      "ব্যাচের নাম (Batch Name)",
+      "ট্রেড (Trade)",
+      "মডিউলের ধরন (Module Type)",
+      "কাজ নং (Task No)",
+      "পাঠের বিষয় / শিরোনাম (Topic)",
+      "স্থিতি (Status)",
+      "প্রশিক্ষকের নাম (Trainer Name)",
+      "প্রশিক্ষক আইডি (Trainer ID)",
+      "প্রশিক্ষকের ভূমিকা (Trainer Type)",
+      "মন্তব্য ও পর্যবেক্ষণ (Remarks)"
+    ];
+
+    const rows = filteredProgressLogs.map(l => [
+      `"${l.completedAt || ''}"`,
+      `"${l.dayNumber || ''}"`,
+      `"${l.batchId || ''}"`,
+      `"${(l.batchName || '').replace(/"/g, '""')}"`,
+      `"${(l.tradeName || '').replace(/"/g, '""')}"`,
+      `"${l.moduleType === 'skill' ? 'স্কিল ফোকাসড' : 'লিটারেসি ফোকাসড'}"`,
+      `"${(l.taskNo || '').replace(/"/g, '""')}"`,
+      `"${(l.topic || '').replace(/"/g, '""')}"`,
+      `"${l.isCompleted ? 'সম্পন্ন (Completed)' : 'বাতিল / অসম্পূর্ণ'}"`,
+      `"${(l.trainerName || '').replace(/"/g, '""')}"`,
+      `"${(l.trainerId || '').replace(/"/g, '""')}"`,
+      `"${(l.trainerType || '').replace(/"/g, '""')}"`,
+      `"${(l.remarks || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const selectedBatchName = logSelectedBatch !== 'all' ? (batches.find(b => b.id === logSelectedBatch)?.batchCode || logSelectedBatch) : 'all_batches';
+    link.setAttribute('download', `trainer_activity_logs_${selectedBatchName}_${format(new Date(), 'yyyyMMdd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Seed sample trainer activity log for testing if completely empty
+  const handleSeedSampleActivityLogs = async () => {
+    if (batches.length === 0) return;
+    const targetBatch = batches[0];
+    const trade = trades.find(t => t.id === targetBatch.tradeId);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    
+    const sampleLog1: CalendarProgressLog = {
+      id: `cpl_${targetBatch.id}_skill_d1_${Date.now()}`,
+      batchId: targetBatch.id,
+      batchName: targetBatch.name,
+      tradeId: targetBatch.tradeId,
+      tradeName: trade?.name || 'ট্রেড',
+      instituteId: targetBatch.instituteId,
+      dayNumber: 1,
+      moduleType: 'skill',
+      taskNo: 'কাজ ০১',
+      topic: 'টুলস পরিচিতি ও প্রাথমিক কর্মশালার নিরাপত্তা নির্দেশনা',
+      isCompleted: true,
+      completedAt: todayStr,
+      trainerId: targetBatch.skillTrainerId || userProfile?.id || 'TRN-SKILL-01',
+      trainerName: targetBatch.skillTrainerName || userProfile?.name || 'স্কিল প্রশিক্ষক',
+      trainerType: 'Skill Trainer',
+      remarks: 'সকল প্রশিক্ষণার্থী সুরক্ষামূলক পোশাক ও টুলস ব্যবহারে সন্তোষজনক অংশগ্রহণ প্রদর্শন করেছে।',
+      createdAt: Date.now() - 3600000,
+      updatedAt: Date.now() - 3600000
+    };
+
+    const sampleLog2: CalendarProgressLog = {
+      id: `cpl_${targetBatch.id}_literacy_d1_${Date.now() + 1}`,
+      batchId: targetBatch.id,
+      batchName: targetBatch.name,
+      tradeId: targetBatch.tradeId,
+      tradeName: trade?.name || 'ট্রেড',
+      instituteId: targetBatch.instituteId,
+      dayNumber: 1,
+      moduleType: 'literacy',
+      taskNo: 'কাজ ০১',
+      topic: 'দৈনন্দিন কর্মক্ষেত্রে মৌলিক বাংলা কথন ও প্রমিত যোগাযোগ শিষ্টাচার',
+      isCompleted: true,
+      completedAt: todayStr,
+      trainerId: targetBatch.literacyTrainerId || 'TRN-LIT-01',
+      trainerName: targetBatch.literacyTrainerName || 'লিটারেসি প্রশিক্ষক',
+      trainerType: 'Literacy Trainer',
+      remarks: 'মৌখিক যোগাযোগ ও দলীয় পাঠচর্চায় প্রশিক্ষণার্থীরা সক্রিয়ভাবে অংশ নেয়।',
+      createdAt: Date.now() - 1800000,
+      updatedAt: Date.now() - 1800000
+    };
+
+    await dataService.saveCalendarProgressLog(sampleLog1);
+    await dataService.saveCalendarProgressLog(sampleLog2);
+    const freshLogs = await dataService.getCalendarProgressLogs();
+    setProgressLogs(freshLogs);
+    setActionSuccessMessage('পরীক্ষামূলক ট্রেইনার অ্যাক্টিভিটি লগ সফলভাবে যুক্ত হয়েছে।');
+    setTimeout(() => setActionSuccessMessage(''), 3500);
   };
 
   // Safe Batch Code Generator: scans all batches, extracts max digits, generates BAT-0X
@@ -219,6 +438,8 @@ const Batches: React.FC = () => {
         batchCode: b.batchCode || b.id || '',
         instituteId: b.instituteId || availableInstitutes[0]?.id || '',
         tradeId: b.tradeId || availableTrades[0]?.id || '',
+        skillTrainerId: b.skillTrainerId || '',
+        literacyTrainerId: b.literacyTrainerId || '',
         fiscalYear: b.fiscalYear || '২০২৫-২০২৬',
         startDate: safeFormatDate(b.startDate, 'yyyy-MM-dd'),
         endDate: safeFormatDate(b.endDate, 'yyyy-MM-dd'),
@@ -237,6 +458,8 @@ const Batches: React.FC = () => {
         batchCode: nextCode,
         instituteId: availableInstitutes[0]?.id || '',
         tradeId: availableTrades[0]?.id || '',
+        skillTrainerId: '',
+        literacyTrainerId: '',
         fiscalYear: '২০২৫-২০২৬',
         startDate: format(today, 'yyyy-MM-dd'),
         endDate: format(sixMonthsLater, 'yyyy-MM-dd'),
@@ -344,12 +567,19 @@ const Batches: React.FC = () => {
         }
       }
 
+      const skillTrainerObj = users.find(u => u.id === formData.skillTrainerId);
+      const literacyTrainerObj = users.find(u => u.id === formData.literacyTrainerId);
+
       const savedBatch: Batch = {
         id,
         name: formData.name.trim(),
         batchCode: cleanCode,
         instituteId: formData.instituteId,
         tradeId: formData.tradeId,
+        skillTrainerId: formData.skillTrainerId || undefined,
+        skillTrainerName: skillTrainerObj?.name || undefined,
+        literacyTrainerId: formData.literacyTrainerId || undefined,
+        literacyTrainerName: literacyTrainerObj?.name || undefined,
         fiscalYear: formData.fiscalYear,
         startDate: startMs,
         endDate: endMs,
@@ -379,7 +609,11 @@ const Batches: React.FC = () => {
       await fetchBatchesData();
     } catch (error) {
       console.warn("Notice saving batch:", error);
-      alert("ব্যাচ সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।");
+      await showAlert({
+        title: 'সংরক্ষণ ব্যর্থ',
+        message: 'ব্যাচ সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।',
+        variant: 'danger'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -389,8 +623,30 @@ const Batches: React.FC = () => {
   const handleDeleteRequest = async (batch: Batch) => {
     if (!canDelete) return;
 
+    // Fallback to archive when deleting is denied
     if (!isDeletionAllowed) {
-      alert("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'ব্যাচ সংরক্ষণাগারে স্থানান্তর (Fallback to Archive)',
+        message: `সিস্টেম সেটিংস অনুযায়ী ব্যাচ স্থায়ীভাবে মুছে ফেলা বন্ধ (Denied) রয়েছে। আপনি কি "${batch.name} (${batch.batchCode || batch.id})" ব্যাচটি মুছে ফেলার পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ আর্কাইভে স্থানান্তর করলে এই ব্যাচের সকল শিক্ষার্থী, উপস্থিতি ও পরীক্ষার ডাটা অক্ষুণ্ণ থাকবে এবং ব্যাচটি সক্রিয় কার্যক্রম থেকে সরিয়ে সংরক্ষণাগারে নিরাপদে রাখা হবে।',
+        confirmText: 'হ্যাঁ, ব্যাচ আর্কাইভ করুন (Archive)',
+        cancelText: 'বাতিল',
+        variant: 'warning'
+      });
+
+      if (confirmed) {
+        await dataService.archiveRecord('batches', batch.id, 'সিস্টেমে ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর');
+        await logActivity(
+          userProfile?.id || '',
+          userProfile?.name || 'User',
+          `ব্যাচ সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${batch.name} (${batch.batchCode || batch.id})`,
+          'Batches',
+          batch.id
+        );
+        setActionSuccessMessage(`"${batch.name}" ব্যাচটি সফলভাবে সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
+        setTimeout(() => setActionSuccessMessage(''), 3500);
+        await fetchBatchesData();
+      }
       return;
     }
 
@@ -417,8 +673,17 @@ const Batches: React.FC = () => {
           batch.id
         );
       } else {
-        // Unreferenced batch: Safe to hard delete with confirmation
-        if (window.confirm(`আপনি কি নিশ্চিতভাবে "${batch.name} (${batch.batchCode || batch.id})" ব্যাচটি স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+        // Unreferenced batch: Safe to hard delete with confirmation modal
+        const confirmed = await confirm({
+          title: 'ব্যাচ অপসারণের নিশ্চিতকরণ',
+          message: `আপনি কি নিশ্চিতভাবে "${batch.name} (${batch.batchCode || batch.id})" ব্যাচটি স্থায়ীভাবে মুছে ফেলতে চান?`,
+          detail: 'এই অপারেশনের ফলে ব্যাচটির তথ্য সিস্টেম থেকে সম্পূর্ণরূপে অপসারিত হবে।',
+          confirmText: 'হ্যাঁ, মুছে ফেলুন',
+          cancelText: 'বাতিল',
+          variant: 'danger'
+        });
+
+        if (confirmed) {
           await dataService.deleteItem('batches', batch.id);
           await logActivity(
             userProfile?.id || '',
@@ -443,7 +708,11 @@ const Batches: React.FC = () => {
     const { batch } = safeLifecycleBatch;
 
     if (lifecycleAction === 'cancel' && !cancellationReason.trim()) {
-      alert("ব্যাচটি বাতিলের কারণ উল্লেখ করা আবশ্যক।");
+      await showAlert({
+        title: 'বাতিলের কারণ আবশ্যক',
+        message: "ব্যাচটি বাতিলের কারণ উল্লেখ করা আবশ্যক।",
+        variant: 'warning'
+      });
       return;
     }
 
@@ -486,12 +755,35 @@ const Batches: React.FC = () => {
   const handleForceDeleteBatch = async () => {
     if (!safeLifecycleBatch || !canDelete) return;
     if (!isDeletionAllowed) {
-      alert("🔒 সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'ব্যাচ সংরক্ষণাগারে স্থানান্তর (Fallback to Archive)',
+        message: `সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Denied) রাখা হয়েছে। আপনি কি "${safeLifecycleBatch.batch.name}" ব্যাচটি স্থায়ীভাবে মুছে ফেলার পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ সংরক্ষণাগারে পাঠালে ব্যাচের সকল শিক্ষার্থী ও হাজিরা ডাটা অক্ষুণ্ণ রেখে ব্যাচটি আর্কাইভে স্থানান্তরিত হবে।',
+        confirmText: 'হ্যাঁ, সংরক্ষণাগারে পাঠান',
+        cancelText: 'বাতিল',
+        variant: 'warning'
+      });
+      if (confirmed) {
+        await dataService.archiveRecord('batches', safeLifecycleBatch.batch.id, 'ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর');
+        setSafeLifecycleBatch(null);
+        setActionSuccessMessage(`"${safeLifecycleBatch.batch.name}" ব্যাচটি সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
+        setTimeout(() => setActionSuccessMessage(''), 3500);
+        await fetchBatchesData();
+      }
       return;
     }
 
     const { batch, traineeCount, attendanceCount } = safeLifecycleBatch;
-    if (window.confirm(`⚠️ আপনি কি নিশ্চিতভাবে "${batch.name} (${batch.batchCode || batch.id})" ব্যাচটি স্থায়ীভাবে মুছে ফেলতে চান?\n\nএতে এই ব্যাচের সকল শিক্ষার্থী (${traineeCount} জন) ও হাজিরা (${attendanceCount} টি) রেকর্ড স্থায়ীভাবে মুছে যাবে!`)) {
+    const confirmed = await confirm({
+      title: 'বলপূর্বক ব্যাচ স্থায়ী অপসারণ (ক্যাসকেডসহ)',
+      message: `আপনি কি নিশ্চিতভাবে "${batch.name} (${batch.batchCode || batch.id})" ব্যাচটি স্থায়ীভাবে মুছে ফেলতে চান?`,
+      detail: `⚠️ সতর্কতা: এতে এই ব্যাচের সকল শিক্ষার্থী (${toBn(traineeCount)} জন) ও হাজিরা (${toBn(attendanceCount)} টি) রেকর্ড ডাটাবেজ থেকে চিরতরে মুছে যাবে! এই সিদ্ধান্ত অপরিবর্তনীয়।`,
+      confirmText: 'হ্যাঁ, সবকিছু মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      variant: 'danger'
+    });
+
+    if (confirmed) {
       try {
         await dataService.deleteBatch(batch.id, true);
         await logActivity(
@@ -507,7 +799,11 @@ const Batches: React.FC = () => {
         await fetchBatchesData();
       } catch (error: any) {
         console.warn("Notice force deleting batch:", error);
-        alert("ব্যাচ ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error));
+        await showAlert({
+          title: 'ব্যর্থতা',
+          message: "ব্যাচ ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error),
+          variant: 'danger'
+        });
       }
     }
   };
@@ -669,8 +965,109 @@ const Batches: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 2. SUMMARY KPI METRIC CARDS                              */}
+      {/* 2. SECTION TAB NAVIGATION: BATCHES VS ACTIVITY LOGS     */}
       {/* ======================================================== */}
+      <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-1.5 p-1 bg-slate-100 rounded-xl">
+          <button
+            onClick={() => setActiveMainTab('batches')}
+            className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center space-x-2 ${
+              activeMainTab === 'batches'
+                ? 'bg-white text-emerald-800 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <Layers size={16} className={activeMainTab === 'batches' ? 'text-emerald-600' : 'text-slate-400'} />
+            <span>প্রশিক্ষণ ব্যাচসমূহ</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+              activeMainTab === 'batches' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {toBn(batches.length)}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('activity_logs')}
+            className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center space-x-2 ${
+              activeMainTab === 'activity_logs'
+                ? 'bg-white text-purple-800 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <Activity size={16} className={activeMainTab === 'activity_logs' ? 'text-purple-600' : 'text-slate-400'} />
+            <span>অ্যাক্টিভিটি লগ (জবাবদিহিতা)</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+              activeMainTab === 'activity_logs' ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {toBn(progressLogs.length)}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {activeMainTab === 'activity_logs' ? (
+            <>
+              <button
+                onClick={exportActivityLogsCSV}
+                disabled={filteredProgressLogs.length === 0}
+                className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                title="লগ ডেটা CSV ফরম্যাটে এক্সপোর্ট করুন"
+              >
+                <Download size={14} />
+                <span>CSV এক্সপোর্ট</span>
+              </button>
+              {progressLogs.length === 0 && (
+                <button
+                  onClick={handleSeedSampleActivityLogs}
+                  className="px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Sparkles size={14} />
+                  <span>নমুনা লগ যোগ করুন</span>
+                </button>
+              )}
+              {SHOW_CALENDAR_MODULES && (
+                <Link
+                  to="/shikhon-calendar"
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                >
+                  <BookOpen size={14} />
+                  <span>শিখন ক্যালেন্ডারে যান</span>
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
+              {SHOW_CALENDAR_MODULES && (
+                <>
+                  <Link
+                    to="/trade-calendar"
+                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                  >
+                    <BookOpen size={14} />
+                    <span>ট্রেড কারিকুলাম</span>
+                  </Link>
+                  <Link
+                    to="/shikhon-calendar"
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                  >
+                    <Calendar size={14} />
+                    <span>শিখন ক্যালেন্ডার</span>
+                  </Link>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* TAB 1: BATCH MANAGEMENT VIEW                             */}
+      {/* ======================================================== */}
+      {activeMainTab === 'batches' && (
+        <div className="space-y-6">
+          {/* ======================================================== */}
+          {/* 3. SUMMARY KPI METRIC CARDS                              */}
+          {/* ======================================================== */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
@@ -969,6 +1366,22 @@ const Batches: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Trainers Info */}
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-1.5 text-[11px]">
+                    <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-lg p-1.5">
+                      <span className="text-[9px] font-bold text-emerald-800 uppercase block">স্কিল ট্রেইনার</span>
+                      <span className="font-semibold text-slate-800 truncate block" title={b.skillTrainerName || 'অনির্ধারিত'}>
+                        {b.skillTrainerName || 'অনির্ধারিত'}
+                      </span>
+                    </div>
+                    <div className="bg-sky-50/70 border border-sky-200/60 rounded-lg p-1.5">
+                      <span className="text-[9px] font-bold text-sky-800 uppercase block">লিটারেসি ট্রেইনার</span>
+                      <span className="font-semibold text-slate-800 truncate block" title={b.literacyTrainerName || 'অনির্ধারিত'}>
+                        {b.literacyTrainerName || 'অনির্ধারিত'}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Cancellation reason if cancelled */}
                   {b.status === 'Cancelled' && b.cancellationReason && (
                     <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-800 flex items-start space-x-1.5">
@@ -1025,41 +1438,427 @@ const Batches: React.FC = () => {
             মোট {toBn(processedBatches.length)}টি ব্যাচের মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, processedBatches.length))} প্রদর্শিত হচ্ছে
           </span>
 
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="পূর্ববর্তী পৃষ্ঠা"
-            >
-              <ChevronLeft size={16} />
-            </button>
+          <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+            <div className="flex items-center space-x-1 shrink-0 min-w-max">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                title="পূর্ববর্তী পৃষ্ঠা"
+              >
+                <ChevronLeft size={16} />
+              </button>
 
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const p = idx + 1;
-              return (
-                <button
-                  key={p}
-                  onClick={() => handlePageChange(p)}
-                  className={`w-8 h-8 rounded-xl font-bold transition ${
-                    currentPage === p
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const p = idx + 1;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => handlePageChange(p)}
+                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition ${
+                      currentPage === p
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    {toBn(p)}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                title="পরবর্তী পৃষ্ঠা"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 2: TRAINER ACTIVITY LOG (ACCOUNTABILITY TAB)         */}
+      {/* ======================================================== */}
+      {activeMainTab === 'activity_logs' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* ACCOUNTABILITY BANNER */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-xs font-semibold">
+                  জবাবদিহিতা ও অডিট ট্রেইল (Accountability & Audit Trail)
+                </span>
+                <span className="text-xs text-purple-300">•</span>
+                <span className="text-xs text-purple-200 font-medium">রিয়েলটাইম ট্রেইনার আপডেট</span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-white">
+                প্রশিক্ষক কর্তৃক প্রশিক্ষণ মডিউল সম্পন্নকরণ অ্যাক্টিভিটি লগ
+              </h3>
+              <p className="text-xs text-purple-200/90 max-w-2xl leading-relaxed">
+                স্কিল ট্রেইনার ও লিটারেসি ট্রেইনারগণ কোনো মডিউল সম্পন্ন মার্ক করলে তা স্বয়ংক্রিয়ভাবে তারিখ, সময়, ব্যাচ, ট্রেড ও ট্রেইনার পরিচিতি সহ অডিট রেকর্ডে লিপিবদ্ধ হয়।
+              </p>
+            </div>
+
+            {SHOW_CALENDAR_MODULES && (
+              <div className="flex items-center space-x-2 shrink-0">
+                <Link
+                  to="/shikhon-calendar"
+                  className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
                 >
-                  {toBn(p)}
-                </button>
-              );
-            })}
+                  <span>শিখন ক্যালেন্ডার দেখুন</span>
+                  <ExternalLink size={13} />
+                </Link>
+              </div>
+            )}
+          </div>
 
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="পরবর্তী পৃষ্ঠা"
-            >
-              <ChevronRight size={16} />
-            </button>
+          {/* 4 ACCOUNTABILITY METRIC CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+                <Activity size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">মোট লগ রেকর্ড</span>
+                <h4 className="text-2xl font-black text-slate-800">{toBn(progressLogs.length)}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+                <CheckCircle2 size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">স্কিল মডিউল আপডেট</span>
+                <h4 className="text-2xl font-black text-emerald-700">
+                  {toBn(progressLogs.filter(l => l.moduleType === 'skill').length)}
+                </h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+                <BookOpen size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">লিটারেসি মডিউল আপডেট</span>
+                <h4 className="text-2xl font-black text-blue-700">
+                  {toBn(progressLogs.filter(l => l.moduleType === 'literacy').length)}
+                </h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+                <UserCheck size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">রিপোর্টিং ট্রেইনার</span>
+                <h4 className="text-2xl font-black text-amber-700">{toBn(reportingTrainers.length)} জন</h4>
+              </div>
+            </div>
+          </div>
+
+          {/* ADVANCED MULTI-FILTER TOOLBAR */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+            <div className="flex flex-col lg:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="পাঠের শিরোনাম, বিষয়, কাজ নং, ব্যাচ, ট্রেইনারের নাম/আইডি বা মন্তব্য দিয়ে খুঁজুন..."
+                  value={logSearchQuery}
+                  onChange={(e) => {
+                    setLogSearchQuery(e.target.value);
+                    setLogCurrentPage(1);
+                  }}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:bg-white transition"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Batch Selector Filter */}
+                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
+                  <Layers size={13} className="text-slate-400" />
+                  <select
+                    value={logSelectedBatch}
+                    onChange={(e) => {
+                      setLogSelectedBatch(e.target.value);
+                      setLogCurrentPage(1);
+                    }}
+                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer max-w-[160px] truncate"
+                  >
+                    <option value="all">সকল ব্যাচ ({toBn(batches.length)})</option>
+                    {batches.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.batchCode || b.id} - {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Module Type Selector Filter */}
+                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
+                  <Filter size={13} className="text-slate-400" />
+                  <select
+                    value={logModuleType}
+                    onChange={(e) => {
+                      setLogModuleType(e.target.value as any);
+                      setLogCurrentPage(1);
+                    }}
+                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="all">সকল মডিউল ধরন</option>
+                    <option value="skill">স্কিল ফোকাসড (Skill)</option>
+                    <option value="literacy">লিটারেসি ফোকাসড (Literacy)</option>
+                  </select>
+                </div>
+
+                {/* Trainer Selector Filter */}
+                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
+                  <Users size={13} className="text-slate-400" />
+                  <select
+                    value={logTrainerFilter}
+                    onChange={(e) => {
+                      setLogTrainerFilter(e.target.value);
+                      setLogCurrentPage(1);
+                    }}
+                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer max-w-[150px] truncate"
+                  >
+                    <option value="all">সকল প্রশিক্ষক</option>
+                    {reportingTrainers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
+                  <select
+                    value={logStatusFilter}
+                    onChange={(e) => {
+                      setLogStatusFilter(e.target.value as any);
+                      setLogCurrentPage(1);
+                    }}
+                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="all">সকল অবস্থা</option>
+                    <option value="completed">সম্পন্ন (Completed)</option>
+                    <option value="cancelled">বাতিল / অসম্পূর্ণ</option>
+                  </select>
+                </div>
+
+                {/* Reset Filters */}
+                {(logSearchQuery || logSelectedBatch !== 'all' || logModuleType !== 'all' || logTrainerFilter !== 'all' || logStatusFilter !== 'all') && (
+                  <button
+                    onClick={resetLogFilters}
+                    className="p-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-semibold transition cursor-pointer"
+                    title="সকল ফিল্টার রিসেট করুন"
+                  >
+                    রিসেট
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ACTIVITY LOGS AUDIT TABLE */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            {filteredProgressLogs.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <Activity size={48} className="mx-auto text-slate-300" />
+                <h3 className="text-lg font-bold text-slate-700">কোনো অ্যাক্টিভিটি লগ পাওয়া যায়নি</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">
+                  {progressLogs.length === 0
+                    ? 'এখনো কোনো ট্রেইনার মডিউল সম্পন্ন করার তথ্য মার্ক করেননি। ট্রেইনারগণ কাজ সম্পন্ন মার্ক করলে স্বয়ংক্রিয়ভাবে এখানে লগ চলে আসবে।'
+                    : 'আপনার নির্বাচিত ফিল্টারের শর্ত অনুযায়ী কোনো অ্যাক্টিভিটি লগ মিলছে না। অনুগ্রহ করে ফিল্টার পরিবর্তন বা রিসেট করুন।'}
+                </p>
+                <div className="flex items-center justify-center space-x-2 pt-2">
+                  {(logSearchQuery || logSelectedBatch !== 'all' || logModuleType !== 'all' || logTrainerFilter !== 'all' || logStatusFilter !== 'all') ? (
+                    <button
+                      onClick={resetLogFilters}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      ফিল্টার রিসেট করুন
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSeedSampleActivityLogs}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                    >
+                      <Sparkles size={14} />
+                      <span>পরীক্ষামূলক নমুনা লগ তৈরি করুন</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                      <th className="py-3 px-4">তারিখ ও সময়</th>
+                      <th className="py-3 px-4">ব্যাচ ও ট্রেড</th>
+                      <th className="py-3 px-4">প্রশিক্ষক (Trainer)</th>
+                      <th className="py-3 px-4">কার্যদিবস ও কাজ</th>
+                      <th className="py-3 px-4">পাঠের বিষয় / শিরোনাম</th>
+                      <th className="py-3 px-4 text-center">স্থিতি</th>
+                      <th className="py-3 px-4">মন্তব্য ও পর্যবেক্ষণ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {paginatedLogs.map((log) => {
+                      const isSkill = log.moduleType === 'skill';
+
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                          {/* 1. Date & Time */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-1.5 font-bold text-slate-800">
+                              <Calendar size={13} className="text-slate-400 shrink-0" />
+                              <span>{safeFormatDate(log.completedAt || log.createdAt, 'dd MMM yyyy')}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              {log.createdAt ? format(new Date(log.createdAt), 'hh:mm a') : 'সময় সংরক্ষিত'}
+                            </span>
+                          </td>
+
+                          {/* 2. Batch & Trade */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">
+                                {batches.find(b => b.id === log.batchId)?.batchCode || log.batchId}
+                              </span>
+                              <span className="font-semibold text-slate-800 line-clamp-1">{log.batchName}</span>
+                            </div>
+                            <span className="text-[11px] text-emerald-700 block mt-0.5 font-medium line-clamp-1">
+                              {log.tradeName || 'ট্রেড'}
+                            </span>
+                          </td>
+
+                          {/* 3. Trainer */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="font-bold text-slate-800">{log.trainerName || 'প্রশিক্ষক'}</span>
+                            </div>
+                            <div className="flex items-center space-x-1.5 mt-0.5">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                isSkill 
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' 
+                                  : 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                              }`}>
+                                {isSkill ? 'স্কিল প্রশিক্ষক' : 'লিটারেসি প্রশিক্ষক'}
+                              </span>
+                              {log.trainerId && (
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  ID: {log.trainerId}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 4. Day & Task # */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className="font-bold text-purple-700 block">
+                              কার্যদিবস {toBn(log.dayNumber)}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              {log.taskNo || 'টাস্ক'}
+                            </span>
+                          </td>
+
+                          {/* 5. Topic */}
+                          <td className="py-3.5 px-4 max-w-xs">
+                            <p className="font-semibold text-slate-800 line-clamp-2" title={log.topic}>
+                              {log.topic || 'মডিউল পাঠ'}
+                            </p>
+                          </td>
+
+                          {/* 6. Status */}
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                            {log.isCompleted ? (
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 size={12} className="text-emerald-600" />
+                                <span>সম্পন্ন</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
+                                <XCircle size={12} className="text-red-600" />
+                                <span>বাতিল</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 7. Remarks */}
+                          <td className="py-3.5 px-4 max-w-sm">
+                            {log.remarks ? (
+                              <span className="text-slate-600 italic block line-clamp-2" title={log.remarks}>
+                                "{log.remarks}"
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic">কোনো মন্তব্য নেই</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* LOGS PAGINATION BAR */}
+            {totalLogPages > 1 && (
+              <div className="bg-slate-50/70 p-3.5 border-t border-slate-200/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <span className="text-slate-500 font-medium">
+                  মোট {toBn(filteredProgressLogs.length)}টি লগের মধ্যে {toBn((logCurrentPage - 1) * LOGS_PER_PAGE + 1)} থেকে {toBn(Math.min(logCurrentPage * LOGS_PER_PAGE, filteredProgressLogs.length))} প্রদর্শিত হচ্ছে
+                </span>
+
+                <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+                  <div className="flex items-center space-x-1 shrink-0 min-w-max">
+                    <button
+                      onClick={() => setLogCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={logCurrentPage === 1}
+                      className="shrink-0 p-1.5 sm:p-2 border border-slate-200 rounded-xl hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                      title="পূর্ববর্তী পৃষ্ঠা"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {Array.from({ length: totalLogPages }).map((_, idx) => {
+                      const p = idx + 1;
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setLogCurrentPage(p)}
+                          className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-bold transition cursor-pointer ${
+                            logCurrentPage === p
+                              ? 'bg-purple-700 text-white shadow-2xs'
+                              : 'border border-slate-200 hover:bg-white text-slate-700'
+                          }`}
+                        >
+                          {toBn(p)}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setLogCurrentPage(prev => Math.min(prev + 1, totalLogPages))}
+                      disabled={logCurrentPage === totalLogPages}
+                      className="shrink-0 p-1.5 sm:p-2 border border-slate-200 rounded-xl hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                      title="পরবর্তী পৃষ্ঠা"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1152,7 +1951,29 @@ const Batches: React.FC = () => {
 
             {/* Quick Actions in View Drawer */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    const bId = viewingBatch.id;
+                    setLogSelectedBatch(bId);
+                    setActiveMainTab('activity_logs');
+                    setViewingBatch(null);
+                  }}
+                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  title="এই ব্যাচের ট্রেইনারদের অগ্রগতি ও জবাবদিহিতা লগ দেখুন"
+                >
+                  <Activity size={14} />
+                  <span>অ্যাক্টিভিটি লগ ({toBn(progressLogs.filter(l => l.batchId === viewingBatch.id).length)})</span>
+                </button>
+                {SHOW_CALENDAR_MODULES && (
+                  <Link
+                    to={`/shikhon-calendar?batchId=${viewingBatch.id}`}
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center space-x-1"
+                  >
+                    <BookOpen size={14} />
+                    <span>শিখন ক্যালেন্ডার</span>
+                  </Link>
+                )}
                 <Link
                   to="/attendance"
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1"
@@ -1500,6 +2321,66 @@ const Batches: React.FC = () => {
                     <span>{formErrors.tradeId}</span>
                   </p>
                 )}
+              </div>
+
+              {/* Dual Trainer Assignment (Skill Trainer & Literacy Trainer) */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Users size={14} className="text-emerald-600" />
+                    ব্যাচের দ্বৈত প্রশিক্ষক নির্ধারণ (Dual Trainer Assignment)
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-normal">২ জন প্রশিক্ষক (স্কিল ও লিটারেসি)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Skill Trainer */}
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-800 mb-1 flex items-center gap-1">
+                      <Wrench size={12} className="text-emerald-600" />
+                      <span>১. স্কিল ট্রেইনার (ট্রেড ভিত্তিক)</span>
+                    </label>
+                    <select
+                      value={formData.skillTrainerId}
+                      onChange={e => setFormData({ ...formData, skillTrainerId: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="">-- স্কিল ট্রেইনার নির্বাচন করুন --</option>
+                      {users
+                        .filter(u => u.role === 'Trainer' || u.trainerType === 'Skill Trainer')
+                        .map(u => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} {u.trainerType ? `[${u.trainerType}]` : ''} ({u.phone || u.email})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Literacy Trainer */}
+                  <div>
+                    <label className="block text-xs font-semibold text-sky-800 mb-1 flex items-center gap-1">
+                      <BookOpen size={12} className="text-sky-600" />
+                      <span>২. লিটারেসি ট্রেইনার (জীবন দক্ষতা)</span>
+                    </label>
+                    <select
+                      value={formData.literacyTrainerId}
+                      onChange={e => setFormData({ ...formData, literacyTrainerId: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="">-- লিটারেসি ট্রেইনার নির্বাচন করুন --</option>
+                      {users
+                        .filter(u => u.role === 'Trainer' || u.trainerType === 'Literacy Trainer')
+                        .map(u => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} {u.trainerType ? `[${u.trainerType}]` : ''} ({u.phone || u.email})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  * ট্রেইনারগণ নিজ নিজ মডিউল সম্পন্ন মার্ক করবেন। সমন্বিত ক্যালেন্ডার শুধুমাত্র কোর্স পরিচালক ও FMA পর্যবেক্ষণ করতে পারবেন।
+                </p>
               </div>
 
               {/* Start Date & End Date */}

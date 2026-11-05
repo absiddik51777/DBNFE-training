@@ -68,6 +68,18 @@ export function toBn(num: number | string | undefined | null): string {
 }
 
 /**
+ * Converts Bengali numerals (০-৯) to Western ASCII digits (0-9).
+ */
+export function toEnDigits(str: string | number | undefined | null): string {
+  if (str === undefined || str === null) return '';
+  const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(str).replace(/[০-৯]/g, d => {
+    const idx = bnDigits.indexOf(d);
+    return idx !== -1 ? String(idx) : d;
+  });
+}
+
+/**
  * Format date string (YYYY-MM-DD) into Bengali readable string (e.g. ১৫ অক্টোবর ২০২৬, বৃহস্পতিবার)
  */
 export function formatBengaliDate(dateStr: string): string {

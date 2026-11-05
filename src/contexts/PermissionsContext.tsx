@@ -146,50 +146,25 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Determine fallback landing route for the current user
   const getDefaultLandingRoute = useCallback((targetAttemptedPath?: string): string => {
-    // 1. If attempted path is valid and accessible, stay there
+    // 1. If attempted path is valid and accessible (and not generic root), stay there
     if (targetAttemptedPath && targetAttemptedPath !== '/' && canViewPage(targetAttemptedPath)) {
       return targetAttemptedPath;
     }
 
-    // 2. If user can view Dashboard ('/'), default is Dashboard
+    // 2. Trainers are always redirected to the dedicated Trainer Dashboard
+    if (userProfile?.role === 'Trainer' || currentRole?.code === 'trainer') {
+      return '/trainer-dashboard';
+    }
+
+    // 3. For all other roles, the redirect URL is the main Dashboard ('/')
     if (canViewPage('/')) {
       return '/';
     }
 
-    // 3. Check role's configured defaultLandingRoute
-    const roleDefault = currentRole?.defaultLandingRoute;
-    if (roleDefault && roleDefault !== '/' && canViewPage(roleDefault)) {
-      return roleDefault;
-    }
-
-    // 4. Check localStorage override for role
-    if (currentRole) {
-      const storedOverride =
-        localStorage.getItem(`bnfe_landing_${currentRole.id}`) ||
-        localStorage.getItem(`bnfe_landing_${currentRole.code}`);
-      if (storedOverride && storedOverride !== '/' && canViewPage(storedOverride)) {
-        return storedOverride;
-      }
-    }
-
-    // 5. Preferred fallback order per role
-    const preferredRoutes =
-      currentRole?.code === 'trainer' || userProfile?.role === 'Trainer'
-        ? ['/attendance', '/attendance-sheet', '/batches', '/trainees', '/exams', '/results']
-        : ['/trainees', '/attendance', '/batches', '/institutes', '/reports', '/exams'];
-
-    for (const route of preferredRoutes) {
-      if (canViewPage(route)) {
-        return route;
-      }
-    }
-
-    // 6. Any other accessible registered route
-    const allRoutes = Object.keys(PATH_TO_PAGE_PERMISSION);
+    // 4. Fallback if '/' is not permitted
+    const allRoutes = ['/attendance', '/batches', '/trainees', '/institutes'];
     for (const route of allRoutes) {
-      if (route !== '/' && route !== '/roles' && canViewPage(route)) {
-        return route;
-      }
+      if (canViewPage(route)) return route;
     }
 
     return '/attendance';

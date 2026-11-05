@@ -29,6 +29,7 @@ import { Trade, Batch, Trainee, Exam } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 
@@ -70,7 +71,7 @@ const Trades: React.FC = () => {
     description: '',
     duration: '৬ মাস (৩৬০ ঘণ্টা)',
     customDuration: '',
-    status: 'Active' as 'Active' | 'Inactive',
+    status: 'Active' as 'Active' | 'Inactive' | 'Archived',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +85,7 @@ const Trades: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission, isCourseDirector } = usePermissions();
   const { isDeletionAllowed } = useSystemSettings();
+  const { confirm, showAlert } = useConfirm();
 
   const isDirector = isCourseDirector || userProfile?.role === 'Course Director';
   const canCreate = hasPermission('create_trade') || isDirector;
@@ -123,7 +125,11 @@ const Trades: React.FC = () => {
       setActionSuccessMessage('ডিফল্ট ট্রেড তালিকা সফলভাবে লোড করা হয়েছে।');
       setTimeout(() => setActionSuccessMessage(''), 3000);
     } catch (e: any) {
-      alert("ডিফল্ট ট্রেড লোড করতে সমস্যা হয়েছে: " + e.message);
+      await showAlert({
+        title: 'ত্রুটি',
+        message: "ডিফল্ট ট্রেড লোড করতে সমস্যা হয়েছে: " + e.message,
+        variant: 'danger'
+      });
     } finally {
       setLoading(false);
     }
@@ -308,7 +314,11 @@ const Trades: React.FC = () => {
       await fetchTradesData();
     } catch (error) {
       console.warn("Notice saving trade:", error);
-      alert("ট্রেড সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।");
+      await showAlert({
+        title: 'সংরক্ষণ ব্যর্থ',
+        message: "ট্রেড সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।",
+        variant: 'danger'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -318,8 +328,30 @@ const Trades: React.FC = () => {
   const handleDeleteRequest = async (trade: Trade) => {
     if (!canDelete) return;
 
+    // Fallback to archive when deleting is denied
     if (!isDeletionAllowed) {
-      alert("🔒 সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'ট্রেড সংরক্ষণাগারে স্থানান্তর (Fallback to Archive)',
+        message: `সিস্টেম সেটিংস অনুযায়ী ট্রেড স্থায়ীভাবে মুছে ফেলা বন্ধ (Denied) রয়েছে। আপনি কি "${trade.name} (${trade.code})" ট্রেডটি মুছে ফেলার পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ সংরক্ষণাগারে স্থানান্তর করলে সংশ্লিষ্ট ব্যাচ ক্ষতিগ্রস্ত হবে না এবং ট্রেডটি সক্রিয় তালিকা থেকে সংরক্ষণাগারে নিরাপদে রাখা হবে।',
+        confirmText: 'হ্যাঁ, ট্রেড আর্কাইভ করুন (Archive)',
+        cancelText: 'বাতিল',
+        variant: 'warning'
+      });
+
+      if (confirmed) {
+        await dataService.archiveRecord('trades', trade.id, 'সিস্টেম ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর');
+        await logActivity(
+          userProfile?.id || '',
+          userProfile?.name || 'User',
+          `ট্রেড সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${trade.name} (${trade.code})`,
+          'Trades',
+          trade.id
+        );
+        setActionSuccessMessage(`"${trade.name}" ট্রেডটি সফলভাবে সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
+        setTimeout(() => setActionSuccessMessage(''), 3500);
+        await fetchTradesData();
+      }
       return;
     }
 
@@ -343,8 +375,17 @@ const Trades: React.FC = () => {
         trade.id
       );
     } else {
-      // Unreferenced trade: Safe to hard delete directly
-      if (window.confirm(`আপনি কি নিশ্চিতভাবে "${trade.name} (${trade.code})" ট্রেডটি সিস্টেম থেকে সম্পূর্ণরূপে মুছে ফেলতে চান?`)) {
+      // Unreferenced trade: Safe to hard delete directly with confirmation modal
+      const confirmed = await confirm({
+        title: 'ট্রেড অপসারণের নিশ্চিতকরণ',
+        message: `আপনি কি নিশ্চিতভাবে "${trade.name} (${trade.code})" ট্রেডটি সিস্টেম থেকে সম্পূর্ণরূপে মুছে ফেলতে চান?`,
+        detail: 'এই অপারেশনের ফলে ট্রেডের সমস্ত তথ্য অপসারিত হবে।',
+        confirmText: 'হ্যাঁ, মুছে ফেলুন',
+        cancelText: 'বাতিল',
+        variant: 'danger'
+      });
+
+      if (confirmed) {
         try {
           await dataService.deleteTrade(trade.id);
           await logActivity(
@@ -359,7 +400,11 @@ const Trades: React.FC = () => {
           fetchTradesData();
         } catch (error: any) {
           console.warn("Notice deleting trade:", error);
-          alert("ট্রেড ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error));
+          await showAlert({
+            title: 'ব্যর্থতা',
+            message: "ট্রেড ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error),
+            variant: 'danger'
+          });
         }
       }
     }
@@ -369,12 +414,35 @@ const Trades: React.FC = () => {
   const handleForceDeleteTrade = async () => {
     if (!safeDeleteModalTrade || !canDelete) return;
     if (!isDeletionAllowed) {
-      alert("🔒 সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'ট্রেড সংরক্ষণাগারে স্থানান্তর (Fallback to Archive)',
+        message: `সিস্টেম সেটিংস অনুযায়ী ট্রেড ডিলিট বন্ধ (Denied) রাখা হয়েছে। আপনি কি "${safeDeleteModalTrade.trade.name}" ট্রেডটি মুছে ফেলার পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ সংরক্ষণাগারে পাঠালে সংশ্লিষ্ট সকল ব্যাচ তথ্য সুরক্ষিত থাকবে এবং ট্রেডটি সংরক্ষণাগারে থাকবে।',
+        confirmText: 'হ্যাঁ, সংরক্ষণাগারে পাঠান',
+        cancelText: 'বাতিল',
+        variant: 'warning'
+      });
+      if (confirmed) {
+        await dataService.archiveRecord('trades', safeDeleteModalTrade.trade.id, 'ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর');
+        setSafeDeleteModalTrade(null);
+        setActionSuccessMessage(`"${safeDeleteModalTrade.trade.name}" ট্রেডটি সংরক্ষণাগারে স্থানান্তর করা হয়েছে।`);
+        setTimeout(() => setActionSuccessMessage(''), 3500);
+        await fetchTradesData();
+      }
       return;
     }
 
     const { trade } = safeDeleteModalTrade;
-    if (window.confirm(`⚠️ আপনি কি নিশ্চিতভাবে "${trade.name} (${trade.code})" ট্রেডটি মুছে ফেলতে চান? সংশ্লিষ্ট ব্যাচ থেকে এই ট্রেডের লিংক বাতিল করা হবে।`)) {
+    const confirmed = await confirm({
+      title: 'বলপূর্বক ট্রেড অপসারণের নিশ্চিতকরণ',
+      message: `আপনি কি নিশ্চিতভাবে "${trade.name} (${trade.code})" ট্রেডটি মুছে ফেলতে চান?`,
+      detail: '⚠️ সতর্কতা: সংশ্লিষ্ট ব্যাচ থেকে এই ট্রেডের লিংক বাতিল করা হবে।',
+      confirmText: 'হ্যাঁ, মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      variant: 'danger'
+    });
+
+    if (confirmed) {
       try {
         await dataService.deleteTrade(trade.id);
         await logActivity(
@@ -390,7 +458,11 @@ const Trades: React.FC = () => {
         await fetchTradesData();
       } catch (error: any) {
         console.warn("Notice force deleting trade:", error);
-        alert("ট্রেড ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error));
+        await showAlert({
+          title: 'ব্যর্থতা',
+          message: "ট্রেড ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || error),
+          variant: 'danger'
+        });
       }
     }
   };
@@ -859,41 +931,43 @@ const Trades: React.FC = () => {
             মোট {toBn(processedTrades.length)}টি ট্রেডের মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, processedTrades.length))} প্রদর্শিত হচ্ছে
           </span>
 
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="পূর্ববর্তী পৃষ্ঠা"
-            >
-              <ChevronLeft size={16} />
-            </button>
+          <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+            <div className="flex items-center space-x-1 shrink-0 min-w-max">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                title="পূর্ববর্তী পৃষ্ঠা"
+              >
+                <ChevronLeft size={16} />
+              </button>
 
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const p = idx + 1;
-              return (
-                <button
-                  key={p}
-                  onClick={() => handlePageChange(p)}
-                  className={`w-8 h-8 rounded-xl font-bold transition ${
-                    currentPage === p
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  {toBn(p)}
-                </button>
-              );
-            })}
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const p = idx + 1;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => handlePageChange(p)}
+                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition ${
+                      currentPage === p
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    {toBn(p)}
+                  </button>
+                );
+              })}
 
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="পরবর্তী পৃষ্ঠা"
-            >
-              <ChevronRight size={16} />
-            </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                title="পরবর্তী পৃষ্ঠা"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}

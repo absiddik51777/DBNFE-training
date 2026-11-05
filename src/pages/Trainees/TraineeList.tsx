@@ -30,15 +30,20 @@ import {
   Table as TableIcon,
   UserX,
   Award,
-  ArrowUpDown
+  ArrowUpDown,
+  Upload,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 import { Trainee, Institute, Trade, Batch, TraineeStatus } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
+import { useConfirm } from '../../contexts/ConfirmationContext';
 import { Link } from 'react-router-dom';
 import { dataService } from '../../lib/dataService';
 import { toBn, safeFormatDate } from '../../lib/dateUtils';
+import { TraineeBulkImportModal } from '../../components/TraineeBulkImportModal';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -65,6 +70,7 @@ const TraineeList: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState('');
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,6 +100,7 @@ const TraineeList: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission } = usePermissions();
   const { isDeletionAllowed } = useSystemSettings();
+  const { confirm, showAlert } = useConfirm();
 
   const canCreate = hasPermission('create_trainee');
   const canEdit = hasPermission('edit_trainee');
@@ -145,14 +152,19 @@ const TraineeList: React.FC = () => {
 
   // Trainee KPI Stats
   const stats = useMemo(() => {
-    const total = trainees.length;
-    const active = trainees.filter(t => !t.status || t.status === 'Active').length;
-    const completed = trainees.filter(t => t.status === 'Completed').length;
-    const dropped = trainees.filter(t => t.status === 'Dropped Out').length;
-    const female = trainees.filter(t => t.gender === 'Female').length;
-    const male = trainees.filter(t => t.gender === 'Male').length;
-    return { total, active, completed, dropped, female, male };
-  }, [trainees]);
+    const scopedList = userProfile?.role === 'Trainer' && userProfile.batchId
+      ? trainees.filter(t => t.batchId === userProfile.batchId)
+      : trainees;
+
+    const total = scopedList.length;
+    const active = scopedList.filter(t => !t.status || t.status === 'Active').length;
+    const completed = scopedList.filter(t => t.status === 'Completed').length;
+    const dropped = scopedList.filter(t => t.status === 'Dropped Out').length;
+    const archived = scopedList.filter(t => t.status === 'Archived' || t.isArchived).length;
+    const female = scopedList.filter(t => t.gender === 'Female').length;
+    const male = scopedList.filter(t => t.gender === 'Male').length;
+    return { total, active, completed, dropped, archived, female, male };
+  }, [trainees, userProfile]);
 
   // Helper names
   const getInstituteName = (id?: string) => institutes.find(i => i.id === id)?.name || id || '-';
@@ -161,17 +173,24 @@ const TraineeList: React.FC = () => {
 
   // Dynamic Batch Filter Options: based on selected institute and trade
   const availableBatchOptions = useMemo(() => {
+    if (userProfile?.role === 'Trainer' && userProfile.batchId) {
+      return batches.filter(b => b.id === userProfile.batchId);
+    }
     return batches.filter(b => {
       if (filterInstitute && b.instituteId !== filterInstitute) return false;
       if (filterTrade && b.tradeId !== filterTrade) return false;
       return true;
     });
-  }, [batches, filterInstitute, filterTrade]);
+  }, [batches, filterInstitute, filterTrade, userProfile]);
 
   // Filter & Search Logic
   const filteredTrainees = useMemo(() => {
     return trainees
       .filter((t) => {
+        // Strict Trainer Batch Isolation: Trainers cannot see or act upon trainees outside their assigned batch
+        if (userProfile?.role === 'Trainer' && userProfile.batchId && t.batchId !== userProfile.batchId) {
+          return false;
+        }
         // Search text: Name (BN/EN), Reg No, Trainee ID, Mobile
         if (searchTerm.trim()) {
           const term = searchTerm.toLowerCase().trim();
@@ -206,25 +225,29 @@ const TraineeList: React.FC = () => {
       });
   }, [trainees, searchTerm, filterInstitute, filterTrade, filterBatch, filterGender, filterStatus, sortBy, batches]);
 
-  // Active filters count
+  const isTrainer = userProfile?.role === 'Trainer';
+
+  // Active filters count (excluding hidden default scoping for Trainer)
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (filterInstitute) count++;
-    if (filterTrade) count++;
-    if (filterBatch) count++;
+    if (!isTrainer) {
+      if (filterInstitute) count++;
+      if (filterTrade) count++;
+      if (filterBatch) count++;
+    }
     if (filterGender) count++;
     if (filterStatus) count++;
     if (searchTerm) count++;
     return count;
-  }, [filterInstitute, filterTrade, filterBatch, filterGender, filterStatus, searchTerm]);
+  }, [isTrainer, filterInstitute, filterTrade, filterBatch, filterGender, filterStatus, searchTerm]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
-    if (userProfile?.role !== 'Trainer') {
+    if (!isTrainer) {
       setFilterInstitute('');
       setFilterBatch('');
+      setFilterTrade('');
     }
-    setFilterTrade('');
     setFilterGender('');
     setFilterStatus('');
     setCurrentPage(1);
@@ -264,19 +287,41 @@ const TraineeList: React.FC = () => {
     setSelectedIds(new Set());
   };
 
-  // Safe Delete Flow
+  // Safe Delete Flow: Fallback to archive when deleting is denied
   const handleDeleteRequest = async (trainee: Trainee) => {
     if (!canDelete) return;
 
+    // 1. If system deletion is denied by settings, fallback to archive with confirmation
     if (!isDeletionAllowed) {
-      alert("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'রেকর্ড আর্কাইভে স্থানান্তর (Fallback to Archive)',
+        message: `সিস্টেম সেটিংস অনুযায়ী ডাটা স্থায়ীভাবে মুছে ফেলা বন্ধ (Denied) রয়েছে। আপনি কি "${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})" শিক্ষার্থীর রেকর্ডটি ডিলিটের পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ আর্কাইভে স্থানান্তর করলে শিক্ষার্থীর যাবতীয় ইতিহাস, হাজিরা ও পরীক্ষার তথ্য ডাটাবেজে অক্ষুণ্ণ রেখে সক্রিয় তালিকা থেকে লুকায়িত রাখা হবে। পরবর্তীতে যে কোনো সময় এটি সক্রিয় তালিকায় ফিরিয়ে আনা যাবে।',
+        confirmText: 'হ্যাঁ, আর্কাইভে পাঠান (Archive)',
+        cancelText: 'বাতিল',
+        variant: 'warning',
+      });
+
+      if (confirmed) {
+        await dataService.archiveRecord('trainees', trainee.id, 'সিস্টেমে ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর');
+        await logActivity(
+          userProfile?.id || '',
+          userProfile?.name || 'User',
+          `প্রশিক্ষণার্থী আর্কাইভে স্থানান্তর (ডিলিট নিষিদ্ধ থাকায় ফলব্যাক): ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
+          'Trainees',
+          trainee.id
+        );
+        setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থীর রেকর্ড সফলভাবে আর্কাইভে স্থানান্তর করা হয়েছে।`);
+        setTimeout(() => setActionSuccessMessage(''), 3500);
+        fetchData();
+      }
       return;
     }
 
     try {
       const usage = await dataService.checkTraineeUsage(trainee.id);
       if (usage.isReferenced) {
-        // Referenced! Block hard deletion and open status transition modal
+        // Referenced! Block hard deletion and open status/archive transition modal
         setSafeDeleteModalTrainee({
           trainee,
           attendanceCount: usage.attendanceCount,
@@ -286,15 +331,20 @@ const TraineeList: React.FC = () => {
         await logActivity(
           userProfile?.id || '',
           userProfile?.name || 'User',
-          `প্রশিক্ষণার্থী মোছার চেষ্টা ব্যর্থ (রেকর্ড বিদ্যমান): ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
+          `প্রশিক্ষণার্থী মোছার চেষ্টা (রেকর্ড বিদ্যমান থাকায় বিকল্প ট্রানজিশন উন্মুক্ত): ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
           'Trainees',
           trainee.id
         );
       } else {
-        // Unreferenced: Safe to hard delete with confirmation
-        const confirmed = window.confirm(
-          `আপনি কি নিশ্চিতভাবে "${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})" এর রেকর্ডটি স্থায়ীভাবে মুছে ফেলতে চান?`
-        );
+        // Unreferenced: Safe to hard delete with beautiful confirmation modal
+        const confirmed = await confirm({
+          title: 'প্রশিক্ষণার্থী রেকর্ড অপসারণ',
+          message: `আপনি কি নিশ্চিতভাবে "${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})" এর রেকর্ডটি স্থায়ীভাবে মুছে ফেলতে চান?`,
+          detail: 'এই অপারেশনের ফলে শিক্ষার্থীর তথ্য ডাটাবেজ থেকে স্থায়ীভাবে মুছে যাবে এবং এটি পূর্বাবস্থায় ফেরানো যাবে না।',
+          confirmText: 'হ্যাঁ, মুছে ফেলুন',
+          cancelText: 'বাতিল',
+          variant: 'danger',
+        });
         if (confirmed) {
           await dataService.deleteItem('trainees', trainee.id);
           await logActivity(
@@ -314,15 +364,19 @@ const TraineeList: React.FC = () => {
     }
   };
 
-  // Change status of a referenced trainee instead of deleting
+  // Change status of a referenced trainee instead of deleting (Supports Archive)
   const handleUpdateStatusSafe = async (status: TraineeStatus) => {
     if (!safeDeleteModalTrainee || !canEdit) return;
     const { trainee } = safeDeleteModalTrainee;
 
     try {
+      const isArchiving = status === 'Archived';
       const updated: Trainee = {
         ...trainee,
         status,
+        isArchived: isArchiving,
+        archivedAt: isArchiving ? Date.now() : undefined,
+        archivedReason: isArchiving ? 'রেফারেন্স ডেটা বিদ্যমান থাকায় মোছার পরিবর্তে সংরক্ষণাগারে স্থানান্তর' : undefined,
         updatedAt: Date.now()
       };
       await dataService.saveItem('trainees', updated);
@@ -335,7 +389,13 @@ const TraineeList: React.FC = () => {
         trainee.id
       );
 
-      setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থীর স্ট্যাটাস '${status === 'Dropped Out' ? 'ঝরে পড়া' : 'সম্পন্ন'}' হিসেবে আপডেট করা হয়েছে।`);
+      const statusLabels: Record<string, string> = {
+        'Active': 'সক্রিয়',
+        'Completed': 'কোর্স সম্পন্ন',
+        'Dropped Out': 'ঝরে পড়া',
+        'Archived': 'সংরক্ষণাগার (আর্কাইভ)'
+      };
+      setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থীর স্ট্যাটাস '${statusLabels[status] || status}' হিসেবে আপডেট করা হয়েছে।`);
       setTimeout(() => setActionSuccessMessage(''), 3500);
 
       setSafeDeleteModalTrainee(null);
@@ -345,11 +405,39 @@ const TraineeList: React.FC = () => {
     }
   };
 
+  // Restore/Unarchive an archived trainee
+  const handleRestoreTrainee = async (trainee: Trainee) => {
+    if (!canEdit) return;
+    try {
+      await dataService.unarchiveRecord('trainees', trainee.id);
+      await logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'User',
+        `আর্কাইভ থেকে প্রশিক্ষণার্থী পুনরুদ্ধার: ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
+        'Trainees',
+        trainee.id
+      );
+      setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থী সফলভাবে সক্রিয় তালিকায় ফিরিয়ে আনা হয়েছে।`);
+      setTimeout(() => setActionSuccessMessage(''), 3500);
+      fetchData();
+    } catch (err) {
+      console.warn("Could not unarchive trainee:", err);
+    }
+  };
+
   // Bulk Status Update for selected trainees
   const handleBulkStatusUpdate = async (newStatus: TraineeStatus) => {
     if (selectedIds.size === 0 || !canEdit) return;
 
-    if (!window.confirm(`আপনি কি নিশ্চিতভাবে নির্বাচিত ${selectedIds.size} জন শিক্ষার্থীর স্ট্যাটাস '${newStatus}' করতে চান?`)) {
+    const confirmed = await confirm({
+      title: 'বাল্ক স্ট্যাটাস পরিবর্তন',
+      message: `আপনি কি নিশ্চিতভাবে নির্বাচিত ${toBn(selectedIds.size)} জন শিক্ষার্থীর স্ট্যাটাস '${newStatus === 'Dropped Out' ? 'ঝরে পড়া' : newStatus === 'Completed' ? 'কোর্স সম্পন্ন' : 'সক্রিয়'}' করতে চান?`,
+      confirmText: 'হ্যাঁ, পরিবর্তন করুন',
+      cancelText: 'বাতিল',
+      variant: 'warning',
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -399,9 +487,13 @@ const TraineeList: React.FC = () => {
   };
 
   // Enhanced CSV Export: UTF-8 BOM, sanitized fields, respects selection or active filters
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     if (!canExport) {
-      alert("আপনার সিএসভি এক্সপোর্ট করার অনুমতি নেই।");
+      await showAlert({
+        title: 'অনুমতি নেই',
+        message: "আপনার সিএসভি এক্সপোর্ট করার অনুমতি নেই।",
+        variant: 'warning'
+      });
       return;
     }
 
@@ -410,7 +502,11 @@ const TraineeList: React.FC = () => {
       : filteredTrainees;
 
     if (exportList.length === 0) {
-      alert("এক্সপোর্ট করার মতো কোনো শিক্ষার্থী পাওয়া যায়নি।");
+      await showAlert({
+        title: 'তথ্য নেই',
+        message: "এক্সপোর্ট করার মতো কোনো শিক্ষার্থী পাওয়া যায়নি।",
+        variant: 'info'
+      });
       return;
     }
 
@@ -493,6 +589,8 @@ const TraineeList: React.FC = () => {
         return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-200">কোর্স সম্পন্ন</span>;
       case 'Dropped Out':
         return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-300">ঝরে পড়া</span>;
+      case 'Archived':
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-800 border border-slate-300 flex items-center space-x-1"><Archive size={11} className="inline mr-1" /><span>আর্কাইভকৃত</span></span>;
       default:
         return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">সক্রিয়</span>;
     }
@@ -544,7 +642,7 @@ const TraineeList: React.FC = () => {
           {canExport && (
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-2xs transition"
+              className="px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-2xs transition cursor-pointer"
               title="বাংলা ফন্টসহ সিএসভি ফাইলে এক্সপোর্ট করুন"
             >
               <Download size={15} className="text-emerald-700" />
@@ -554,6 +652,17 @@ const TraineeList: React.FC = () => {
                   {toBn(selectedIds.size)}
                 </span>
               )}
+            </button>
+          )}
+
+          {canCreate && (
+            <button
+              onClick={() => setBulkImportOpen(true)}
+              className="px-3.5 py-2.5 bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-2xs transition cursor-pointer"
+              title="এক্সেল অথবা সিএসভি ফাইলের মাধ্যমে একযোগে একাধিক শিক্ষার্থী নিবন্ধন করুন"
+            >
+              <Upload size={16} className="text-teal-700" />
+              <span>বাল্ক ইনপুট (Excel/CSV)</span>
             </button>
           )}
 
@@ -708,55 +817,57 @@ const TraineeList: React.FC = () => {
         </div>
 
         {/* Filters Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-2 border-t border-slate-100 text-xs">
-          {/* Institute Filter */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">প্রতিষ্ঠান:</label>
-            <select
-              value={filterInstitute}
-              onChange={(e) => { 
-                setFilterInstitute(e.target.value); 
-                setFilterBatch(''); 
-                setCurrentPage(1); 
-              }}
-              disabled={userProfile?.role === 'Trainer' && !!userProfile.instituteId}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            >
-              <option value="">সকল প্রতিষ্ঠান</option>
-              {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-          </div>
+        <div className={`grid ${isTrainer ? 'grid-cols-2 max-w-md' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'} gap-2.5 pt-2 border-t border-slate-100 text-xs`}>
+          {!isTrainer && (
+            <>
+              {/* Institute Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">প্রতিষ্ঠান:</label>
+                <select
+                  value={filterInstitute}
+                  onChange={(e) => { 
+                    setFilterInstitute(e.target.value); 
+                    setFilterBatch(''); 
+                    setCurrentPage(1); 
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">সকল প্রতিষ্ঠান</option>
+                  {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </div>
 
-          {/* Trade Filter */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">বৃত্তিমূলক ট্রেড:</label>
-            <select
-              value={filterTrade}
-              onChange={(e) => { 
-                setFilterTrade(e.target.value); 
-                setFilterBatch(''); 
-                setCurrentPage(1); 
-              }}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="">সকল ট্রেড</option>
-              {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+              {/* Trade Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">বৃত্তিমূলক ট্রেড:</label>
+                <select
+                  value={filterTrade}
+                  onChange={(e) => { 
+                    setFilterTrade(e.target.value); 
+                    setFilterBatch(''); 
+                    setCurrentPage(1); 
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">সকল ট্রেড</option>
+                  {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
 
-          {/* Batch Filter (Filtered by selected institute and trade) */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">প্রশিক্ষণ ব্যাচ:</label>
-            <select
-              value={filterBatch}
-              onChange={(e) => { setFilterBatch(e.target.value); setCurrentPage(1); }}
-              disabled={userProfile?.role === 'Trainer' && !!userProfile.batchId}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            >
-              <option value="">সকল ব্যাচ ({toBn(availableBatchOptions.length)}টি)</option>
-              {availableBatchOptions.map(b => <option key={b.id} value={b.id}>{b.name} ({b.batchCode || b.id})</option>)}
-            </select>
-          </div>
+              {/* Batch Filter (Filtered by selected institute and trade) */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">প্রশিক্ষণ ব্যাচ:</label>
+                <select
+                  value={filterBatch}
+                  onChange={(e) => { setFilterBatch(e.target.value); setCurrentPage(1); }}
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">সকল ব্যাচ ({toBn(availableBatchOptions.length)}টি)</option>
+                  {availableBatchOptions.map(b => <option key={b.id} value={b.id}>{b.name} ({b.batchCode || b.id})</option>)}
+                </select>
+              </div>
+            </>
+          )}
 
           {/* Gender Filter */}
           <div>
@@ -785,6 +896,7 @@ const TraineeList: React.FC = () => {
               <option value="Active">সক্রিয় (Active)</option>
               <option value="Completed">সম্পন্ন (Completed)</option>
               <option value="Dropped Out">ঝরে পড়া (Dropped Out)</option>
+              <option value="Archived">সংরক্ষণাগার / আর্কাইভকৃত (Archived)</option>
             </select>
           </div>
         </div>
@@ -944,8 +1056,14 @@ const TraineeList: React.FC = () => {
                         <span className="font-mono font-bold text-slate-800 block text-xs">
                           {t.traineeId || 'N/A'}
                         </span>
-                        <span className="text-[11px] text-slate-400 font-mono block">
-                          রেজিঃ {t.registrationNumber}
+                        <span className="text-[11px] font-mono block">
+                          {t.registrationNumber ? (
+                            <span className="text-slate-500">রেজিঃ {t.registrationNumber}</span>
+                          ) : (
+                            <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
+                              রেজিঃ অপেক্ষমাণ
+                            </span>
+                          )}
                         </span>
                       </td>
 
@@ -1015,11 +1133,20 @@ const TraineeList: React.FC = () => {
                               <Edit2 size={16} />
                             </Link>
                           )}
+                          {(t.status === 'Archived' || t.isArchived) && canEdit && (
+                            <button
+                              onClick={() => handleRestoreTrainee(t)}
+                              className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                              title="সক্রিয় তালিকায় পুনরুদ্ধার করুন (Restore)"
+                            >
+                              <ArchiveRestore size={16} />
+                            </button>
+                          )}
                           {canDelete && (
                             <button
                               onClick={() => handleDeleteRequest(t)}
                               className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                              title="মুছে ফেলুন বা স্ট্যাটাস পরিবর্তন করুন"
+                              title={!isDeletionAllowed ? 'আর্কাইভে পাঠান (ডিলিট বন্ধ থাকায়)' : 'মুছে ফেলুন বা সংরক্ষণাগারে পাঠান'}
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1076,7 +1203,14 @@ const TraineeList: React.FC = () => {
                       <p className="text-[11px] text-slate-400 italic">{t.nameEn}</p>
                     )}
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      রেজিস্ট্রেশন: <strong>{t.registrationNumber}</strong>
+                      রেজিস্ট্রেশন:{' '}
+                      {t.registrationNumber ? (
+                        <strong className="font-mono text-slate-700">{t.registrationNumber}</strong>
+                      ) : (
+                        <span className="text-amber-700 font-normal italic text-[10px] bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                          অপেক্ষমাণ
+                        </span>
+                      )}
                     </span>
                   </div>
 
@@ -1125,11 +1259,20 @@ const TraineeList: React.FC = () => {
                         <Edit2 size={15} />
                       </Link>
                     )}
+                    {(t.status === 'Archived' || t.isArchived) && canEdit && (
+                      <button
+                        onClick={() => handleRestoreTrainee(t)}
+                        className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                        title="সক্রিয় তালিকায় ফিরিয়ে আনুন (Restore)"
+                      >
+                        <ArchiveRestore size={15} />
+                      </button>
+                    )}
                     {canDelete && (
                       <button
                         onClick={() => handleDeleteRequest(t)}
                         className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                        title="মুছুন"
+                        title={!isDeletionAllowed ? 'আর্কাইভে পাঠান (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1151,41 +1294,43 @@ const TraineeList: React.FC = () => {
             মোট {toBn(filteredTrainees.length)} জন শিক্ষার্থীর মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, filteredTrainees.length))} প্রদর্শিত হচ্ছে
           </span>
 
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="পূর্ববর্তী পৃষ্ঠা"
-            >
-              <ChevronLeft size={16} />
-            </button>
+          <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+            <div className="flex items-center space-x-1 shrink-0 min-w-max">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                title="পূর্ববর্তী পৃষ্ঠা"
+              >
+                <ChevronLeft size={16} />
+              </button>
 
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const p = idx + 1;
-              return (
-                <button
-                  key={p}
-                  onClick={() => setCurrentPage(p)}
-                  className={`w-8 h-8 rounded-xl font-bold transition ${
-                    currentPage === p
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  {toBn(p)}
-                </button>
-              );
-            })}
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const p = idx + 1;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition ${
+                      currentPage === p
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    {toBn(p)}
+                  </button>
+                );
+              })}
 
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="পরবর্তী পৃষ্ঠা"
-            >
-              <ChevronRight size={16} />
-            </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                title="পরবর্তী পৃষ্ঠা"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1230,15 +1375,23 @@ const TraineeList: React.FC = () => {
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-              <span className="font-bold text-slate-800 block">নিরাপদ স্ট্যাটাস পরিবর্তন নির্বাচন করুন:</span>
-              <div className="grid grid-cols-2 gap-2">
+              <span className="font-bold text-slate-800 block">মুছে ফেলার বিকল্প নির্বাচন করুন (Fallback Options):</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateStatusSafe('Archived')}
+                  className="p-2.5 bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition flex items-center justify-center space-x-1.5"
+                >
+                  <Archive size={15} className="text-slate-600" />
+                  <span>আর্কাইভ করুন (Archive)</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleUpdateStatusSafe('Dropped Out')}
                   className="p-2.5 bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 rounded-xl font-bold transition flex items-center justify-center space-x-1"
                 >
                   <UserX size={15} />
-                  <span>ঝরে পড়া (Dropped Out)</span>
+                  <span>ঝরে পড়া (Dropout)</span>
                 </button>
                 <button
                   type="button"
@@ -1246,7 +1399,7 @@ const TraineeList: React.FC = () => {
                   className="p-2.5 bg-blue-50 border border-blue-300 hover:bg-blue-100 text-blue-900 rounded-xl font-bold transition flex items-center justify-center space-x-1"
                 >
                   <Award size={15} />
-                  <span>কোর্স সম্পন্ন (Completed)</span>
+                  <span>কোর্স সম্পন্ন</span>
                 </button>
               </div>
             </div>
@@ -1263,6 +1416,21 @@ const TraineeList: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Bulk Import Modal */}
+      <TraineeBulkImportModal
+        isOpen={bulkImportOpen}
+        onClose={() => setBulkImportOpen(false)}
+        onSuccess={(count) => {
+          setActionSuccessMessage(`এক্সেল/সিএসভি থেকে ${toBn(count)} জন শিক্ষার্থীর তথ্য সফলভাবে ডাটাবেজে সংরক্ষণ করা হয়েছে!`);
+          setTimeout(() => setActionSuccessMessage(''), 4500);
+          fetchData();
+        }}
+        batches={batches}
+        institutes={institutes}
+        trades={trades}
+        existingTrainees={trainees}
+      />
     </div>
   );
 };

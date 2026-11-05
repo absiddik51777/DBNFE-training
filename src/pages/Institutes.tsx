@@ -5,6 +5,7 @@ import { Institute } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { dataService } from '../lib/dataService';
 
 const Institutes: React.FC = () => {
@@ -15,6 +16,7 @@ const Institutes: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission, isCourseDirector } = usePermissions();
   const { isDeletionAllowed } = useSystemSettings();
+  const { confirm, showAlert } = useConfirm();
   
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -26,7 +28,7 @@ const Institutes: React.FC = () => {
     contactPerson: '',
     phone: '',
     email: '',
-    status: 'Active' as 'Active' | 'Inactive',
+    status: 'Active' as 'Active' | 'Inactive' | 'Archived',
   });
 
   const isDirector = isCourseDirector || userProfile?.role === 'Course Director';
@@ -115,22 +117,61 @@ const Institutes: React.FC = () => {
 
       setIsModalOpen(false);
       fetchInstitutes();
-    } catch (error) {
+    } catch (error: any) {
       console.warn("Notice saving institute:", error);
-      alert('তথ্য সংরক্ষণ প্রক্রিয়া সম্পন্ন হয়েছে।');
+      setErrorMessage("তথ্য সংরক্ষণে সমস্যা হয়েছে: " + (error?.message || error));
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
     if (!canDelete && !canEdit) {
-      alert("আপনার প্রতিষ্ঠান মুছে ফেলার অনুমতি নেই।");
+      await showAlert({
+        title: 'অনুমতি নেই',
+        message: 'আপনার প্রতিষ্ঠান মুছে ফেলার অনুমতি নেই।',
+        variant: 'danger'
+      });
       return;
     }
     if (!isDeletionAllowed) {
-      alert("🔒 সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'প্রতিষ্ঠান সংরক্ষণাগারে স্থানান্তর (Fallback to Archive)',
+        message: `সিস্টেম সেটিংস অনুযায়ী প্রতিষ্ঠান স্থায়ীভাবে মুছে ফেলা বন্ধ (Denied) রয়েছে। আপনি কি "${name}" প্রতিষ্ঠানটি মুছে ফেলার পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ সংরক্ষণাগারে স্থানান্তর করলে সংশ্লিষ্ট ব্যাচের ইতিহাস অক্ষুণ্ণ থাকবে এবং প্রতিষ্ঠানটি সক্রিয় তালিকা থেকে সংরক্ষণাগারে স্থানান্তরিত হবে।',
+        confirmText: 'হ্যাঁ, প্রতিষ্ঠান আর্কাইভ করুন (Archive)',
+        cancelText: 'বাতিল',
+        variant: 'warning'
+      });
+
+      if (confirmed) {
+        try {
+          await dataService.archiveRecord('institutes', id, 'সিস্টেমে ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর');
+          await logActivity(
+            userProfile?.id || '',
+            userProfile?.name || 'User',
+            `প্রতিষ্ঠান সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${name}`,
+            'Institutes',
+            id
+          );
+          setStatusMessage(`"${name}" প্রতিষ্ঠানটি সফলভাবে সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
+          setTimeout(() => setStatusMessage(''), 3500);
+          await fetchInstitutes();
+        } catch (error: any) {
+          setErrorMessage("প্রতিষ্ঠান আর্কাইভে স্থানান্তরে সমস্যা হয়েছে: " + (error?.message || error));
+        }
+      }
       return;
     }
-    if (window.confirm(`আপনি কি নিশ্চিতভাবে "${name}" প্রতিষ্ঠানটি মুছে ফেলতে চান? (Are you sure you want to delete this institute?)`)) {
+
+    const confirmed = await confirm({
+      title: 'প্রতিষ্ঠান মুছে ফেলার নিশ্চিতকরণ',
+      message: `আপনি কি নিশ্চিতভাবে "${name}" প্রতিষ্ঠানটি মুছে ফেলতে চান?`,
+      detail: 'প্রতিষ্ঠানটি মুছে ফেললে এর সাথে সংশ্লিষ্ট তথ্য সিস্টেমে প্রভাবিত হতে পারে।',
+      confirmText: 'হ্যাঁ, মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      variant: 'danger'
+    });
+
+    if (confirmed) {
       try {
         await dataService.deleteInstitute(id);
         await logActivity(
@@ -272,12 +313,8 @@ const Institutes: React.FC = () => {
                   {canDelete && (
                     <button
                       onClick={() => handleDelete(inst.id, inst.name)}
-                      className={`p-1.5 rounded-lg transition ${
-                        !isDeletionAllowed
-                          ? 'text-slate-400 hover:bg-slate-100 opacity-60 cursor-not-allowed'
-                          : 'text-red-600 hover:bg-red-50'
-                      }`}
-                      title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে 🔒' : 'মুছুন'}
+                      className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50"
+                      title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                     >
                       <Trash2 size={16} />
                     </button>

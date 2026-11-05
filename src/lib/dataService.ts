@@ -23,6 +23,17 @@ import {
   ActivityLog,
   SystemSettings
 } from '../types';
+import { 
+  BatchCalendarProgress, 
+  DayCompletionStatus, 
+  TradeSkillModule, 
+  TradeLiteracyModule,
+  BatchSkillModule, 
+  BatchLiteracyModule,
+  CalendarProgressLog 
+} from '../types/calendar';
+import { SHIKHON_92_DAYS } from '../data/shikhonCalendarData';
+import { generateTradeSkillCurriculum, generateTradeLiteracyCurriculum } from '../data/tradeCurriculaData';
 import {
   DEFAULT_INSTITUTES,
   DEFAULT_TRADES,
@@ -217,18 +228,112 @@ export const dataService = {
   },
 
   /**
-   * Delete an item by ID directly from Cloud Firestore (guarded by settings deletion lock)
+   * Delete an item by ID directly from Cloud Firestore.
+   * If deleting is denied by system settings, automatically fallbacks to archiveRecord when fallbackToArchive is true.
    */
-  async deleteItem(collectionName: string, id: string): Promise<void> {
-    const settings = await this.getSystemSettings();
-    if (!settings.allowDataDeletion) {
-      throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+  async deleteItem(
+    collectionName: string, 
+    id: string, 
+    fallbackToArchive: boolean = true
+  ): Promise<{ action: 'deleted' | 'archived'; id: string }> {
+    // Operational and curriculum collections that should always be directly deleted
+    const alwaysDirectDelete = [
+      'trade_skill_modules',
+      'trade_literacy_modules',
+      'batch_calendar_progress',
+      'calendar_progress_logs',
+      'attendance',
+      'activityLogs',
+      'exams',
+      'marks',
+      'notifications'
+    ];
+
+    if (!alwaysDirectDelete.includes(collectionName)) {
+      const settings = await this.getSystemSettings();
+      if (!settings.allowDataDeletion) {
+        if (fallbackToArchive) {
+          console.info(`Deletion denied by system settings. Falling back to archive record for ${collectionName}/${id}`);
+          try {
+            await this.archiveRecord(collectionName, id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+            return { action: 'archived', id };
+          } catch (archiveErr) {
+            console.warn(`Record not found in Firestore during archive fallback (${id}), continuing with cleanup`);
+          }
+        } else {
+          throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+        }
+      }
     }
 
-    const docRef = doc(db, collectionName, id);
-    await deleteDoc(docRef);
+    try {
+      const docRef = doc(db, collectionName, id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.warn(`Firestore deleteDoc notice for ${collectionName}/${id}:`, e);
+    }
 
     this.broadcastSync(collectionName);
+    return { action: 'deleted', id };
+  },
+
+  /**
+   * Archive a record when deletion is denied or as a safe alternative to deletion.
+   * Preserves historical data while flagging record as archived.
+   */
+  async archiveRecord(
+    collectionName: string,
+    id: string,
+    reason: string = 'সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে'
+  ): Promise<any> {
+    const docRef = doc(db, collectionName, id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      return { id, isArchived: true, status: 'Archived', notFound: true };
+    }
+
+    const currentData = snap.data();
+    const updatedData: Record<string, any> = {
+      ...currentData,
+      status: 'Archived',
+      isArchived: true,
+      archivedAt: Date.now(),
+      archivedReason: reason,
+      updatedAt: Date.now()
+    };
+
+    await setDoc(docRef, sanitizeForFirestore(updatedData), { merge: true });
+    this.broadcastSync(collectionName);
+    return updatedData;
+  },
+
+  /**
+   * Unarchive / Restore a previously archived record back to active state.
+   */
+  async unarchiveRecord(
+    collectionName: string,
+    id: string
+  ): Promise<any> {
+    const docRef = doc(db, collectionName, id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      throw new Error(`রেকর্ড পাওয়া যায়নি (ID: ${id})`);
+    }
+
+    const currentData = snap.data();
+    const defaultStatus = collectionName === 'batches' ? 'Active' : 'Active';
+    const updatedData: Record<string, any> = {
+      ...currentData,
+      status: defaultStatus,
+      isArchived: false,
+      archivedAt: null,
+      archivedReason: null,
+      updatedAt: Date.now()
+    };
+
+    await setDoc(docRef, sanitizeForFirestore(updatedData), { merge: true });
+    this.broadcastSync(collectionName);
+    return updatedData;
   },
 
   /**
@@ -274,6 +379,46 @@ export const dataService = {
       return { success: true, count: uniqueRecords.length };
     } catch (firestoreErr: any) {
       console.error("Cloud Firestore batch attendance save error:", firestoreErr);
+      return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error' };
+    }
+  },
+
+  /**
+   * Batch save trainees atomically directly in Cloud Firestore
+   * Enforces sanitization and chunks writes up to 450 items per batch.
+   */
+  async saveTraineeBatch(traineesList: Trainee[]): Promise<{ success: boolean; count: number; error?: string }> {
+    if (!traineesList || traineesList.length === 0) return { success: true, count: 0 };
+
+    try {
+      const now = Date.now();
+      const cleanList = traineesList.map(t => {
+        const idToUse = t.id || `TRN-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6)}`;
+        return sanitizeForFirestore({
+          ...t,
+          id: idToUse,
+          createdAt: t.createdAt || now,
+          updatedAt: now
+        });
+      });
+
+      const chunkSize = 450;
+      for (let i = 0; i < cleanList.length; i += chunkSize) {
+        const chunk = cleanList.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+
+        chunk.forEach(trainee => {
+          const ref = doc(db, 'trainees', trainee.id);
+          batch.set(ref, trainee, { merge: true });
+        });
+
+        await batch.commit();
+      }
+
+      this.broadcastSync('trainees');
+      return { success: true, count: cleanList.length };
+    } catch (firestoreErr: any) {
+      console.error("Cloud Firestore batch trainee save error:", firestoreErr);
       return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error' };
     }
   },
@@ -420,9 +565,14 @@ export const dataService = {
    * Check if a registration number is already in use
    */
   async isRegistrationNumberTaken(regNo: string, excludeId?: string): Promise<boolean> {
+    const clean = regNo?.trim();
+    if (!clean) return false;
     const trainees = await this.getItems<Trainee>('trainees');
-    const normalized = regNo.trim().toLowerCase();
-    return trainees.some(t => t.registrationNumber?.trim().toLowerCase() === normalized && t.id !== excludeId);
+    const normalized = clean.toLowerCase();
+    return trainees.some(t => {
+      const existing = t.registrationNumber?.trim().toLowerCase();
+      return !!existing && existing === normalized && t.id !== excludeId;
+    });
   },
 
   /**
@@ -830,11 +980,16 @@ export const dataService = {
   },
 
   /**
-   * Delete a single institute and unassign it from any linked batches
+   * Delete a single institute and unassign it from any linked batches.
+   * If deleting is denied, fallbacks to archiving when fallbackToArchive is true.
    */
-  async deleteInstitute(id: string): Promise<void> {
+  async deleteInstitute(id: string, fallbackToArchive: boolean = true): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
+      if (fallbackToArchive) {
+        await this.archiveRecord('institutes', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+        return { action: 'archived', id };
+      }
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
@@ -862,14 +1017,20 @@ export const dataService = {
     }
 
     this.broadcastSync('institutes');
+    return { action: 'deleted', id };
   },
 
   /**
-   * Delete a single trade and unassign it from any linked batches
+   * Delete a single trade and unassign it from any linked batches.
+   * If deleting is denied, fallbacks to archiving when fallbackToArchive is true.
    */
-  async deleteTrade(id: string): Promise<void> {
+  async deleteTrade(id: string, fallbackToArchive: boolean = true): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
+      if (fallbackToArchive) {
+        await this.archiveRecord('trades', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+        return { action: 'archived', id };
+      }
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
@@ -897,14 +1058,20 @@ export const dataService = {
     }
 
     this.broadcastSync('trades');
+    return { action: 'deleted', id };
   },
 
   /**
-   * Delete a single batch with optional cascade delete of attendance & trainees
+   * Delete a single batch with optional cascade delete of attendance & trainees.
+   * If deleting is denied, fallbacks to archiving when fallbackToArchive is true.
    */
-  async deleteBatch(id: string, cascade: boolean = true): Promise<void> {
+  async deleteBatch(id: string, cascade: boolean = true, fallbackToArchive: boolean = true): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
+      if (fallbackToArchive) {
+        await this.archiveRecord('batches', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+        return { action: 'archived', id };
+      }
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
@@ -935,6 +1102,7 @@ export const dataService = {
     this.broadcastSync('batches');
     this.broadcastSync('trainees');
     this.broadcastSync('attendance');
+    return { action: 'deleted', id };
   },
 
   /**
@@ -961,6 +1129,768 @@ export const dataService = {
     }
     this.broadcastSync('trades');
     return count;
+  },
+
+  /**
+   * Get calendar progress for a given batch with dual trainer tracking
+   */
+  async getBatchCalendarProgress(batchId: string): Promise<BatchCalendarProgress> {
+    const docId = `progress_${batchId}`;
+    try {
+      const docRef = doc(db, 'batch_calendar_progress', docId);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        const d = snapshot.data() as BatchCalendarProgress;
+        return {
+          ...d,
+          skillProgress: d.skillProgress || d.completedDays || {},
+          literacyProgress: d.literacyProgress || {},
+          currentSkillDay: d.currentSkillDay || d.currentDay || 1,
+          currentLiteracyDay: d.currentLiteracyDay || 1,
+          currentDay: d.currentDay || 1,
+        };
+      }
+    } catch (err) {
+      console.warn("Firestore getBatchCalendarProgress error, using local fallback:", err);
+    }
+
+    // Local fallback
+    try {
+      const stored = localStorage.getItem(`bnfe_cal_prog_${batchId}`);
+      if (stored) {
+        const d = JSON.parse(stored) as BatchCalendarProgress;
+        return {
+          ...d,
+          skillProgress: d.skillProgress || d.completedDays || {},
+          literacyProgress: d.literacyProgress || {},
+          currentSkillDay: d.currentSkillDay || d.currentDay || 1,
+          currentLiteracyDay: d.currentLiteracyDay || 1,
+          currentDay: d.currentDay || 1,
+        };
+      }
+    } catch (e) {}
+
+    // Default initialized progress
+    const defaultProgress: BatchCalendarProgress = {
+      id: docId,
+      batchId,
+      currentDay: 1,
+      currentSkillDay: 1,
+      currentLiteracyDay: 1,
+      skillProgress: {},
+      literacyProgress: {},
+      completedDays: {},
+      updatedAt: Date.now()
+    };
+    return defaultProgress;
+  },
+
+  /**
+   * Save calendar progress for a batch
+   */
+  async saveBatchCalendarProgress(progress: BatchCalendarProgress): Promise<void> {
+    const docId = `progress_${progress.batchId}`;
+    const cleanData = sanitizeForFirestore({
+      ...progress,
+      id: docId,
+      updatedAt: Date.now()
+    });
+
+    try {
+      localStorage.setItem(`bnfe_cal_prog_${progress.batchId}`, JSON.stringify(cleanData));
+    } catch (e) {}
+
+    try {
+      const docRef = doc(db, 'batch_calendar_progress', docId);
+      await setDoc(docRef, cleanData, { merge: true });
+    } catch (err) {
+      console.warn("Firestore saveBatchCalendarProgress error, saved locally:", err);
+    }
+    this.broadcastSync('batches');
+  },
+
+  /**
+   * Mark Skill Day completion by Skill Trainer
+   */
+  async updateSkillDayCompletion(
+    batchId: string,
+    dayNumber: number,
+    status: Partial<DayCompletionStatus>
+  ): Promise<BatchCalendarProgress> {
+    const current = await this.getBatchCalendarProgress(batchId);
+    const existing = current.skillProgress?.[dayNumber] || { isCompleted: false };
+
+    const updatedStatus: DayCompletionStatus = {
+      ...existing,
+      ...status,
+      trainerType: 'Skill Trainer',
+      updatedAt: Date.now()
+    };
+
+    const newSkillProgress = {
+      ...(current.skillProgress || {}),
+      [dayNumber]: updatedStatus
+    };
+
+    let nextSkillDay = current.currentSkillDay || 1;
+    if (updatedStatus.isCompleted && dayNumber === nextSkillDay && dayNumber < 92) {
+      nextSkillDay = dayNumber + 1;
+    }
+
+    const newProgress: BatchCalendarProgress = {
+      ...current,
+      currentSkillDay: nextSkillDay,
+      skillProgress: newSkillProgress,
+      completedDays: newSkillProgress,
+      updatedAt: Date.now()
+    };
+
+    await this.saveBatchCalendarProgress(newProgress);
+
+    // Save audit record to dedicated `calendar_progress_logs` table
+    try {
+      const batches = await this.getItems<Batch>('batches');
+      const bObj = batches.find(b => b.id === batchId);
+      const trades = await this.getItems<Trade>('trades');
+      const tObj = trades.find(t => t.id === bObj?.tradeId);
+      const skillModules = await this.getBatchSkillModules(batchId);
+      const sMod = skillModules.find(m => m.dayNumber === dayNumber);
+
+      const logId = `cpl_${batchId}_skill_d${dayNumber}_${Date.now()}`;
+      const logRecord: CalendarProgressLog = {
+        id: logId,
+        batchId,
+        batchName: bObj?.name || 'ব্যাচ',
+        tradeId: bObj?.tradeId || 'TRD-BC-01',
+        tradeName: tObj?.name || 'ট্রেড',
+        instituteId: bObj?.instituteId,
+        dayNumber,
+        moduleType: 'skill',
+        moduleId: sMod?.id,
+        taskNo: sMod?.taskNo || `কাজ ${dayNumber}`,
+        topic: sMod?.topic || '',
+        isCompleted: !!updatedStatus.isCompleted,
+        completedAt: updatedStatus.completedAt || new Date().toISOString().split('T')[0],
+        trainerId: updatedStatus.trainerId,
+        trainerName: updatedStatus.trainerName || 'স্কিল ট্রেইনার',
+        trainerType: 'Skill Trainer',
+        remarks: updatedStatus.remarks || '',
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      await this.saveItem('calendar_progress_logs', sanitizeForFirestore(logRecord));
+      this.broadcastSync('calendar_progress_logs');
+    } catch (e) {
+      console.warn("Could not record skill progress log:", e);
+    }
+
+    return newProgress;
+  },
+
+  /**
+   * Mark Literacy Day completion by Literacy Trainer
+   */
+  async updateLiteracyDayCompletion(
+    batchId: string,
+    dayNumber: number,
+    status: Partial<DayCompletionStatus>
+  ): Promise<BatchCalendarProgress> {
+    const current = await this.getBatchCalendarProgress(batchId);
+    const existing = current.literacyProgress?.[dayNumber] || { isCompleted: false };
+
+    const updatedStatus: DayCompletionStatus = {
+      ...existing,
+      ...status,
+      trainerType: 'Literacy Trainer',
+      updatedAt: Date.now()
+    };
+
+    const newLiteracyProgress = {
+      ...(current.literacyProgress || {}),
+      [dayNumber]: updatedStatus
+    };
+
+    let nextLiteracyDay = current.currentLiteracyDay || 1;
+    if (updatedStatus.isCompleted && dayNumber === nextLiteracyDay && dayNumber < 92) {
+      nextLiteracyDay = dayNumber + 1;
+    }
+
+    const newProgress: BatchCalendarProgress = {
+      ...current,
+      currentLiteracyDay: nextLiteracyDay,
+      literacyProgress: newLiteracyProgress,
+      updatedAt: Date.now()
+    };
+
+    await this.saveBatchCalendarProgress(newProgress);
+
+    // Save audit record to dedicated `calendar_progress_logs` table
+    try {
+      const batches = await this.getItems<Batch>('batches');
+      const bObj = batches.find(b => b.id === batchId);
+      const trades = await this.getItems<Trade>('trades');
+      const tObj = trades.find(t => t.id === bObj?.tradeId);
+      const literacyModules = await this.getBatchLiteracyModules(batchId);
+      const lMod = literacyModules.find(m => m.dayNumber === dayNumber);
+
+      const logId = `cpl_${batchId}_literacy_d${dayNumber}_${Date.now()}`;
+      const logRecord: CalendarProgressLog = {
+        id: logId,
+        batchId,
+        batchName: bObj?.name || 'ব্যাচ',
+        tradeId: bObj?.tradeId || 'TRD-BC-01',
+        tradeName: tObj?.name || 'ট্রেড',
+        instituteId: bObj?.instituteId,
+        dayNumber,
+        moduleType: 'literacy',
+        moduleId: lMod?.id,
+        taskNo: lMod?.taskNo || `কাজ ${dayNumber}`,
+        topic: lMod?.topic || '',
+        isCompleted: !!updatedStatus.isCompleted,
+        completedAt: updatedStatus.completedAt || new Date().toISOString().split('T')[0],
+        trainerId: updatedStatus.trainerId,
+        trainerName: updatedStatus.trainerName || 'লিটারেসি ট্রেইনার',
+        trainerType: 'Literacy Trainer',
+        remarks: updatedStatus.remarks || '',
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      await this.saveItem('calendar_progress_logs', sanitizeForFirestore(logRecord));
+      this.broadcastSync('calendar_progress_logs');
+    } catch (e) {
+      console.warn("Could not record literacy progress log:", e);
+    }
+
+    return newProgress;
+  },
+
+  /**
+   * Dedicated queries for Calendar Progress Logs Table
+   */
+  async getCalendarProgressLogs(batchId?: string): Promise<CalendarProgressLog[]> {
+    try {
+      let logs = await this.getItems<CalendarProgressLog>('calendar_progress_logs');
+
+      // If no dedicated log records exist yet, synthesize from batch_calendar_progress to guarantee accountability visibility
+      if (logs.length === 0) {
+        try {
+          const progresses = await this.getItems<BatchCalendarProgress>('batch_calendar_progress');
+          const batches = await this.getItems<Batch>('batches');
+          const trades = await this.getItems<Trade>('trades');
+
+          const synthesized: CalendarProgressLog[] = [];
+          for (const prog of progresses) {
+            const b = batches.find(x => x.id === prog.batchId);
+            const t = trades.find(x => x.id === b?.tradeId);
+
+            // Check skill progress
+            if (prog.skillProgress) {
+              for (const [dayStr, status] of Object.entries(prog.skillProgress)) {
+                if (status && status.isCompleted) {
+                  const dayNum = parseInt(dayStr, 10);
+                  synthesized.push({
+                    id: `synth_log_${prog.batchId}_skill_${dayNum}`,
+                    batchId: prog.batchId,
+                    batchName: b?.name || prog.batchId,
+                    tradeId: b?.tradeId,
+                    tradeName: t?.name,
+                    instituteId: b?.instituteId,
+                    dayNumber: dayNum,
+                    moduleType: 'skill',
+                    taskNo: `কাজ ${dayNum}`,
+                    topic: `স্কিল মডিউল দিবস #${dayNum}`,
+                    isCompleted: true,
+                    completedAt: status.completedAt || new Date().toISOString().split('T')[0],
+                    trainerId: status.trainerId || b?.skillTrainerId,
+                    trainerName: status.trainerName || b?.skillTrainerName || 'স্কিল ট্রেইনার',
+                    trainerType: 'Skill Trainer',
+                    remarks: status.remarks || 'মডিউল সমাপ্তি মার্ক করা হয়েছে',
+                    createdAt: status.updatedAt || Date.now(),
+                    updatedAt: status.updatedAt || Date.now()
+                  });
+                }
+              }
+            }
+
+            // Check literacy progress
+            if (prog.literacyProgress) {
+              for (const [dayStr, status] of Object.entries(prog.literacyProgress)) {
+                if (status && status.isCompleted) {
+                  const dayNum = parseInt(dayStr, 10);
+                  synthesized.push({
+                    id: `synth_log_${prog.batchId}_literacy_${dayNum}`,
+                    batchId: prog.batchId,
+                    batchName: b?.name || prog.batchId,
+                    tradeId: b?.tradeId,
+                    tradeName: t?.name,
+                    instituteId: b?.instituteId,
+                    dayNumber: dayNum,
+                    moduleType: 'literacy',
+                    taskNo: `কাজ ${dayNum}`,
+                    topic: `লিটারেসি মডিউল দিবস #${dayNum}`,
+                    isCompleted: true,
+                    completedAt: status.completedAt || new Date().toISOString().split('T')[0],
+                    trainerId: status.trainerId || b?.literacyTrainerId,
+                    trainerName: status.trainerName || b?.literacyTrainerName || 'লিটারেসি ট্রেইনার',
+                    trainerType: 'Literacy Trainer',
+                    remarks: status.remarks || 'মডিউল সমাপ্তি মার্ক করা হয়েছে',
+                    createdAt: status.updatedAt || Date.now(),
+                    updatedAt: status.updatedAt || Date.now()
+                  });
+                }
+              }
+            }
+          }
+
+          if (synthesized.length > 0) {
+            logs = synthesized;
+          }
+        } catch (synthErr) {
+          console.warn("Notice checking fallback calendar progress:", synthErr);
+        }
+      }
+
+      if (batchId) {
+        return logs
+          .filter(l => l.batchId === batchId)
+          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      }
+      return logs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } catch (e) {
+      console.warn("Failed to get calendar progress logs:", e);
+      return [];
+    }
+  },
+
+  async saveCalendarProgressLog(log: CalendarProgressLog): Promise<void> {
+    await this.saveItem('calendar_progress_logs', sanitizeForFirestore(log));
+    this.broadcastSync('calendar_progress_logs');
+  },
+
+  /**
+   * Legacy updateDayCompletion
+   */
+  async updateDayCompletion(
+    batchId: string, 
+    dayNumber: number, 
+    status: Partial<DayCompletionStatus>
+  ): Promise<BatchCalendarProgress> {
+    return this.updateSkillDayCompletion(batchId, dayNumber, status);
+  },
+
+  /**
+   * =========================================================================
+   * TRADE-BASED SKILL-FOCUSED MODULES (ট্রেড ভিত্তিক স্কিল ফোকাসড মডিউল)
+   * =========================================================================
+   */
+  async getTradeSkillModules(tradeId: string): Promise<TradeSkillModule[]> {
+    if (!tradeId) return [];
+    try {
+      const all = await this.getItems<TradeSkillModule>('trade_skill_modules');
+      const filtered = all.filter(m => m.tradeId === tradeId);
+      // Sync local storage so stale deleted items from previous sessions are removed
+      try {
+        localStorage.setItem(`bnfe_trade_skill_modules_${tradeId}`, JSON.stringify(filtered));
+      } catch (e) {}
+      return filtered.sort((a, b) => a.dayNumber - b.dayNumber);
+    } catch (err) {
+      console.warn("Error fetching trade_skill_modules, falling back to local:", err);
+      // Only fall back to local if Firestore query threw a network error
+      try {
+        const stored = localStorage.getItem(`bnfe_trade_skill_modules_${tradeId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored) as TradeSkillModule[];
+          return parsed.sort((a, b) => a.dayNumber - b.dayNumber);
+        }
+      } catch (e) {}
+    }
+
+    return [];
+  },
+
+  async saveTradeSkillModule(item: TradeSkillModule): Promise<void> {
+    const clean = sanitizeForFirestore({
+      ...item,
+      updatedAt: Date.now()
+    });
+    await this.saveItem('trade_skill_modules', clean);
+    
+    try {
+      const targetTradeId = item.tradeId || item.batchId || 'TRD-BC-01';
+      const current = await this.getTradeSkillModules(targetTradeId);
+      const idx = current.findIndex(m => m.id === item.id);
+      if (idx >= 0) {
+        current[idx] = clean as TradeSkillModule;
+      } else {
+        current.push(clean as TradeSkillModule);
+      }
+      localStorage.setItem(`bnfe_trade_skill_modules_${targetTradeId}`, JSON.stringify(current));
+    } catch (e) {}
+
+    this.broadcastSync('trades');
+  },
+
+  async bulkSaveTradeSkillModules(
+    tradeId: string, 
+    items: TradeSkillModule[], 
+    replaceExisting = false
+  ): Promise<number> {
+    if (!tradeId || items.length === 0) return 0;
+
+    let existing = await this.getTradeSkillModules(tradeId);
+    if (replaceExisting) {
+      for (const m of existing) {
+        await this.deleteItem('trade_skill_modules', m.id).catch(() => {});
+      }
+      existing = [];
+    }
+
+    let savedCount = 0;
+    const toSave: TradeSkillModule[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const id = item.id || `tsm_${tradeId}_${item.dayNumber || (i + 1)}_${Date.now()}_${i}`;
+      const cleanItem: TradeSkillModule = {
+        ...item,
+        id,
+        tradeId,
+        dayNumber: Number(item.dayNumber) || (i + 1),
+        totalMinutes: (Number(item.theoryMinutes) || 0) + (Number(item.practicalMinutes) || 0) || item.totalMinutes || 120,
+        createdAt: item.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      await this.saveItem('trade_skill_modules', sanitizeForFirestore(cleanItem));
+      toSave.push(cleanItem);
+      savedCount++;
+    }
+
+    const merged = replaceExisting ? toSave : [...existing.filter(e => !toSave.some(t => t.id === e.id || t.dayNumber === e.dayNumber)), ...toSave];
+    try {
+      localStorage.setItem(`bnfe_trade_skill_modules_${tradeId}`, JSON.stringify(merged));
+    } catch (e) {}
+
+    this.broadcastSync('trades');
+    return savedCount;
+  },
+
+  async deleteTradeSkillModule(id: string, tradeId?: string): Promise<void> {
+    // 1. Immediately clean from localStorage
+    try {
+      if (tradeId) {
+        const stored = localStorage.getItem(`bnfe_trade_skill_modules_${tradeId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored) as TradeSkillModule[];
+          const filtered = parsed.filter(m => m.id !== id);
+          localStorage.setItem(`bnfe_trade_skill_modules_${tradeId}`, JSON.stringify(filtered));
+        }
+      }
+      if (typeof window !== 'undefined') {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('bnfe_trade_skill_modules_') || key.startsWith('bnfe_batch_skill_modules_'))) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list) && list.some((item: any) => item.id === id)) {
+                localStorage.setItem(key, JSON.stringify(list.filter((item: any) => item.id !== id)));
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 2. Delete from Cloud Firestore
+    await this.deleteItem('trade_skill_modules', id);
+    this.broadcastSync('trades');
+  },
+
+  async seedDefaultSkillModulesForTrade(tradeId: string): Promise<TradeSkillModule[]> {
+    const trades = await this.getItems<Trade>('trades');
+    const trade = trades.find(t => t.id === tradeId);
+    const tradeName = trade?.name || '';
+    const list: TradeSkillModule[] = generateTradeSkillCurriculum(tradeId, tradeName);
+
+    try {
+      localStorage.setItem(`bnfe_trade_skill_modules_${tradeId}`, JSON.stringify(list));
+    } catch (e) {}
+
+    for (const item of list) {
+      this.saveItem('trade_skill_modules', sanitizeForFirestore(item)).catch(() => {});
+    }
+
+    return list;
+  },
+
+  /**
+   * =========================================================================
+   * TRADE-BASED LITERACY-FOCUSED MODULES (ট্রেড ভিত্তিক লিটারেসি ফোকাসড মডিউল)
+   * =========================================================================
+   */
+  async getTradeLiteracyModules(tradeId: string): Promise<TradeLiteracyModule[]> {
+    if (!tradeId) return [];
+    try {
+      const all = await this.getItems<TradeLiteracyModule>('trade_literacy_modules');
+      const filtered = all.filter(m => m.tradeId === tradeId);
+      // Sync local storage so stale deleted items are wiped out
+      try {
+        localStorage.setItem(`bnfe_trade_literacy_modules_${tradeId}`, JSON.stringify(filtered));
+      } catch (e) {}
+      return filtered.sort((a, b) => a.dayNumber - b.dayNumber);
+    } catch (err) {
+      console.warn("Error fetching trade_literacy_modules, falling back to local:", err);
+      try {
+        const stored = localStorage.getItem(`bnfe_trade_literacy_modules_${tradeId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored) as TradeLiteracyModule[];
+          return parsed.sort((a, b) => a.dayNumber - b.dayNumber);
+        }
+      } catch (e) {}
+    }
+
+    return [];
+  },
+
+  async saveTradeLiteracyModule(item: TradeLiteracyModule): Promise<void> {
+    const clean = sanitizeForFirestore({
+      ...item,
+      updatedAt: Date.now()
+    });
+    await this.saveItem('trade_literacy_modules', clean);
+    
+    try {
+      const targetTradeId = item.tradeId || item.batchId || 'TRD-BC-01';
+      const current = await this.getTradeLiteracyModules(targetTradeId);
+      const idx = current.findIndex(m => m.id === item.id);
+      if (idx >= 0) {
+        current[idx] = clean as TradeLiteracyModule;
+      } else {
+        current.push(clean as TradeLiteracyModule);
+      }
+      localStorage.setItem(`bnfe_trade_literacy_modules_${targetTradeId}`, JSON.stringify(current));
+    } catch (e) {}
+
+    this.broadcastSync('trades');
+  },
+
+  async bulkSaveTradeLiteracyModules(
+    tradeId: string, 
+    items: TradeLiteracyModule[], 
+    replaceExisting = false
+  ): Promise<number> {
+    if (!tradeId || items.length === 0) return 0;
+
+    let existing = await this.getTradeLiteracyModules(tradeId);
+    if (replaceExisting) {
+      for (const m of existing) {
+        await this.deleteItem('trade_literacy_modules', m.id).catch(() => {});
+      }
+      existing = [];
+    }
+
+    let savedCount = 0;
+    const toSave: TradeLiteracyModule[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const id = item.id || `tlm_${tradeId}_${item.dayNumber || (i + 1)}_${Date.now()}_${i}`;
+      const cleanItem: TradeLiteracyModule = {
+        ...item,
+        id,
+        tradeId,
+        dayNumber: Number(item.dayNumber) || (i + 1),
+        totalMinutes: Number(item.totalMinutes) || 120,
+        createdAt: item.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      await this.saveItem('trade_literacy_modules', sanitizeForFirestore(cleanItem));
+      toSave.push(cleanItem);
+      savedCount++;
+    }
+
+    const merged = replaceExisting ? toSave : [...existing.filter(e => !toSave.some(t => t.id === e.id || t.dayNumber === e.dayNumber)), ...toSave];
+    try {
+      localStorage.setItem(`bnfe_trade_literacy_modules_${tradeId}`, JSON.stringify(merged));
+    } catch (e) {}
+
+    this.broadcastSync('trades');
+    return savedCount;
+  },
+
+  async deleteTradeLiteracyModule(id: string, tradeId?: string): Promise<void> {
+    // 1. Immediately clean from localStorage
+    try {
+      if (tradeId) {
+        const stored = localStorage.getItem(`bnfe_trade_literacy_modules_${tradeId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored) as TradeLiteracyModule[];
+          const filtered = parsed.filter(m => m.id !== id);
+          localStorage.setItem(`bnfe_trade_literacy_modules_${tradeId}`, JSON.stringify(filtered));
+        }
+      }
+      if (typeof window !== 'undefined') {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('bnfe_trade_literacy_modules_') || key.startsWith('bnfe_batch_literacy_modules_'))) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list) && list.some((item: any) => item.id === id)) {
+                localStorage.setItem(key, JSON.stringify(list.filter((item: any) => item.id !== id)));
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 2. Delete from Cloud Firestore
+    await this.deleteItem('trade_literacy_modules', id);
+    this.broadcastSync('trades');
+  },
+
+  async seedDefaultLiteracyModulesForTrade(tradeId: string): Promise<TradeLiteracyModule[]> {
+    const list: TradeLiteracyModule[] = generateTradeLiteracyCurriculum(tradeId);
+
+    try {
+      localStorage.setItem(`bnfe_trade_literacy_modules_${tradeId}`, JSON.stringify(list));
+    } catch (e) {}
+
+    for (const item of list) {
+      this.saveItem('trade_literacy_modules', sanitizeForFirestore(item)).catch(() => {});
+    }
+
+    return list;
+  },
+
+  async seedTradeWithDefaultModules(tradeId: string): Promise<{ skillCount: number; literacyCount: number }> {
+    const [skill, literacy] = await Promise.all([
+      this.seedDefaultSkillModulesForTrade(tradeId),
+      this.seedDefaultLiteracyModulesForTrade(tradeId)
+    ]);
+    return { skillCount: skill.length, literacyCount: literacy.length };
+  },
+
+  /**
+   * Clear all modules for a specific trade from Cloud Firestore and local cache
+   */
+  async clearTradeModules(tradeId: string): Promise<{ skillDeleted: number; literacyDeleted: number }> {
+    if (!tradeId) return { skillDeleted: 0, literacyDeleted: 0 };
+    const allSkills = await this.getItems<TradeSkillModule>('trade_skill_modules');
+    const allLiteracy = await this.getItems<TradeLiteracyModule>('trade_literacy_modules');
+    const tradeSkills = allSkills.filter(s => s.tradeId === tradeId);
+    const tradeLiteracy = allLiteracy.filter(l => l.tradeId === tradeId);
+
+    const skillDeleted = await batchDeleteDocuments('trade_skill_modules', tradeSkills.map(s => s.id));
+    const literacyDeleted = await batchDeleteDocuments('trade_literacy_modules', tradeLiteracy.map(l => l.id));
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`bnfe_trade_skill_modules_${tradeId}`);
+        localStorage.removeItem(`bnfe_trade_literacy_modules_${tradeId}`);
+      } catch (e) {}
+    }
+
+    this.broadcastSync('trades');
+    return { skillDeleted, literacyDeleted };
+  },
+
+  /**
+   * Clear all trade curriculum modules and batch calendar progress
+   */
+  async clearAllTradeCalendarData(): Promise<{ skillDeleted: number; literacyDeleted: number; progressDeleted: number; logsDeleted: number }> {
+    const skills = await this.getItems<TradeSkillModule>('trade_skill_modules');
+    const literacy = await this.getItems<TradeLiteracyModule>('trade_literacy_modules');
+    const progress = await this.getItems<BatchCalendarProgress>('batch_calendar_progress');
+    const logs = await this.getItems<CalendarProgressLog>('calendar_progress_logs');
+
+    const skillDeleted = await batchDeleteDocuments('trade_skill_modules', skills.map(s => s.id));
+    const literacyDeleted = await batchDeleteDocuments('trade_literacy_modules', literacy.map(l => l.id));
+    const progressDeleted = await batchDeleteDocuments('batch_calendar_progress', progress.map(p => p.id));
+    const logsDeleted = await batchDeleteDocuments('calendar_progress_logs', logs.map(l => l.id));
+
+    if (typeof window !== 'undefined') {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('bnfe_trade_skill_modules_') || key.startsWith('bnfe_trade_literacy_modules_') || key.startsWith('bnfe_cal_prog_'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch (e) {}
+    }
+
+    this.broadcastSync('trades');
+    this.broadcastSync('batches');
+    this.broadcastSync('calendar_progress_logs');
+    return { skillDeleted, literacyDeleted, progressDeleted, logsDeleted };
+  },
+
+  /**
+   * Batch module getters that inherit from the Batch's Trade
+   */
+  async getBatchSkillModules(batchId: string): Promise<TradeSkillModule[]> {
+    if (!batchId) return [];
+    try {
+      const batches = await this.getItems<Batch>('batches');
+      const found = batches.find(b => b.id === batchId);
+      if (found && found.tradeId) {
+        return this.getTradeSkillModules(found.tradeId);
+      }
+    } catch (e) {}
+    return [];
+  },
+
+  async getBatchLiteracyModules(batchId: string): Promise<TradeLiteracyModule[]> {
+    if (!batchId) return [];
+    try {
+      const batches = await this.getItems<Batch>('batches');
+      const found = batches.find(b => b.id === batchId);
+      if (found && found.tradeId) {
+        return this.getTradeLiteracyModules(found.tradeId);
+      }
+    } catch (e) {}
+    return [];
+  },
+
+  async saveBatchSkillModule(item: any): Promise<void> {
+    return this.saveTradeSkillModule(item as TradeSkillModule);
+  },
+
+  async bulkSaveBatchSkillModules(batchId: string, items: any[], replaceExisting = false): Promise<number> {
+    const batches = await this.getItems<Batch>('batches');
+    const found = batches.find(b => b.id === batchId);
+    const tradeId = found?.tradeId || 'TRD-BC-01';
+    return this.bulkSaveTradeSkillModules(tradeId, items, replaceExisting);
+  },
+
+  async deleteBatchSkillModule(id: string, batchId?: string): Promise<void> {
+    return this.deleteTradeSkillModule(id);
+  },
+
+  async saveBatchLiteracyModule(item: any): Promise<void> {
+    return this.saveTradeLiteracyModule(item as TradeLiteracyModule);
+  },
+
+  async bulkSaveBatchLiteracyModules(batchId: string, items: any[], replaceExisting = false): Promise<number> {
+    const batches = await this.getItems<Batch>('batches');
+    const found = batches.find(b => b.id === batchId);
+    const tradeId = found?.tradeId || 'TRD-BC-01';
+    return this.bulkSaveTradeLiteracyModules(tradeId, items, replaceExisting);
+  },
+
+  async deleteBatchLiteracyModule(id: string, batchId?: string): Promise<void> {
+    return this.deleteTradeLiteracyModule(id);
+  },
+
+  async seedBatchWithDefaultModules(batchId: string): Promise<{ skillCount: number; literacyCount: number }> {
+    const batches = await this.getItems<Batch>('batches');
+    const found = batches.find(b => b.id === batchId);
+    const tradeId = found?.tradeId || 'TRD-BC-01';
+    return this.seedTradeWithDefaultModules(tradeId);
   },
 
   /**

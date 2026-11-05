@@ -5,6 +5,7 @@ import { Exam, Institute, Trade, Batch } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
 
@@ -17,6 +18,7 @@ const Exams: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const { userProfile } = useAuth();
+  const { confirm, showAlert } = useConfirm();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -63,6 +65,16 @@ const Exams: React.FC = () => {
     }
   };
 
+  const isTrainer = userProfile?.role === 'Trainer';
+
+  const displayedExams = exams.filter(exam => {
+    if (isTrainer) {
+      if (userProfile.batchId && exam.batchId !== userProfile.batchId) return false;
+      if (userProfile.instituteId && exam.instituteId !== userProfile.instituteId) return false;
+    }
+    return true;
+  });
+
   const handleOpenModal = (exam?: Exam) => {
     if (exam) {
       setEditingExam(exam);
@@ -80,13 +92,25 @@ const Exams: React.FC = () => {
       });
     } else {
       setEditingExam(null);
-      const defaultInst = userProfile?.instituteId || (institutes[0]?.id || '');
+      let defaultInst = userProfile?.instituteId || (institutes[0]?.id || '');
+      let defaultBatch = batches[0]?.id || '';
+      let defaultTrade = trades[0]?.id || '';
+
+      if (isTrainer) {
+        if (userProfile.batchId) defaultBatch = userProfile.batchId;
+        const b = batches.find(item => item.id === defaultBatch);
+        if (b) {
+          defaultInst = b.instituteId || defaultInst;
+          defaultTrade = b.tradeId || defaultTrade;
+        }
+      }
+
       setFormData({
         name: `চূড়ান্ত মূল্যায়ন পরীক্ষা (${new Date().getFullYear()})`,
         type: 'চূড়ান্ত পরীক্ষা (Final Examination)',
         instituteId: defaultInst,
-        tradeId: trades[0]?.id || '',
-        batchId: batches[0]?.id || '',
+        tradeId: defaultTrade,
+        batchId: defaultBatch,
         date: format(new Date(), 'yyyy-MM-dd'),
         totalMarks: 100,
         passMarks: 40,
@@ -102,7 +126,11 @@ const Exams: React.FC = () => {
     if (!canEdit) return;
 
     if (formData.passMarks > formData.totalMarks) {
-      alert("পাস নম্বর মোট নম্বরের চেয়ে বেশি হতে পারে না।");
+      await showAlert({
+        title: 'অকার্যকর নম্বর',
+        message: "পাস নম্বর মোট নম্বরের চেয়ে বেশি হতে পারে না।",
+        variant: 'warning'
+      });
       return;
     }
 
@@ -135,10 +163,43 @@ const Exams: React.FC = () => {
   const handleDelete = async (id: string, name: string) => {
     if (!canDelete && !canEdit) return;
     if (!isDeletionAllowed) {
-      alert("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
+      const confirmed = await confirm({
+        title: 'পরীক্ষা সংরক্ষণাগারে স্থানান্তর (Fallback to Archive)',
+        message: `সিস্টেম সেটিংস অনুযায়ী পরীক্ষা স্থায়ীভাবে মুছে ফেলা বন্ধ (Denied) রয়েছে। আপনি কি "${name}" পরীক্ষাটি মুছে ফেলার পরিবর্তে সংরক্ষণাগারে (Archive) পাঠাতে চান?`,
+        detail: 'ℹ️ সংরক্ষণাগারে স্থানান্তর করলে শিক্ষার্থীদের প্রাপ্ত নম্বর ও মূল্যায়ন রেকর্ড ডাটাবেজে সুরক্ষিত থাকবে এবং পরীক্ষাটি সক্রিয় তালিকা থেকে সংরক্ষণাগারে স্থানান্তরিত হবে।',
+        confirmText: 'হ্যাঁ, পরীক্ষা আর্কাইভ করুন (Archive)',
+        cancelText: 'বাতিল',
+        variant: 'warning'
+      });
+
+      if (confirmed) {
+        try {
+          await dataService.archiveRecord('exams', id, 'সিস্টেমে ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর');
+          await logActivity(
+            userProfile?.id || '',
+            userProfile?.name || 'User',
+            `পরীক্ষা সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${name}`,
+            'Exams',
+            id
+          );
+          fetchData();
+        } catch (error) {
+          console.warn("Notice archiving exam:", error);
+        }
+      }
       return;
     }
-    if (window.confirm(`আপনি কি নিশ্চিতভাবে "${name}" পরীক্ষাটি মুছে ফেলতে চান?`)) {
+
+    const confirmed = await confirm({
+      title: 'পরীক্ষা মুছে ফেলার নিশ্চিতকরণ',
+      message: `আপনি কি নিশ্চিতভাবে "${name}" পরীক্ষাটি মুছে ফেলতে চান?`,
+      detail: 'এই পরীক্ষা এবং এর সাথে সম্পর্কিত গ্রেডিং ডাটা সিস্টেম থেকে অপসারিত হবে।',
+      confirmText: 'হ্যাঁ, মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      variant: 'danger'
+    });
+
+    if (confirmed) {
       try {
         await dataService.deleteItem('exams', id);
         logActivity(
@@ -186,7 +247,7 @@ const Exams: React.FC = () => {
         )}
       </div>
 
-      {exams.length === 0 ? (
+      {displayedExams.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
           <FileText size={48} className="mx-auto text-slate-300 mb-3" />
           <h3 className="font-bold text-slate-700 text-base">কোনো পরীক্ষা তৈরি করা হয়নি</h3>
@@ -215,7 +276,7 @@ const Exams: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {exams.map((exam) => (
+                {displayedExams.map((exam) => (
                   <tr key={exam.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-bold text-slate-800">{exam.name}</div>
@@ -252,7 +313,7 @@ const Exams: React.FC = () => {
                           <button
                             onClick={() => handleDelete(exam.id, exam.name)}
                             className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition"
-                            title="মুছে ফেলুন"
+                            title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছে ফেলুন বা সংরক্ষণাগারে পাঠান'}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -321,32 +382,34 @@ const Exams: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান *</label>
-                  <select
-                    required
-                    value={formData.instituteId}
-                    onChange={e => setFormData({ ...formData, instituteId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="">প্রতিষ্ঠান নির্বাচন করুন</option>
-                    {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                  </select>
+              {!isTrainer && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান *</label>
+                    <select
+                      required
+                      value={formData.instituteId}
+                      onChange={e => setFormData({ ...formData, instituteId: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    >
+                      <option value="">প্রতিষ্ঠান নির্বাচন করুন</option>
+                      {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">ব্যাচ *</label>
+                    <select
+                      required
+                      value={formData.batchId}
+                      onChange={e => setFormData({ ...formData, batchId: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    >
+                      <option value="">ব্যাচ নির্বাচন করুন</option>
+                      {batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">ব্যাচ *</label>
-                  <select
-                    required
-                    value={formData.batchId}
-                    onChange={e => setFormData({ ...formData, batchId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="">ব্যাচ নির্বাচন করুন</option>
-                    {batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-3 gap-3">
                 <div>

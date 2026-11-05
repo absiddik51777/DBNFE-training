@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { dataService } from '../lib/dataService';
 
 type ReportType = 
@@ -24,6 +25,7 @@ type ReportType =
   | 'completion_certificates';
 
 const Reports: React.FC = () => {
+  const { userProfile } = useAuth();
   const { hasPermission } = usePermissions();
   const canExport = hasPermission('export_reports');
   const [reportType, setReportType] = useState<ReportType>('trainees_master');
@@ -46,6 +48,19 @@ const Reports: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (userProfile?.role === 'Trainer') {
+      if (userProfile.instituteId) setFilterInstitute(userProfile.instituteId);
+      if (userProfile.batchId) {
+        setFilterBatch(userProfile.batchId);
+        const assignedBatch = batches.find(b => b.id === userProfile.batchId);
+        if (assignedBatch?.tradeId) {
+          setFilterTrade(assignedBatch.tradeId);
+        }
+      }
+    }
+  }, [userProfile, batches]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -203,45 +218,47 @@ const Reports: React.FC = () => {
       </div>
 
       {/* Filter Options Bar */}
-      <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">প্রতিষ্ঠান ফিল্টার</label>
-            <select
-              value={filterInstitute}
-              onChange={e => setFilterInstitute(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="">সকল প্রতিষ্ঠান</option>
-              {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-          </div>
+      {userProfile?.role !== 'Trainer' && (
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">প্রতিষ্ঠান ফিল্টার</label>
+              <select
+                value={filterInstitute}
+                onChange={e => setFilterInstitute(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              >
+                <option value="">সকল প্রতিষ্ঠান</option>
+                {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">ট্রেড ফিল্টার</label>
-            <select
-              value={filterTrade}
-              onChange={e => setFilterTrade(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="">সকল ট্রেড</option>
-              {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">ট্রেড ফিল্টার</label>
+              <select
+                value={filterTrade}
+                onChange={e => setFilterTrade(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              >
+                <option value="">সকল ট্রেড</option>
+                {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">ব্যাচ ফিল্টার</label>
-            <select
-              value={filterBatch}
-              onChange={e => setFilterBatch(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="">সকল ব্যাচ</option>
-              {batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">ব্যাচ ফিল্টার</label>
+              <select
+                value={filterBatch}
+                onChange={e => setFilterBatch(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              >
+                <option value="">সকল ব্যাচ</option>
+                {batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Generated Report View Sheet */}
       <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/80 shadow-xs print:border-none print:shadow-none print:p-0">

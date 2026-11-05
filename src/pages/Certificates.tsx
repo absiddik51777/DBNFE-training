@@ -104,11 +104,19 @@ const Certificates: React.FC = () => {
     return attPct >= MIN_ATTENDANCE_REQUIRED && hasPassed;
   };
 
-  const filtered = trainees.filter(t => 
-    t.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.nameBn.includes(searchTerm) ||
-    t.registrationNumber.includes(searchTerm)
-  );
+  const isTrainer = userProfile?.role === 'Trainer';
+  const filtered = trainees.filter(t => {
+    if (isTrainer) {
+      if (userProfile.batchId && t.batchId !== userProfile.batchId) return false;
+      if (userProfile.instituteId && t.instituteId !== userProfile.instituteId) return false;
+    }
+    return (
+      (t.nameEn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.nameBn || '').includes(searchTerm) ||
+      (t.registrationNumber || '').includes(searchTerm) ||
+      (t.traineeId || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   if (loading) {
     return (
@@ -251,7 +259,7 @@ const Certificates: React.FC = () => {
                   পিতা: {selectedTraineeForCert.fatherNameBn} • মাতা: {selectedTraineeForCert.motherNameBn}
                 </p>
                 <p className="text-xs font-mono text-slate-500">
-                  রেজিস্ট্রেশন নং: {selectedTraineeForCert.registrationNumber}
+                  রেজিস্ট্রেশন নং: {selectedTraineeForCert.registrationNumber || selectedTraineeForCert.traineeId}
                 </p>
                 <p className="pt-2">
                   সফলতার সাথে উপানুষ্ঠানিক শিক্ষা ব্যুরো পরিচালিত ঝরে পড়া শিক্ষার্থীদের জন্য{' '}
@@ -285,7 +293,7 @@ const Certificates: React.FC = () => {
 
               {/* Certificate Issue Footer */}
               <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 relative z-10">
-                <span>সনদ নং: CERT-BNFE-{selectedTraineeForCert.registrationNumber.slice(-6)}</span>
+                <span>সনদ নং: CERT-BNFE-{(selectedTraineeForCert.registrationNumber || selectedTraineeForCert.traineeId || '000000').slice(-6)}</span>
                 <span>ইস্যুর তারিখ: {format(new Date(), 'dd MMMM yyyy')}</span>
               </div>
             </div>

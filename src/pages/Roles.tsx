@@ -9,6 +9,7 @@ import {
   DEFAULT_ROLES 
 } from '../lib/permissions';
 import { dataService } from '../lib/dataService';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { 
   Shield, 
   ShieldCheck, 
@@ -40,6 +41,7 @@ const RolesPage: React.FC = () => {
     isCourseDirector 
   } = usePermissions();
   const { userProfile } = useAuth();
+  const { confirm, showAlert } = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'table' | 'matrix'>('table');
   const [searchQuery, setSearchQuery] = useState('');
@@ -171,7 +173,11 @@ const RolesPage: React.FC = () => {
         setSaveSuccessMsg('');
       }, 1200);
     } catch (err: any) {
-      alert(err?.message || 'পারমিশন সংরক্ষণ ব্যর্থ হয়েছে।');
+      await showAlert({
+        title: 'ত্রুটি',
+        message: err?.message || 'পারমিশন সংরক্ষণ ব্যর্থ হয়েছে।',
+        variant: 'danger'
+      });
     } finally {
       setIsSavingPerms(false);
     }
@@ -179,17 +185,32 @@ const RolesPage: React.FC = () => {
 
   // Reset to default roles and permissions
   const handleResetToDefaults = async () => {
-    if (!window.confirm("আপনি কি নিশ্চিতভাবে সকল রোল ও পারমিশন সিস্টেম ডিফল্ট অবস্থায় ফিরিয়ে নিতে চান?")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'সিস্টেম রোল ও পারমিশন রিসেট',
+      message: 'আপনি কি নিশ্চিতভাবে সকল রোল ও পারমিশন সিস্টেম ডিফল্ট অবস্থায় ফিরিয়ে নিতে চান?',
+      detail: 'এর ফলে আপনার কাস্টমাইজ করা সকল রোল পারমিশন মুছে প্রাক-সংজ্ঞায়িত ডিফল্ট রোলগুলো পুনঃস্থাপিত হবে।',
+      confirmText: 'হ্যাঁ, ডিফল্ট রিসেট করুন',
+      cancelText: 'বাতিল',
+      variant: 'warning'
+    });
+    if (!confirmed) return;
+
     try {
       for (const defRole of DEFAULT_ROLES) {
         await dataService.saveItem('roles', defRole);
       }
       await refreshRoles();
-      alert("সকল রোল ও পারমিশন সফলভাবে ডিফল্ট অবস্থায় রিসেট হয়েছে।");
+      await showAlert({
+        title: 'সফলতা',
+        message: 'সকল রোল ও পারমিশন সফলভাবে ডিফল্ট অবস্থায় রিসেট হয়েছে।',
+        variant: 'success'
+      });
     } catch (err: any) {
-      alert("রিসেট ব্যর্থ হয়েছে: " + err?.message);
+      await showAlert({
+        title: 'ত্রুটি',
+        message: 'রিসেট ব্যর্থ হয়েছে: ' + err?.message,
+        variant: 'danger'
+      });
     }
   };
 
@@ -197,7 +218,11 @@ const RolesPage: React.FC = () => {
   const handleRoleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roleFormData.name.trim()) {
-      alert("রোলের নাম প্রদান করুন।");
+      await showAlert({
+        title: 'প্রয়োজনীয় তথ্য অনুপস্থিত',
+        message: 'রোলের নাম প্রদান করুন।',
+        variant: 'warning'
+      });
       return;
     }
 
@@ -223,33 +248,66 @@ const RolesPage: React.FC = () => {
 
       setIsRoleModalOpen(false);
       setRoleFormData({ name: '', nameBn: '', code: '', description: '', template: 'fma' });
-      alert("নতুন রোল সফলভাবে তৈরি হয়েছে!");
+      await showAlert({
+        title: 'সফলতা',
+        message: 'নতুন রোল সফলভাবে তৈরি হয়েছে!',
+        variant: 'success'
+      });
     } catch (err: any) {
-      alert(err?.message || "রোল তৈরিতে সমস্যা হয়েছে।");
+      await showAlert({
+        title: 'ত্রুটি',
+        message: err?.message || 'রোল তৈরিতে সমস্যা হয়েছে।',
+        variant: 'danger'
+      });
     }
   };
 
   const handleDeleteRole = async (role: Role) => {
     if (role.isSystem) {
-      alert("সিস্টেম নির্ধারিত রোল মুছে ফেলা সম্ভব নয়।");
+      await showAlert({
+        title: 'অনুমতি নেই',
+        message: 'সিস্টেম নির্ধারিত স্থায়ী রোল মুছে ফেলা সম্ভব নয়।',
+        variant: 'warning'
+      });
       return;
     }
     const count = getUserCountForRole(role);
+    let confirmed = false;
     if (count > 0) {
-      if (!window.confirm(`এই রোলে বর্তমানে ${count} জন ব্যবহারকারী নিযুক্ত আছেন। মুছে ফেললে তাদের পারমিশন প্রভাবিত হবে। আপনি কি নিশ্চিত?`)) {
-        return;
-      }
+      confirmed = await confirm({
+        title: 'সতর্কতা: সক্রিয় ব্যবহারকারীযুক্ত রোল অপসারণ',
+        message: `এই "${role.nameBn || role.name}" রোলে বর্তমানে ${count} জন ব্যবহারকারী নিযুক্ত আছেন।`,
+        detail: 'রোলটি মুছে ফেললে সংশ্লিষ্ট ব্যবহারকারীদের রোল অ্যাসাইনমেন্ট বাতিল হবে এবং তাদের সিস্টেম পারমিশন সীমাবদ্ধ হয়ে পড়বে। আপনি কি নিশ্চিত?',
+        confirmText: 'হ্যাঁ, মুছে ফেলুন',
+        cancelText: 'বাতিল',
+        variant: 'danger'
+      });
     } else {
-      if (!window.confirm(`আপনি কি "${role.nameBn || role.name}" রোলটি মুছে ফেলতে চান?`)) {
-        return;
-      }
+      confirmed = await confirm({
+        title: 'রোল অপসারণ নিশ্চিতকরণ',
+        message: `আপনি কি "${role.nameBn || role.name}" রোলটি মুছে ফেলতে চান?`,
+        detail: 'এই রোলটি স্থায়ীভাবে সিস্টেম থেকে মুছে যাবে।',
+        confirmText: 'হ্যাঁ, মুছুন',
+        cancelText: 'বাতিল',
+        variant: 'danger'
+      });
     }
+
+    if (!confirmed) return;
 
     try {
       await deleteRole(role.id);
-      alert("রোল সফলভাবে মুছে ফেলা হয়েছে।");
+      await showAlert({
+        title: 'সফলতা',
+        message: 'রোল সফলভাবে মুছে ফেলা হয়েছে।',
+        variant: 'success'
+      });
     } catch (err: any) {
-      alert(err?.message || "রোল মোছা সম্ভব হয়নি।");
+      await showAlert({
+        title: 'ত্রুটি',
+        message: err?.message || 'রোল মোছা সম্ভব হয়নি।',
+        variant: 'danger'
+      });
     }
   };
 

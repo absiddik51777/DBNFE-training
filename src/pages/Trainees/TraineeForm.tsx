@@ -4,7 +4,7 @@ import { logActivity } from '../../lib/firebase';
 import { Institute, Trade, Batch, Trainee } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { ArrowLeft, Save, User, GraduationCap, Building2, Phone, Calendar, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, User, GraduationCap, Building2, Phone, Calendar, AlertCircle, ShieldAlert, CheckCircle2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { dataService } from '../../lib/dataService';
 
@@ -200,10 +200,6 @@ const TraineeForm: React.FC = () => {
 
     // Validation
     const regNo = formData.registrationNumber?.trim() || '';
-    if (!regNo) {
-      setError('প্রশিক্ষণার্থীর রেজিস্ট্রেশন নম্বর প্রদান করুন।');
-      return;
-    }
 
     const traineeIdVal = formData.traineeId?.trim() || '';
     if (!traineeIdVal) {
@@ -223,6 +219,11 @@ const TraineeForm: React.FC = () => {
 
     if (!formData.batchId) {
       setError('প্রশিক্ষণার্থীর জন্য অবশ্যই একটি প্রশিক্ষণ ব্যাচ নির্বাচন করতে হবে।');
+      return;
+    }
+
+    if (userProfile?.role === 'Trainer' && userProfile.batchId && formData.batchId !== userProfile.batchId) {
+      setError('অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচে প্রশিক্ষণার্থী যোগ বা সম্পাদনা করতে পারবেন।');
       return;
     }
 
@@ -248,12 +249,14 @@ const TraineeForm: React.FC = () => {
 
     setSaving(true);
     try {
-      // 1. Uniqueness check for Registration Number
-      const isRegTaken = await dataService.isRegistrationNumberTaken(regNo, id);
-      if (isRegTaken) {
-        setError(`রেজিস্ট্রেশন নম্বরটি ('${regNo}') ইতোমধ্যে ব্যবহৃত হয়েছে। ভিন্ন রেজিস্ট্রেশন নম্বর দিন।`);
-        setSaving(false);
-        return;
+      // 1. Uniqueness check for Registration Number (if provided)
+      if (regNo) {
+        const isRegTaken = await dataService.isRegistrationNumberTaken(regNo, id);
+        if (isRegTaken) {
+          setError(`রেজিস্ট্রেশন নম্বরটি ('${regNo}') ইতোমধ্যে অন্য শিক্ষার্থীর জন্য ব্যবহৃত হয়েছে। ভিন্ন বা ইউনিক রেজিস্ট্রেশন নম্বর প্রদান করুন।`);
+          setSaving(false);
+          return;
+        }
       }
 
       // 2. Uniqueness check for Trainee ID
@@ -397,6 +400,27 @@ const TraineeForm: React.FC = () => {
         </div>
       </div>
 
+      {!id && (
+        <div className="bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 border border-teal-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-center space-x-3 text-teal-950">
+            <div className="p-2 bg-teal-600 text-white rounded-xl shrink-0 shadow-2xs">
+              <Upload size={16} />
+            </div>
+            <div>
+              <strong className="text-sm font-bold block">একসাথে একাধিক শিক্ষার্থীর তথ্য আপলোড করতে চান?</strong>
+              <p className="text-teal-700 mt-0.5">এক্সেল (.xlsx) বা সিএসভি (.csv) স্প্রেডশিটের মাধ্যমে এক ক্লিকে বাল্ক ইনপুট সম্পন্ন করুন।</p>
+            </div>
+          </div>
+          <Link
+            to="/trainees"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold rounded-xl transition shadow-2xs shrink-0 self-start sm:self-auto flex items-center space-x-1.5"
+          >
+            <span>বাল্ক আপলোড করুন</span>
+            <span>→</span>
+          </Link>
+        </div>
+      )}
+
       {error && (
         <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2.5">
           <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600" />
@@ -432,19 +456,25 @@ const TraineeForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                রেজিস্ট্রেশন নম্বর (Registration No) *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  রেজিস্ট্রেশন নম্বর (Registration No)
+                </label>
+                <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">
+                  ঐচ্ছিক / পরবর্তীতে আপডেটযোগ্য
+                </span>
+              </div>
               <input
                 type="text"
-                required
                 name="registrationNumber"
                 value={formData.registrationNumber || ''}
                 onChange={handleChange}
-                placeholder="যেমন: REG-10025 বা বোর্ড নম্বর"
+                placeholder="যেমন: REG-10025 (প্রাথমিক পর্যায়ে ফাঁকা রাখা যাবে)"
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
-              <p className="text-[11px] text-slate-400 mt-1">রেজিস্ট্রেশন নম্বর টাইপ করুন (ম্যানুয়াল)</p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                প্রাথমিক ভর্তির সময় এটি ফাঁকা রাখা যাবে। রেজিস্ট্রেশন প্রক্রিয়া সম্পন্ন হলে পরবর্তীতে ইউনিক নম্বর হিসেবে আপডেট করা যাবে।
+              </p>
             </div>
 
             <div>

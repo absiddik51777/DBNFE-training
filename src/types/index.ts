@@ -23,12 +23,15 @@ export interface Role {
   updatedAt?: number;
 }
 
+export type TrainerType = 'Skill Trainer' | 'Literacy Trainer';
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   phone: string;
   role: UserRole;
+  trainerType?: TrainerType; // 'Skill Trainer' (স্কিল ট্রেইনার) or 'Literacy Trainer' (লিটারেসি ট্রেইনার)
   instituteId?: string;
   instituteName?: string;
   batchId?: string;
@@ -45,7 +48,10 @@ export interface Institute {
   contactPerson: string;
   phone: string;
   email: string;
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Archived';
+  isArchived?: boolean;
+  archivedAt?: number;
+  archivedReason?: string;
   createdAt: number;
 }
 
@@ -56,7 +62,10 @@ export interface Trade {
   code: string;
   description: string;
   duration: string; // e.g., '৬ মাস (৩৬০ ঘণ্টা)'
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Archived';
+  isArchived?: boolean;
+  archivedAt?: number;
+  archivedReason?: string;
   createdAt: number;
   updatedAt?: number;
 }
@@ -67,22 +76,29 @@ export interface Batch {
   batchCode?: string;
   instituteId: string;
   tradeId: string;
+  skillTrainerId?: string; // স্কিল ট্রেইনার আইডি
+  skillTrainerName?: string; // স্কিল ট্রেইনার নাম
+  literacyTrainerId?: string; // লিটারেসি ট্রেইনার আইডি
+  literacyTrainerName?: string; // লিটারেসি ট্রেইনার নাম
   fiscalYear?: string; // e.g., '2025-2026'
   startDate: number;
   endDate: number;
   maxTrainees: number;
   status: 'Upcoming' | 'Active' | 'Completed' | 'Archived' | 'Cancelled';
   cancellationReason?: string;
+  isArchived?: boolean;
+  archivedAt?: number;
+  archivedReason?: string;
   createdAt: number;
   updatedAt?: number;
 }
 
-export type TraineeStatus = 'Active' | 'Completed' | 'Dropped Out';
+export type TraineeStatus = 'Active' | 'Completed' | 'Dropped Out' | 'Archived';
 
 export interface Trainee {
   id: string;
   traineeId: string;
-  registrationNumber: string;
+  registrationNumber?: string;
   nameEn: string;
   nameBn: string;
   fatherNameEn: string;
@@ -111,6 +127,9 @@ export interface Trainee {
   trainingStartDate: number;
   trainingEndDate: number;
   status: TraineeStatus;
+  isArchived?: boolean;
+  archivedAt?: number;
+  archivedReason?: string;
   
   createdAt: number;
   updatedAt?: number;
@@ -144,6 +163,10 @@ export interface Exam {
   passMarks: number;
   subject: string;
   description?: string;
+  status?: 'Active' | 'Archived';
+  isArchived?: boolean;
+  archivedAt?: number;
+  archivedReason?: string;
   createdAt: number;
 }
 

@@ -28,6 +28,7 @@ import {
 import { dataService } from '../lib/dataService';
 import { toBn, formatBengaliDate } from '../lib/dateUtils';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 
 type ExtendedAttendanceStatus = AttendanceStatus | 'Unmarked';
 
@@ -47,6 +48,7 @@ const Attendance: React.FC = () => {
   const canTakeAttendance = hasPermission('take_attendance');
   const canEditAttendance = hasPermission('edit_attendance');
   const { isDeletionAllowed, deleteAttendanceForBatchAndDate } = useSystemSettings();
+  const { confirm } = useConfirm();
   const isTrainer = userProfile?.role === 'Trainer';
 
   // Master Data
@@ -242,6 +244,10 @@ const Attendance: React.FC = () => {
 
   // Safe Selector Change with Unsaved Confirmation
   const requestSelectorChange = (type: 'batch' | 'date' | 'institute', value: string) => {
+    if (isTrainer && (type === 'batch' || type === 'institute')) {
+      setPermissionNotice("প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা পরিচালনা করতে পারবেন।");
+      return;
+    }
     if (hasUnsavedChanges) {
       setPendingChange({ type, value });
     } else {
@@ -250,6 +256,9 @@ const Attendance: React.FC = () => {
   };
 
   const applySelectorChange = (type: 'batch' | 'date' | 'institute', value: string) => {
+    if (isTrainer && (type === 'batch' || type === 'institute')) {
+      return;
+    }
     if (type === 'institute') {
       setSelectedInstitute(value);
       const firstBatch = batches.find(b => b.instituteId === value);
@@ -394,6 +403,12 @@ const Attendance: React.FC = () => {
 
     if (!selectedBatch || !selectedDate) return;
 
+    if (isTrainer && userProfile?.batchId && selectedBatch !== userProfile.batchId) {
+      setPermissionNotice("অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা রেকর্ড মুছতে পারেন।");
+      setTimeout(() => setPermissionNotice(''), 4000);
+      return;
+    }
+
     const savedCount = Object.values(attendanceMap).filter(item => item.isSavedInDb).length;
     if (savedCount === 0) {
       setPermissionNotice("এই তারিখে মোছার মতো কোনো সংরক্ষিত হাজিরা রেকর্ড নেই।");
@@ -401,7 +416,14 @@ const Attendance: React.FC = () => {
       return;
     }
 
-    const confirmed = window.confirm(`আপনি কি নিশ্চিতভাবে "${selectedDate}" তারিখের সংরক্ষিত সকল (${savedCount}টি) হাজিরা রেকর্ড ডাটাবেজ থেকে মুছে ফেলতে চান?`);
+    const confirmed = await confirm({
+      title: 'হাজিরা রেকর্ড মুছে ফেলার নিশ্চিতকরণ',
+      message: `আপনি কি নিশ্চিতভাবে "${formatBengaliDate(selectedDate)}" তারিখের সংরক্ষিত সকল (${toBn(savedCount)}টি) হাজিরা রেকর্ড ডাটাবেজ থেকে মুছে ফেলতে চান?`,
+      detail: 'এই তারিখের সংরক্ষিত হাজিরা ডাটাবেজ থেকে স্থায়ীভাবে মুছে যাবে। প্রয়োজন হলে পুনরায় হাজিরা প্রদান করতে পারবেন।',
+      confirmText: 'হ্যাঁ, হাজিরা রেকর্ড মুছুন',
+      cancelText: 'বাতিল',
+      variant: 'danger'
+    });
     if (!confirmed) return;
 
     try {
@@ -448,6 +470,12 @@ const Attendance: React.FC = () => {
         setSaveErrorMessage(`সংরক্ষিত হাজিরা পরিবর্তনের অনুমতি আপনার নেই (${item.trainee.nameBn})।`);
         return false;
       }
+    }
+
+    // Strict Trainer Batch Guard
+    if (isTrainer && userProfile?.batchId && selectedBatch !== userProfile.batchId) {
+      setSaveErrorMessage("অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা সংরক্ষণ করতে পারবেন।");
+      return false;
     }
 
     setSaving(true);
@@ -583,7 +611,7 @@ const Attendance: React.FC = () => {
             <span className="text-xs font-normal text-slate-400">| Daily Attendance</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            {formatBengaliDate(selectedDate)} {currentBatch ? `• ${currentBatch.name}` : ''}
+            {formatBengaliDate(selectedDate)} {!isTrainer && currentBatch ? `• ${currentBatch.name}` : ''}
           </p>
         </div>
 
@@ -662,20 +690,15 @@ const Attendance: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           {/* Selectors */}
           {isTrainer ? (
-            <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-              <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                ব্যাচ: <span className="text-emerald-700 font-bold">{currentBatch?.name || 'নির্ধারিত ব্যাচ নেই'}</span>
-              </span>
-              <div className="flex items-center space-x-1.5">
-                <span className="text-slate-500 font-medium">তারিখ:</span>
-                <input
-                  type="date"
-                  max={todayDateStr}
-                  value={selectedDate}
-                  onChange={(e) => requestSelectorChange('date', e.target.value)}
-                  className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-slate-500 font-medium">তারিখ:</span>
+              <input
+                type="date"
+                max={todayDateStr}
+                value={selectedDate}
+                onChange={(e) => requestSelectorChange('date', e.target.value)}
+                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
             </div>
           ) : (
             <div className="flex items-center flex-wrap gap-2">

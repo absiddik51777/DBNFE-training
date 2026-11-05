@@ -377,75 +377,59 @@ export default function AttendanceSheet() {
 
       {/* Filter Bar: Institute, Batch, Month & Year */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Institute Selector (Hidden for Trainer if assigned) */}
-          {!isTrainer ? (
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <Building2 size={14} className="text-slate-400" />
-                <span>প্রতিষ্ঠান (Institute)</span>
-              </label>
-              <select
-                value={selectedInstitute}
-                onChange={(e) => {
-                  const instId = e.target.value;
-                  setSelectedInstitute(instId);
-                  const matchingBatches = batches.filter(b => b.instituteId === instId);
-                  if (matchingBatches.length > 0) {
-                    setSelectedBatch(matchingBatches[0].id);
-                  } else {
-                    setSelectedBatch('');
-                  }
-                }}
-                className="w-full text-sm font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              >
-                {institutes.map(inst => (
-                  <option key={inst.id} value={inst.id}>{inst.name}</option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                প্রতিষ্ঠান (Institute)
-              </label>
-              <div className="text-sm font-semibold text-slate-800 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 truncate">
-                {currentInstitute?.name || 'বরাদ্দকৃত প্রতিষ্ঠান'}
+        <div className={`grid grid-cols-1 ${!isTrainer ? 'md:grid-cols-4' : 'sm:grid-cols-2 max-w-xl'} gap-4`}>
+          {/* Institute & Batch Selectors (Only shown to non-trainers) */}
+          {!isTrainer && (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <Building2 size={14} className="text-slate-400" />
+                  <span>প্রতিষ্ঠান (Institute)</span>
+                </label>
+                <select
+                  value={selectedInstitute}
+                  onChange={(e) => {
+                    const instId = e.target.value;
+                    setSelectedInstitute(instId);
+                    const matchingBatches = batches.filter(b => b.instituteId === instId);
+                    if (matchingBatches.length > 0) {
+                      setSelectedBatch(matchingBatches[0].id);
+                    } else {
+                      setSelectedBatch('');
+                    }
+                  }}
+                  className="w-full text-sm font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  {institutes.map(inst => (
+                    <option key={inst.id} value={inst.id}>{inst.name}</option>
+                  ))}
+                </select>
               </div>
-            </div>
-          )}
 
-          {/* Batch Selector */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Layers size={14} className="text-slate-400" />
-              <span>ব্যাচ (Batch)</span>
-            </label>
-            {!isTrainer ? (
-              <select
-                value={selectedBatch}
-                onChange={(e) => setSelectedBatch(e.target.value)}
-                className="w-full text-sm font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              >
-                {availableBatches.length === 0 ? (
-                  <option value="">কোনো ব্যাচ পাওয়া যায়নি</option>
-                ) : (
-                  availableBatches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            ) : (
-              <div className="text-sm font-semibold text-slate-800 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 truncate flex items-center justify-between">
-                <span>{currentBatch?.name || 'বরাদ্দকৃত ব্যাচ'}</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md">
-                  প্রশিক্ষক
-                </span>
+              {/* Batch Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <Layers size={14} className="text-slate-400" />
+                  <span>ব্যাচ (Batch)</span>
+                </label>
+                <select
+                  value={selectedBatch}
+                  onChange={(e) => setSelectedBatch(e.target.value)}
+                  className="w-full text-sm font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  {availableBatches.length === 0 ? (
+                    <option value="">কোনো ব্যাচ পাওয়া যায়নি</option>
+                  ) : (
+                    availableBatches.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* Month Selector */}
           <div>

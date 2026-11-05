@@ -384,6 +384,25 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
     moduleBn: 'রোল ও পারমিশন ব্যবস্থাপনা',
   },
 
+  // Shikhon Calendar (Learning Calendar)
+  {
+    key: 'view_shikhon_calendar',
+    nameBn: 'শিখন ক্যালেন্ডার প্রদর্শন',
+    nameEn: 'View Shikhon Calendar Page',
+    descriptionBn: '৯২ দিনের সরকারি শিখন ক্যালেন্ডার ও পাঠ পরিকল্পনা দেখার অনুমতি',
+    module: 'calendar',
+    moduleBn: 'শিখন ক্যালেন্ডার',
+    isPageView: true,
+  },
+  {
+    key: 'update_shikhon_calendar',
+    nameBn: 'ক্লাস অগ্রগতি ও সম্পাদন আপডেট',
+    nameEn: 'Update Shikhon Calendar Progress',
+    descriptionBn: 'ক্লাস সম্পন্ন মার্ক করা, তারিখ নির্ধারণ ও মন্তব্য সংরক্ষণের অনুমতি',
+    module: 'calendar',
+    moduleBn: 'শিখন ক্যালেন্ডার',
+  },
+
   // Settings
   {
     key: 'view_settings',
@@ -466,6 +485,8 @@ export const DEFAULT_ROLES: Role[] = [
       'export_reports',
       'view_certificates',
       'generate_certificate',
+      'view_shikhon_calendar',
+      'update_shikhon_calendar',
       'view_users',
       'create_user',
       'edit_user',
@@ -482,7 +503,8 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'নির্দিষ্ট ব্যাচের প্রশিক্ষণ প্রদানকারী। দৈনিক হাজিরা গ্রহণ, পরীক্ষার নম্বর প্রদান ও নিজ ব্যাচের প্রশিক্ষণার্থী পরিচালনা করেন।',
     isSystem: true,
     permissions: [
-      // 'view_dashboard' is intentionally omitted for Trainer role. Trainers land directly on /attendance.
+      'view_dashboard',
+      'view_dashboard_stats',
       'view_batches',
       'view_trainees',
       'view_trainee_details',
@@ -491,12 +513,14 @@ export const DEFAULT_ROLES: Role[] = [
       'view_attendance',
       'take_attendance',
       'view_attendance_sheet',
+      'view_shikhon_calendar',
+      'update_shikhon_calendar',
       'view_exams',
       'view_results',
       'enter_marks',
       'view_certificates',
     ],
-    defaultLandingRoute: '/attendance',
+    defaultLandingRoute: '/trainer-dashboard',
     createdAt: 1715000000000,
   },
 ];
@@ -506,10 +530,13 @@ export const DEFAULT_ROLES: Role[] = [
  */
 export const PATH_TO_PAGE_PERMISSION: Record<string, string> = {
   '/': 'view_dashboard',
+  '/trainer-dashboard': 'view_dashboard',
   '/institutes': 'view_institutes',
   '/trades': 'view_trades',
+  '/trade-calendar': 'view_trades',
   '/batches': 'view_batches',
   '/trainees': 'view_trainees',
+  '/shikhon-calendar': 'view_shikhon_calendar',
   '/attendance': 'view_attendance',
   '/attendance-sheet': 'view_attendance_sheet',
   '/exams': 'view_exams',
