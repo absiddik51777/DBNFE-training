@@ -7,6 +7,7 @@ import { usePermissions } from '../../contexts/PermissionsContext';
 import { ArrowLeft, Save, User, GraduationCap, Building2, Phone, Calendar, AlertCircle, ShieldAlert, CheckCircle2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { dataService } from '../../lib/dataService';
+import { FormSkeleton } from '../../components/Skeleton';
 
 const TraineeForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,11 +17,19 @@ const TraineeForm: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission } = usePermissions();
 
+  const returnPage = searchParams.get('returnPage') || sessionStorage.getItem('bnfe_trainee_return_page') || '1';
+  const returnScroll = searchParams.get('returnScroll') || sessionStorage.getItem('bnfe_trainee_return_scroll') || '0';
+
+  const handleReturn = () => {
+    navigate(`/trainees?page=${returnPage}&scroll=${returnScroll}`);
+  };
+
   const canPerformAction = id ? hasPermission('edit_trainee') : hasPermission('create_trainee');
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldWarnings, setFieldWarnings] = useState<Record<string, string>>({});
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -80,8 +89,18 @@ const TraineeForm: React.FC = () => {
           const pres = found.presentAddress || found.address || '';
           const same = found.sameAsPermanentAddress ?? (perm === pres && perm.length > 0);
           const foundBatch = btcList.find(b => b.id === found.batchId);
+          // Hydrate with fallback for older records that may only have single fatherName / motherName
+          const fNameBn = found.fatherNameBn || (found as any).fatherName || '';
+          const fNameEn = found.fatherNameEn || (found as any).fatherName || '';
+          const mNameBn = found.motherNameBn || (found as any).motherName || '';
+          const mNameEn = found.motherNameEn || (found as any).motherName || '';
+
           setFormData({
             ...found,
+            fatherNameBn: fNameBn,
+            fatherNameEn: fNameEn,
+            motherNameBn: mNameBn,
+            motherNameEn: mNameEn,
             permanentAddress: perm,
             presentAddress: pres,
             sameAsPermanentAddress: same,
@@ -161,6 +180,52 @@ const TraineeForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Helper regex tests
+  const hasEnglish = (text: string) => /[a-zA-Z]/.test(text);
+  const hasBengali = (text: string) => /[\u0980-\u09FF]/.test(text);
+
+  // Bengali-only input handler: rejects English letters
+  const handleBengaliChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (hasEnglish(value)) {
+      // Strip English letters
+      const sanitized = value.replace(/[a-zA-Z]/g, '');
+      setFormData(prev => ({ ...prev, [name]: sanitized }));
+      setFieldWarnings(prev => ({
+        ...prev,
+        [name]: 'বাংলা ফিল্ডে ইংরেজি অক্ষর লেখা যাবে না (ইংরেজি বর্ণ স্বয়ংক্রিয়ভাবে বর্জন করা হয়েছে)।'
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      setFieldWarnings(prev => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
+  };
+
+  // English-only input handler: rejects Bengali characters
+  const handleEnglishChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (hasBengali(value)) {
+      // Strip Bengali characters
+      const sanitized = value.replace(/[\u0980-\u09FF]/g, '');
+      setFormData(prev => ({ ...prev, [name]: sanitized }));
+      setFieldWarnings(prev => ({
+        ...prev,
+        [name]: 'ইংরেজি ফিল্ডে বাংলা অক্ষর লেখা যাবে না (বাংলা বর্ণ স্বয়ংক্রিয়ভাবে বর্জন করা হয়েছে)।'
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      setFieldWarnings(prev => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
+  };
+
   const handlePermanentAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setFormData(prev => ({
@@ -207,8 +272,54 @@ const TraineeForm: React.FC = () => {
       return;
     }
 
-    if (!formData.nameBn?.trim() && !formData.nameEn?.trim()) {
-      setError('প্রশিক্ষণার্থীর নাম (বাংলা অথবা ইংরেজি) প্রদান করুন।');
+    if (!formData.nameBn?.trim()) {
+      setError('শিক্ষার্থীর নাম বাংলায় প্রদান করুন।');
+      return;
+    }
+    if (!formData.nameEn?.trim()) {
+      setError('শিক্ষার্থীর নাম ইংরেজিতে প্রদান করুন।');
+      return;
+    }
+    if (hasEnglish(formData.nameBn)) {
+      setError('শিক্ষার্থীর বাংলা নামের ফিল্ডে কোনো ইংরেজি অক্ষর থাকা যাবে না।');
+      return;
+    }
+    if (hasBengali(formData.nameEn)) {
+      setError('শিক্ষার্থীর ইংরেজি নামের ফিল্ডে কোনো বাংলা অক্ষর থাকা যাবে না।');
+      return;
+    }
+
+    if (!formData.fatherNameBn?.trim()) {
+      setError('পিতার নাম বাংলায় প্রদান করুন।');
+      return;
+    }
+    if (!formData.fatherNameEn?.trim()) {
+      setError('পিতার নাম ইংরেজিতে প্রদান করুন।');
+      return;
+    }
+    if (hasEnglish(formData.fatherNameBn)) {
+      setError('পিতার বাংলা নামের ফিল্ডে কোনো ইংরেজি অক্ষর থাকা যাবে না।');
+      return;
+    }
+    if (hasBengali(formData.fatherNameEn)) {
+      setError('পিতার ইংরেজি নামের ফিল্ডে কোনো বাংলা অক্ষর থাকা যাবে না।');
+      return;
+    }
+
+    if (!formData.motherNameBn?.trim()) {
+      setError('মাতার নাম বাংলায় প্রদান করুন।');
+      return;
+    }
+    if (!formData.motherNameEn?.trim()) {
+      setError('মাতার নাম ইংরেজিতে প্রদান করুন।');
+      return;
+    }
+    if (hasEnglish(formData.motherNameBn)) {
+      setError('মাতার বাংলা নামের ফিল্ডে কোনো ইংরেজি অক্ষর থাকা যাবে না।');
+      return;
+    }
+    if (hasBengali(formData.motherNameEn)) {
+      setError('মাতার ইংরেজি নামের ফিল্ডে কোনো বাংলা অক্ষর থাকা যাবে না।');
       return;
     }
 
@@ -335,7 +446,7 @@ const TraineeForm: React.FC = () => {
         traineeIdToSave
       );
 
-      navigate('/trainees');
+      handleReturn();
     } catch (err: any) {
       console.warn("Notice saving trainee:", err);
       setError('তথ্য সংরক্ষণ সম্পন্ন করা যায়নি।');
@@ -352,9 +463,8 @@ const TraineeForm: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
-        <span>ফর্ম লোড হচ্ছে...</span>
+      <div className="py-6">
+        <FormSkeleton sections={3} />
       </div>
     );
   }
@@ -370,7 +480,7 @@ const TraineeForm: React.FC = () => {
           আপনার বর্তমান রোলের অধীনে প্রশিক্ষণার্থী {id ? 'সম্পাদনা' : 'নিবন্ধন'} করার অনুমতি নেই।
         </p>
         <button
-          onClick={() => navigate('/trainees')}
+          onClick={handleReturn}
           className="inline-flex items-center px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-700 transition"
         >
           প্রশিক্ষণার্থী তালিকায় ফিরে যান
@@ -385,7 +495,7 @@ const TraineeForm: React.FC = () => {
       <div className="flex items-center space-x-3">
         <button
           type="button"
-          onClick={() => navigate('/trainees')}
+          onClick={handleReturn}
           className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-2xs"
         >
           <ArrowLeft size={18} />
@@ -583,84 +693,187 @@ const TraineeForm: React.FC = () => {
             <h2 className="font-bold text-slate-800 text-base">২. শিক্ষার্থীর ব্যক্তিগত তথ্য (Personal Information)</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">নাম (বাংলায়) *</label>
-              <input
-                required
-                type="text"
-                name="nameBn"
-                value={formData.nameBn}
-                onChange={handleChange}
-                placeholder="e.g. মোঃ শাকিল আহমেদ"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
+          {/* Dual Inputs (Bootstrap Multiple Inputs style) for Name, Father Name, Mother Name */}
+          <div className="space-y-4">
+            {/* 1. Trainee Full Name Dual Inputs Group */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  ১. শিক্ষার্থীর পূর্ণ নাম (Trainee Full Name) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[11px] text-slate-500 font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-2xl">
+                {/* Bangla Name */}
+                <div>
+                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border-r border-slate-200 shrink-0 select-none">
+                      বাংলা
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="nameBn"
+                      value={formData.nameBn || ''}
+                      onChange={handleBengaliChange}
+                      placeholder="বাংলায় নাম লিখুন (যেমন: মোঃ শাকিল আহমেদ)"
+                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent"
+                    />
+                  </div>
+                  {fieldWarnings.nameBn && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>{fieldWarnings.nameBn}</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* English Name */}
+                <div>
+                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 bg-white overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-blue-50 text-blue-800 border-r border-slate-200 shrink-0 select-none">
+                      English
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="nameEn"
+                      value={formData.nameEn || ''}
+                      onChange={handleEnglishChange}
+                      placeholder="Enter name in English (e.g. Md. Shakil Ahmed)"
+                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent font-sans"
+                    />
+                  </div>
+                  {fieldWarnings.nameEn && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>{fieldWarnings.nameEn}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">নাম (ইংরেজিতে) *</label>
-              <input
-                required
-                type="text"
-                name="nameEn"
-                value={formData.nameEn}
-                onChange={handleChange}
-                placeholder="e.g. Md. Shakil Ahmed"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
+            {/* 2. Father's Name Dual Inputs Group */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  ২. পিতার নাম (Father's Name) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[11px] text-slate-500 font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-2xl">
+                {/* Bangla Father Name */}
+                <div>
+                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border-r border-slate-200 shrink-0 select-none">
+                      বাংলা
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="fatherNameBn"
+                      value={formData.fatherNameBn || ''}
+                      onChange={handleBengaliChange}
+                      placeholder="বাংলায় পিতার নাম লিখুন (যেমন: মোঃ রফিকুল ইসলাম)"
+                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent"
+                    />
+                  </div>
+                  {fieldWarnings.fatherNameBn && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>{fieldWarnings.fatherNameBn}</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* English Father Name */}
+                <div>
+                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 bg-white overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-blue-50 text-blue-800 border-r border-slate-200 shrink-0 select-none">
+                      English
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="fatherNameEn"
+                      value={formData.fatherNameEn || ''}
+                      onChange={handleEnglishChange}
+                      placeholder="Enter father's name in English (e.g. Md. Rafiqul Islam)"
+                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent font-sans"
+                    />
+                  </div>
+                  {fieldWarnings.fatherNameEn && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>{fieldWarnings.fatherNameEn}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">পিতার নাম (বাংলায়) *</label>
-              <input
-                required
-                type="text"
-                name="fatherNameBn"
-                value={formData.fatherNameBn}
-                onChange={handleChange}
-                placeholder="পিতার নাম বাংলায়"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
+            {/* 3. Mother's Name Dual Inputs Group */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  ৩. মাতার নাম (Mother's Name) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[11px] text-slate-500 font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-2xl">
+                {/* Bangla Mother Name */}
+                <div>
+                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border-r border-slate-200 shrink-0 select-none">
+                      বাংলা
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="motherNameBn"
+                      value={formData.motherNameBn || ''}
+                      onChange={handleBengaliChange}
+                      placeholder="বাংলায় মাতার নাম লিখুন (যেমন: মোসাঃ রহিমা বেগম)"
+                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent"
+                    />
+                  </div>
+                  {fieldWarnings.motherNameBn && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>{fieldWarnings.motherNameBn}</span>
+                    </p>
+                  )}
+                </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">পিতার নাম (ইংরেজিতে) *</label>
-              <input
-                required
-                type="text"
-                name="fatherNameEn"
-                value={formData.fatherNameEn}
-                onChange={handleChange}
-                placeholder="Father's Name in English"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
+                {/* English Mother Name */}
+                <div>
+                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 bg-white overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-blue-50 text-blue-800 border-r border-slate-200 shrink-0 select-none">
+                      English
+                    </span>
+                    <input
+                      required
+                      type="text"
+                      name="motherNameEn"
+                      value={formData.motherNameEn || ''}
+                      onChange={handleEnglishChange}
+                      placeholder="Enter mother's name in English (e.g. Mst. Rahima Begum)"
+                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent font-sans"
+                    />
+                  </div>
+                  {fieldWarnings.motherNameEn && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>{fieldWarnings.motherNameEn}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">মাতার নাম (বাংলায়) *</label>
-              <input
-                required
-                type="text"
-                name="motherNameBn"
-                value={formData.motherNameBn}
-                onChange={handleChange}
-                placeholder="মাতার নাম বাংলায়"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">মাতার নাম (ইংরেজিতে) *</label>
-              <input
-                required
-                type="text"
-                name="motherNameEn"
-                value={formData.motherNameEn}
-                onChange={handleChange}
-                placeholder="Mother's Name in English"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">জন্ম তারিখ *</label>
@@ -847,7 +1060,7 @@ const TraineeForm: React.FC = () => {
         <div className="flex items-center justify-end space-x-3 pt-4">
           <button
             type="button"
-            onClick={() => navigate('/trainees')}
+            onClick={handleReturn}
             className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
           >
             বাতিল

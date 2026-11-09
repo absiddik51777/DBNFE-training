@@ -182,15 +182,16 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       {/* Confirmation Modal */}
       {dialogState?.isOpen && (
         <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
           onClick={handleClose}
         >
-          <div 
-            className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
+          <div className="min-h-full w-full flex items-start sm:items-center justify-center p-3 sm:p-4 pt-6 sm:py-6 pb-16">
+            <div 
+              className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+            >
             {/* Top Close Button & Visual Accent */}
             <div className="relative pt-6 px-6 pb-2 text-center">
               <button
@@ -257,6 +258,7 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             </div>
           </div>
         </div>
+      </div>
       )}
     </ConfirmationContext.Provider>
   );

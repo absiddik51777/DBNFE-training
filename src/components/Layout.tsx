@@ -18,6 +18,7 @@ import {
   X,
   UserCheck,
   Shield,
+  ShieldCheck,
   GraduationCap,
   BookOpen
 } from 'lucide-react';
@@ -88,8 +89,14 @@ const Layout: React.FC = () => {
       { path: '/users', name: 'ব্যবহারকারী', sub: 'Users', icon: <UserCheck size={20} /> }
     );
 
-    // Role and Permission management: STRICTLY for Course Director only
+    // Course Director Exclusive Tools (BRN verification, Roles & Permissions)
     if (isCourseDirector) {
+      items.push({ 
+        path: '/brn-verification', 
+        name: 'BRN verification', 
+        sub: 'জন্ম নিবন্ধন যাচাই', 
+        icon: <ShieldCheck size={20} /> 
+      });
       items.push({ path: '/roles', name: 'রোল ও পারমিশন', sub: 'Roles & Perms', icon: <Shield size={20} /> });
     }
 
@@ -127,13 +134,13 @@ const Layout: React.FC = () => {
 
       {/* Sidebar */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white flex flex-col justify-between transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 h-screen bg-slate-900 text-white flex flex-col justify-between transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 shadow-2xl lg:shadow-none ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div>
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Header & Logo */}
-          <div className="h-20 px-6 flex items-center justify-between border-b border-slate-800 bg-slate-950/60">
+          <div className="h-20 px-6 flex items-center justify-between border-b border-slate-800 bg-slate-950/60 shrink-0">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
                 <GraduationCap size={24} />
@@ -152,7 +159,7 @@ const Layout: React.FC = () => {
           </div>
 
           {/* User quick card in sidebar */}
-          <div className="p-4 mx-4 my-4 rounded-xl bg-slate-800/80 border border-slate-700/60">
+          <div className="p-4 mx-4 my-3 rounded-xl bg-slate-800/80 border border-slate-700/60 shrink-0">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-emerald-600/30 text-emerald-400 flex items-center justify-center font-bold text-sm border border-emerald-500/30">
                 {userProfile?.name?.charAt(0) || 'U'}
@@ -167,8 +174,8 @@ const Layout: React.FC = () => {
             </div>
           </div>
 
-          {/* Nav links */}
-          <nav className="px-3 space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto">
+          {/* Nav links: flex-1 takes exact remaining height, smoothly scrollable */}
+          <nav className="flex-1 min-h-0 px-3 py-1 space-y-1 overflow-y-auto overscroll-contain">
             {menuItems.map((item) => {
               const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
               return (
@@ -194,7 +201,7 @@ const Layout: React.FC = () => {
         </div>
 
         {/* Logout bottom button */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 shrink-0 bg-slate-950/40">
           <button
             onClick={() => signOut()}
             className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-sm font-medium text-red-400 hover:bg-red-950/40 hover:text-red-300 transition-colors border border-red-900/40"

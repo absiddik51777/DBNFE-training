@@ -1,0 +1,276 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role-based access control and approval status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID matching Firebase Auth UID" },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "role": { "type": "string", "enum": ["Course Director", "FMA", "Trainer", "Pending"] },
+        "trainerType": { "type": "string", "enum": ["Skill Trainer", "Literacy Trainer"] },
+        "instituteId": { "type": "string", "maxLength": 128 },
+        "instituteName": { "type": "string", "maxLength": 150 },
+        "batchId": { "type": "string", "maxLength": 128 },
+        "batchName": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Pending Approval"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "name", "email", "role", "status", "createdAt"]
+    },
+    "Institute": {
+      "title": "Institute",
+      "description": "Training institute or center",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 500 },
+        "contactPerson": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Archived"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "address", "createdAt"]
+    },
+    "Trade": {
+      "title": "Trade",
+      "description": "Vocational training trade or subject",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "nameEn": { "type": "string", "maxLength": 200 },
+        "code": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "duration": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Archived"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "createdAt"]
+    },
+    "Batch": {
+      "title": "Batch",
+      "description": "Training batch associated with an institute and trade",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "batchCode": { "type": "string", "maxLength": 64 },
+        "instituteId": { "type": "string", "maxLength": 128 },
+        "tradeId": { "type": "string", "maxLength": 128 },
+        "fiscalYear": { "type": "string", "maxLength": 30 },
+        "startDate": { "type": "number" },
+        "endDate": { "type": "number" },
+        "maxTrainees": { "type": "number" },
+        "status": { "type": "string", "enum": ["Active", "Completed", "Archived"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "instituteId", "tradeId", "createdAt"]
+    },
+    "Trainee": {
+      "title": "Trainee",
+      "description": "Student trainee registration record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "traineeId": { "type": "string", "maxLength": 64 },
+        "registrationNumber": { "type": "string", "maxLength": 64 },
+        "nameBn": { "type": "string", "maxLength": 150 },
+        "nameEn": { "type": "string", "maxLength": 150 },
+        "fatherNameBn": { "type": "string", "maxLength": 150 },
+        "fatherNameEn": { "type": "string", "maxLength": 150 },
+        "motherNameBn": { "type": "string", "maxLength": 150 },
+        "motherNameEn": { "type": "string", "maxLength": 150 },
+        "dateOfBirth": { "type": "string", "maxLength": 20 },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+        "nidOrBirthRegistration": { "type": "string", "maxLength": 30 },
+        "mobileNumber": { "type": "string", "maxLength": 20 },
+        "permanentAddress": { "type": "string", "maxLength": 500 },
+        "presentAddress": { "type": "string", "maxLength": 500 },
+        "sameAsPermanentAddress": { "type": "boolean" },
+        "instituteId": { "type": "string", "maxLength": 128 },
+        "tradeId": { "type": "string", "maxLength": 128 },
+        "batchId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["Active", "Completed", "Dropped Out", "Archived"] },
+        "is_brn_verified": { "type": "boolean" },
+        "brn_remark": { "type": "string", "maxLength": 500 },
+        "brn_verified_at": { "type": "number" },
+        "brn_verified_by": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "nameBn", "nameEn", "mobileNumber", "batchId", "createdAt"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Daily attendance record for a trainee in a batch",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "batchId": { "type": "string", "maxLength": 128 },
+        "tradeId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "traineeId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Leave"] },
+        "remarks": { "type": "string", "maxLength": 300 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "batchId", "date", "traineeId", "status", "createdAt"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "Assessment exam definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "maxLength": 100 },
+        "instituteId": { "type": "string", "maxLength": 128 },
+        "tradeId": { "type": "string", "maxLength": 128 },
+        "batchId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "number" },
+        "totalMarks": { "type": "number" },
+        "passMarks": { "type": "number" },
+        "subject": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "batchId", "totalMarks", "passMarks", "createdAt"]
+    },
+    "ExamMark": {
+      "title": "ExamMark",
+      "description": "Student marks awarded for an exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "examId": { "type": "string", "maxLength": 128 },
+        "traineeId": { "type": "string", "maxLength": 128 },
+        "batchId": { "type": "string", "maxLength": 128 },
+        "marksObtained": { "type": "number" },
+        "percentage": { "type": "number" },
+        "grade": { "type": "string", "maxLength": 10 },
+        "result": { "type": "string", "enum": ["Pass", "Fail", "Absent"] },
+        "enteredBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "examId", "traineeId", "marksObtained", "result", "createdAt"]
+    },
+    "Role": {
+      "title": "Role",
+      "description": "Customizable RBAC role configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "nameBn": { "type": "string", "maxLength": 100 },
+        "code": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 500 },
+        "isSystem": { "type": "boolean" },
+        "permissions": { "type": "array" },
+        "defaultLandingRoute": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "code", "permissions", "createdAt"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Immutable security and audit trail log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "action": { "type": "string", "maxLength": 300 },
+        "module": { "type": "string", "maxLength": 100 },
+        "recordId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["userId", "action", "module", "timestamp"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "System-wide administrative and security settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "allowDataDeletion": { "type": "boolean" },
+        "allowPublicRegistration": { "type": "boolean" },
+        "deletionLockedReason": { "type": "string", "maxLength": 500 },
+        "minAttendancePercentForCert": { "type": "number" },
+        "passMarkPercent": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "updatedBy": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["allowDataDeletion"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles with RBAC and approval state"
+    },
+    "/institutes/{instituteId}": {
+      "schema": "Institute",
+      "description": "Vocational training institutions"
+    },
+    "/trades/{tradeId}": {
+      "schema": "Trade",
+      "description": "Vocational trades"
+    },
+    "/batches/{batchId}": {
+      "schema": "Batch",
+      "description": "Training batches"
+    },
+    "/trainees/{traineeId}": {
+      "schema": "Trainee",
+      "description": "Registered students and trainees"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "AttendanceRecord",
+      "description": "Daily attendance entries"
+    },
+    "/exams/{examId}": {
+      "schema": "Exam",
+      "description": "Examination configurations"
+    },
+    "/marks/{markId}": {
+      "schema": "ExamMark",
+      "description": "Trainee examination marks"
+    },
+    "/roles/{roleId}": {
+      "schema": "Role",
+      "description": "Configurable system roles"
+    },
+    "/activityLogs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Security audit trails"
+    },
+    "/systemSettings/{settingId}": {
+      "schema": "SystemSettings",
+      "description": "System operational and security settings"
+    },
+    "/trade_skill_modules/{moduleId}": {
+      "schema": "object",
+      "description": "Trade skill curriculum modules"
+    },
+    "/trade_literacy_modules/{moduleId}": {
+      "schema": "object",
+      "description": "Trade literacy curriculum modules"
+    },
+    "/batch_calendar_progress/{progressId}": {
+      "schema": "object",
+      "description": "Batch calendar progress tracking"
+    },
+    "/calendar_progress_logs/{logId}": {
+      "schema": "object",
+      "description": "Daily calendar progress logs"
+    }
+  }
+}

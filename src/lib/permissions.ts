@@ -183,6 +183,23 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
     module: 'trainees',
     moduleBn: 'প্রশিক্ষণার্থী',
   },
+  {
+    key: 'view_brn_verification',
+    nameBn: 'জন্ম নিবন্ধন যাচাই পেজ প্রদর্শন (Course Director)',
+    nameEn: 'View BRN Verification Page',
+    descriptionBn: 'শিক্ষার্থীদের জন্ম নিবন্ধন অনলাইন যাচাই ও তথ্য তদারকি করার অনুমতি (কোর্স পরিচালক)',
+    module: 'trainees',
+    moduleBn: 'প্রশিক্ষণার্থী',
+    isPageView: true,
+  },
+  {
+    key: 'manage_brn_verification',
+    nameBn: 'জন্ম নিবন্ধন যাচাইকরণ স্ট্যাটাস ও মন্তব্য সংরক্ষণ',
+    nameEn: 'Manage BRN Verification',
+    descriptionBn: 'জন্ম নিবন্ধন অনলাইন ভেরিফিকেশন স্ট্যাটাস ও মন্তব্য নির্ধারণ করার অনুমতি',
+    module: 'trainees',
+    moduleBn: 'প্রশিক্ষণার্থী',
+  },
 
   // Daily Attendance
   {
@@ -536,6 +553,7 @@ export const PATH_TO_PAGE_PERMISSION: Record<string, string> = {
   '/trade-calendar': 'view_trades',
   '/batches': 'view_batches',
   '/trainees': 'view_trainees',
+  '/brn-verification': 'view_brn_verification',
   '/shikhon-calendar': 'view_shikhon_calendar',
   '/attendance': 'view_attendance',
   '/attendance-sheet': 'view_attendance_sheet',

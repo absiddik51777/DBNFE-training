@@ -1,4 +1,5 @@
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import { handleFirestoreError } from './securityErrors';
 import { 
   collection, 
   getDocs, 
@@ -219,12 +220,26 @@ export const dataService = {
   async saveItem<T extends { id: string }>(collectionName: string, item: T): Promise<T> {
     const cleanItem = sanitizeForFirestore(item);
     
-    // Commit directly to Cloud Firestore
-    const docRef = doc(db, collectionName, cleanItem.id);
-    await setDoc(docRef, cleanItem, { merge: true });
+    try {
+      // Commit directly to Cloud Firestore
+      const docRef = doc(db, collectionName, cleanItem.id);
+      await setDoc(docRef, cleanItem, { merge: true });
 
-    this.broadcastSync(collectionName);
-    return cleanItem as T;
+      this.broadcastSync(collectionName);
+      return cleanItem as T;
+    } catch (err: any) {
+      const sanitized = handleFirestoreError({
+        error: err,
+        operationType: 'update',
+        path: `${collectionName}/${cleanItem.id}`,
+        authInfo: {
+          userId: auth.currentUser?.uid || null,
+          email: auth.currentUser?.email || null
+        }
+      });
+      console.warn(`Firestore saveItem error on ${collectionName}/${cleanItem.id}:`, sanitized.userMessage);
+      throw new Error(sanitized.userMessage);
+    }
   },
 
   /**
@@ -269,8 +284,18 @@ export const dataService = {
     try {
       const docRef = doc(db, collectionName, id);
       await deleteDoc(docRef);
-    } catch (e) {
-      console.warn(`Firestore deleteDoc notice for ${collectionName}/${id}:`, e);
+    } catch (e: any) {
+      const sanitized = handleFirestoreError({
+        error: e,
+        operationType: 'delete',
+        path: `${collectionName}/${id}`,
+        authInfo: {
+          userId: auth.currentUser?.uid || null,
+          email: auth.currentUser?.email || null
+        }
+      });
+      console.warn(`Firestore deleteItem error on ${collectionName}/${id}:`, sanitized.userMessage);
+      throw new Error(sanitized.userMessage);
     }
 
     this.broadcastSync(collectionName);
@@ -573,6 +598,30 @@ export const dataService = {
       const existing = t.registrationNumber?.trim().toLowerCase();
       return !!existing && existing === normalized && t.id !== excludeId;
     });
+  },
+
+  /**
+   * Update BRN verification status and remarks for a trainee
+   */
+  async updateTraineeBrnVerification(
+    traineeId: string,
+    verification: { is_brn_verified: boolean; brn_remark: string; verifiedBy?: string }
+  ): Promise<Trainee> {
+    const trainees = await this.getItems<Trainee>('trainees', true);
+    const trainee = trainees.find(t => t.id === traineeId);
+    if (!trainee) {
+      throw new Error(`প্রশিক্ষণার্থী পাওয়া যায়নি (ID: ${traineeId})`);
+    }
+    const updated: Trainee = {
+      ...trainee,
+      is_brn_verified: verification.is_brn_verified,
+      brn_remark: verification.brn_remark || '',
+      brn_verified_at: Date.now(),
+      brn_verified_by: verification.verifiedBy || '',
+      updatedAt: Date.now(),
+    };
+    await this.saveItem('trainees', updated);
+    return updated;
   },
 
   /**

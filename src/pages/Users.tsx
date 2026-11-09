@@ -4,7 +4,7 @@ import { logActivity } from '../lib/firebase';
 import { UserProfile, UserRole, Institute, Batch, Trade, TrainerType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
-import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search, SlidersHorizontal, Wrench, BookOpen } from 'lucide-react';
+import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search, SlidersHorizontal, Wrench, BookOpen, UserCheck, UserX, Clock, AlertTriangle } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { useConfirm } from '../contexts/ConfirmationContext';
 
@@ -19,6 +19,7 @@ const UsersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
 
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,7 +35,7 @@ const UsersPage: React.FC = () => {
     trainerType: 'Skill Trainer' as TrainerType,
     instituteId: '',
     batchId: '',
-    status: 'Active' as 'Active' | 'Inactive',
+    status: 'Active' as 'Active' | 'Inactive' | 'Pending Approval',
   });
 
   // Add form state
@@ -104,7 +105,30 @@ const UsersPage: React.FC = () => {
     e.preventDefault();
     if (!editingUser) return;
 
+    // RBAC Security Guard: A user cannot modify their own role or status
+    if (userProfile?.id === editingUser.id) {
+      if (editFormData.role !== editingUser.role || editFormData.status !== editingUser.status) {
+        showAlert({
+          title: 'নিরাপত্তা নিষেধাজ্ঞা',
+          message: 'নিরাপত্তা নীতি অনুযায়ী আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।',
+          variant: 'danger'
+        });
+        return;
+      }
+    }
+
+    // RBAC Security Guard: Only Course Director can grant Course Director role
+    if (!isCourseDirector && editFormData.role === 'Course Director') {
+      showAlert({
+        title: 'অনুমতি নেই',
+        message: 'কেবলমাত্র কোর্স পরিচালক অন্য কাউকে কোর্স পরিচালক পদবী প্রদান করতে পারেন।',
+        variant: 'danger'
+      });
+      return;
+    }
+
     try {
+      const isApproving = editingUser.status === 'Pending Approval' && editFormData.status === 'Active';
       const updatedUser: UserProfile = {
         ...editingUser,
         name: editFormData.name.trim(),
@@ -114,6 +138,10 @@ const UsersPage: React.FC = () => {
         batchId: editFormData.role === 'Trainer' ? editFormData.batchId : '',
         status: editFormData.status,
         phone: editFormData.phone.trim(),
+        ...(isApproving ? {
+          approvedBy: userProfile?.id || userProfile?.email || 'admin',
+          approvedAt: Date.now()
+        } : {})
       };
 
       await dataService.saveItem('users', updatedUser);
@@ -127,7 +155,7 @@ const UsersPage: React.FC = () => {
       logActivity(
         userProfile?.id || '',
         userProfile?.name || 'User',
-        `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name} (${editFormData.role}${editFormData.role === 'Trainer' ? ` - ${editFormData.trainerType}` : ''}) - ব্যাচ: ${editFormData.batchId || 'N/A'}`,
+        `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name} (${editFormData.role}${editFormData.role === 'Trainer' ? ` - ${editFormData.trainerType}` : ''}) [স্ট্যাটাস: ${editFormData.status}]`,
         'Users',
         editingUser.id
       );
@@ -138,6 +166,92 @@ const UsersPage: React.FC = () => {
       console.warn("Notice updating user:", err);
       setIsEditModalOpen(false);
       fetchData();
+    }
+  };
+
+  const handleQuickApprove = async (u: UserProfile) => {
+    if (!isCourseDirector) {
+      showAlert({
+        title: 'সীমাবদ্ধ অনুমতি',
+        message: 'কেবলমাত্র কোর্স পরিচালক নতুন অ্যাকাউন্ট অনুমোদন করতে পারেন।',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    try {
+      const assignedRole = (u.role === 'Pending' || !u.role) ? 'Trainer' : u.role;
+      const updatedUser: UserProfile = {
+        ...u,
+        role: assignedRole,
+        status: 'Active',
+        approvedBy: userProfile?.id || userProfile?.email || 'Course Director',
+        approvedAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      await dataService.saveItem('users', updatedUser);
+
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'Course Director',
+        `ব্যবহারকারী অনুমোদন সম্পন্ন: ${u.name} (${u.email}) - পদবী: ${assignedRole}`,
+        'Security',
+        u.id
+      );
+
+      showAlert({
+        title: 'অ্যাকাউন্ট অনুমোদিত',
+        message: `${u.name} (${u.email}) সফলভাবে অনুমোদিত এবং সক্রিয় করা হয়েছে।`,
+        variant: 'success'
+      });
+      fetchData();
+    } catch (err) {
+      console.error("Error approving user:", err);
+      showAlert({
+        title: 'ত্রুটি',
+        message: 'ব্যবহারকারী অনুমোদন করতে সমস্যা হয়েছে।',
+        variant: 'danger'
+      });
+    }
+  };
+
+  const handleQuickReject = async (u: UserProfile) => {
+    if (!isCourseDirector) {
+      showAlert({
+        title: 'সীমাবদ্ধ অনুমতি',
+        message: 'কেবলমাত্র কোর্স পরিচালক আবেদন বাতিল করতে পারেন।',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    try {
+      const updatedUser: UserProfile = {
+        ...u,
+        status: 'Inactive',
+        rejectionReason: 'কোর্স পরিচালক কর্তৃক আবেদন বাতিল করা হয়েছে',
+        updatedAt: Date.now()
+      };
+
+      await dataService.saveItem('users', updatedUser);
+
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'Course Director',
+        `ব্যবহারকারী আবেদন বাতিল: ${u.name} (${u.email})`,
+        'Security',
+        u.id
+      );
+
+      showAlert({
+        title: 'আবেদন বাতিল',
+        message: `${u.name}-এর অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে।`,
+        variant: 'info'
+      });
+      fetchData();
+    } catch (err) {
+      console.error("Error rejecting user:", err);
     }
   };
 
@@ -205,13 +319,16 @@ const UsersPage: React.FC = () => {
     };
   };
 
+  const pendingCount = users.filter(u => u.status === 'Pending Approval').length;
+
   const filteredUsers = users.filter(u => {
     const matchesSearch = 
       (u.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (u.email?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (u.phone?.includes(searchQuery));
     const matchesRole = roleFilter === 'All' || u.role === roleFilter;
-    return matchesSearch && matchesRole;
+    const matchesStatus = statusFilter === 'All' || u.status === statusFilter;
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   if (loading) {
@@ -269,6 +386,61 @@ const UsersPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Status Tabs Navigation */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+        <button
+          onClick={() => setStatusFilter('All')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+            statusFilter === 'All'
+              ? 'bg-slate-800 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          সকল ব্যবহারকারী ({users.length})
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('Pending Approval')}
+          className={`relative px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition ${
+            statusFilter === 'Pending Approval'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+          }`}
+        >
+          <Clock size={14} />
+          <span>অনুমোদনের অপেক্ষায়</span>
+          {pendingCount > 0 && (
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              statusFilter === 'Pending Approval' ? 'bg-white text-amber-800' : 'bg-amber-600 text-white'
+            }`}>
+              {pendingCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('Active')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+            statusFilter === 'Active'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          সক্রিয় ({users.filter(u => u.status === 'Active').length})
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('Inactive')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+            statusFilter === 'Inactive'
+              ? 'bg-red-600 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          নিষ্ক্রিয় ({users.filter(u => u.status === 'Inactive').length})
+        </button>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-72">
@@ -324,10 +496,16 @@ const UsersPage: React.FC = () => {
               ) : (
                 filteredUsers.map((u) => {
                   const batchInfo = getBatchInfo(u.batchId);
+                  const isPending = u.status === 'Pending Approval';
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={u.id} className={`hover:bg-slate-50/70 transition-colors ${isPending ? 'bg-amber-50/40' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-slate-800">{u.name}</div>
+                        <div className="text-sm font-bold text-slate-800 flex items-center space-x-1.5">
+                          <span>{u.name}</span>
+                          {isPending && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500 text-white font-semibold">নতুন</span>
+                          )}
+                        </div>
                         <div className="text-xs text-slate-500 font-mono">{u.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 font-mono">
@@ -337,11 +515,12 @@ const UsersPage: React.FC = () => {
                         <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
                           u.role === 'Course Director' ? 'bg-purple-100 text-purple-800' :
                           u.role === 'FMA' ? 'bg-blue-100 text-blue-800' : 
+                          u.role === 'Pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                           u.trainerType === 'Literacy Trainer' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'
                         }`}>
                           {u.role === 'Trainer' 
                             ? (u.trainerType === 'Literacy Trainer' ? 'লিটারেসি প্রশিক্ষক (Literacy)' : 'স্কিল প্রশিক্ষক (Skill)')
-                            : u.role === 'Course Director' ? 'কোর্স পরিচালক' : 'FMA'}
+                            : u.role === 'Course Director' ? 'কোর্স পরিচালক' : u.role === 'Pending' ? 'অপেক্ষমাণ' : 'FMA'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
@@ -375,19 +554,45 @@ const UsersPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                          u.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                          u.status === 'Active' 
+                            ? 'bg-emerald-100 text-emerald-700' 
+                            : u.status === 'Pending Approval'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300 font-bold'
+                            : 'bg-red-100 text-red-700'
                         }`}>
-                          {u.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                          {u.status === 'Active' ? 'সক্রিয়' : u.status === 'Pending Approval' ? 'অনুমোদনের অপেক্ষায়' : 'নিষ্ক্রিয়'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleEditClick(u)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                          title="পদবী, প্রতিষ্ঠান বা ব্যাচ সম্পাদনা"
-                        >
-                          <Edit2 size={16} />
-                        </button>
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {isCourseDirector && u.status === 'Pending Approval' && (
+                            <>
+                              <button
+                                onClick={() => handleQuickApprove(u)}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+                                title="অ্যাকাউন্ট অনুমোদন ও সক্রিয় করুন"
+                              >
+                                <UserCheck size={14} />
+                                <span>অনুমোদন</span>
+                              </button>
+                              <button
+                                onClick={() => handleQuickReject(u)}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-semibold transition"
+                                title="আবেদন বাতিল করুন"
+                              >
+                                <UserX size={14} />
+                                <span>বাতিল</span>
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleEditClick(u)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            title="পদবী, প্রতিষ্ঠান বা ব্যাচ সম্পাদনা"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -411,6 +616,13 @@ const UsersPage: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
+
+            {editingUser?.id === userProfile?.id && (
+              <div className="p-3 mb-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center space-x-2">
+                <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+                <span>নিরাপত্তা নীতি: আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।</span>
+              </div>
+            )}
 
             <form onSubmit={handleUpdate} className="space-y-3.5">
               <div>
@@ -450,8 +662,8 @@ const UsersPage: React.FC = () => {
                 <select
                   value={editFormData.role}
                   onChange={e => setEditFormData({ ...editFormData, role: e.target.value as UserRole })}
-                  disabled={!isCourseDirector}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  disabled={!isCourseDirector || editingUser?.id === userProfile?.id}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
                 >
                   {roles.map(r => (
                     <option key={r.id} value={r.name}>
@@ -535,9 +747,11 @@ const UsersPage: React.FC = () => {
                 <select
                   value={editFormData.status}
                   onChange={e => setEditFormData({ ...editFormData, status: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  disabled={!isCourseDirector || editingUser?.id === userProfile?.id}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
                 >
                   <option value="Active">সক্রিয় (Active)</option>
+                  <option value="Pending Approval">অনুমোদনের অপেক্ষায় (Pending Approval)</option>
                   <option value="Inactive">নিষ্ক্রিয় (Inactive)</option>
                 </select>
               </div>

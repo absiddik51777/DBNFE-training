@@ -4,6 +4,21 @@ body {
   font-family: 'Noto Sans Bengali', sans-serif;
 }
 
+/* Subtle modern scrollbar for dark sidebar navigation */
+aside nav::-webkit-scrollbar {
+  width: 5px;
+}
+aside nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+aside nav::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+aside nav::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 @media print {
   @page {
     size: A4 landscape;

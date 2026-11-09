@@ -37,7 +37,10 @@ import {
   UserCheck,
   XCircle,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 import { Batch, Institute, Trade, Trainee, AttendanceRecord, Exam, UserProfile } from '../types';
 import { CalendarProgressLog } from '../types/calendar';
@@ -50,6 +53,8 @@ import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { Link } from 'react-router-dom';
 import { SHOW_CALENDAR_MODULES } from '../config/features';
+import { TableSkeleton } from '../components/Skeleton';
+import { DataTableToolbar, ColumnOption, GroupByOption, ActiveFilterChip } from '../components/TableToolbar/DataTableToolbar';
 
 const FISCAL_YEARS = ['২০২৫-২০২৬', '২০২৪-২০২৫', '২০২৬-২০২৭'];
 const ITEMS_PER_PAGE = 6;
@@ -122,6 +127,77 @@ const Batches: React.FC = () => {
   const [filterFiscalYear, setFilterFiscalYear] = useState('all');
   const [sortBy, setSortBy] = useState<'code_asc' | 'date_desc' | 'name_asc' | 'trainees_desc'>('code_asc');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // View Mode & Group By
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+  const [groupBy, setGroupBy] = useState<string>('none');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const DEFAULT_BATCH_COLUMNS: ColumnOption[] = [
+    { id: 'batchCode', label: 'ব্যাচ কোড (Batch Code)', visible: true },
+    { id: 'name', label: 'ব্যাচের নাম (Batch Name)', visible: true },
+    { id: 'instituteTrade', label: 'প্রতিষ্ঠান ও ট্রেড (Institute & Trade)', visible: true },
+    { id: 'dates', label: 'মেয়াদ ও অর্থবছর (Dates & Fiscal Year)', visible: true },
+    { id: 'trainees', label: 'শিক্ষার্থী ও আসন (Trainees & Capacity)', visible: true },
+    { id: 'trainers', label: 'প্রশিক্ষকগণ (Trainers)', visible: true },
+    { id: 'status', label: 'স্ট্যাটাস (Status)', visible: true },
+    { id: 'actions', label: 'পদক্ষেপ (Actions)', visible: true, required: true },
+  ];
+
+  const [columns, setColumns] = useState<ColumnOption[]>(() => {
+    try {
+      const saved = localStorage.getItem('bnfe_batch_visible_columns');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return DEFAULT_BATCH_COLUMNS.map(col => ({
+          ...col,
+          visible: parsed[col.id] !== undefined ? parsed[col.id] : col.visible
+        }));
+      }
+    } catch (e) {}
+    return DEFAULT_BATCH_COLUMNS;
+  });
+
+  const toggleColumn = (colId: string) => {
+    setColumns(prev => {
+      const next = prev.map(c => c.id === colId && !c.required ? { ...c, visible: !c.visible } : c);
+      try {
+        const map: Record<string, boolean> = {};
+        next.forEach(c => { map[c.id] = c.visible; });
+        localStorage.setItem('bnfe_batch_visible_columns', JSON.stringify(map));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetColumns = () => {
+    setColumns(DEFAULT_BATCH_COLUMNS);
+    try {
+      localStorage.removeItem('bnfe_batch_visible_columns');
+    } catch (e) {}
+  };
+
+  const isColVisible = (colId: string) => {
+    const col = columns.find(c => c.id === colId);
+    return col ? col.visible : true;
+  };
+
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const BATCH_GROUP_BY_OPTIONS: GroupByOption[] = [
+    { id: 'none', label: 'গ্রুপ ছাড়া (Default)' },
+    { id: 'institute', label: 'প্রতিষ্ঠান অনুযায়ী (By Institute)' },
+    { id: 'trade', label: 'ট্রেড অনুযায়ী (By Trade)' },
+    { id: 'fiscalYear', label: 'অর্থবছর অনুযায়ী (By Fiscal Year)' },
+    { id: 'status', label: 'অবস্থা অনুযায়ী (By Status)' },
+  ];
 
   const { userProfile } = useAuth();
   const { hasPermission, isCourseDirector } = usePermissions();
@@ -883,6 +959,92 @@ const Batches: React.FC = () => {
     }
   };
 
+  const activeFilterChips: ActiveFilterChip[] = useMemo(() => {
+    const chips: ActiveFilterChip[] = [];
+    if (filterInstitute !== 'all') {
+      const inst = institutes.find(i => i.id === filterInstitute);
+      chips.push({
+        id: 'institute',
+        label: 'প্রতিষ্ঠান',
+        valueLabel: inst ? inst.name : filterInstitute,
+        onRemove: () => { setFilterInstitute('all'); setCurrentPage(1); }
+      });
+    }
+    if (filterTrade !== 'all') {
+      const trd = trades.find(t => t.id === filterTrade);
+      chips.push({
+        id: 'trade',
+        label: 'ট্রেড',
+        valueLabel: trd ? trd.name : filterTrade,
+        onRemove: () => { setFilterTrade('all'); setCurrentPage(1); }
+      });
+    }
+    if (filterStatus !== 'all') {
+      chips.push({
+        id: 'status',
+        label: 'স্ট্যাটাস',
+        valueLabel: filterStatus === 'Active' ? 'চলমান' : filterStatus === 'Upcoming' ? 'আসন্ন' : filterStatus === 'Completed' ? 'সম্পন্ন' : filterStatus === 'Archived' ? 'আর্কাইভ' : 'বাতিল',
+        onRemove: () => { setFilterStatus('all'); setCurrentPage(1); }
+      });
+    }
+    if (filterFiscalYear !== 'all') {
+      chips.push({
+        id: 'fiscalYear',
+        label: 'অর্থবছর',
+        valueLabel: filterFiscalYear,
+        onRemove: () => { setFilterFiscalYear('all'); setCurrentPage(1); }
+      });
+    }
+    return chips;
+  }, [filterInstitute, filterTrade, filterStatus, filterFiscalYear, institutes, trades]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setFilterInstitute('all');
+    setFilterTrade('all');
+    setFilterStatus('all');
+    setFilterFiscalYear('all');
+    setCurrentPage(1);
+  };
+
+  const groupedBatches = useMemo(() => {
+    if (groupBy === 'none') return null;
+
+    const map = new Map<string, { title: string; subtitle?: string; items: Batch[] }>();
+
+    processedBatches.forEach(b => {
+      let key = '';
+      let title = '';
+      let subtitle = '';
+
+      if (groupBy === 'institute') {
+        key = b.instituteId || 'unassigned';
+        title = b.instituteId ? getInstituteName(b.instituteId) : 'প্রতিষ্ঠান অনির্ধারিত';
+      } else if (groupBy === 'trade') {
+        key = b.tradeId || 'unassigned';
+        title = b.tradeId ? getTradeName(b.tradeId) : 'ট্রেড অনির্ধারিত';
+      } else if (groupBy === 'fiscalYear') {
+        key = b.fiscalYear || 'unassigned';
+        title = b.fiscalYear ? `অর্থবছর: ${b.fiscalYear}` : 'অর্থবছর অনির্ধারিত';
+      } else if (groupBy === 'status') {
+        key = b.status || 'Active';
+        title = b.status === 'Active' ? 'চলমান ব্যাচ (Active)' : b.status === 'Upcoming' ? 'আসন্ন ব্যাচ (Upcoming)' : b.status === 'Completed' ? 'সম্পন্ন ব্যাচ (Completed)' : b.status === 'Archived' ? 'আর্কাইভকৃত ব্যাচ (Archived)' : (b.status || 'অন্যান্য');
+      }
+
+      if (!map.has(key)) {
+        map.set(key, { title, subtitle, items: [] });
+      }
+      map.get(key)!.items.push(b);
+    });
+
+    const list: { key: string; title: string; subtitle?: string; items: Batch[] }[] = [];
+    map.forEach((val, key) => {
+      list.push({ key, title: val.title, subtitle: val.subtitle, items: val.items });
+    });
+
+    return list;
+  }, [processedBatches, groupBy, institutes, trades]);
+
   // Get Status badge
   const renderStatusBadge = (status?: Batch['status']) => {
     switch (status) {
@@ -901,12 +1063,165 @@ const Batches: React.FC = () => {
     }
   };
 
+  const renderBatchCard = (b: Batch) => {
+    const enrolledCount = batchTraineesMap[b.id] || 0;
+    const capacity = b.maxTrainees || 30;
+    const capacityPercent = Math.min(100, Math.round((enrolledCount / capacity) * 100));
+
+    const now = Date.now();
+    const start = b.startDate || now;
+    const end = b.endDate || now + 180 * 86400000;
+    const totalDays = Math.max(1, Math.round((end - start) / 86400000));
+    const elapsedDays = Math.max(0, Math.min(totalDays, Math.round((now - start) / 86400000)));
+    const timelinePercent = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+
+    return (
+      <div 
+        key={b.id} 
+        className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md hover:border-emerald-300/80 space-y-4"
+      >
+        <div className="space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shadow-2xs">
+                <Layers size={22} />
+              </div>
+              <div>
+                <span className="text-xs font-mono font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 inline-block">
+                  {b.batchCode || b.id}
+                </span>
+                {b.fiscalYear && (
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    অর্থবছর: {b.fiscalYear}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              {renderStatusBadge(b.status)}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-slate-800 text-base leading-snug line-clamp-1">
+              {b.name}
+            </h3>
+            <div className="flex items-center space-x-1.5 text-xs text-emerald-700 font-semibold mt-1">
+              <Wrench size={13} className="shrink-0" />
+              <span className="truncate">{getTradeName(b.tradeId)}</span>
+            </div>
+            <div className="flex items-center space-x-1.5 text-xs text-slate-500 mt-0.5">
+              <Building2 size={13} className="shrink-0 text-slate-400" />
+              <span className="truncate">{getInstituteName(b.instituteId)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 flex items-center space-x-1">
+                <Users size={13} />
+                <span>ভর্তি শিক্ষার্থী:</span>
+              </span>
+              <span className="font-bold text-slate-800">
+                <strong className="text-emerald-700">{toBn(enrolledCount)}</strong> / {toBn(capacity)} জন ({toBn(capacityPercent)}%)
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div
+                style={{ width: `${capacityPercent}%` }}
+                className={`h-full rounded-full transition-all duration-300 ${
+                  capacityPercent >= 100 ? 'bg-amber-500' : 'bg-emerald-500'
+                }`}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center space-x-1">
+                <Calendar size={12} />
+                <span>মেয়াদ:</span>
+              </span>
+              <span className="font-medium text-slate-700">
+                {safeFormatDate(b.startDate, 'dd MMM yy')} - {safeFormatDate(b.endDate, 'dd MMM yy')}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] text-slate-400">
+              <span>অগ্রগতি:</span>
+              <span>{toBn(elapsedDays)} / {toBn(totalDays)} দিন ({toBn(timelinePercent)}%)</span>
+            </div>
+            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+              <div
+                style={{ width: `${timelinePercent}%` }}
+                className="bg-blue-600 h-full rounded-full"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-1.5 text-[11px]">
+            <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-lg p-1.5">
+              <span className="text-[9px] font-bold text-emerald-800 uppercase block">স্কিল ট্রেইনার</span>
+              <span className="font-semibold text-slate-800 truncate block" title={b.skillTrainerName || 'অনির্ধারিত'}>
+                {b.skillTrainerName || 'অনির্ধারিত'}
+              </span>
+            </div>
+            <div className="bg-sky-50/70 border border-sky-200/60 rounded-lg p-1.5">
+              <span className="text-[9px] font-bold text-sky-800 uppercase block">লিটারেসি ট্রেইনার</span>
+              <span className="font-semibold text-slate-800 truncate block" title={b.literacyTrainerName || 'অনির্ধারিত'}>
+                {b.literacyTrainerName || 'অনির্ধারিত'}
+              </span>
+            </div>
+          </div>
+
+          {b.status === 'Cancelled' && b.cancellationReason && (
+            <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-800 flex items-start space-x-1.5">
+              <AlertCircle size={13} className="shrink-0 mt-0.5 text-red-600" />
+              <span>বাতিলের কারণ: {b.cancellationReason}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <button
+            onClick={() => setViewingBatch(b)}
+            className="px-2.5 py-1 text-slate-700 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+          >
+            <Eye size={13} />
+            <span>বিস্তারিত</span>
+          </button>
+
+          <div className="flex items-center space-x-1.5">
+            {canEdit && (
+              <button
+                onClick={() => handleOpenModal(b)}
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                title="ব্যাচ সম্পাদন করুন"
+              >
+                <Edit2 size={15} />
+              </button>
+            )}
+
+            {canDelete && (
+              <button
+                onClick={() => handleDeleteRequest(b)}
+                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                title="ব্যাচ মুছে ফেলা বা আর্কাইভ করুন"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[45vh] text-slate-500">
-        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-sm font-semibold text-slate-700">প্রশিক্ষণ ব্যাচ তালিকা লোড হচ্ছে...</p>
-        <span className="text-xs text-slate-400 mt-1">প্রতিষ্ঠান ও ট্রেড ভিত্তিক ব্যাচ ডেটাবেজ সমন্বয় হচ্ছে</span>
+      <div className="space-y-6 pb-12">
+        <div className="h-8 w-64 bg-slate-200/80 rounded animate-pulse" />
+        <TableSkeleton rows={6} cols={6} />
       </div>
     );
   }
@@ -1131,114 +1446,127 @@ const Batches: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* 3. SEARCH, FILTERS & SORTING TOOLBAR                     */}
+      {/* 3. TABLE TOOLBAR (GROUP BY | SEARCH + FILTER + COLUMNS)  */}
       {/* ======================================================== */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={17} />
-            <input
-              type="text"
-              placeholder="ব্যাচের নাম, ব্যাচ কোড, প্রতিষ্ঠান বা ট্রেড লিখে খুঁজুন..."
-              value={searchTerm}
-              onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+      <DataTableToolbar
+        searchTerm={searchTerm}
+        onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+        searchPlaceholder="ব্যাচের নাম, কোড, প্রতিষ্ঠান বা ট্রেড..."
+        groupBy={groupBy}
+        onGroupByChange={(val) => setGroupBy(val)}
+        groupByOptions={BATCH_GROUP_BY_OPTIONS}
+        groupByLabel="গ্রুপ করুন (Group by)"
+        filterCount={activeFilterChips.length}
+        onClearAllFilters={handleClearFilters}
+        activeFilterChips={activeFilterChips}
+        renderFilterContent={(close) => (
+          <div className="space-y-3.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">প্রশিক্ষণ প্রতিষ্ঠান:</label>
+              <select
+                value={filterInstitute}
+                onChange={e => { setFilterInstitute(e.target.value); setCurrentPage(1); }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
-                ✕
+                <option value="all">সকল প্রতিষ্ঠান ({toBn(institutes.length)}টি)</option>
+                {institutes.map(i => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">বৃত্তিমূলক ট্রেড:</label>
+              <select
+                value={filterTrade}
+                onChange={e => { setFilterTrade(e.target.value); setCurrentPage(1); }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                <option value="all">সকল ট্রেড ({toBn(trades.length)}টি)</option>
+                {trades.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">অবস্থা (Status):</label>
+                <select
+                  value={filterStatus}
+                  onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                >
+                  <option value="all">সকল অবস্থা</option>
+                  <option value="Active">চলমান (Active)</option>
+                  <option value="Upcoming">আসন্ন (Upcoming)</option>
+                  <option value="Completed">সম্পন্ন (Completed)</option>
+                  <option value="Archived">আর্কাইভকৃত (Archived)</option>
+                  <option value="Cancelled">বাতিলকৃত (Cancelled)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">অর্থবছর:</label>
+                <select
+                  value={filterFiscalYear}
+                  onChange={e => { setFilterFiscalYear(e.target.value); setCurrentPage(1); }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                >
+                  <option value="all">সকল অর্থবছর</option>
+                  {FISCAL_YEARS.map(fy => (
+                    <option key={fy} value={fy}>{fy}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+        columns={columns}
+        onToggleColumn={toggleColumn}
+        onResetColumns={resetColumns}
+        extraActions={
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 px-2.5 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+                title="সাজানোর ক্রম"
+              >
+                <option value="code_asc">ব্যাচ কোড</option>
+                <option value="date_desc">শুরুর তারিখ</option>
+                <option value="trainees_desc">শিক্ষার্থী সংখ্যা</option>
+                <option value="name_asc">ব্যাচের নাম</option>
+              </select>
+            </div>
+
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="টেবিল ভিউ"
+              >
+                <TableIcon size={14} />
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="কার্ড ভিউ"
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
           </div>
-
-          {/* Sort Selector */}
-          <div className="flex items-center space-x-2 shrink-0">
-            <span className="text-xs font-semibold text-slate-500 flex items-center space-x-1">
-              <ArrowUpDown size={14} />
-              <span>সাজান:</span>
-            </span>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as any)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-            >
-              <option value="code_asc">ব্যাচ কোড (ক্রমানুসারে)</option>
-              <option value="date_desc">শুরুর তারিখ (নতুন আগে)</option>
-              <option value="trainees_desc">শিক্ষার্থীর সংখ্যা (সর্বোচ্চ)</option>
-              <option value="name_asc">ব্যাচের নাম (অ-হ)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Filter Dropdowns Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 text-xs">
-          {/* Institute Filter */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">প্রতিষ্ঠান ফিল্টার:</label>
-            <select
-              value={filterInstitute}
-              onChange={e => { setFilterInstitute(e.target.value); setCurrentPage(1); }}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="all">সকল প্রতিষ্ঠান</option>
-              {institutes.map(i => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Trade Filter */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">ট্রেড ফিল্টার:</label>
-            <select
-              value={filterTrade}
-              onChange={e => { setFilterTrade(e.target.value); setCurrentPage(1); }}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="all">সকল ট্রেড</option>
-              {trades.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">অবস্থা (Status):</label>
-            <select
-              value={filterStatus}
-              onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="all">সকল অবস্থা</option>
-              <option value="Active">চলমান (Active)</option>
-              <option value="Upcoming">আসন্ন (Upcoming)</option>
-              <option value="Completed">সম্পন্ন (Completed)</option>
-              <option value="Archived">আর্কাইভকৃত (Archived)</option>
-              <option value="Cancelled">বাতিলকৃত (Cancelled)</option>
-            </select>
-          </div>
-
-          {/* Fiscal Year Filter */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">অর্থবছর:</label>
-            <select
-              value={filterFiscalYear}
-              onChange={e => { setFilterFiscalYear(e.target.value); setCurrentPage(1); }}
-              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="all">সকল অর্থবছর</option>
-              {FISCAL_YEARS.map(fy => (
-                <option key={fy} value={fy}>{fy}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* ======================================================== */}
       {/* 4. BATCHES GRID (RESPONSIVE CARDS)                       */}
@@ -1262,171 +1590,253 @@ const Batches: React.FC = () => {
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {paginatedBatches.map((b) => {
-            const enrolledCount = batchTraineesMap[b.id] || 0;
-            const capacity = b.maxTrainees || 30;
-            const capacityPercent = Math.min(100, Math.round((enrolledCount / capacity) * 100));
+      ) : viewMode === 'table' ? (
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left">
+              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr>
+                  {isColVisible('batchCode') && <th className="px-4 py-3.5">ব্যাচ কোড</th>}
+                  {isColVisible('name') && <th className="px-4 py-3.5">ব্যাচের নাম</th>}
+                  {isColVisible('instituteTrade') && <th className="px-4 py-3.5">প্রতিষ্ঠান ও ট্রেড</th>}
+                  {isColVisible('dates') && <th className="px-4 py-3.5">মেয়াদ ও অর্থবছর</th>}
+                  {isColVisible('trainees') && <th className="px-4 py-3.5">ভর্তি / আসন</th>}
+                  {isColVisible('trainers') && <th className="px-4 py-3.5">প্রশিক্ষকগণ</th>}
+                  {isColVisible('status') && <th className="px-4 py-3.5 text-center">স্ট্যাটাস</th>}
+                  {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-100 text-xs">
+                {groupBy !== 'none' && groupedBatches ? (
+                  groupedBatches.map(grp => {
+                    const isCollapsed = collapsedGroups.has(grp.key);
+                    return (
+                      <React.Fragment key={grp.key}>
+                        <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                          <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
+                            <div className="flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={() => toggleGroupCollapse(grp.key)}
+                                className="flex items-center space-x-2 text-slate-800 hover:text-emerald-700 cursor-pointer"
+                              >
+                                {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                                  {toBn(grp.items.length)}টি ব্যাচ
+                                </span>
+                              </button>
+                              <span className="text-[11px] text-slate-400">
+                                মোটের {toBn(Math.round((grp.items.length / (processedBatches.length || 1)) * 100))}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
 
-            // Timeline Calculation
-            const now = Date.now();
-            const start = b.startDate || now;
-            const end = b.endDate || now + 180 * 86400000;
-            const totalDays = Math.max(1, Math.round((end - start) / 86400000));
-            const elapsedDays = Math.max(0, Math.min(totalDays, Math.round((now - start) / 86400000)));
-            const timelinePercent = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
-
-            return (
-              <div 
-                key={b.id} 
-                className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md hover:border-emerald-300/80 space-y-4"
-              >
-                <div className="space-y-3">
-                  {/* Card Header: Icon, Batch Code & Status */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shadow-2xs">
-                        <Layers size={22} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-mono font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 inline-block">
-                          {b.batchCode || b.id}
-                        </span>
-                        {b.fiscalYear && (
-                          <span className="text-[10px] text-slate-400 block mt-0.5">
-                            অর্থবছর: {b.fiscalYear}
-                          </span>
+                        {!isCollapsed && grp.items.map(b => {
+                          const enrolledCount = batchTraineesMap[b.id] || 0;
+                          const capacity = b.maxTrainees || 30;
+                          return (
+                            <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                              {isColVisible('batchCode') && (
+                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                  <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                                    {b.batchCode || b.id}
+                                  </span>
+                                </td>
+                              )}
+                              {isColVisible('name') && (
+                                <td className="px-4 py-3.5">
+                                  <div className="font-bold text-slate-800 text-xs">{b.name}</div>
+                                </td>
+                              )}
+                              {isColVisible('instituteTrade') && (
+                                <td className="px-4 py-3.5">
+                                  <div className="font-semibold text-emerald-700">{getTradeName(b.tradeId)}</div>
+                                  <div className="text-[11px] text-slate-500">{getInstituteName(b.instituteId)}</div>
+                                </td>
+                              )}
+                              {isColVisible('dates') && (
+                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                                  <div>{safeFormatDate(b.startDate, 'dd/MM/yy')} - {safeFormatDate(b.endDate, 'dd/MM/yy')}</div>
+                                  {b.fiscalYear && <div className="text-[10px] text-slate-400">{b.fiscalYear}</div>}
+                                </td>
+                              )}
+                              {isColVisible('trainees') && (
+                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                  <span className="font-bold text-emerald-700">{toBn(enrolledCount)}</span> / {toBn(capacity)} জন
+                                </td>
+                              )}
+                              {isColVisible('trainers') && (
+                                <td className="px-4 py-3.5 text-slate-600">
+                                  <div className="truncate max-w-[140px] text-[11px]">{b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}</div>
+                                  <div className="truncate max-w-[140px] text-[10px] text-slate-400">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
+                                </td>
+                              )}
+                              {isColVisible('status') && (
+                                <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                  {renderStatusBadge(b.status)}
+                                </td>
+                              )}
+                              {isColVisible('actions') && (
+                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end space-x-1">
+                                    <button
+                                      onClick={() => setViewingBatch(b)}
+                                      className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition"
+                                      title="বিস্তারিত দেখুন"
+                                    >
+                                      <Eye size={15} />
+                                    </button>
+                                    {canEdit && (
+                                      <button
+                                        onClick={() => handleOpenModal(b)}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        title="সম্পাদনা"
+                                      >
+                                        <Edit2 size={15} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        onClick={() => handleDeleteRequest(b)}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="মুছুন বা সংরক্ষণাগার"
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  paginatedBatches.map(b => {
+                    const enrolledCount = batchTraineesMap[b.id] || 0;
+                    const capacity = b.maxTrainees || 30;
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                        {isColVisible('batchCode') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                              {b.batchCode || b.id}
+                            </span>
+                          </td>
                         )}
-                      </div>
-                    </div>
-
-                    <div>
-                      {renderStatusBadge(b.status)}
-                    </div>
-                  </div>
-
-                  {/* Batch Title, Trade & Institute */}
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-base leading-snug line-clamp-1">
-                      {b.name}
-                    </h3>
-                    <div className="flex items-center space-x-1.5 text-xs text-emerald-700 font-semibold mt-1">
-                      <Wrench size={13} className="shrink-0" />
-                      <span className="truncate">{getTradeName(b.tradeId)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-500 mt-0.5">
-                      <Building2 size={13} className="shrink-0 text-slate-400" />
-                      <span className="truncate">{getInstituteName(b.instituteId)}</span>
-                    </div>
-                  </div>
-
-                  {/* Enrollment Capacity Bar */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 flex items-center space-x-1">
-                        <Users size={13} />
-                        <span>ভর্তি শিক্ষার্থী:</span>
+                        {isColVisible('name') && (
+                          <td className="px-4 py-3.5">
+                            <div className="font-bold text-slate-800 text-xs">{b.name}</div>
+                          </td>
+                        )}
+                        {isColVisible('instituteTrade') && (
+                          <td className="px-4 py-3.5">
+                            <div className="font-semibold text-emerald-700">{getTradeName(b.tradeId)}</div>
+                            <div className="text-[11px] text-slate-500">{getInstituteName(b.instituteId)}</div>
+                          </td>
+                        )}
+                        {isColVisible('dates') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                            <div>{safeFormatDate(b.startDate, 'dd/MM/yy')} - {safeFormatDate(b.endDate, 'dd/MM/yy')}</div>
+                            {b.fiscalYear && <div className="text-[10px] text-slate-400">{b.fiscalYear}</div>}
+                          </td>
+                        )}
+                        {isColVisible('trainees') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="font-bold text-emerald-700">{toBn(enrolledCount)}</span> / {toBn(capacity)} জন
+                          </td>
+                        )}
+                        {isColVisible('trainers') && (
+                          <td className="px-4 py-3.5 text-slate-600">
+                            <div className="truncate max-w-[140px] text-[11px]">{b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}</div>
+                            <div className="truncate max-w-[140px] text-[10px] text-slate-400">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
+                          </td>
+                        )}
+                        {isColVisible('status') && (
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                            {renderStatusBadge(b.status)}
+                          </td>
+                        )}
+                        {isColVisible('actions') && (
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end space-x-1">
+                              <button
+                                onClick={() => setViewingBatch(b)}
+                                className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition"
+                                title="বিস্তারিত দেখুন"
+                              >
+                                <Eye size={15} />
+                              </button>
+                              {canEdit && (
+                                <button
+                                  onClick={() => handleOpenModal(b)}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  title="সম্পাদনা"
+                                >
+                                  <Edit2 size={15} />
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDeleteRequest(b)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  title="মুছুন বা সংরক্ষণাগার"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        groupBy !== 'none' && groupedBatches ? (
+          <div className="space-y-6">
+            {groupedBatches.map(grp => {
+              const isCollapsed = collapsedGroups.has(grp.key);
+              return (
+                <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroupCollapse(grp.key)}
+                    className="w-full flex items-center justify-between text-left hover:text-emerald-700 transition cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                      <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                        {toBn(grp.items.length)}টি ব্যাচ
                       </span>
-                      <span className="font-bold text-slate-800">
-                        <strong className="text-emerald-700">{toBn(enrolledCount)}</strong> / {toBn(capacity)} জন ({toBn(capacityPercent)}%)
-                      </span>
                     </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div
-                        style={{ width: `${capacityPercent}%` }}
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          capacityPercent >= 100 ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Date & Course Timeline Bar */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="flex items-center space-x-1">
-                        <Calendar size={12} />
-                        <span>মেয়াদ:</span>
-                      </span>
-                      <span className="font-medium text-slate-700">
-                        {safeFormatDate(b.startDate, 'dd MMM yy')} - {safeFormatDate(b.endDate, 'dd MMM yy')}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-400">
-                      <span>অগ্রগতি:</span>
-                      <span>{toBn(elapsedDays)} / {toBn(totalDays)} দিন ({toBn(timelinePercent)}%)</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        style={{ width: `${timelinePercent}%` }}
-                        className="bg-blue-600 h-full rounded-full"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Trainers Info */}
-                  <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-1.5 text-[11px]">
-                    <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-lg p-1.5">
-                      <span className="text-[9px] font-bold text-emerald-800 uppercase block">স্কিল ট্রেইনার</span>
-                      <span className="font-semibold text-slate-800 truncate block" title={b.skillTrainerName || 'অনির্ধারিত'}>
-                        {b.skillTrainerName || 'অনির্ধারিত'}
-                      </span>
-                    </div>
-                    <div className="bg-sky-50/70 border border-sky-200/60 rounded-lg p-1.5">
-                      <span className="text-[9px] font-bold text-sky-800 uppercase block">লিটারেসি ট্রেইনার</span>
-                      <span className="font-semibold text-slate-800 truncate block" title={b.literacyTrainerName || 'অনির্ধারিত'}>
-                        {b.literacyTrainerName || 'অনির্ধারিত'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Cancellation reason if cancelled */}
-                  {b.status === 'Cancelled' && b.cancellationReason && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-800 flex items-start space-x-1.5">
-                      <AlertCircle size={13} className="shrink-0 mt-0.5 text-red-600" />
-                      <span>বাতিলের কারণ: {b.cancellationReason}</span>
+                    <span className="text-xs text-slate-400">
+                      মোটের {toBn(Math.round((grp.items.length / (processedBatches.length || 1)) * 100))}%
+                    </span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {grp.items.map(b => renderBatchCard(b))}
                     </div>
                   )}
                 </div>
-
-                {/* Card Actions Footer */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <button
-                    onClick={() => setViewingBatch(b)}
-                    className="px-2.5 py-1 text-slate-700 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 rounded-lg font-semibold transition flex items-center space-x-1"
-                  >
-                    <Eye size={13} />
-                    <span>বিস্তারিত</span>
-                  </button>
-
-                  <div className="flex items-center space-x-1.5">
-                    {canEdit && (
-                      <button
-                        onClick={() => handleOpenModal(b)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                        title="ব্যাচ সম্পাদন করুন"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-                    )}
-
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDeleteRequest(b)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                        title="ব্যাচ মুছে ফেলা বা আর্কাইভ করুন"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {paginatedBatches.map(b => renderBatchCard(b))}
+          </div>
+        )
       )}
 
       {/* ======================================================== */}

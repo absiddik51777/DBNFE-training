@@ -98,3 +98,31 @@ export function formatBengaliDate(dateStr: string): string {
   } catch (e) {}
   return dateStr;
 }
+
+/**
+ * Normalizes a Birth Registration Number (UBRN): converts Bengali digits and strips non-numeric characters.
+ */
+export function normalizeUBRN(val?: string | null): string {
+  if (!val) return '';
+  return toEnDigits(val).replace(/\D/g, '').trim();
+}
+
+/**
+ * Normalizes date of birth to standard YYYY-MM-DD format for BDRIS verification.
+ */
+export function normalizeBirthDate(dob?: string | null): string {
+  if (!dob) return '';
+  const cleaned = toEnDigits(dob).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    return cleaned;
+  }
+  const parts = cleaned.split(/[-/.]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  return cleaned;
+}

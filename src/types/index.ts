@@ -36,8 +36,12 @@ export interface UserProfile {
   instituteName?: string;
   batchId?: string;
   batchName?: string;
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Pending Approval';
+  approvedAt?: number;
+  approvedBy?: string;
+  rejectionReason?: string;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface Institute {
@@ -131,6 +135,12 @@ export interface Trainee {
   archivedAt?: number;
   archivedReason?: string;
   
+  // Birth Registration (BRN) Verification
+  is_brn_verified?: boolean;
+  brn_remark?: string;
+  brn_verified_at?: number;
+  brn_verified_by?: string;
+
   createdAt: number;
   updatedAt?: number;
 }
@@ -197,6 +207,8 @@ export interface ActivityLog {
 
 export interface SystemSettings {
   allowDataDeletion: boolean; // Controls whether deletion of data (trainees, batches, trades, institutes, attendance, exams) is permitted
+  allowPublicRegistration?: boolean; // Controls whether public self-registration is permitted by Course Director
+  registrationClosedReason?: string;
   deletionLockedReason?: string;
   minAttendancePercentForCert: number;
   passMarkPercent: number;

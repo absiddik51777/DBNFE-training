@@ -29,7 +29,8 @@ import {
   BookOpen,
   Wrench,
   Layers,
-  Info
+  Info,
+  UserCheck
 } from 'lucide-react';
 import { ActivityLog, Institute, Trade, Batch, Trainee, AttendanceRecord, Exam, ExamMark } from '../types';
 import { format } from 'date-fns';
@@ -425,6 +426,75 @@ const Settings: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ======================================================== */}
+      {/* PUBLIC REGISTRATION CONTROL (COURSE DIRECTOR ONLY)      */}
+      {/* ======================================================== */}
+      {isCourseDirector && (
+        <div className={`p-6 sm:p-7 rounded-2xl border transition-all shadow-xs ${
+          settings.allowPublicRegistration !== false 
+            ? 'bg-blue-50/40 border-blue-200' 
+            : 'bg-rose-50/40 border-rose-200'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
+                settings.allowPublicRegistration !== false 
+                  ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                  : 'bg-rose-100 text-rose-700 border-rose-300'
+              }`}>
+                <UserCheck size={24} />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2.5">
+                  <h2 className="text-base font-bold text-slate-800">
+                    উন্মুক্ত ব্যবহারকারী নিবন্ধন নিয়ন্ত্রণ (Public Registration Control)
+                  </h2>
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                    settings.allowPublicRegistration !== false 
+                      ? 'bg-blue-100 text-blue-900 border-blue-300' 
+                      : 'bg-rose-100 text-rose-900 border-rose-300'
+                  }`}>
+                    {settings.allowPublicRegistration !== false ? 'উন্মুক্ত নিবন্ধন চালু (Open)' : 'উন্মুক্ত নিবন্ধন বন্ধ (Closed)'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed">
+                  {settings.allowPublicRegistration !== false 
+                    ? 'লগইন পেজ থেকে নতুন ব্যবহারকারীগণ নিবন্ধনের আবেদন করতে পারছেন। সকল নতুন একাউন্ট সুরক্ষিতভাবে Pending Approval অবস্থায় থাকে।' 
+                    : 'লগইন পেজ থেকে সাধারণ ব্যবহারকারীদের নতুন নিবন্ধন বন্ধ রয়েছে। শুধুমাত্র কোর্স পরিচালক ইউজার ম্যানেজমেন্ট থেকে নতুন ইউজার যুক্ত করতে পারবেন।'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                const next = settings.allowPublicRegistration === false;
+                await updateSettings({ allowPublicRegistration: next });
+                setStatusMessage(`উন্মুক্ত নিবন্ধন সফলভাবে ${next ? 'চালু' : 'বন্ধ'} করা হয়েছে।`);
+                setTimeout(() => setStatusMessage(''), 4000);
+              }}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm self-start sm:self-auto shrink-0 ${
+                settings.allowPublicRegistration !== false
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
+            >
+              {settings.allowPublicRegistration !== false ? (
+                <>
+                  <Lock size={15} />
+                  <span>নিবন্ধন বন্ধ করুন (Close Registration)</span>
+                </>
+              ) : (
+                <>
+                  <Unlock size={15} />
+                  <span>নিবন্ধন চালু করুন (Open Registration)</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* 2. CURRENT DATA METRICS & SUMMARY                       */}

@@ -1,9 +1,233 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permissive rules for BNFE training portal operations
+
+    // Global default: Deny all access unless explicitly granted below
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Recognized Bootstrapped Course Director Emails
+    function isSuperAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email != null &&
+             (
+               request.auth.token.email.lower() == 'unfeohaluaghat@gmail.com' ||
+               request.auth.token.email.lower() == 'absiddik5177@gmail.com'
+             );
+    }
+
+    function hasUserDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isCourseDirector() {
+      return isSuperAdmin() || (
+        hasUserDoc() &&
+        getUserDoc().role == 'Course Director' &&
+        getUserDoc().status == 'Active'
+      );
+    }
+
+    function isFMA() {
+      return hasUserDoc() &&
+             getUserDoc().role == 'FMA' &&
+             getUserDoc().status == 'Active';
+    }
+
+    function isTrainer() {
+      return hasUserDoc() &&
+             getUserDoc().role == 'Trainer' &&
+             getUserDoc().status == 'Active';
+    }
+
+    function getUserBatchId() {
+      return getUserDoc().batchId;
+    }
+
+    // --- 1. User Profiles & RBAC ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isCourseDirector() || isFMA());
+      allow list: if isSignedIn() && (isCourseDirector() || isFMA() || resource.data.id == request.auth.uid);
+
+      allow create: if isSignedIn() && isValidId(userId) && (
+        isCourseDirector() ||
+        (
+          request.auth.uid == userId && (
+            isSuperAdmin() ||
+            (
+              request.resource.data.role == 'Pending' &&
+              request.resource.data.status == 'Pending Approval'
+            )
+          )
+        )
+      );
+
+      allow update: if isSignedIn() && isValidId(userId) && (
+        isCourseDirector() ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.email == resource.data.email
+        )
+      );
+
+      allow delete: if isCourseDirector() && request.auth.uid != userId;
+    }
+
+    // --- 2. Institutes & Centers ---
+    match /institutes/{instituteId} {
+      allow get: if isSignedIn() && isValidId(instituteId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(instituteId);
+    }
+
+    // --- 3. Vocational Trades ---
+    match /trades/{tradeId} {
+      allow get: if isSignedIn() && isValidId(tradeId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(tradeId);
+    }
+
+    // --- 4. Training Batches ---
+    match /batches/{batchId} {
+      allow get: if isSignedIn() && isValidId(batchId);
+      allow list: if isSignedIn();
+      allow create, delete: if isCourseDirector() && isValidId(batchId);
+      allow update: if isValidId(batchId) && (
+        isCourseDirector() ||
+        (isTrainer() && getUserBatchId() == batchId)
+      );
+    }
+
+    // --- 5. Trainees ---
+    match /trainees/{traineeId} {
+      allow get: if isSignedIn() && isValidId(traineeId);
+      allow list: if isSignedIn();
+      allow create: if isValidId(traineeId) && (
+        isCourseDirector() ||
+        (isTrainer() && request.resource.data.batchId == getUserBatchId())
+      );
+      allow update: if isValidId(traineeId) && (
+        isCourseDirector() ||
+        (isTrainer() && resource.data.batchId == getUserBatchId())
+      );
+      allow delete: if isCourseDirector() && isValidId(traineeId);
+    }
+
+    // --- 6. Daily Attendance ---
+    match /attendance/{attendanceId} {
+      allow get: if isSignedIn() && isValidId(attendanceId);
+      allow list: if isSignedIn();
+      allow create: if isValidId(attendanceId) && (
+        isCourseDirector() ||
+        (isTrainer() && request.resource.data.batchId == getUserBatchId())
+      );
+      allow update: if isValidId(attendanceId) && (
+        isCourseDirector() ||
+        (isTrainer() && resource.data.batchId == getUserBatchId())
+      );
+      allow delete: if isCourseDirector() && isValidId(attendanceId);
+    }
+
+    // --- 7. Exams & Assessments ---
+    match /exams/{examId} {
+      allow get: if isSignedIn() && isValidId(examId);
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(examId) && (isCourseDirector() || isTrainer());
+      allow delete: if isCourseDirector() && isValidId(examId);
+    }
+
+    // --- 8. Exam Marks ---
+    match /marks/{markId} {
+      allow get: if isSignedIn() && isValidId(markId);
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(markId) && (isCourseDirector() || isTrainer());
+      allow delete: if isCourseDirector() && isValidId(markId);
+    }
+
+    // --- 9. RBAC Roles ---
+    match /roles/{roleId} {
+      allow get: if isSignedIn() && isValidId(roleId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(roleId);
+    }
+
+    // --- 10. Audit Activity Logs (Append-Only) ---
+    match /activityLogs/{logId} {
+      allow get: if isCourseDirector() && isValidId(logId);
+      allow list: if isCourseDirector();
+      allow create: if isSignedIn() && isValidId(logId) && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Immutable audit records
+    }
+
+    // --- 11. System Settings ---
+    match /settings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(settingId);
+    }
+
+    match /systemSettings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(settingId);
+    }
+
+    // --- 12. Shikhon Calendar Modules ---
+    match /trade_skill_modules/{moduleId} {
+      allow get: if isSignedIn() && isValidId(moduleId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(moduleId);
+    }
+
+    match /trade_literacy_modules/{moduleId} {
+      allow get: if isSignedIn() && isValidId(moduleId);
+      allow list: if isSignedIn();
+      allow write: if isCourseDirector() && isValidId(moduleId);
+    }
+
+    // --- 13. Batch Calendar Progress ---
+    match /batch_calendar_progress/{progressId} {
+      allow get: if isSignedIn() && isValidId(progressId);
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(progressId) && (
+        isCourseDirector() ||
+        (isTrainer() && (request.resource.data.batchId == getUserBatchId() || resource.data.batchId == getUserBatchId()))
+      );
+      allow delete: if isCourseDirector() && isValidId(progressId);
+    }
+
+    match /calendar_progress_logs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId);
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(logId) && (
+        isCourseDirector() ||
+        (isTrainer() && (request.resource.data.batchId == getUserBatchId() || resource.data.batchId == getUserBatchId()))
+      );
+      allow delete: if isCourseDirector() && isValidId(logId);
+    }
+
+    // --- 14. In-App Notifications ---
+    match /notifications/{notifId} {
+      allow get: if isSignedIn() && isValidId(notifId);
+      allow list: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(notifId);
     }
   }
 }

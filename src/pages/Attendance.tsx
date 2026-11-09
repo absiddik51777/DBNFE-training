@@ -26,9 +26,10 @@ import {
   Trash2
 } from 'lucide-react';
 import { dataService } from '../lib/dataService';
-import { toBn, formatBengaliDate } from '../lib/dateUtils';
+import { toBn, formatBengaliDate, safeFormatDate } from '../lib/dateUtils';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { useConfirm } from '../contexts/ConfirmationContext';
+import { TableSkeleton } from '../components/Skeleton';
 
 type ExtendedAttendanceStatus = AttendanceStatus | 'Unmarked';
 
@@ -90,6 +91,19 @@ const Attendance: React.FC = () => {
     title: string;
     description: string;
   } | null>(null);
+
+  // Selected batch info & start date validation
+  const currentBatch = useMemo(() => {
+    return batches.find(b => b.id === selectedBatch);
+  }, [batches, selectedBatch]);
+
+  const batchStartDateIso = useMemo(() => {
+    if (!currentBatch?.startDate) return '';
+    return safeFormatDate(currentBatch.startDate, 'yyyy-MM-dd');
+  }, [currentBatch]);
+
+  // Validate attendance date: Attendance cannot be taken before batch start date
+  const isBeforeBatchStart = Boolean(batchStartDateIso && selectedDate < batchStartDateIso);
 
   // Today's date string for future validation
   const todayDateStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
@@ -248,6 +262,11 @@ const Attendance: React.FC = () => {
       setPermissionNotice("প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা পরিচালনা করতে পারবেন।");
       return;
     }
+    if (type === 'date' && batchStartDateIso && value < batchStartDateIso) {
+      setSaveErrorMessage(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা নেওয়া যাবে না।`);
+      setTimeout(() => setSaveErrorMessage(''), 5000);
+      return;
+    }
     if (hasUnsavedChanges) {
       setPendingChange({ type, value });
     } else {
@@ -297,6 +316,13 @@ const Attendance: React.FC = () => {
     const item = attendanceMap[traineeId];
     if (!item) return;
 
+    // Check batch start date constraint
+    if (isBeforeBatchStart) {
+      setPermissionNotice(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা নেওয়া যাবে না।`);
+      setTimeout(() => setPermissionNotice(''), 4500);
+      return;
+    }
+
     // Check basic take permission
     if (!canTakeAttendance) {
       setPermissionNotice('আপনার হাজিরা গ্রহণের অনুমতি নেই।');
@@ -327,6 +353,12 @@ const Attendance: React.FC = () => {
 
   // Bulk actions trigger with edit_attendance awareness
   const handleBulkActionClick = (status: ExtendedAttendanceStatus) => {
+    if (isBeforeBatchStart) {
+      setPermissionNotice(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা নেওয়া যাবে না।`);
+      setTimeout(() => setPermissionNotice(''), 4500);
+      return;
+    }
+
     if (!canTakeAttendance) {
       setPermissionNotice('আপনার হাজিরা গ্রহণের অনুমতি নেই।');
       setTimeout(() => setPermissionNotice(''), 3000);
@@ -458,6 +490,12 @@ const Attendance: React.FC = () => {
   const executeSave = async (): Promise<boolean> => {
     if (allTraineesInBatch.length === 0) return false;
     
+    // Validate attendance date: Attendance cannot be saved before batch start date
+    if (isBeforeBatchStart) {
+      setSaveErrorMessage(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা সংরক্ষণ সম্ভব নয়।`);
+      return false;
+    }
+
     const markedItems = Object.values(attendanceMap).filter(item => item.status !== 'Unmarked');
     if (markedItems.length === 0) {
       setSaveErrorMessage("অনুগ্রহ করে অন্তত একজন শিক্ষার্থীর হাজিরা নির্বাচন করুন অথবা 'সবাই উপস্থিত' দিন।");
@@ -561,7 +599,6 @@ const Attendance: React.FC = () => {
   const savedInDbCount = Object.values(attendanceMap).filter(a => a.isSavedInDb).length;
   const dirtyCount = dirtyItems.length;
 
-  const currentBatch = batches.find(b => b.id === selectedBatch);
   const currentInstitute = institutes.find(i => i.id === selectedInstitute);
   const currentTrade = trades.find(t => t.id === selectedTrade);
 
@@ -592,9 +629,9 @@ const Attendance: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2"></div>
-        <p className="text-xs font-semibold text-slate-600">হাজিরা রেজিস্টার লোড হচ্ছে...</p>
+      <div className="space-y-4 pb-20 max-w-6xl mx-auto">
+        <div className="h-6 w-48 bg-slate-200/80 rounded animate-pulse" />
+        <TableSkeleton rows={8} cols={6} />
       </div>
     );
   }
@@ -627,9 +664,9 @@ const Attendance: React.FC = () => {
           {allTraineesInBatch.length > 0 && canTakeAttendance && (
             <button
               onClick={() => executeSave()}
-              disabled={saving || !hasUnsavedChanges || isFutureDate}
+              disabled={saving || !hasUnsavedChanges || isFutureDate || isBeforeBatchStart}
               className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition ${
-                hasUnsavedChanges && !isFutureDate
+                hasUnsavedChanges && !isFutureDate && !isBeforeBatchStart
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-700/20 active:scale-95'
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}
@@ -676,6 +713,15 @@ const Attendance: React.FC = () => {
         </div>
       )}
 
+      {isBeforeBatchStart && (
+        <div className="p-2.5 rounded-xl bg-red-50 border border-red-300 text-red-900 text-xs flex items-center space-x-2">
+          <AlertTriangle size={15} className="text-red-600 shrink-0" />
+          <span>
+            নির্বাচিত তারিখটি ({formatBengaliDate(selectedDate)}) ব্যাচ শুরুর তারিখের ({formatBengaliDate(batchStartDateIso)}) পূর্বের। ব্যাচ শুরুর আগের কোনো তারিখে হাজিরা গ্রহণ বা সংরক্ষণ করা যাবে না।
+          </span>
+        </div>
+      )}
+
       {isFutureDate && (
         <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center space-x-2">
           <AlertTriangle size={15} className="text-amber-600 shrink-0" />
@@ -694,6 +740,7 @@ const Attendance: React.FC = () => {
               <span className="text-slate-500 font-medium">তারিখ:</span>
               <input
                 type="date"
+                min={batchStartDateIso || undefined}
                 max={todayDateStr}
                 value={selectedDate}
                 onChange={(e) => requestSelectorChange('date', e.target.value)}
@@ -724,6 +771,7 @@ const Attendance: React.FC = () => {
 
               <input
                 type="date"
+                min={batchStartDateIso || undefined}
                 max={todayDateStr}
                 value={selectedDate}
                 onChange={(e) => requestSelectorChange('date', e.target.value)}
@@ -872,10 +920,7 @@ const Attendance: React.FC = () => {
       {/* 3. MINIMAL ATTENDANCE TABLE                              */}
       {/* ======================================================== */}
       {fetchingTrainees ? (
-        <div className="py-12 text-center text-slate-500 bg-white rounded-2xl border border-slate-200">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <span className="text-xs">হাজিরা তথ্য লোড হচ্ছে...</span>
-        </div>
+        <TableSkeleton rows={6} cols={5} showHeader={false} showToolbar={false} />
       ) : allTraineesInBatch.length === 0 ? (
         <div className="bg-white p-12 text-center text-slate-400 rounded-2xl border border-dashed border-slate-200 text-xs">
           কোনো সক্রিয় শিক্ষার্থী পাওয়া যায়নি।

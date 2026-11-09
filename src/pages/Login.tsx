@@ -95,8 +95,8 @@ const Login: React.FC = () => {
         setError('Google সাইন-ইন উইন্ডো বন্ধ করা হয়েছে।');
       } else if (err.code === 'auth/cancelled-popup-request') {
         // Ignored
-      } else if (err.code === 'auth/operation-not-allowed') {
-        setError('ফায়ারবেস কনসোলে Google সাইন-ইন সক্রিয় করা প্রয়োজন। অনুগ্রহ করে ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন।');
+      } else if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
+        setError('ফায়ারবেস কনসোলে Google সাইন-ইন সক্রিয় (Enabled) করা নেই।');
       } else {
         setError(err.message || 'Google দিয়ে লগইন ব্যর্থ হয়েছে। পুনরায় চেষ্টা করুন।');
       }
@@ -119,6 +119,8 @@ const Login: React.FC = () => {
         setError('ভুল ইমেইল/ফোন অথবা পাসওয়ার্ড। আবার চেষ্টা করুন।');
       } else if (err.code === 'auth/too-many-requests') {
         setError('অতিরিক্ত প্রচেষ্টার কারণে সাময়িক ব্লক। কিছুক্ষণ পর চেষ্টা করুন।');
+      } else if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
+        setError('ফায়ারবেস কনসোলে Email/Password সাইন-ইন পদ্ধতি সক্রিয় (Enabled) করা নেই।');
       } else {
         setError(err.message || 'লগইন ব্যর্থ হয়েছে। তথ্য যাচাই করে পুনরায় চেষ্টা করুন।');
       }
@@ -149,21 +151,22 @@ const Login: React.FC = () => {
         email: regEmail,
         password: regPassword,
         phone: regPhone,
-        role: regRole,
+        requestedRole: regRole,
         instituteId: regRole === 'Trainer' ? regInstituteId : undefined,
         batchId: regRole === 'Trainer' ? regBatchId : undefined,
       });
-      setSuccessMsg('নিবন্ধন সফল হয়েছে! সিস্টেমে প্রবেশ করা হচ্ছে...');
-      const target = regRole === 'Trainer' ? '/trainer-dashboard' : '/';
+      setSuccessMsg('নিবন্ধন সফল হয়েছে! আপনার অ্যাকাউন্টটি কোর্স পরিচালকের অনুমোদনের জন্য অপেক্ষমাণ রয়েছে।');
       setTimeout(() => {
-        navigate(target, { replace: true });
-      }, 800);
+        navigate('/', { replace: true });
+      }, 1000);
     } catch (err: any) {
       console.warn("Register attempt notice:", err?.message || err);
       if (err.code === 'auth/email-already-in-use') {
         setError('এই ইমেইলটি ইতিমধ্যে নিবন্ধিত আছে। লগইন করার চেষ্টা করুন।');
       } else if (err.code === 'auth/invalid-email') {
         setError('সঠিক ইমেইল ঠিকানা প্রদান করুন।');
+      } else if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
+        setError('ফায়ারবেস কনসোলে Email/Password সাইন-ইন পদ্ধতি সক্রিয় (Enabled) করা নেই।');
       } else {
         setError(err.message || 'নিবন্ধন ব্যর্থ হয়েছে। পুনরায় চেষ্টা করুন।');
       }
@@ -241,12 +244,47 @@ const Login: React.FC = () => {
         </div>
 
         <div className="p-5 sm:p-6 pt-4">
-          {error && (
-            <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start space-x-2.5 text-red-700 text-xs sm:text-sm">
-              <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600" />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && (() => {
+            const isOperationNotAllowed = 
+              error.toLowerCase().includes('operation-not-allowed') ||
+              error.includes('auth/operation-not-allowed') ||
+              error.includes('সক্রিয় (Enabled) করা নেই') ||
+              error.includes('প্রোভাইডার বন্ধ');
+
+            return (
+              <div className={`mb-4 p-3.5 rounded-xl border text-xs sm:text-sm ${
+                isOperationNotAllowed ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <div className="flex items-start space-x-2.5">
+                  <AlertCircle size={18} className={`shrink-0 mt-0.5 ${isOperationNotAllowed ? 'text-amber-600' : 'text-red-600'}`} />
+                  <div className="flex-1">
+                    <p className="font-semibold">{error}</p>
+                    {isOperationNotAllowed && (
+                      <div className="mt-2.5 pt-2.5 border-t border-amber-200 text-[11px] text-amber-800 space-y-2">
+                        <p className="font-bold text-amber-950">🛠️ সমাধান নির্দেশিকা (Firebase Console Setup):</p>
+                        <ol className="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed">
+                          <li>নিচের লিঙ্কে ক্লিক করে Firebase কনসোলে যান (Project: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">feisty-utility-6mn89</code>)</li>
+                          <li><strong>Authentication &gt; Sign-in method</strong>-এ যান</li>
+                          <li><strong>Email/Password</strong> অথবা <strong>Google</strong> প্রোভাইডার নির্বাচন করে <strong>Enable</strong> চালু করুন এবং <strong>Save</strong> করুন।</li>
+                        </ol>
+                        <div className="pt-1">
+                          <a
+                            href="https://console.firebase.google.com/project/feisty-utility-6mn89/authentication/providers"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition shadow-xs"
+                          >
+                            <span>Firebase Authentication কনসোল খুলুন</span>
+                            <ArrowRight size={13} />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {successMsg && (
             <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-2.5 text-emerald-800 text-xs sm:text-sm">
@@ -380,17 +418,20 @@ const Login: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
-                  ভূমিকা (System Role) *
+                  আবেদনকৃত দায়িত্ব (Requested Designation) *
                 </label>
                 <select
                   value={regRole}
                   onChange={(e) => setRegRole(e.target.value as UserRole)}
                   className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs"
                 >
-                  <option value="Course Director">কোর্স পরিচালক (Course Director)</option>
-                  <option value="Trainer">প্রশিক্ষক (Trainer - হাজিরা এন্ট্রি)</option>
+                  <option value="Trainer">প্রশিক্ষক (Trainer - হাজিরা ও মূল্যায়ন)</option>
                   <option value="FMA">ফিল্ড মনিটরিং অফিসার (FMA)</option>
+                  <option value="Staff">সাধারণ কর্মকর্তা (Field Staff)</option>
                 </select>
+                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200/70 p-2 rounded-lg mt-1.5 leading-relaxed">
+                  নিরাপত্তা নির্দেশিকা: নতুন নিবন্ধিত সকল অ্যাকাউন্ট প্রাথমিক অবস্থায় 'Pending Approval' থাকবে এবং কোর্স পরিচালক কর্তৃক যাচাই ও চূড়ান্ত ভূমিকা বরাদ্দ সাপেক্ষে পোর্টাল সক্রিয় হবে।
+                </p>
               </div>
 
               {regRole === 'Trainer' && (

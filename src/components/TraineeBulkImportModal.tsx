@@ -149,8 +149,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
       'রেজিস্ট্রেশন নম্বর (Registration No)',
       'পূর্ণ নাম বাংলা (Name Bn)',
       'পূর্ণ নাম ইংরেজি (Name En)',
-      'পিতার নাম (Father Name)',
-      'মাতার নাম (Mother Name)',
+      'পিতার নাম বাংলা (Father Name Bn)',
+      'পিতার নাম ইংরেজি (Father Name En)',
+      'মাতার নাম বাংলা (Mother Name Bn)',
+      'মাতার নাম ইংরেজি (Mother Name En)',
       'জন্ম তারিখ (YYYY-MM-DD)',
       'লিঙ্গ (Male/Female/Other)',
       'এনআইডি বা জন্ম নিবন্ধন',
@@ -170,7 +172,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
       'রাকিব হাসান',
       'Rakib Hasan',
       'মোঃ রফিকুল ইসলাম',
+      'Md. Rafiqul Islam',
       'মোসাঃ রহিমা বেগম',
+      'Mst. Rahima Begum',
       '2008-03-15',
       'Male',
       '20081234567890123',
@@ -190,7 +194,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
       'ফাতেমা আক্তার',
       'Fatema Akter',
       'আব্দুল জলিল',
+      'Abdul Jalil',
       'আমেনা খাতুন',
+      'Amena Khatun',
       '2008-07-20',
       'Female',
       '20089876543210987',
@@ -227,9 +233,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
       // Set column widths
       ws['!cols'] = [
         { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 22 },
-        { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 14 },
-        { wch: 22 }, { wch: 18 }, { wch: 30 }, { wch: 30 },
-        { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 25 }
+        { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 24 },
+        { wch: 16 }, { wch: 14 }, { wch: 22 }, { wch: 18 },
+        { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 18 },
+        { wch: 22 }, { wch: 14 }, { wch: 25 }
       ];
 
       const wb = XLSX.utils.book_new();
@@ -461,11 +468,45 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         }
       }
 
-      // 5. Father's Name
-      const colFatherBn = findColIdx(['father name', 'father', 'পিতার নাম', 'বাবার নাম', 'পিতা', 'বাবা']);
+      // 5. Father's Name (Bangla vs English vs General)
+      let colFatherBn = findColIdx(
+        ['পিতার নাম বাংলা', 'পিতার নাম (বাংলা)', 'পিতা বাংলা', 'বাবার নাম বাংলা', 'father name bn', 'father_name_bn', 'father name (bn)', 'father bn'],
+        ['ইংরেজি', 'english', 'en']
+      );
+      if (colFatherBn === -1) {
+        colFatherBn = findColIdx(['পিতার নাম', 'বাবার নাম', 'পিতা', 'বাবা'], ['ইংরেজি', 'english', 'en']);
+      }
 
-      // 6. Mother's Name
-      const colMotherBn = findColIdx(['mother name', 'mother', 'মাতার নাম', 'মায়ের নাম', 'মা এর নাম', 'মাতা', 'মা']);
+      let colFatherEn = findColIdx(
+        ['পিতার নাম ইংরেজি', 'পিতার নাম (ইংরেজি)', 'পিতা ইংরেজি', 'বাবার নাম ইংরেজি', 'father name en', 'father_name_en', 'father name (en)', 'father name (english)', 'father en'],
+        ['বাংলা', 'bangla', 'bn']
+      );
+      if (colFatherEn === -1) {
+        colFatherEn = findColIdx(['father name', 'father'], ['বাংলা', 'bangla', 'bn']);
+        if (colFatherEn === colFatherBn) {
+          colFatherEn = -1;
+        }
+      }
+
+      // 6. Mother's Name (Bangla vs English vs General)
+      let colMotherBn = findColIdx(
+        ['মাতার নাম বাংলা', 'মাতার নাম (বাংলা)', 'মাতা বাংলা', 'মায়ের নাম বাংলা', 'মা বাংলা', 'mother name bn', 'mother_name_bn', 'mother name (bn)', 'mother bn'],
+        ['ইংরেজি', 'english', 'en']
+      );
+      if (colMotherBn === -1) {
+        colMotherBn = findColIdx(['মাতার নাম', 'মায়ের নাম', 'মা এর নাম', 'মাতা', 'মা'], ['ইংরেজি', 'english', 'en']);
+      }
+
+      let colMotherEn = findColIdx(
+        ['মাতার নাম ইংরেজি', 'মাতার নাম (ইংরেজি)', 'মাতা ইংরেজি', 'মায়ের নাম ইংরেজি', 'মা ইংরেজি', 'mother name en', 'mother_name_en', 'mother name (en)', 'mother name (english)', 'mother en'],
+        ['বাংলা', 'bangla', 'bn']
+      );
+      if (colMotherEn === -1) {
+        colMotherEn = findColIdx(['mother name', 'mother'], ['বাংলা', 'bangla', 'bn']);
+        if (colMotherEn === colMotherBn) {
+          colMotherEn = -1;
+        }
+      }
 
       // 7. Date of birth
       const colDob = findColIdx(['date of birth', 'birth date', 'dob', 'birth', 'জন্ম তারিখ', 'জন্মতারিখ', 'জন্ম']);
@@ -723,8 +764,49 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         }
 
         // 10. Educational & Dropout info
-        const fatherNameBn = cleanString(colFatherBn !== -1 ? row[colFatherBn] : '');
-        const motherNameBn = cleanString(colMotherBn !== -1 ? row[colMotherBn] : '');
+        let rawFatherBn = cleanString(colFatherBn !== -1 ? row[colFatherBn] : '');
+        let rawFatherEn = cleanString(colFatherEn !== -1 ? row[colFatherEn] : '');
+        let rawMotherBn = cleanString(colMotherBn !== -1 ? row[colMotherBn] : '');
+        let rawMotherEn = cleanString(colMotherEn !== -1 ? row[colMotherEn] : '');
+
+        // If only one father column was provided, detect script
+        if (rawFatherBn && !rawFatherEn && /[a-zA-Z]/.test(rawFatherBn)) {
+          rawFatherEn = rawFatherBn;
+          rawFatherBn = '';
+        }
+        if (rawFatherEn && !rawFatherBn && /[\u0980-\u09FF]/.test(rawFatherEn)) {
+          rawFatherBn = rawFatherEn;
+          rawFatherEn = '';
+        }
+
+        // If only one mother column was provided, detect script
+        if (rawMotherBn && !rawMotherEn && /[a-zA-Z]/.test(rawMotherBn)) {
+          rawMotherEn = rawMotherBn;
+          rawMotherBn = '';
+        }
+        if (rawMotherEn && !rawMotherBn && /[\u0980-\u09FF]/.test(rawMotherEn)) {
+          rawMotherBn = rawMotherEn;
+          rawMotherEn = '';
+        }
+
+        const fatherNameBn = rawFatherBn || rawFatherEn;
+        const fatherNameEn = rawFatherEn || rawFatherBn;
+        const motherNameBn = rawMotherBn || rawMotherEn;
+        const motherNameEn = rawMotherEn || rawMotherBn;
+
+        if (rawFatherBn && /[a-zA-Z]/.test(rawFatherBn)) {
+          warnings.push('পিতার নামের বাংলা কলামে ইংরেজি অক্ষর পাওয়া গেছে।');
+        }
+        if (rawFatherEn && /[\u0980-\u09FF]/.test(rawFatherEn)) {
+          warnings.push('পিতার নামের ইংরেজি কলামে বাংলা অক্ষর পাওয়া গেছে।');
+        }
+        if (rawMotherBn && /[a-zA-Z]/.test(rawMotherBn)) {
+          warnings.push('মাতার নামের বাংলা কলামে ইংরেজি অক্ষর পাওয়া গেছে।');
+        }
+        if (rawMotherEn && /[\u0980-\u09FF]/.test(rawMotherEn)) {
+          warnings.push('মাতার নামের ইংরেজি কলামে বাংলা অক্ষর পাওয়া গেছে।');
+        }
+
         const lastClass = cleanString(colLastClass !== -1 ? row[colLastClass] : '') || 'Class 7 (৭ম শ্রেণি)';
         const prevSchool = cleanString(colPrevSchool !== -1 ? row[colPrevSchool] : '');
         let yearOfDropout = cleanString(colDropoutYear !== -1 ? row[colDropoutYear] : '');
@@ -738,9 +820,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
           nameBn: nameBn,
           nameEn: nameEn,
           fatherNameBn,
-          fatherNameEn: fatherNameBn,
+          fatherNameEn,
           motherNameBn,
-          motherNameEn: motherNameBn,
+          motherNameEn,
           dateOfBirth: dob,
           gender,
           nidOrBirthRegistration: nidOrBirth,

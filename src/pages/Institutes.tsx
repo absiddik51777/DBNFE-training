@@ -1,12 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { logActivity } from '../lib/firebase';
-import { Plus, Edit2, Trash2, Building2, MapPin, Phone, Mail, X } from 'lucide-react';
+import { 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  Building2, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  X,
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronRight,
+  Table as TableIcon,
+  LayoutGrid
+} from 'lucide-react';
 import { Institute } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { useConfirm } from '../contexts/ConfirmationContext';
 import { dataService } from '../lib/dataService';
+import { TableSkeleton } from '../components/Skeleton';
+import { toBn } from '../lib/dateUtils';
+import DataTableToolbar, { ColumnOption, GroupByOption } from '../components/TableToolbar/DataTableToolbar';
+
+const DEFAULT_INSTITUTE_COLUMNS: ColumnOption[] = [
+  { id: 'code', label: 'প্রতিষ্ঠান কোড (Code)', visible: true },
+  { id: 'name', label: 'প্রতিষ্ঠানের নাম (Name)', visible: true },
+  { id: 'address', label: 'ঠিকানা (Address)', visible: true },
+  { id: 'contact', label: 'যোগাযোগ (Contact)', visible: true },
+  { id: 'status', label: 'স্ট্যাটাস (Status)', visible: true },
+  { id: 'actions', label: 'পদক্ষেপ (Actions)', visible: true, required: true },
+];
+
+const INSTITUTE_GROUP_BY_OPTIONS: GroupByOption[] = [
+  { id: 'none', label: 'গ্রুপ ছাড়া (Default)' },
+  { id: 'status', label: 'অবস্থা অনুযায়ী (By Status)' },
+  { id: 'address', label: 'এলাকা/ঠিকানা অনুযায়ী (By Address)' },
+];
 
 const Institutes: React.FC = () => {
   const [institutes, setInstitutes] = useState<Institute[]>([]);
@@ -20,6 +53,120 @@ const Institutes: React.FC = () => {
   
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Search, Filter, ViewMode & Group By
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Inactive'>('all');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [groupBy, setGroupBy] = useState<'none' | 'status' | 'address'>('none');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  // Column Visibility
+  const [columns, setColumns] = useState<ColumnOption[]>(() => {
+    try {
+      const saved = localStorage.getItem('bnfe_institute_visible_columns');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return DEFAULT_INSTITUTE_COLUMNS.map(col => ({
+          ...col,
+          visible: parsed[col.id] !== undefined ? parsed[col.id] : col.visible
+        }));
+      }
+    } catch (e) {}
+    return DEFAULT_INSTITUTE_COLUMNS;
+  });
+
+  const toggleColumn = (colId: string) => {
+    setColumns(prev => {
+      const next = prev.map(c => c.id === colId && !c.required ? { ...c, visible: !c.visible } : c);
+      try {
+        const map: Record<string, boolean> = {};
+        next.forEach(c => { map[c.id] = c.visible; });
+        localStorage.setItem('bnfe_institute_visible_columns', JSON.stringify(map));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetColumns = () => {
+    setColumns(DEFAULT_INSTITUTE_COLUMNS);
+    try {
+      localStorage.removeItem('bnfe_institute_visible_columns');
+    } catch (e) {}
+  };
+
+  const isColVisible = (colId: string) => {
+    const col = columns.find(c => c.id === colId);
+    return col ? col.visible : true;
+  };
+
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter('all');
+    setSearchTerm('');
+  };
+
+  const activeFilterChips = useMemo(() => {
+    const chips: { id: string; label: string; onRemove: () => void }[] = [];
+    if (statusFilter !== 'all') {
+      chips.push({
+        id: 'status',
+        label: statusFilter === 'Active' ? 'অবস্থা: সক্রিয়' : 'অবস্থা: নিষ্ক্রিয়',
+        onRemove: () => setStatusFilter('all')
+      });
+    }
+    return chips;
+  }, [statusFilter]);
+
+  const processedInstitutes = useMemo(() => {
+    return institutes.filter(inst => {
+      if (statusFilter !== 'all' && inst.status !== statusFilter) return false;
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        const nameMatch = (inst.name || '').toLowerCase().includes(term);
+        const codeMatch = (inst.code || '').toLowerCase().includes(term);
+        const addrMatch = (inst.address || '').toLowerCase().includes(term);
+        const contactMatch = (inst.contactPerson || '').toLowerCase().includes(term);
+        const phoneMatch = (inst.phone || '').toLowerCase().includes(term);
+        return nameMatch || codeMatch || addrMatch || contactMatch || phoneMatch;
+      }
+      return true;
+    });
+  }, [institutes, statusFilter, searchTerm]);
+
+  const groupedInstitutes = useMemo(() => {
+    if (groupBy === 'none') return null;
+    const map = new Map<string, { title: string; items: Institute[] }>();
+
+    processedInstitutes.forEach(inst => {
+      let key = '';
+      let title = '';
+      if (groupBy === 'status') {
+        key = inst.status || 'Active';
+        title = inst.status === 'Active' ? 'সক্রিয় প্রতিষ্ঠান (Active)' : 'নিষ্ক্রিয় প্রতিষ্ঠান (Inactive)';
+      } else if (groupBy === 'address') {
+        const parts = (inst.address || '').split(',').map(s => s.trim()).filter(Boolean);
+        key = parts[parts.length - 1] || 'অন্যান্য এলাকা';
+        title = `এলাকা/জেলা: ${key}`;
+      }
+      if (!map.has(key)) map.set(key, { title, items: [] });
+      map.get(key)!.items.push(inst);
+    });
+
+    return Array.from(map.entries()).map(([key, val]) => ({
+      key,
+      title: val.title,
+      items: val.items
+    }));
+  }, [processedInstitutes, groupBy]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -193,9 +340,9 @@ const Institutes: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
-        <span>প্রতিষ্ঠান লোড হচ্ছে...</span>
+      <div className="space-y-6">
+        <div className="h-8 w-64 bg-slate-200/80 rounded animate-pulse" />
+        <TableSkeleton rows={6} cols={5} />
       </div>
     );
   }
@@ -259,70 +406,411 @@ const Institutes: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Institutes Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {institutes.map((inst) => (
-            <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                      <Building2 size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
-                      <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
-                    </div>
-                  </div>
-                  <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                    inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                  </span>
+        <div className="space-y-4">
+          <DataTableToolbar
+            searchTerm={searchTerm}
+            onSearchChange={(val) => setSearchTerm(val)}
+            searchPlaceholder="প্রতিষ্ঠানের নাম, কোড, ঠিকানা বা যোগাযোগ..."
+            groupBy={groupBy}
+            onGroupByChange={(val) => setGroupBy(val as any)}
+            groupByOptions={INSTITUTE_GROUP_BY_OPTIONS}
+            groupByLabel="গ্রুপ করুন (Group by)"
+            filterCount={activeFilterChips.length}
+            onClearAllFilters={handleClearFilters}
+            activeFilterChips={activeFilterChips}
+            renderFilterContent={(close) => (
+              <div className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">অবস্থা (Status):</label>
+                  <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  >
+                    <option value="all">সকল প্রতিষ্ঠান ({toBn(institutes.length)}টি)</option>
+                    <option value="Active">সক্রিয় প্রতিষ্ঠান ({toBn(institutes.filter(i => i.status === 'Active').length)}টি)</option>
+                    <option value="Inactive">নিষ্ক্রিয় প্রতিষ্ঠান ({toBn(institutes.filter(i => i.status === 'Inactive').length)}টি)</option>
+                  </select>
                 </div>
 
-                <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                  <div className="flex items-center space-x-2">
-                    <MapPin size={15} className="text-slate-400 shrink-0" />
-                    <span className="truncate">{inst.address}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Phone size={15} className="text-slate-400 shrink-0" />
-                    <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
-                  </div>
-                  {inst.email && (
-                    <div className="flex items-center space-x-2">
-                      <Mail size={15} className="text-slate-400 shrink-0" />
-                      <span>{inst.email}</span>
-                    </div>
-                  )}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => { handleClearFilters(); close(); }}
+                    className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                  >
+                    ফিল্টার রিসেট
+                  </button>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+                  >
+                    প্রয়োগ করুন
+                  </button>
                 </div>
               </div>
+            )}
+            columns={columns}
+            onToggleColumn={toggleColumn}
+            onResetColumns={resetColumns}
+            extraActions={
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="টেবিল ভিউ"
+                >
+                  <TableIcon size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="কার্ড ভিউ"
+                >
+                  <LayoutGrid size={14} />
+                </button>
+              </div>
+            }
+          />
 
-              {(canEdit || canDelete) && (
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
-                  {canEdit && (
-                    <button
-                      onClick={() => handleOpenModal(inst)}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                      title="সম্পাদন"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                  )}
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDelete(inst.id, inst.name)}
-                      className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50"
-                      title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              )}
+          {processedInstitutes.length === 0 ? (
+            <div className="bg-white p-12 text-center text-slate-500 rounded-2xl border border-dashed border-slate-200 text-sm space-y-2">
+              <Building2 size={36} className="mx-auto text-slate-300" />
+              <p className="font-bold text-slate-700">কোনো প্রতিষ্ঠান পাওয়া যায়নি</p>
+              <p className="text-xs text-slate-400">আপনার ফিল্টার বা অনুসন্ধানের সাথে কোনো রেকর্ড মিলছে না।</p>
             </div>
-          ))}
+          ) : viewMode === 'table' ? (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-left">
+                  <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <tr>
+                      {isColVisible('code') && <th className="px-4 py-3.5">কোড</th>}
+                      {isColVisible('name') && <th className="px-4 py-3.5">প্রতিষ্ঠানের নাম</th>}
+                      {isColVisible('address') && <th className="px-4 py-3.5">ঠিকানা</th>}
+                      {isColVisible('contact') && <th className="px-4 py-3.5">যোগাযোগ</th>}
+                      {isColVisible('status') && <th className="px-4 py-3.5 text-center">স্ট্যাটাস</th>}
+                      {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-100 text-xs">
+                    {groupBy !== 'none' && groupedInstitutes ? (
+                      groupedInstitutes.map(grp => {
+                        const isCollapsed = collapsedGroups.has(grp.key);
+                        return (
+                          <React.Fragment key={grp.key}>
+                            <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                              <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
+                                <div className="flex items-center justify-between">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleGroupCollapse(grp.key)}
+                                    className="flex items-center space-x-2 text-slate-800 hover:text-emerald-700 cursor-pointer"
+                                  >
+                                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                    <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200">
+                                      {toBn(grp.items.length)}টি প্রতিষ্ঠান
+                                    </span>
+                                  </button>
+                                  <span className="text-[11px] text-slate-400">
+                                    মোটের {toBn(Math.round((grp.items.length / (processedInstitutes.length || 1)) * 100))}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                            {!isCollapsed && grp.items.map(inst => (
+                              <tr key={inst.id} className="hover:bg-slate-50/80 transition">
+                                {isColVisible('code') && (
+                                  <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
+                                    {inst.code || inst.id}
+                                  </td>
+                                )}
+                                {isColVisible('name') && (
+                                  <td className="px-4 py-3.5 font-bold text-slate-800">
+                                    {inst.name}
+                                  </td>
+                                )}
+                                {isColVisible('address') && (
+                                  <td className="px-4 py-3.5 text-slate-600 max-w-xs truncate">
+                                    {inst.address}
+                                  </td>
+                                )}
+                                {isColVisible('contact') && (
+                                  <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                                    <div>{inst.contactPerson}</div>
+                                    <div className="text-[11px] text-slate-400">{inst.phone}</div>
+                                  </td>
+                                )}
+                                {isColVisible('status') && (
+                                  <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                    <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                                      inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                                    </span>
+                                  </td>
+                                )}
+                                {isColVisible('actions') && (
+                                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                                    <div className="flex items-center justify-end space-x-1.5">
+                                      {canEdit && (
+                                        <button
+                                          onClick={() => handleOpenModal(inst)}
+                                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                          title="সম্পাদন"
+                                        >
+                                          <Edit2 size={15} />
+                                        </button>
+                                      )}
+                                      {canDelete && (
+                                        <button
+                                          onClick={() => handleDelete(inst.id, inst.name)}
+                                          className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                                          title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
+                                        >
+                                          <Trash2 size={15} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })
+                    ) : (
+                      processedInstitutes.map(inst => (
+                        <tr key={inst.id} className="hover:bg-slate-50/80 transition">
+                          {isColVisible('code') && (
+                            <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
+                              {inst.code || inst.id}
+                            </td>
+                          )}
+                          {isColVisible('name') && (
+                            <td className="px-4 py-3.5 font-bold text-slate-800">
+                              {inst.name}
+                            </td>
+                          )}
+                          {isColVisible('address') && (
+                            <td className="px-4 py-3.5 text-slate-600 max-w-xs truncate">
+                              {inst.address}
+                            </td>
+                          )}
+                          {isColVisible('contact') && (
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                              <div>{inst.contactPerson}</div>
+                              <div className="text-[11px] text-slate-400">{inst.phone}</div>
+                            </td>
+                          )}
+                          {isColVisible('status') && (
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                                inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                              </span>
+                            </td>
+                          )}
+                          {isColVisible('actions') && (
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                {canEdit && (
+                                  <button
+                                    onClick={() => handleOpenModal(inst)}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                    title="সম্পাদন"
+                                  >
+                                    <Edit2 size={15} />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    onClick={() => handleDelete(inst.id, inst.name)}
+                                    className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                                    title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            groupBy !== 'none' && groupedInstitutes ? (
+              <div className="space-y-6">
+                {groupedInstitutes.map(grp => {
+                  const isCollapsed = collapsedGroups.has(grp.key);
+                  return (
+                    <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupCollapse(grp.key)}
+                        className="w-full flex items-center justify-between text-left hover:text-emerald-700 transition cursor-pointer"
+                      >
+                        <div className="flex items-center space-x-2.5">
+                          {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                          <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            {toBn(grp.items.length)}টি প্রতিষ্ঠান
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          মোটের {toBn(Math.round((grp.items.length / (processedInstitutes.length || 1)) * 100))}%
+                        </span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {grp.items.map(inst => (
+                            <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                              <div className="space-y-4">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                      <Building2 size={24} />
+                                    </div>
+                                    <div>
+                                      <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
+                                      <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
+                                    </div>
+                                  </div>
+                                  <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                                    inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                                  <div className="flex items-center space-x-2">
+                                    <MapPin size={15} className="text-slate-400 shrink-0" />
+                                    <span className="truncate">{inst.address}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Phone size={15} className="text-slate-400 shrink-0" />
+                                    <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
+                                  </div>
+                                  {inst.email && (
+                                    <div className="flex items-center space-x-2">
+                                      <Mail size={15} className="text-slate-400 shrink-0" />
+                                      <span>{inst.email}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {(canEdit || canDelete) && (
+                                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => handleOpenModal(inst)}
+                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                      title="সম্পাদন"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      onClick={() => handleDelete(inst.id, inst.name)}
+                                      className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                                      title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {processedInstitutes.map((inst) => (
+                  <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                            <Building2 size={24} />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
+                            <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
+                          </div>
+                        </div>
+                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                          inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                        <div className="flex items-center space-x-2">
+                          <MapPin size={15} className="text-slate-400 shrink-0" />
+                          <span className="truncate">{inst.address}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Phone size={15} className="text-slate-400 shrink-0" />
+                          <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
+                        </div>
+                        {inst.email && (
+                          <div className="flex items-center space-x-2">
+                            <Mail size={15} className="text-slate-400 shrink-0" />
+                            <span>{inst.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {(canEdit || canDelete) && (
+                      <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
+                        {canEdit && (
+                          <button
+                            onClick={() => handleOpenModal(inst)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            title="সম্পাদন"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(inst.id, inst.name)}
+                            className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                            title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
         </div>
       )}
 

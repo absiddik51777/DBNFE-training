@@ -374,6 +374,34 @@ const TraineeProfile: React.FC = () => {
               <span className="text-slate-400 font-medium">মোবাইল:</span>
               <span className="font-bold text-slate-800 font-mono">{trainee.mobileNumber}</span>
             </div>
+            {/* Father's Name */}
+            <div className="py-1.5 border-b border-slate-50 space-y-0.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-medium">পিতার নাম (বাংলা):</span>
+                <span className="font-semibold text-slate-800 text-right">{trainee.fatherNameBn || (trainee as any).fatherName || 'উল্লেখ নেই'}</span>
+              </div>
+              {(trainee.fatherNameEn || (trainee as any).fatherName) && (
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-400">Father (English):</span>
+                  <span className="text-slate-600 font-medium text-right">{trainee.fatherNameEn || (trainee as any).fatherName}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Mother's Name */}
+            <div className="py-1.5 border-b border-slate-50 space-y-0.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-medium">মাতার নাম (বাংলা):</span>
+                <span className="font-semibold text-slate-800 text-right">{trainee.motherNameBn || (trainee as any).motherName || 'উল্লেখ নেই'}</span>
+              </div>
+              {(trainee.motherNameEn || (trainee as any).motherName) && (
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-400">Mother (English):</span>
+                  <span className="text-slate-600 font-medium text-right">{trainee.motherNameEn || (trainee as any).motherName}</span>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-between items-center py-1 border-b border-slate-50">
               <span className="text-slate-400 font-medium">জন্ম তারিখ:</span>
               <span className="font-medium text-slate-800">{trainee.dateOfBirth}</span>
@@ -387,6 +415,30 @@ const TraineeProfile: React.FC = () => {
                 <span className="text-slate-400 font-medium">এনআইডি/জন্ম নিবন্ধন:</span>
                 <span className="font-bold text-slate-800 font-mono text-right">{trainee.nidOrBirthRegistration || 'নির্ধারিত নেই'}</span>
               </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-medium">BRN যাচাই অবস্থা:</span>
+                {trainee.is_brn_verified === true ? (
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                    <CheckCircle2 size={12} className="text-emerald-600" />
+                    <span>যাচাইকৃত (Verified)</span>
+                  </span>
+                ) : trainee.is_brn_verified === false ? (
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[11px]">
+                    <XCircle size={12} className="text-rose-600" />
+                    <span>অবৈধ (Invalid)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium text-[11px]">
+                    <span>অপেক্ষমাণ (Pending)</span>
+                  </span>
+                )}
+              </div>
+              {trainee.brn_remark && (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-[11px] text-slate-600">
+                  <span className="font-semibold text-slate-700 block text-[10px] text-slate-400">যাচাই মন্তব্য (Remark):</span>
+                  <span>{trainee.brn_remark}</span>
+                </div>
+              )}
               <form
                 action="https://everify.bdris.gov.bd/UBRNVerification/Search"
                 encType="multipart/form-data"

@@ -16,6 +16,7 @@ import {
   ArrowUpDown, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown,
   Layers, 
   Users, 
   FileText,
@@ -23,7 +24,9 @@ import {
   Sparkles,
   RefreshCw,
   SlidersHorizontal,
-  Check
+  Check,
+  Table as TableIcon,
+  LayoutGrid
 } from 'lucide-react';
 import { Trade, Batch, Trainee, Exam } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +35,8 @@ import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { useConfirm } from '../contexts/ConfirmationContext';
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
+import { TableSkeleton } from '../components/Skeleton';
+import DataTableToolbar, { ColumnOption, GroupByOption } from '../components/TableToolbar/DataTableToolbar';
 
 const DURATION_PRESETS = [
   '৬ মাস (৩৬০ ঘণ্টা)',
@@ -41,7 +46,22 @@ const DURATION_PRESETS = [
   'কাস্টম (অন্যান্য)'
 ];
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 8;
+
+const DEFAULT_TRADE_COLUMNS: ColumnOption[] = [
+  { id: 'code', label: 'ট্রেড কোড (Code)', visible: true },
+  { id: 'name', label: 'ট্রেডের নাম ও ইংরেজি (Trade Name)', visible: true },
+  { id: 'duration', label: 'কোর্সের মেয়াদ (Duration)', visible: true },
+  { id: 'stats', label: 'সংযুক্ত ব্যাচ ও শিক্ষার্থী (Stats)', visible: true },
+  { id: 'status', label: 'স্ট্যাটাস (Status)', visible: true },
+  { id: 'actions', label: 'পদক্ষেপ (Actions)', visible: true, required: true },
+];
+
+const TRADE_GROUP_BY_OPTIONS: GroupByOption[] = [
+  { id: 'none', label: 'গ্রুপ ছাড়া (Default)' },
+  { id: 'duration', label: 'মেয়াদ অনুযায়ী (By Duration)' },
+  { id: 'status', label: 'অবস্থা অনুযায়ী (By Status)' },
+];
 
 const Trades: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -79,8 +99,89 @@ const Trades: React.FC = () => {
   // Search, Filter, Sort, Pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Inactive' | 'duplicates'>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'code_asc' | 'code_desc' | 'name_asc' | 'created_desc'>('code_asc');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Group By & View Mode
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
+  const [groupBy, setGroupBy] = useState<'none' | 'duration' | 'status'>('none');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  // Column Visibility
+  const [columns, setColumns] = useState<ColumnOption[]>(() => {
+    try {
+      const saved = localStorage.getItem('bnfe_trade_visible_columns');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return DEFAULT_TRADE_COLUMNS.map(col => ({
+          ...col,
+          visible: parsed[col.id] !== undefined ? parsed[col.id] : col.visible
+        }));
+      }
+    } catch (e) {}
+    return DEFAULT_TRADE_COLUMNS;
+  });
+
+  const toggleColumn = (colId: string) => {
+    setColumns(prev => {
+      const next = prev.map(c => c.id === colId && !c.required ? { ...c, visible: !c.visible } : c);
+      try {
+        const map: Record<string, boolean> = {};
+        next.forEach(c => { map[c.id] = c.visible; });
+        localStorage.setItem('bnfe_trade_visible_columns', JSON.stringify(map));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetColumns = () => {
+    setColumns(DEFAULT_TRADE_COLUMNS);
+    try {
+      localStorage.removeItem('bnfe_trade_visible_columns');
+    } catch (e) {}
+  };
+
+  const isColVisible = (colId: string) => {
+    const col = columns.find(c => c.id === colId);
+    return col ? col.visible : true;
+  };
+
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter('all');
+    setDurationFilter('all');
+    setSearchTerm('');
+    setCurrentPage(1);
+  };
+
+  const activeFilterChips = useMemo(() => {
+    const chips: { id: string; label: string; onRemove: () => void }[] = [];
+    if (statusFilter !== 'all') {
+      const label = statusFilter === 'Active' ? 'অবস্থা: সক্রিয়' : statusFilter === 'Inactive' ? 'অবস্থা: নিষ্ক্রিয়' : 'অবস্থা: ডুপ্লিকেট কোড';
+      chips.push({
+        id: 'status',
+        label,
+        onRemove: () => { setStatusFilter('all'); setCurrentPage(1); }
+      });
+    }
+    if (durationFilter !== 'all') {
+      chips.push({
+        id: 'duration',
+        label: `মেয়াদ: ${durationFilter}`,
+        onRemove: () => { setDurationFilter('all'); setCurrentPage(1); }
+      });
+    }
+    return chips;
+  }, [statusFilter, durationFilter]);
 
   const { userProfile } = useAuth();
   const { hasPermission, isCourseDirector } = usePermissions();
@@ -510,6 +611,9 @@ const Trades: React.FC = () => {
           if (!duplicateCodesMap.has(clean)) return false;
         }
 
+        // Duration filter
+        if (durationFilter !== 'all' && t.duration !== durationFilter) return false;
+
         // Search filter
         if (searchTerm.trim()) {
           const term = searchTerm.toLowerCase().trim();
@@ -529,7 +633,37 @@ const Trades: React.FC = () => {
         if (sortBy === 'created_desc') return (b.createdAt || 0) - (a.createdAt || 0);
         return 0;
       });
-  }, [trades, statusFilter, searchTerm, sortBy, duplicateCodesMap]);
+  }, [trades, statusFilter, durationFilter, searchTerm, sortBy, duplicateCodesMap]);
+
+  // Grouped trades if groupBy is selected
+  const groupedTrades = useMemo(() => {
+    if (groupBy === 'none') return null;
+    const map = new Map<string, { title: string; items: Trade[] }>();
+
+    processedTrades.forEach(t => {
+      let key = '';
+      let title = '';
+
+      if (groupBy === 'duration') {
+        key = t.duration || 'অন্যান্য';
+        title = `কোর্সের মেয়াদ: ${key}`;
+      } else if (groupBy === 'status') {
+        key = t.status || 'Active';
+        title = t.status === 'Active' ? 'সক্রিয় ট্রেড (Active)' : t.status === 'Inactive' ? 'নিষ্ক্রিয় ট্রেড (Inactive)' : (t.status || 'অন্যান্য');
+      }
+
+      if (!map.has(key)) {
+        map.set(key, { title, items: [] });
+      }
+      map.get(key)!.items.push(t);
+    });
+
+    return Array.from(map.entries()).map(([key, val]) => ({
+      key,
+      title: val.title,
+      items: val.items
+    }));
+  }, [processedTrades, groupBy]);
 
   // Pagination slice
   const totalPages = Math.ceil(processedTrades.length / ITEMS_PER_PAGE) || 1;
@@ -546,10 +680,9 @@ const Trades: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[45vh] text-slate-500">
-        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-sm font-semibold text-slate-700">বৃত্তিমূলক ট্রেড তালিকা লোড হচ্ছে...</p>
-        <span className="text-xs text-slate-400 mt-1">BNFE অনুমোদিত কারিগরি কোর্স ডেটা সমন্বয় হচ্ছে</span>
+      <div className="space-y-6 pb-12">
+        <div className="h-8 w-64 bg-slate-200/80 rounded animate-pulse" />
+        <TableSkeleton rows={6} cols={5} />
       </div>
     );
   }
@@ -681,112 +814,126 @@ const Trades: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* 4. SEARCH, FILTERS & SORTING TOOLBAR                     */}
+      {/* 4. TABLE TOOLBAR (GROUP BY | SEARCH + FILTER + COLUMNS)  */}
       {/* ======================================================== */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search Box */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={17} />
-            <input
-              type="text"
-              placeholder="ট্রেডের নাম (বাংলা/ইংরেজি), ট্রেড কোড বা বিবরণ লিখে খুঁজুন..."
-              value={searchTerm}
-              onChange={e => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+      <DataTableToolbar
+        searchTerm={searchTerm}
+        onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+        searchPlaceholder="ট্রেডের নাম (বাংলা/ইংরেজি), ট্রেড কোড বা বিবরণ..."
+        groupBy={groupBy}
+        onGroupByChange={(val) => setGroupBy(val as any)}
+        groupByOptions={TRADE_GROUP_BY_OPTIONS}
+        groupByLabel="গ্রুপ করুন (Group by)"
+        filterCount={activeFilterChips.length}
+        onClearAllFilters={handleClearFilters}
+        activeFilterChips={activeFilterChips}
+        renderFilterContent={(close) => (
+          <div className="space-y-3.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">অবস্থা (Status):</label>
+              <select
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value as any); setCurrentPage(1); }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
-                ✕
+                <option value="all">সকল অবস্থা ({toBn(trades.length)}টি)</option>
+                <option value="Active">সক্রিয় ট্রেড ({toBn(stats.active)}টি)</option>
+                <option value="Inactive">নিষ্ক্রিয় ট্রেড ({toBn(stats.inactive)}টি)</option>
+                {duplicateTradesCount > 0 && (
+                  <option value="duplicates">ডুপ্লিকেট কোড সতর্কতা ({toBn(duplicateTradesCount)}টি)</option>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">কোর্সের মেয়াদ:</label>
+              <select
+                value={durationFilter}
+                onChange={e => { setDurationFilter(e.target.value); setCurrentPage(1); }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                <option value="all">সকল মেয়াদ</option>
+                {DURATION_PRESETS.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => { handleClearFilters(); close(); }}
+                className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+              >
+                ফিল্টার রিসেট
               </button>
-            )}
+              <button
+                type="button"
+                onClick={close}
+                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+              >
+                প্রয়োগ করুন
+              </button>
+            </div>
           </div>
+        )}
+        columns={columns}
+        onToggleColumn={toggleColumn}
+        onResetColumns={resetColumns}
+        extraActions={
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 px-2.5 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+                title="সাজানোর ক্রম"
+              >
+                <option value="code_asc">ট্রেড কোড</option>
+                <option value="code_desc">ট্রেড কোড (বিপরীত)</option>
+                <option value="name_asc">ট্রেডের নাম</option>
+                <option value="created_desc">সর্বশেষ যুক্তকৃত</option>
+              </select>
+            </div>
 
-          {/* Sort Selector */}
-          <div className="flex items-center space-x-2 shrink-0">
-            <span className="text-xs font-semibold text-slate-500 flex items-center space-x-1">
-              <ArrowUpDown size={14} />
-              <span>সাজান:</span>
-            </span>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as any)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-            >
-              <option value="code_asc">ট্রেড কোড (ক্রমানুসারে)</option>
-              <option value="code_desc">ট্রেড কোড (বিপরীত)</option>
-              <option value="name_asc">ট্রেডের নাম (অ-হ)</option>
-              <option value="created_desc">সর্বশেষ যুক্তকৃত</option>
-            </select>
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="টেবিল ভিউ"
+              >
+                <TableIcon size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="কার্ড ভিউ"
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Status Filter Pills */}
-        <div className="flex items-center space-x-1.5 flex-wrap gap-1.5 pt-2 border-t border-slate-100">
-          <span className="text-xs font-bold text-slate-400 mr-1 flex items-center space-x-1">
-            <Filter size={13} />
-            <span>ফিল্টার:</span>
-          </span>
-          <button
-            onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-              statusFilter === 'all'
-                ? 'bg-slate-800 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            সকল ট্রেড ({toBn(trades.length)})
-          </button>
-          <button
-            onClick={() => { setStatusFilter('Active'); setCurrentPage(1); }}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-              statusFilter === 'Active'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-            }`}
-          >
-            সক্রিয় ট্রেড ({toBn(stats.active)})
-          </button>
-          <button
-            onClick={() => { setStatusFilter('Inactive'); setCurrentPage(1); }}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-              statusFilter === 'Inactive'
-                ? 'bg-slate-600 text-white'
-                : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
-            }`}
-          >
-            নিষ্ক্রিয় ট্রেড ({toBn(stats.inactive)})
-          </button>
-          {duplicateTradesCount > 0 && (
-            <button
-              onClick={() => { setStatusFilter('duplicates'); setCurrentPage(1); }}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                statusFilter === 'duplicates'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
-              }`}
-            >
-              ডুপ্লিকেট কোড সতর্কতা ({toBn(duplicateTradesCount)})
-            </button>
-          )}
-        </div>
-      </div>
+        }
+      />
 
       {/* ======================================================== */}
-      {/* 5. TRADES GRID (RESPONSIVE CARDS)                        */}
+      {/* 5. TRADES LIST (TABLE OR RESPONSIVE CARDS)               */}
       {/* ======================================================== */}
       {processedTrades.length === 0 ? (
         <div className="py-16 text-center text-slate-400 text-xs bg-white border border-dashed border-slate-200 rounded-2xl space-y-2">
           <Wrench size={36} className="mx-auto text-slate-300" />
           <p className="font-bold text-slate-700 text-sm">কোনো ট্রেড পাওয়া যায়নি</p>
           <p className="text-slate-500">
-            {searchTerm ? 'আপনার অনুসন্ধানের সাথে মিলে এমন কোনো ট্রেড নেই।' : 'সিস্টেমে এখনো কোনো ট্রেড অন্তর্ভুক্ত করা হয়নি।'}
+            {searchTerm || statusFilter !== 'all' || durationFilter !== 'all'
+              ? 'আপনার ফিল্টারের সাথে মিলে এমন কোনো ট্রেড নেই।'
+              : 'সিস্টেমে এখনো কোনো ট্রেড অন্তর্ভুক্ত করা হয়নি।'}
           </p>
           {canCreate && (
             <button
@@ -798,128 +945,472 @@ const Trades: React.FC = () => {
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {paginatedTrades.map((trade) => {
-            const usage = tradeUsageMap[trade.id] || { batchCount: 0, traineeCount: 0, examCount: 0 };
-            const cleanCode = (trade.code || '').trim().toUpperCase();
-            const isDuplicateCode = duplicateCodesMap.has(cleanCode);
+      ) : viewMode === 'table' ? (
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left">
+              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr>
+                  {isColVisible('code') && <th className="px-4 py-3.5">ট্রেড কোড</th>}
+                  {isColVisible('name') && <th className="px-4 py-3.5">ট্রেডের নাম ও বিবরণ</th>}
+                  {isColVisible('duration') && <th className="px-4 py-3.5">কোর্সের মেয়াদ</th>}
+                  {isColVisible('stats') && <th className="px-4 py-3.5">ব্যাচ ও শিক্ষার্থী</th>}
+                  {isColVisible('status') && <th className="px-4 py-3.5 text-center">স্ট্যাটাস</th>}
+                  {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-100 text-xs">
+                {groupBy !== 'none' && groupedTrades ? (
+                  groupedTrades.map(grp => {
+                    const isCollapsed = collapsedGroups.has(grp.key);
+                    return (
+                      <React.Fragment key={grp.key}>
+                        <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                          <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
+                            <div className="flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={() => toggleGroupCollapse(grp.key)}
+                                className="flex items-center space-x-2 text-slate-800 hover:text-emerald-700 cursor-pointer"
+                              >
+                                {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                                  {toBn(grp.items.length)}টি ট্রেড
+                                </span>
+                              </button>
+                              <span className="text-[11px] text-slate-400">
+                                মোটের {toBn(Math.round((grp.items.length / (processedTrades.length || 1)) * 100))}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {!isCollapsed && grp.items.map(trade => {
+                          const usage = tradeUsageMap[trade.id] || { batchCount: 0, traineeCount: 0, examCount: 0 };
+                          const cleanCode = (trade.code || '').trim().toUpperCase();
+                          const isDuplicateCode = duplicateCodesMap.has(cleanCode);
 
-            return (
-              <div 
-                key={trade.id} 
-                className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
-                  isDuplicateCode ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
-                }`}
-              >
-                {/* Duplicate Badge */}
-                {isDuplicateCode && (
-                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
-                    <AlertTriangle size={10} />
-                    <span>ডুপ্লিকেট কোড</span>
-                  </div>
+                          return (
+                            <tr key={trade.id} className="hover:bg-slate-50/80 transition">
+                              {isColVisible('code') && (
+                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                                      {trade.code}
+                                    </span>
+                                    {isDuplicateCode && (
+                                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300">
+                                        ডুপ্লিকেট
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+                              {isColVisible('name') && (
+                                <td className="px-4 py-3.5">
+                                  <div className="font-bold text-slate-800 text-xs">{trade.name}</div>
+                                  {trade.nameEn && <div className="text-[11px] text-slate-400 italic">{trade.nameEn}</div>}
+                                </td>
+                              )}
+                              {isColVisible('duration') && (
+                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-700">
+                                  <div className="flex items-center space-x-1">
+                                    <Clock size={13} className="text-emerald-600" />
+                                    <span>{trade.duration}</span>
+                                  </div>
+                                </td>
+                              )}
+                              {isColVisible('stats') && (
+                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                                  <div>ব্যাচ: <strong className="text-purple-700">{toBn(usage.batchCount)}</strong>টি</div>
+                                  <div className="text-[11px] text-slate-400">শিক্ষার্থী: {toBn(usage.traineeCount)} জন</div>
+                                </td>
+                              )}
+                              {isColVisible('status') && (
+                                <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                  <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                                    trade.status === 'Active' 
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
+                                    {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                                  </span>
+                                </td>
+                              )}
+                              {isColVisible('actions') && (
+                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end space-x-1.5">
+                                    {canEdit && (
+                                      <button
+                                        onClick={() => handleOpenModal(trade)}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                        title="সম্পাদনা"
+                                      >
+                                        <Edit2 size={14} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        onClick={() => handleDeleteRequest(trade)}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                        title="মুছুন বা নিষ্ক্রিয় করুন"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  paginatedTrades.map(trade => {
+                    const usage = tradeUsageMap[trade.id] || { batchCount: 0, traineeCount: 0, examCount: 0 };
+                    const cleanCode = (trade.code || '').trim().toUpperCase();
+                    const isDuplicateCode = duplicateCodesMap.has(cleanCode);
+
+                    return (
+                      <tr key={trade.id} className="hover:bg-slate-50/80 transition">
+                        {isColVisible('code') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                                {trade.code}
+                              </span>
+                              {isDuplicateCode && (
+                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300">
+                                  ডুপ্লিকেট
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {isColVisible('name') && (
+                          <td className="px-4 py-3.5">
+                            <div className="font-bold text-slate-800 text-xs">{trade.name}</div>
+                            {trade.nameEn && <div className="text-[11px] text-slate-400 italic">{trade.nameEn}</div>}
+                          </td>
+                        )}
+                        {isColVisible('duration') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-700">
+                            <div className="flex items-center space-x-1">
+                              <Clock size={13} className="text-emerald-600" />
+                              <span>{trade.duration}</span>
+                            </div>
+                          </td>
+                        )}
+                        {isColVisible('stats') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                            <div>ব্যাচ: <strong className="text-purple-700">{toBn(usage.batchCount)}</strong>টি</div>
+                            <div className="text-[11px] text-slate-400">শিক্ষার্থী: {toBn(usage.traineeCount)} জন</div>
+                          </td>
+                        )}
+                        {isColVisible('status') && (
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                            <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                              trade.status === 'Active' 
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}>
+                              {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                            </span>
+                          </td>
+                        )}
+                        {isColVisible('actions') && (
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end space-x-1.5">
+                              {canEdit && (
+                                <button
+                                  onClick={() => handleOpenModal(trade)}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                  title="সম্পাদনা"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDeleteRequest(trade)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                  title="মুছুন বা নিষ্ক্রিয় করুন"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
                 )}
-
-                <div className="space-y-3">
-                  {/* Card Header: Icon & Status */}
-                  <div className="flex items-start justify-between">
-                    <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-2xs">
-                      <Wrench size={22} />
-                    </div>
-
-                    <div className="flex items-center space-x-1.5 pt-0.5 pr-2">
-                      <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
-                        trade.status === 'Active' 
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                          : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}>
-                        {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title & Code */}
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-base leading-snug">
-                      {trade.name}
-                    </h3>
-                    {trade.nameEn && (
-                      <p className="text-xs text-slate-400 italic font-sans mt-0.5">
-                        {trade.nameEn}
-                      </p>
-                    )}
-                    <div className="flex items-center space-x-2 mt-1.5">
-                      <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                        কোড: {trade.code}
-                      </span>
-                      {trade.updatedAt && (
-                        <span className="text-[10px] text-slate-400">
-                          আপডেট: {safeFormatDate(trade.updatedAt, 'dd/MM/yy')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 min-h-[32px]">
-                    {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
-                  </p>
-
-                  {/* Duration */}
-                  <div className="flex items-center space-x-1.5 text-xs text-slate-600 py-1.5 px-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <Clock size={14} className="text-emerald-600 shrink-0" />
-                    <span>কোর্সের মেয়াদ: <strong>{trade.duration}</strong></span>
-                  </div>
-
-                  {/* Relationship Badges (Batches & Trainees using this trade) */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
-                    <div className="flex items-center space-x-1.5 p-1.5 bg-purple-50/70 border border-purple-100 rounded-lg">
-                      <Layers size={13} className="text-purple-600" />
-                      <span>সংযুক্ত ব্যাচ: <strong className="text-purple-900">{toBn(usage.batchCount)}</strong></span>
-                    </div>
-                    <div className="flex items-center space-x-1.5 p-1.5 bg-blue-50/70 border border-blue-100 rounded-lg">
-                      <Users size={13} className="text-blue-600" />
-                      <span>শিক্ষার্থী: <strong className="text-blue-900">{toBn(usage.traineeCount)}</strong></span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Action Footer */}
-                {(canEdit || canDelete) && (
-                  <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 mt-4 text-xs">
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      আইডি: {trade.id}
-                    </span>
-
-                    <div className="flex items-center space-x-1.5">
-                      {canEdit && (
-                        <button
-                          onClick={() => handleOpenModal(trade)}
-                          className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-semibold transition flex items-center space-x-1"
-                          title="ট্রেড তথ্য সম্পাদনা করুন"
-                        >
-                          <Edit2 size={13} />
-                          <span>সম্পাদনা</span>
-                        </button>
-                      )}
-
-                      {canDelete && (
-                        <button
-                          onClick={() => handleDeleteRequest(trade)}
-                          className="px-2.5 py-1 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition flex items-center space-x-1"
-                          title={usage.batchCount > 0 ? "সংযুক্ত রেফারেন্স থাকায় নিষ্ক্রিয়করণ প্রযোজ্য" : "ট্রেড মুছে ফেলুন"}
-                        >
-                          <Trash2 size={13} />
-                          <span>মুছুন</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              </tbody>
+            </table>
+          </div>
         </div>
+      ) : (
+        groupBy !== 'none' && groupedTrades ? (
+          <div className="space-y-6">
+            {groupedTrades.map(grp => {
+              const isCollapsed = collapsedGroups.has(grp.key);
+              return (
+                <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroupCollapse(grp.key)}
+                    className="w-full flex items-center justify-between text-left hover:text-emerald-700 transition cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                      <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        {toBn(grp.items.length)}টি ট্রেড
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-400">
+                      মোটের {toBn(Math.round((grp.items.length / (processedTrades.length || 1)) * 100))}%
+                    </span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {grp.items.map(trade => {
+                        const usage = tradeUsageMap[trade.id] || { batchCount: 0, traineeCount: 0, examCount: 0 };
+                        const cleanCode = (trade.code || '').trim().toUpperCase();
+                        const isDuplicateCode = duplicateCodesMap.has(cleanCode);
+
+                        return (
+                          <div 
+                            key={trade.id} 
+                            className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
+                              isDuplicateCode ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
+                            }`}
+                          >
+                            {isDuplicateCode && (
+                              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
+                                <AlertTriangle size={10} />
+                                <span>ডুপ্লিকেট কোড</span>
+                              </div>
+                            )}
+
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between">
+                                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-2xs">
+                                  <Wrench size={22} />
+                                </div>
+
+                                <div className="flex items-center space-x-1.5 pt-0.5 pr-2">
+                                  <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
+                                    trade.status === 'Active' 
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
+                                    {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div>
+                                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                                  {trade.name}
+                                </h3>
+                                {trade.nameEn && (
+                                  <p className="text-xs text-slate-400 italic font-sans mt-0.5">
+                                    {trade.nameEn}
+                                  </p>
+                                )}
+                                <div className="flex items-center space-x-2 mt-1.5">
+                                  <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                                    কোড: {trade.code}
+                                  </span>
+                                  {trade.updatedAt && (
+                                    <span className="text-[10px] text-slate-400">
+                                      আপডেট: {safeFormatDate(trade.updatedAt, 'dd/MM/yy')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 min-h-[32px]">
+                                {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
+                              </p>
+
+                              <div className="flex items-center space-x-1.5 text-xs text-slate-600 py-1.5 px-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                <Clock size={14} className="text-emerald-600 shrink-0" />
+                                <span>কোর্সের মেয়াদ: <strong>{trade.duration}</strong></span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
+                                <div className="flex items-center space-x-1.5 p-1.5 bg-purple-50/70 border border-purple-100 rounded-lg">
+                                  <Layers size={13} className="text-purple-600" />
+                                  <span>সংযুক্ত ব্যাচ: <strong className="text-purple-900">{toBn(usage.batchCount)}</strong></span>
+                                </div>
+                                <div className="flex items-center space-x-1.5 p-1.5 bg-blue-50/70 border border-blue-100 rounded-lg">
+                                  <Users size={13} className="text-blue-600" />
+                                  <span>শিক্ষার্থী: <strong className="text-blue-900">{toBn(usage.traineeCount)}</strong></span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {(canEdit || canDelete) && (
+                              <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 mt-4 text-xs">
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  আইডি: {trade.id}
+                                </span>
+
+                                <div className="flex items-center space-x-1.5">
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => handleOpenModal(trade)}
+                                      className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                                      title="ট্রেড তথ্য সম্পাদনা করুন"
+                                    >
+                                      <Edit2 size={13} />
+                                      <span>সম্পাদনা</span>
+                                    </button>
+                                  )}
+
+                                  {canDelete && (
+                                    <button
+                                      onClick={() => handleDeleteRequest(trade)}
+                                      className="px-2.5 py-1 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                                      title={usage.batchCount > 0 ? "সংযুক্ত রেফারেন্স থাকায় নিষ্ক্রিয়করণ প্রযোজ্য" : "ট্রেড মুছে ফেলুন"}
+                                    >
+                                      <Trash2 size={13} />
+                                      <span>মুছুন</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {paginatedTrades.map((trade) => {
+              const usage = tradeUsageMap[trade.id] || { batchCount: 0, traineeCount: 0, examCount: 0 };
+              const cleanCode = (trade.code || '').trim().toUpperCase();
+              const isDuplicateCode = duplicateCodesMap.has(cleanCode);
+
+              return (
+                <div 
+                  key={trade.id} 
+                  className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
+                    isDuplicateCode ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
+                  }`}
+                >
+                  {isDuplicateCode && (
+                    <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
+                      <AlertTriangle size={10} />
+                      <span>ডুপ্লিকেট কোড</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-2xs">
+                        <Wrench size={22} />
+                      </div>
+
+                      <div className="flex items-center space-x-1.5 pt-0.5 pr-2">
+                        <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
+                          trade.status === 'Active' 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                          {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-base leading-snug">
+                        {trade.name}
+                      </h3>
+                      {trade.nameEn && (
+                        <p className="text-xs text-slate-400 italic font-sans mt-0.5">
+                          {trade.nameEn}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-2 mt-1.5">
+                        <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                          কোড: {trade.code}
+                        </span>
+                        {trade.updatedAt && (
+                          <span className="text-[10px] text-slate-400">
+                            আপডেট: {safeFormatDate(trade.updatedAt, 'dd/MM/yy')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 min-h-[32px]">
+                      {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
+                    </p>
+
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-600 py-1.5 px-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <Clock size={14} className="text-emerald-600 shrink-0" />
+                      <span>কোর্সের মেয়াদ: <strong>{trade.duration}</strong></span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
+                      <div className="flex items-center space-x-1.5 p-1.5 bg-purple-50/70 border border-purple-100 rounded-lg">
+                        <Layers size={13} className="text-purple-600" />
+                        <span>সংযুক্ত ব্যাচ: <strong className="text-purple-900">{toBn(usage.batchCount)}</strong></span>
+                      </div>
+                      <div className="flex items-center space-x-1.5 p-1.5 bg-blue-50/70 border border-blue-100 rounded-lg">
+                        <Users size={13} className="text-blue-600" />
+                        <span>শিক্ষার্থী: <strong className="text-blue-900">{toBn(usage.traineeCount)}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(canEdit || canDelete) && (
+                    <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 mt-4 text-xs">
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        আইডি: {trade.id}
+                      </span>
+
+                      <div className="flex items-center space-x-1.5">
+                        {canEdit && (
+                          <button
+                            onClick={() => handleOpenModal(trade)}
+                            className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                            title="ট্রেড তথ্য সম্পাদনা করুন"
+                          >
+                            <Edit2 size={13} />
+                            <span>সম্পাদনা</span>
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDeleteRequest(trade)}
+                            className="px-2.5 py-1 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                            title={usage.batchCount > 0 ? "সংযুক্ত রেফারেন্স থাকায় নিষ্ক্রিয়করণ প্রযোজ্য" : "ট্রেড মুছে ফেলুন"}
+                          >
+                            <Trash2 size={13} />
+                            <span>মুছুন</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )
       )}
 
       {/* ======================================================== */}

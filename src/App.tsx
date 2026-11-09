@@ -22,9 +22,12 @@ import Certificates from './pages/Certificates';
 import UsersPage from './pages/Users';
 import RolesPage from './pages/Roles';
 import Settings from './pages/Settings';
+import BrnVerification from './pages/BrnVerification';
+
+import { PendingApproval } from './pages/PendingApproval';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { userProfile, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -35,8 +38,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!userProfile) {
+  // Strictly require authenticated Firebase user and profile
+  if (!user || !userProfile) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (userProfile.status === 'Inactive') {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Render dedicated pending approval experience for unapproved users
+  if (userProfile.status === 'Pending Approval') {
+    return <PendingApproval />;
   }
 
   return <>{children}</>;
@@ -118,6 +131,7 @@ const AppRoutes = () => {
         <Route path="trades" element={<PageGuard path="/trades"><Trades /></PageGuard>} />
         <Route path="batches" element={<PageGuard path="/batches"><Batches /></PageGuard>} />
         <Route path="trainees/*" element={<PageGuard path="/trainees"><Trainees /></PageGuard>} />
+        <Route path="brn-verification" element={<PageGuard path="/brn-verification"><BrnVerification /></PageGuard>} />
         <Route path="shikhon-calendar" element={<PageGuard path="/shikhon-calendar"><ShikhonCalendar /></PageGuard>} />
         <Route path="trade-calendar" element={<PageGuard path="/trade-calendar"><TradeCalendar /></PageGuard>} />
         <Route path="attendance" element={<PageGuard path="/attendance"><Attendance /></PageGuard>} />
