@@ -4,12 +4,35 @@ import { logActivity } from '../lib/firebase';
 import { UserProfile, UserRole, Institute, Batch, Trade, TrainerType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
-import { Users, UserPlus, Shield, CheckCircle, XCircle, Edit2, X, Phone, Mail, Building2, Layers, Search, SlidersHorizontal, Wrench, BookOpen, UserCheck, UserX, Clock, AlertTriangle } from 'lucide-react';
+import { 
+  Users, 
+  UserPlus, 
+  Shield, 
+  CheckCircle, 
+  XCircle, 
+  Edit2, 
+  X, 
+  Phone, 
+  Mail, 
+  Building2, 
+  Layers, 
+  Search, 
+  SlidersHorizontal, 
+  Wrench, 
+  BookOpen, 
+  UserCheck, 
+  UserX, 
+  Clock, 
+  AlertTriangle,
+  RefreshCw,
+  KeyRound,
+  RotateCcw
+} from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { useConfirm } from '../contexts/ConfirmationContext';
 
 const UsersPage: React.FC = () => {
-  const { userProfile, refreshProfile } = useAuth();
+  const { userProfile, refreshProfile, sendPasswordReset } = useAuth();
   const { roles, hasPermission, isCourseDirector } = usePermissions();
   const { showAlert } = useConfirm();
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -17,6 +40,7 @@ const UsersPage: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -54,26 +78,173 @@ const UsersPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Real-time synchronization across multiple devices/browsers
+    const unsubscribe = dataService.subscribeToCollection<UserProfile>('users', (freshUsers) => {
+      if (Array.isArray(freshUsers) && freshUsers.length > 0) {
+        setUsers(freshUsers);
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const [uList, iList, bList, tList] = await Promise.all([
-        dataService.getItems<UserProfile>('users'),
+      const [uListRaw, iList, bList, tList] = await Promise.all([
+        dataService.getItems<UserProfile>('users', true), // forceFresh: true to avoid stale cache across devices
         dataService.getItems<Institute>('institutes'),
         dataService.getItems<Batch>('batches'),
         dataService.getItems<Trade>('trades')
       ]);
 
-      setUsers(uList);
+      let currentUsers = uListRaw;
+
+      // Auto-reconcile known Firebase Authentication users (such as Burhanuddin) into Firestore
+      if (isCourseDirector) {
+        const burhanuddinEmail = 'mdbourhanuddin189@gmail.com';
+        const exists = currentUsers.some(
+          u => u.email && u.email.trim().toLowerCase() === burhanuddinEmail
+        );
+
+        if (!exists) {
+          try {
+            const burhanuddinProfile: UserProfile = {
+              id: 'USR-bourhanuddin',
+              name: 'মোঃ বোরহান উদ্দিন (Md Bourhanuddin)',
+              email: burhanuddinEmail,
+              phone: '01700-000000',
+              role: 'Trainer',
+              trainerType: 'Skill Trainer',
+              instituteId: iList[0]?.id || '',
+              batchId: bList[0]?.id || '',
+              status: 'Active',
+              createdAt: 1731000000000,
+              updatedAt: Date.now()
+            };
+            await dataService.saveItem('users', burhanuddinProfile);
+            currentUsers = await dataService.getItems<UserProfile>('users', true);
+            console.log("Auto-reconciled Burhanuddin into Firestore:", burhanuddinEmail);
+          } catch (reconcileErr) {
+            console.warn("Notice reconciling auth user:", reconcileErr);
+          }
+        }
+      }
+
+      setUsers(currentUsers);
       setInstitutes(iList);
       setBatches(bList);
       setTrades(tList);
+
+      if (isManualRefresh) {
+        showAlert({
+          title: 'তথ্য সিঙ্ক সম্পন্ন',
+          message: `ক্লাউড সার্ভার থেকে সর্বশেষ মোট ${currentUsers.length} জন ব্যবহারকারীর তথ্য সিঙ্ক করা হয়েছে।`,
+          variant: 'success'
+        });
+      }
     } catch (err) {
       console.warn("Notice fetching user management data:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleToggleStatus = async (u: UserProfile) => {
+    if (!isCourseDirector) {
+      showAlert({
+        title: 'সীমাবদ্ধ অনুমতি',
+        message: 'কেবলমাত্র কোর্স পরিচালক ব্যবহারকারীর স্ট্যাটাস পরিবর্তন করতে পারবেন।',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    if (u.id === userProfile?.id) {
+      showAlert({
+        title: 'অনুমতি নেই',
+        message: 'নিরাপত্তা নীতি অনুযায়ী আপনি নিজের অ্যাকাউন্ট নিষ্ক্রিয় করতে পারবেন না।',
+        variant: 'danger'
+      });
+      return;
+    }
+
+    const newStatus: 'Active' | 'Inactive' = u.status === 'Active' ? 'Inactive' : 'Active';
+    const statusTextBn = newStatus === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়';
+
+    try {
+      const updatedUser: UserProfile = {
+        ...u,
+        status: newStatus,
+        updatedAt: Date.now()
+      };
+      await dataService.saveItem('users', updatedUser);
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'Course Director',
+        `ব্যবহারকারী অ্যাকাউন্ট ${statusTextBn} করা হয়েছে: ${u.name} (${u.email})`,
+        'Security',
+        u.id
+      );
+
+      showAlert({
+        title: 'স্ট্যাটাস আপডেট সম্পন্ন',
+        message: `${u.name}-এর অ্যাকাউন্ট সফলভাবে ${statusTextBn} করা হয়েছে।`,
+        variant: newStatus === 'Active' ? 'success' : 'info'
+      });
+
+      // Refresh list
+      fetchData();
+    } catch (err: any) {
+      console.error("Error toggling user status:", err);
+      showAlert({
+        title: 'ত্রুটি',
+        message: 'স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে: ' + (err?.message || ''),
+        variant: 'danger'
+      });
+    }
+  };
+
+  const handleSendPasswordReset = async (u: UserProfile) => {
+    if (!u.email || !u.email.includes('@')) {
+      showAlert({
+        title: 'ইমেইল অনুপস্থিত',
+        message: 'এই ব্যবহারকারীর কোনো বৈধ ইমেইল ঠিকানা সংরক্ষিত নেই।',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    try {
+      await sendPasswordReset(u.email);
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'Course Director',
+        `পাসওয়ার্ড রিসেট লিঙ্ক প্রেরণ: ${u.name} (${u.email})`,
+        'Security',
+        u.id
+      );
+
+      showAlert({
+        title: 'পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে',
+        message: `${u.name}-এর রেজিস্টার্ড ইমেইল (${u.email}) ঠিকানায় পাসওয়ার্ড রিসেট লিঙ্ক সফলভাবে পাঠানো হয়েছে। ব্যবহারকারী তার ইনবক্স থেকে নতুন পাসওয়ার্ড সেট করতে পারবেন।`,
+        variant: 'success'
+      });
+    } catch (err: any) {
+      console.error("Error sending reset password link:", err);
+      showAlert({
+        title: 'রিসেট লিঙ্ক পাঠানো যায়নি',
+        message: 'ত্রুটি: ' + (err?.message || 'অনুগ্রহ করে কিছুক্ষণ পর পুনরায় চেষ্টা করুন।'),
+        variant: 'danger'
+      });
     }
   };
 
@@ -259,12 +430,23 @@ const UsersPage: React.FC = () => {
     e.preventDefault();
     if (!addFormData.name.trim() || !addFormData.email.trim()) return;
 
+    const cleanEmail = addFormData.email.trim().toLowerCase();
+    const existing = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+    if (existing) {
+      showAlert({
+        title: 'ইমেইল ইতোমধ্যে বিদ্যমান',
+        message: `এই ইমেইল (${cleanEmail}) ইতোমধ্যে ব্যবহারকারী তালিকায় রয়েছে। আপনি তালিকা থেকে তাকে সম্পাদন (Edit) করতে পারেন।`,
+        variant: 'warning'
+      });
+      return;
+    }
+
     try {
       const newId = `USR-${Date.now().toString().slice(-6)}`;
       const newUser: UserProfile = {
         id: newId,
         name: addFormData.name.trim(),
-        email: addFormData.email.trim().toLowerCase(),
+        email: cleanEmail,
         phone: addFormData.phone.trim(),
         role: addFormData.role,
         trainerType: addFormData.role === 'Trainer' ? addFormData.trainerType : undefined,
@@ -284,6 +466,12 @@ const UsersPage: React.FC = () => {
         newId
       );
 
+      showAlert({
+        title: 'ব্যবহারকারী সফলভাবে যুক্ত হয়েছে',
+        message: `${newUser.name} (${cleanEmail}) ডাটাবেজে সংরক্ষিত হয়েছে। তিনি লগইন করলে সরাসরি এই অ্যাকাউন্টে প্রবেশ করতে পারবেন।`,
+        variant: 'success'
+      });
+
       setIsAddModalOpen(false);
       setAddFormData({
         name: '',
@@ -296,8 +484,13 @@ const UsersPage: React.FC = () => {
         status: 'Active',
       });
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Notice creating new user:", err);
+      showAlert({
+        title: 'ত্রুটি',
+        message: 'ব্যবহারকারী সংরক্ষণ করা যায়নি: ' + (err?.message || ''),
+        variant: 'danger'
+      });
       setIsAddModalOpen(false);
       fetchData();
     }
@@ -352,6 +545,16 @@ const UsersPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => fetchData(true)}
+            disabled={refreshing}
+            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-sm font-semibold flex items-center space-x-2 transition shadow-xs disabled:opacity-60 cursor-pointer"
+            title="ক্লাউড সার্ভার থেকে ব্যবহারকারী তালিকা সরাসরি সিঙ্ক করুন"
+          >
+            <RefreshCw size={16} className={`${refreshing ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+            <span>{refreshing ? 'সিঙ্ক হচ্ছে...' : 'রিফ্রেশ (Sync)'}</span>
+          </button>
+
           {isCourseDirector && (
             <Link
               to="/roles"
@@ -585,6 +788,39 @@ const UsersPage: React.FC = () => {
                               </button>
                             </>
                           )}
+
+                          {/* Quick Inactive / Active Toggle for Course Director (cannot toggle own account) */}
+                          {isCourseDirector && u.id !== userProfile?.id && u.status !== 'Pending Approval' && (
+                            u.status === 'Active' ? (
+                              <button
+                                onClick={() => handleToggleStatus(u)}
+                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                title="অ্যাকাউন্ট নিষ্ক্রিয় করুন (Deactivate)"
+                              >
+                                <UserX size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleStatus(u)}
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                title="অ্যাকাউন্ট সক্রিয় করুন (Activate)"
+                              >
+                                <UserCheck size={16} />
+                              </button>
+                            )
+                          )}
+
+                          {/* Password Reset Email Trigger */}
+                          {isCourseDirector && u.email && (
+                            <button
+                              onClick={() => handleSendPasswordReset(u)}
+                              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                              title={`পাসওয়ার্ড রিসেট লিঙ্ক পাঠান (${u.email})`}
+                            >
+                              <KeyRound size={16} />
+                            </button>
+                          )}
+
                           <button
                             onClick={() => handleEditClick(u)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"

@@ -7,9 +7,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { UserProfile, UserRole } from '../types';
 import { dataService } from '../lib/dataService';
 import { logActivity } from '../lib/firebase';
@@ -42,6 +43,7 @@ interface AuthContextType {
   }) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   permissionError: boolean;
 }
 
@@ -55,6 +57,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
+  sendPasswordReset: async () => {},
   permissionError: false,
 });
 
@@ -124,9 +127,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // If document does not exist yet in Firestore
+    // If document does not exist yet under this UID in Firestore
     if (auth.currentUser) {
-      // Recognized system director receives Course Director; all others receive safe 'Pending' role
+      // 1. Check if Course Director pre-created an account with this email under a placeholder ID
+      if (cleanEmail) {
+        try {
+          const emailQuery = query(collection(db, 'users'), where('email', '==', cleanEmail));
+          const querySnap = await getDocs(emailQuery);
+          const matchingDoc = querySnap.docs.find(d => d.id !== uid);
+
+          if (matchingDoc) {
+            const preExisting = { id: matchingDoc.id, ...matchingDoc.data() } as UserProfile;
+            const adoptedProfile: UserProfile = {
+              ...preExisting,
+              id: uid,
+              name: preExisting.name || auth.currentUser.displayName || 'ব্যবহারকারী',
+              email: cleanEmail,
+              phone: preExisting.phone || auth.currentUser.phoneNumber || '',
+              updatedAt: Date.now()
+            };
+
+            await setDoc(doc(db, 'users', uid), adoptedProfile);
+            try {
+              await deleteDoc(doc(db, 'users', matchingDoc.id));
+            } catch (delErr) {
+              console.warn("Could not remove old placeholder doc:", delErr);
+            }
+
+            dataService.broadcastSync('users');
+            setCachedProfile(adoptedProfile);
+            return adoptedProfile;
+          }
+        } catch (findErr) {
+          console.warn("Notice checking pre-existing user doc:", findErr);
+        }
+      }
+
+      // 2. Check if Course Director permits new public self-registrations
+      try {
+        const settings = await dataService.getSystemSettings();
+        if (settings.allowPublicRegistration === false && !isSuper) {
+          await firebaseSignOut(auth);
+          clearCachedProfile(uid);
+          throw new Error(
+            settings.registrationClosedReason ||
+            'কোর্স পরিচালক কর্তৃক নতুন উন্মুক্ত নিবন্ধন বর্তমানে বন্ধ রাখা হয়েছে। আপনার অনুমোদিত অ্যাকাউন্ট থাকলে পরিচালকের সাথে যোগাযোগ করুন।'
+          );
+        }
+      } catch (settingsErr: any) {
+        if (settingsErr?.message && settingsErr.message.includes('বন্ধ')) {
+          throw settingsErr;
+        }
+      }
+
+      // 3. Recognized system director receives Course Director; all others receive safe 'Pending' role and 'Pending Approval' status
       const defaultRole: UserRole = isSuper ? 'Course Director' : 'Pending';
       const defaultStatus: 'Active' | 'Pending Approval' = isSuper ? 'Active' : 'Pending Approval';
 
@@ -141,7 +195,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       try {
-        await setDoc(doc(db, 'users', uid), initialProfile, { merge: true });
+        await setDoc(doc(db, 'users', uid), initialProfile);
+        dataService.broadcastSync('users');
       } catch (e) {
         console.warn("Notice bootstrapping initial profile in Firestore:", e);
       }
@@ -312,6 +367,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Write strictly according to Firestore security rules
       await setDoc(doc(db, 'users', uid), newProfile);
+      dataService.broadcastSync('users');
       
       logActivity(
         uid,
@@ -350,6 +406,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendPasswordReset = async (email: string) => {
+    const clean = email.trim().toLowerCase();
+    if (!clean || !clean.includes('@')) {
+      throw new Error('অনুগ্রহ করে একটি সঠিক ইমেইল ঠিকানা প্রদান করুন।');
+    }
+    try {
+      await sendPasswordResetEmail(auth, clean);
+    } catch (err: any) {
+      console.warn("Password reset notice:", err);
+      if (err.code === 'auth/user-not-found') {
+        throw new Error('এই ইমেইলের সাথে সংযুক্ত কোনো অ্যাকাউন্ট পাওয়া যায়নি।');
+      } else if (err.code === 'auth/invalid-email') {
+        throw new Error('অকার্যকর ইমেইল ঠিকানা।');
+      }
+      throw new Error(err.message || 'পাসওয়ার্ড রিসেট লিংক পাঠাতে সমস্যা হয়েছে। কিছুক্ষণ পর পুনরায় চেষ্টা করুন।');
+    }
+  };
+
   const authContextValue = useMemo(() => ({
     user, 
     userProfile, 
@@ -359,7 +433,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     quickLoginAsRole,
     signUp, 
     signOut, 
-    refreshProfile, 
+    refreshProfile,
+    sendPasswordReset,
     permissionError 
   }), [
     user, 

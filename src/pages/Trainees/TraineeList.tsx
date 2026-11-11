@@ -1667,11 +1667,6 @@ const TraineeList: React.FC = () => {
                                       <span>{t.nameBn || t.nameEn}</span>
                                       <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-emerald-600 transition shrink-0" />
                                     </div>
-                                    {t.nameEn && t.nameBn && (
-                                      <div className="text-[11px] text-slate-400 italic">
-                                        {t.nameEn}
-                                      </div>
-                                    )}
                                   </Link>
                                   <div className="flex items-center space-x-1 text-[11px] font-mono text-slate-600 mt-1">
                                     <Phone size={11} className="text-slate-400 shrink-0" />
@@ -1887,11 +1882,6 @@ const TraineeList: React.FC = () => {
                                 <span>{t.nameBn || t.nameEn}</span>
                                 <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-emerald-600 transition shrink-0" />
                               </div>
-                              {t.nameEn && t.nameBn && (
-                                <div className="text-[11px] text-slate-400 italic">
-                                  {t.nameEn}
-                                </div>
-                              )}
                             </Link>
                             <div className="flex items-center space-x-1 text-[11px] font-mono text-slate-600 mt-1">
                               <Phone size={11} className="text-slate-400 shrink-0" />

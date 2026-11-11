@@ -983,9 +983,6 @@ const Attendance: React.FC = () => {
                           <span className="font-bold text-slate-800 text-xs block leading-tight">
                             {t.nameBn || t.nameEn}
                           </span>
-                          {t.nameEn && t.nameBn && (
-                            <span className="text-[10px] text-slate-400 block">{t.nameEn}</span>
-                          )}
                         </td>
 
                         {/* DB State Badge */}

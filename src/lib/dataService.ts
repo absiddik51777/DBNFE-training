@@ -161,6 +161,21 @@ function normalizeDoc<T extends { id: string }>(col: string, data: any, docId: s
     item.isSystem = Boolean(item.isSystem);
     item.permissions = Array.isArray(item.permissions) ? item.permissions : [];
     item.createdAt = toTimestampNumber(item.createdAt);
+  } else if (col === 'users') {
+    item.name = item.name || item.displayName || 'ব্যবহারকারী';
+    item.email = item.email ? String(item.email).trim().toLowerCase() : '';
+    item.phone = item.phone || '';
+    item.role = item.role || 'Pending';
+    const s = String(item.status || '').trim().toLowerCase();
+    if (s === 'inactive' || s === 'নিষ্ক্রিয়' || s === 'নিষ্ক্রিয়') {
+      item.status = 'Inactive';
+    } else if (s === 'pending' || s === 'pending approval' || s === 'pending_approval' || s === 'অপেক্ষমাণ') {
+      item.status = 'Pending Approval';
+    } else {
+      item.status = 'Active';
+    }
+    item.createdAt = toTimestampNumber(item.createdAt);
+    if (item.updatedAt) item.updatedAt = toTimestampNumber(item.updatedAt);
   }
 
   return item as T;
@@ -713,6 +728,17 @@ export const dataService = {
       try { unsubscribeFirestore(); } catch (e) {}
       try { if (bc) bc.close(); } catch (e) {}
     };
+  },
+
+  /**
+   * Alias for subscribeCollection
+   */
+  subscribeToCollection<T extends { id: string }>(
+    collectionName: string,
+    onUpdate: (items: T[]) => void,
+    onError?: (err: any) => void
+  ): () => void {
+    return this.subscribeCollection<T>(collectionName, onUpdate, onError);
   },
 
   /**

@@ -1008,8 +1008,7 @@ const Trades: React.FC = () => {
                               )}
                               {isColVisible('name') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="font-bold text-slate-800 text-xs">{trade.name}</div>
-                                  {trade.nameEn && <div className="text-[11px] text-slate-400 italic">{trade.nameEn}</div>}
+                                  <div className="font-bold text-slate-800 text-xs">{trade.name || trade.nameEn}</div>
                                 </td>
                               )}
                               {isColVisible('duration') && (
@@ -1091,8 +1090,7 @@ const Trades: React.FC = () => {
                         )}
                         {isColVisible('name') && (
                           <td className="px-4 py-3.5">
-                            <div className="font-bold text-slate-800 text-xs">{trade.name}</div>
-                            {trade.nameEn && <div className="text-[11px] text-slate-400 italic">{trade.nameEn}</div>}
+                            <div className="font-bold text-slate-800 text-xs">{trade.name || trade.nameEn}</div>
                           </td>
                         )}
                         {isColVisible('duration') && (

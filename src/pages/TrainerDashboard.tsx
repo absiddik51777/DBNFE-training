@@ -1057,8 +1057,7 @@ const TrainerDashboard: React.FC = () => {
                             </div>
                           )}
                           <div className="overflow-hidden">
-                            <p className="font-bold text-slate-900 truncate">{item.nameBn}</p>
-                            <p className="text-[11px] text-slate-500 truncate">{item.nameEn}</p>
+                            <p className="font-bold text-slate-900 truncate">{item.nameBn || item.nameEn}</p>
                             <div className="flex items-center space-x-1 mt-0.5">
                               <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded">
                                 {item.registrationNumber}

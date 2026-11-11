@@ -465,8 +465,7 @@ const Results: React.FC = () => {
                           {t.registrationNumber}
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-slate-800">{t.nameBn}</div>
-                          <div className="text-xs text-slate-400">{t.nameEn}</div>
+                          <div className="text-sm font-semibold text-slate-800">{t.nameBn || t.nameEn}</div>
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap text-center">
                           <input
@@ -575,7 +574,7 @@ const Results: React.FC = () => {
                     <tr key={t.id} className="hover:bg-slate-50">
                       <td className="border border-slate-300 px-3 py-2 text-center">{idx + 1}</td>
                       <td className="border border-slate-300 px-3 py-2 font-mono font-bold">{t.registrationNumber}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-semibold">{t.nameBn} ({t.nameEn})</td>
+                      <td className="border border-slate-300 px-3 py-2 font-semibold">{t.nameBn || t.nameEn}</td>
                       <td className="border border-slate-300 px-3 py-2 text-center">{currentExam.totalMarks}</td>
                       <td className="border border-slate-300 px-3 py-2 text-center font-bold">{r?.marksObtained || 0}</td>
                       <td className="border border-slate-300 px-3 py-2 text-center">{r?.percentage || 0}%</td>

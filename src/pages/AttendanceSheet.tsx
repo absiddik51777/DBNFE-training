@@ -701,11 +701,10 @@ export default function AttendanceSheet() {
                         {/* Sticky Name & ID */}
                         <td className="sticky left-12 z-10 bg-inherit px-3 py-2 text-left border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">
                           <div className="font-semibold text-slate-900 text-[12px] truncate max-w-[180px]">
-                            {t.nameBn}
+                            {t.nameBn || t.nameEn}
                           </div>
                           <div className="text-[10px] text-slate-500 truncate max-w-[180px] flex items-center gap-1.5">
                             <span className="font-mono text-emerald-700 font-medium">{t.traineeId || t.id}</span>
-                            {t.nameEn && <span className="text-slate-400">· {t.nameEn}</span>}
                           </div>
                         </td>
 

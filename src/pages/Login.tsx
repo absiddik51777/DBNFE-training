@@ -14,18 +14,30 @@ import {
   CheckCircle2, 
   AlertCircle,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  X
 } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
-  const { signIn, signInWithGoogle, signUp, userProfile } = useAuth();
+  const { signIn, signInWithGoogle, signUp, sendPasswordReset, userProfile } = useAuth();
   const { getDefaultLandingRoute } = usePermissions();
   const navigate = useNavigate();
+
+  // Public registration setting
+  const [allowPublicRegistration, setAllowPublicRegistration] = useState(true);
 
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+
+  // Forgot password modal state
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotError, setForgotError] = useState('');
 
   // Register form state
   const [regName, setRegName] = useState('');
@@ -44,18 +56,22 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Fetch institutes, batches, trades for Trainer assignment
+  // Fetch institutes, batches, trades, and system settings
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [instList, batchList, tradeList] = await Promise.all([
+        const [instList, batchList, tradeList, settings] = await Promise.all([
           dataService.getItems<Institute>('institutes'),
           dataService.getItems<Batch>('batches'),
-          dataService.getItems<Trade>('trades')
+          dataService.getItems<Trade>('trades'),
+          dataService.getSystemSettings()
         ]);
         setInstitutes(instList);
         setBatches(batchList);
         setTrades(tradeList);
+        if (settings) {
+          setAllowPublicRegistration(settings.allowPublicRegistration !== false);
+        }
         if (instList.length > 0 && !regInstituteId) {
           setRegInstituteId(instList[0].id);
           const matching = batchList.filter(b => b.instituteId === instList[0].id);
@@ -129,10 +145,36 @@ const Login: React.FC = () => {
     }
   };
 
+  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotMsg('');
+
+    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+      setForgotError('অনুগ্রহ করে একটি সঠিক ইমেইল ঠিকানা প্রদান করুন।');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await sendPasswordReset(forgotEmail.trim());
+      setForgotMsg(`আপনার "${forgotEmail.trim()}" ইমেইলে একটি পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। অনুগ্রহ করে ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।`);
+    } catch (err: any) {
+      setForgotError(err?.message || 'পাসওয়ার্ড রিসেট লিংক পাঠাতে ব্যর্থ হয়েছে।');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+
+    if (!allowPublicRegistration) {
+      setError('কোর্স পরিচালক কর্তৃক উন্মুক্ত ব্যবহারকারী নিবন্ধন সাময়িকভাবে বন্ধ রাখা হয়েছে। অ্যাকাউন্টের জন্য কোর্স পরিচালকের সাথে যোগাযোগ করুন।');
+      return;
+    }
 
     if (regPassword.length < 6) {
       setError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে। (Password must be at least 6 characters)');
@@ -233,13 +275,16 @@ const Login: React.FC = () => {
           <button
             type="button"
             onClick={() => { setIsRegister(true); setError(''); }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center space-x-1 ${
               isRegister
                 ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            নতুন নিবন্ধন (Register)
+            <span>নতুন নিবন্ধন</span>
+            {!allowPublicRegistration && (
+              <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 text-[10px] rounded font-bold">বন্ধ</span>
+            )}
           </button>
         </div>
 
@@ -314,9 +359,23 @@ const Login: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                  পাসওয়ার্ড (Password)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                    পাসওয়ার্ড (Password)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotModalOpen(true);
+                      setForgotEmail(loginIdentifier.includes('@') ? loginIdentifier : '');
+                      setForgotError('');
+                      setForgotMsg('');
+                    }}
+                    className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold hover:underline cursor-pointer"
+                  >
+                    পাসওয়ার্ড ভুলে গেছেন?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type="password"
@@ -348,6 +407,17 @@ const Login: React.FC = () => {
           ) : (
             /* Registration Form */
             <form onSubmit={handleRegister} className="space-y-3">
+              {!allowPublicRegistration && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs space-y-1">
+                  <div className="flex items-center space-x-1.5 font-bold">
+                    <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                    <span>উন্মুক্ত নিবন্ধন বর্তমানে বন্ধ রয়েছে</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    কোর্স পরিচালক কর্তৃক সাধারণ ব্যবহারকারীদের নতুন নিবন্ধন সাময়িকভাবে বন্ধ রাখা হয়েছে। আপনার অ্যাকাউন্টের জন্য সরাসরি কোর্স পরিচালকের সাথে যোগাযোগ করুন।
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
                   পূর্ণ নাম (Full Name) *
@@ -486,11 +556,13 @@ const Login: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={loading || googleLoading}
-                className="w-full mt-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs shadow-emerald-600/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:opacity-50 text-xs flex items-center justify-center space-x-2 cursor-pointer"
+                disabled={loading || googleLoading || !allowPublicRegistration}
+                className="w-full mt-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs shadow-emerald-600/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center justify-center space-x-2 cursor-pointer"
               >
                 {loading ? (
                   <span>নিবন্ধন তৈরি হচ্ছে...</span>
+                ) : !allowPublicRegistration ? (
+                  <span>রেজিস্ট্রেশন সাময়িকভাবে বন্ধ আছে (Registration Closed)</span>
                 ) : (
                   <>
                     <span>নিবন্ধন সম্পন্ন করুন (Register)</span>
@@ -506,6 +578,96 @@ const Login: React.FC = () => {
       <div className="mt-5 text-center text-xs text-slate-500">
         বাংলাদেশ উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE) • প্রাথমিক ও গণশিক্ষা মন্ত্রণালয়
       </div>
+
+      {/* Forgot Password Modal */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <KeyRound size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">পাসওয়ার্ড রিসেট (Reset Password)</h3>
+                  <p className="text-[11px] text-slate-500">আপনার ইমেইলে রিসেট লিঙ্ক পাঠানো হবে</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotModalOpen(false);
+                  setForgotError('');
+                  setForgotMsg('');
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordResetSubmit} className="p-5 space-y-4">
+              {forgotMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-start space-x-2">
+                  <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600" />
+                  <span className="leading-relaxed">{forgotMsg}</span>
+                </div>
+              )}
+
+              {forgotError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-start space-x-2">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                  <span className="leading-relaxed">{forgotError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  রেজিস্টার্ড ইমেইল এড্রেস (Registered Email) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="example@gmail.com"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <Mail className="absolute left-3 top-2.5 text-slate-400" size={15} />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  আপনার অ্যাকাউন্টের সাথে যুক্ত জিমেইল বা প্রাতিষ্ঠানিক ইমেইল লিখুন।
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  বাতিল (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center space-x-1.5 shadow-xs"
+                >
+                  {forgotLoading ? (
+                    <span>পাঠানো হচ্ছে...</span>
+                  ) : (
+                    <>
+                      <span>রিসেট লিঙ্ক পাঠান</span>
+                      <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

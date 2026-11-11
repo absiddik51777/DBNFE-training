@@ -61,7 +61,12 @@ service cloud.firestore {
     // --- 1. User Profiles & RBAC ---
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isCourseDirector() || isFMA());
-      allow list: if isSignedIn() && (isCourseDirector() || isFMA() || resource.data.id == request.auth.uid);
+      allow list: if isSignedIn() && (
+        isCourseDirector() || 
+        isFMA() || 
+        resource.data.id == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.email != null && resource.data.email.lower() == request.auth.token.email.lower())
+      );
 
       allow create: if isSignedIn() && isValidId(userId) && (
         isCourseDirector() ||
@@ -87,7 +92,10 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if isCourseDirector() && request.auth.uid != userId;
+      allow delete: if isSignedIn() && (
+        (isCourseDirector() && request.auth.uid != userId) ||
+        (resource.data.email != null && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower())
+      );
     }
 
     // --- 2. Institutes & Centers ---
