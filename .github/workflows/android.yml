@@ -1,14 +1,13 @@
 name: Build Android APK
-
 on:
   push:
     branches:
       - main
   workflow_dispatch: {}
-  
+
 env:
   APP_ID: com.dbnfe.training
-  APP_NAME: BNFE Training
+  APP_NAME: DBNFE Training
 
 jobs:
   build-apk:
@@ -28,8 +27,6 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-
-      - uses: android-actions/setup-android@v3
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -56,6 +53,14 @@ jobs:
         run: |
           bunx cap add android
           bunx cap sync android
+
+      - name: Generate app icons
+        if: ${{ hashFiles('assets/icon-only.png', 'assets/icon-foreground.png') != '' }}
+        run: |
+          bun add -d @capacitor/assets
+          bunx capacitor-assets generate --android \
+            --iconBackgroundColor '#ffffff' \
+            --iconBackgroundColorDark '#000000'
 
       - name: Build debug APK
         working-directory: android
