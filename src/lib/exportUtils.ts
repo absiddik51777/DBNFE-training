@@ -554,3 +554,8 @@ export function printBRNReportPDF(options: BRNPrintReportOptions): void {
     frameDoc.close();
   }
 }
+
+// Re-export direct PDF generation & Android APK download service
+export { generateTraineesPDF, downloadPdfBlob } from './pdfExportService';
+export type { TraineePdfExportOptions } from './pdfExportService';
+

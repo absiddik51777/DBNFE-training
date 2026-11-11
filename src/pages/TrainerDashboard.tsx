@@ -43,6 +43,7 @@ import { SHIKHON_92_DAYS, SHIKHON_COURSE_INFO } from '../data/shikhonCalendarDat
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { SHOW_CALENDAR_MODULES } from '../config/features';
+import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 
 const TrainerDashboard: React.FC = () => {
   const { userProfile } = useAuth();
@@ -615,104 +616,42 @@ const TrainerDashboard: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 2. DEDICATED TRAINER HERO CARD                           */}
+      {/* 2. DEDICATED HERO HEADER (MATCHING USER DESIGN)          */}
       {/* ======================================================== */}
-      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-2xl p-5 sm:p-6 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-        <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center font-bold text-xl shrink-0 shadow-inner">
-            <UserCheck size={26} />
+      <DashboardHeroHeader
+        userProfile={userProfile}
+        lastSyncTime={lastSyncTime}
+        onRefresh={handleRefresh}
+        onPrint={() => window.print()}
+        isTrainerDashboard={true}
+        refreshing={refreshing || syncing}
+        syncSuccessMsg={syncSuccessMsg}
+        batchInfoBadge={trainerMetrics ? `${trainerMetrics.batchName} • ${trainerMetrics.tradeName}` : undefined}
+      />
+
+      {trainerMetrics && (
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-slate-600">
+            <span className="font-bold text-slate-800">দায়িত্বপ্রাপ্ত প্রতিষ্ঠান:</span>
+            <span className="text-slate-700">{trainerMetrics.instituteName}</span>
+            <span className="text-slate-300">•</span>
+            <span className="font-bold text-slate-800">ট্রেড:</span>
+            <span className="text-slate-700">{trainerMetrics.tradeName}</span>
           </div>
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full border border-white/20 text-white">
-                প্রশিক্ষক ড্যাশবোর্ড • ব্যাচ কন্ট্রোল
-              </span>
-              {trainerMetrics?.isTodayRecorded ? (
-                <span className="flex items-center space-x-1 text-[11px] font-bold bg-emerald-500/40 text-emerald-100 border border-emerald-400/40 px-2.5 py-0.5 rounded-full">
-                  <CheckCircle2 size={13} className="text-emerald-300" />
-                  <span>আজকের হাজিরা গ্রহণ সম্পন্ন</span>
-                </span>
-              ) : (
-                <span className="flex items-center space-x-1 text-[11px] font-bold bg-rose-500/40 text-rose-100 border border-rose-400/40 px-2.5 py-0.5 rounded-full animate-pulse">
-                  <AlertCircle size={13} className="text-rose-200" />
-                  <span>আজকের হাজিরা গ্রহণ বাকি</span>
-                </span>
-              )}
-            </div>
 
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-              {trainerMetrics?.batchName || 'নির্ধারিত ব্যাচ'}
-            </h1>
-
-            <p className="text-xs sm:text-sm text-emerald-100 flex flex-wrap items-center gap-2">
-              <span className="flex items-center space-x-1">
-                <Building2 size={13} className="opacity-80" />
-                <span>প্রতিষ্ঠান: <strong className="text-white">{trainerMetrics?.instituteName}</strong></span>
+          <div className="flex items-center space-x-2">
+            {trainerMetrics.isTodayRecorded ? (
+              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <CheckCircle2 size={13} className="text-emerald-600" />
+                <span>আজকের হাজিরা সম্পন্ন</span>
               </span>
-              <span>•</span>
-              <span className="flex items-center space-x-1">
-                <Wrench size={13} className="opacity-80" />
-                <span>ট্রেড: <strong className="text-white">{trainerMetrics?.tradeName}</strong></span>
+            ) : (
+              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
+                <AlertCircle size={13} className="text-amber-600" />
+                <span>আজকের হাজিরা বাকি</span>
               </span>
-              <span>•</span>
-              <span>প্রশিক্ষক: <strong className="text-white">{userProfile?.name}</strong></span>
-            </p>
+            )}
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0 print:hidden">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || syncing}
-            className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/25 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs backdrop-blur-xs cursor-pointer"
-            title="ডাটা রিফ্রেশ করুন"
-          >
-            <RefreshCw size={14} className={refreshing || syncing ? 'animate-spin' : ''} />
-            <span>{refreshing ? 'আপডেট হচ্ছে...' : 'রিফ্রেশ'}</span>
-          </button>
-
-          {SHOW_CALENDAR_MODULES && (
-            <Link
-              to="/shikhon-calendar"
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm border border-emerald-400/40"
-            >
-              <BookOpen size={16} />
-              <span>শিখন ক্যালেন্ডার</span>
-            </Link>
-          )}
-
-          <Link
-            to="/attendance"
-            className="px-4 py-2.5 bg-white hover:bg-emerald-50 active:scale-95 text-emerald-800 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
-          >
-            <CalendarCheck size={16} />
-            <span>{trainerMetrics?.isTodayRecorded ? 'হাজিরা সংশোধন' : 'আজকের হাজিরা নিন'}</span>
-          </Link>
-          
-          <Link
-            to="/results"
-            className="px-4 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/25 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs backdrop-blur-xs"
-          >
-            <Award size={16} />
-            <span>ফলাফল ও নম্বর</span>
-          </Link>
-          
-          <Link
-            to="/trainees"
-            className="px-4 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/25 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs backdrop-blur-xs"
-          >
-            <Users size={16} />
-            <span>প্রশিক্ষণার্থী</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Sync Success Banner */}
-      {syncSuccessMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-2xs">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-          <span>{syncSuccessMsg}</span>
         </div>
       )}
 

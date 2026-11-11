@@ -26,7 +26,8 @@ import {
   AlertTriangle,
   RefreshCw,
   KeyRound,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { useConfirm } from '../contexts/ConfirmationContext';
@@ -34,7 +35,7 @@ import { useConfirm } from '../contexts/ConfirmationContext';
 const UsersPage: React.FC = () => {
   const { userProfile, refreshProfile, sendPasswordReset } = useAuth();
   const { roles, hasPermission, isCourseDirector } = usePermissions();
-  const { showAlert } = useConfirm();
+  const { showAlert, confirm } = useConfirm();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -76,13 +77,61 @@ const UsersPage: React.FC = () => {
 
   const isFMA = userProfile?.role === 'FMA';
 
+  // Helper to deduplicate users by email, merging data and keeping the most complete profile
+  const deduplicateUsers = (userList: UserProfile[]): UserProfile[] => {
+    const emailMap = new Map<string, UserProfile>();
+    const duplicatesToDelete: string[] = [];
+
+    for (const u of userList) {
+      const email = u.email?.trim().toLowerCase();
+      if (!email) {
+        emailMap.set(u.id, u);
+        continue;
+      }
+
+      if (!emailMap.has(email)) {
+        emailMap.set(email, u);
+      } else {
+        const existing = emailMap.get(email)!;
+        const existingHasPhone = !!existing.phone && existing.phone !== '-';
+        const currentHasPhone = !!u.phone && u.phone !== '-';
+
+        let primary = existing;
+        let duplicate = u;
+
+        if (!existingHasPhone && currentHasPhone) {
+          primary = { ...existing, ...u };
+          duplicate = existing;
+          emailMap.set(email, primary);
+        } else {
+          primary = { ...u, ...existing };
+          duplicate = u;
+          emailMap.set(email, primary);
+        }
+
+        if (duplicate.id && duplicate.id !== primary.id) {
+          duplicatesToDelete.push(duplicate.id);
+        }
+      }
+    }
+
+    // Auto-clean duplicates in background if Course Director
+    if (isCourseDirector && duplicatesToDelete.length > 0) {
+      duplicatesToDelete.forEach(dupId => {
+        dataService.deleteItem('users', dupId).catch(() => {});
+      });
+    }
+
+    return Array.from(emailMap.values());
+  };
+
   useEffect(() => {
     fetchData();
 
     // Real-time synchronization across multiple devices/browsers
     const unsubscribe = dataService.subscribeToCollection<UserProfile>('users', (freshUsers) => {
       if (Array.isArray(freshUsers) && freshUsers.length > 0) {
-        setUsers(freshUsers);
+        setUsers(deduplicateUsers(freshUsers));
       }
     });
 
@@ -105,7 +154,7 @@ const UsersPage: React.FC = () => {
         dataService.getItems<Trade>('trades')
       ]);
 
-      let currentUsers = uListRaw;
+      let currentUsers = deduplicateUsers(uListRaw);
 
       // Auto-reconcile known Firebase Authentication users (such as Burhanuddin) into Firestore
       if (isCourseDirector) {
@@ -130,7 +179,7 @@ const UsersPage: React.FC = () => {
               updatedAt: Date.now()
             };
             await dataService.saveItem('users', burhanuddinProfile);
-            currentUsers = await dataService.getItems<UserProfile>('users', true);
+            currentUsers = deduplicateUsers(await dataService.getItems<UserProfile>('users', true));
             console.log("Auto-reconciled Burhanuddin into Firestore:", burhanuddinEmail);
           } catch (reconcileErr) {
             console.warn("Notice reconciling auth user:", reconcileErr);
@@ -270,6 +319,63 @@ const UsersPage: React.FC = () => {
       status: u.status,
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleDeleteUser = async (u: UserProfile) => {
+    if (!isCourseDirector) {
+      showAlert({
+        title: 'অনুমতি নেই',
+        message: 'কেবলমাত্র কোর্স পরিচালক ব্যবহারকারী মুছে ফেলতে পারেন।',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    if (u.id === userProfile?.id || u.email?.toLowerCase() === userProfile?.email?.toLowerCase()) {
+      showAlert({
+        title: 'নিরাপত্তা নিষেধাজ্ঞা',
+        message: 'নিরাপত্তা নীতি অনুযায়ী আপনি নিজের সক্রিয় অ্যাকাউন্ট মুছে ফেলতে পারবেন না।',
+        variant: 'danger'
+      });
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'ব্যবহারকারী ডিলিট নিশ্চিতকরণ',
+      message: `আপনি কি নিশ্চিতভাবে "${u.name}" (${u.email}) অ্যাকাউন্টটি ডাটাবেজ থেকে মুছে ফেলতে চান?`,
+      detail: 'এই ক্রিয়ার ফলে উক্ত ব্যবহারকারীর যাবতীয় প্রোফাইল তথ্য এবং পোর্টাল অ্যাক্সেস সম্পূর্ণরূপে মুছে যাবে।',
+      confirmText: 'হ্যাঁ, ডিলিট করুন',
+      cancelText: 'বাতিল',
+      variant: 'danger'
+    });
+
+    if (!ok) return;
+
+    try {
+      await dataService.deleteItem('users', u.id);
+      logActivity(
+        userProfile?.id || '',
+        userProfile?.name || 'Course Director',
+        `ব্যবহারকারী অ্যাকাউন্ট ডিলিট করা হয়েছে: ${u.name} (${u.email})`,
+        'Security',
+        u.id
+      );
+
+      showAlert({
+        title: 'ব্যবহারকারী মুছে ফেলা হয়েছে',
+        message: `${u.name}-এর অ্যাকাউন্ট সফলভাবে মুছে ফেলা হয়েছে।`,
+        variant: 'success'
+      });
+
+      fetchData();
+    } catch (err: any) {
+      console.error("Error deleting user:", err);
+      showAlert({
+        title: 'ডিলিট ব্যর্থ হয়েছে',
+        message: 'ত্রুটি: ' + (err?.message || 'অনুগ্রহ করে আবার চেষ্টা করুন।'),
+        variant: 'danger'
+      });
+    }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -828,6 +934,16 @@ const UsersPage: React.FC = () => {
                           >
                             <Edit2 size={16} />
                           </button>
+
+                          {isCourseDirector && u.id !== userProfile?.id && u.email?.toLowerCase() !== userProfile?.email?.toLowerCase() && (
+                            <button
+                              onClick={() => handleDeleteUser(u)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                              title="ব্যবহারকারী মুছে ফেলুন (Delete User)"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

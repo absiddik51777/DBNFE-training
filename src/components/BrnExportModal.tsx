@@ -15,7 +15,7 @@ import {
   FileDown
 } from 'lucide-react';
 import { Trainee, Institute, Trade, Batch } from '../types';
-import { downloadCSV, downloadExcel, printBRNReportPDF, BRNPrintReportTraineeItem } from '../lib/exportUtils';
+import { downloadCSV, downloadExcel, printBRNReportPDF, BRNPrintReportTraineeItem, generateTraineesPDF, downloadPdfBlob } from '../lib/exportUtils';
 import { toBn, normalizeUBRN, normalizeBirthDate } from '../lib/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useModalViewportPosition } from '../hooks/useModalViewportPosition';
@@ -104,7 +104,7 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
     }
   };
 
-  const handleExport = (formatToUse: ExportFormat = selectedFormat) => {
+  const handleExport = async (formatToUse: ExportFormat = selectedFormat) => {
     setIsExporting(true);
 
     try {
@@ -203,18 +203,35 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
           };
         });
 
-        printBRNReportPDF({
-          scopeLabel,
-          filterDetails: activeFilterSummary,
-          generatedBy: userProfile?.name || 'Course Director',
-          stats: {
-            total: allTrainees.length,
-            verified: verifiedTrainees.length,
-            invalid: invalidTrainees.length,
-            pending: pendingTrainees.length
-          },
-          trainees: printableItems
-        });
+        const dateStr = new Date().toISOString().split('T')[0];
+        const baseFilename = `BRN_Report_${selectedScope}_${dateStr}.pdf`;
+
+        try {
+          const pdfBlob = await generateTraineesPDF({
+            trainees: targetData,
+            institutes,
+            trades,
+            batches,
+            filterDetails: `${scopeLabel} ${activeFilterSummary ? `• ${activeFilterSummary}` : ''}`,
+            generatedBy: userProfile?.name || 'কোর্স পরিচালক'
+          });
+
+          await downloadPdfBlob(pdfBlob, baseFilename, 'জন্ম নিবন্ধন যাচাই প্রতিবেদন');
+        } catch (pdfErr) {
+          console.warn('Direct PDF blob download fallback to print:', pdfErr);
+          printBRNReportPDF({
+            scopeLabel,
+            filterDetails: activeFilterSummary,
+            generatedBy: userProfile?.name || 'Course Director',
+            stats: {
+              total: allTrainees.length,
+              verified: verifiedTrainees.length,
+              invalid: invalidTrainees.length,
+              pending: pendingTrainees.length
+            },
+            trainees: printableItems
+          });
+        }
       }
 
       setTimeout(() => {

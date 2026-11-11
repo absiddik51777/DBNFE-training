@@ -268,6 +268,7 @@ export const dataService = {
   ): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     // Operational and curriculum collections that should always be directly deleted
     const alwaysDirectDelete = [
+      'users',
       'trade_skill_modules',
       'trade_literacy_modules',
       'batch_calendar_progress',

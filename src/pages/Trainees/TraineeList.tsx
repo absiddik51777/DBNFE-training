@@ -23,6 +23,7 @@ import {
   X,
   AlertTriangle,
   FileSpreadsheet,
+  FileText,
   CheckSquare,
   Square,
   RefreshCw,
@@ -48,7 +49,7 @@ import { toBn, safeFormatDate, normalizeUBRN } from '../../lib/dateUtils';
 import { DataTableToolbar, ColumnOption, GroupByOption, ActiveFilterChip } from '../../components/TableToolbar/DataTableToolbar';
 import { TraineeBulkImportModal } from '../../components/TraineeBulkImportModal';
 import { TableSkeleton } from '../../components/Skeleton';
-import { downloadCSV, downloadExcel } from '../../lib/exportUtils';
+import { downloadCSV, downloadExcel, generateTraineesPDF, downloadPdfBlob } from '../../lib/exportUtils';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -103,6 +104,8 @@ const TraineeList: React.FC = () => {
 
   // Export Dropdown State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [pdfExportProgress, setPdfExportProgress] = useState('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Close export menu on click outside
@@ -840,8 +843,8 @@ const TraineeList: React.FC = () => {
     }
   };
 
-  // Enhanced Export: Supports both Excel (.xlsx) and CSV with BRN verification data & text formatting
-  const handleExportData = async (formatType: 'csv' | 'excel') => {
+  // Enhanced Export: Supports Direct PDF (.pdf), Excel (.xlsx) and CSV
+  const handleExportData = async (formatType: 'csv' | 'excel' | 'pdf') => {
     if (!canExport) {
       await showAlert({
         title: 'অনুমতি নেই',
@@ -861,6 +864,71 @@ const TraineeList: React.FC = () => {
         message: "এক্সপোর্ট করার মতো কোনো শিক্ষার্থী পাওয়া যায়নি।",
         variant: 'info'
       });
+      return;
+    }
+
+    // Direct PDF Export (Specifically optimized for Android APK and Web)
+    if (formatType === 'pdf') {
+      try {
+        setIsPdfExporting(true);
+        setPdfExportProgress('পিডিএফ ইঞ্জিন প্রস্তুত হচ্ছে...');
+
+        const activeFilterSummary = [
+          filterInstitute ? `প্রতিষ্ঠান: ${getInstituteName(filterInstitute)}` : '',
+          filterTrade ? `ট্রেড: ${getTradeName(filterTrade)}` : '',
+          filterBatch ? `ব্যাচ: ${getBatchName(filterBatch)}` : '',
+          searchTerm ? `অনুসন্ধান: "${searchTerm}"` : ''
+        ].filter(Boolean).join(' • ');
+
+        const dateStr = new Date().toISOString().split('T')[0];
+        const batchNamePart = filterBatch ? `_${getBatchName(filterBatch).replace(/\s+/g, '_')}` : '';
+        const baseFilename = `BNFE_Trainee_List${batchNamePart}_${dateStr}.pdf`;
+
+        const pdfBlob = await generateTraineesPDF({
+          trainees: exportList,
+          institutes,
+          trades,
+          batches,
+          filterDetails: activeFilterSummary || undefined,
+          generatedBy: userProfile?.name || 'কোর্স পরিচালক',
+          onProgress: (_current, _total, msg) => {
+            setPdfExportProgress(msg);
+          }
+        });
+
+        setPdfExportProgress('ডাউনলোড সম্পন্ন হচ্ছে...');
+        const downloadRes = await downloadPdfBlob(pdfBlob, baseFilename, 'প্রশিক্ষণার্থী তালিকা');
+
+        if (downloadRes.success) {
+          setActionSuccessMessage(`পিডিএফ ফাইল সফলভাবে তৈরি ও ডাউনলোড সম্পন্ন হয়েছে (${toBn(exportList.length)} জন শিক্ষার্থী)`);
+          setTimeout(() => setActionSuccessMessage(''), 6000);
+        } else {
+          await showAlert({
+            title: 'ডাউনলোড সতর্কতা',
+            message: 'ডিভাইস বা ব্রাউজারে ফাইল ডাউনলোড অনুমতি প্রয়োজন হতে পারে।',
+            variant: 'warning'
+          });
+        }
+
+        // Audit log
+        logActivity(
+          userProfile?.id || '',
+          userProfile?.name || 'User',
+          `প্রশিক্ষণার্থী তালিকা PDF এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
+          'Trainees',
+          'export_pdf'
+        );
+      } catch (pdfErr: any) {
+        console.error('PDF Export Error:', pdfErr);
+        await showAlert({
+          title: 'এক্সপোর্ট ত্রুটি',
+          message: pdfErr?.message || 'পিডিএফ ফাইল তৈরিতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+          variant: 'danger'
+        });
+      } finally {
+        setIsPdfExporting(false);
+        setPdfExportProgress('');
+      }
       return;
     }
 
@@ -1039,34 +1107,68 @@ const TraineeList: React.FC = () => {
               </button>
 
               {isExportMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 z-50 text-xs animate-fadeIn">
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
-                    এক্সপোর্ট ফরম্যাট নির্বাচন করুন
+                <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50 text-xs animate-fadeIn">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1.5 flex items-center justify-between">
+                    <span>এক্সপোর্ট ফরম্যাট নির্বাচন করুন</span>
+                    {selectedIds.size > 0 && (
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[9.5px]">
+                        নির্বাচিত {toBn(selectedIds.size)} জন
+                      </span>
+                    )}
                   </div>
+
+                  {/* Option 1: Direct PDF (.pdf) File Download (APK & Mobile Friendly) */}
                   <button
                     type="button"
+                    disabled={isPdfExporting}
                     onClick={() => {
-                      handleExportData('excel');
                       setIsExportMenuOpen(false);
+                      handleExportData('pdf');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 flex items-center space-x-2.5 transition cursor-pointer font-medium"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-rose-50 text-slate-700 hover:text-rose-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mb-1 border border-transparent hover:border-rose-100 group"
                   >
-                    <FileSpreadsheet size={16} className="text-emerald-600 shrink-0" />
-                    <div>
-                      <div className="font-bold text-slate-800">মাইক্রোসফট এক্সেল (.xlsx)</div>
-                      <div className="text-[10px] text-slate-500">টেক্সট ফরম্যাট সহ পূর্ণাঙ্গ তথ্য</div>
+                    <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                      <FileText size={17} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800 group-hover:text-rose-900">পিডিএফ (.pdf) ফাইল</span>
+                        <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 rounded font-bold">সরাসরি ডাউনলোড</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate">টেবিল অনুযায়ী পূর্ণাঙ্গ তালিকা ও APK বান্ধব</div>
                     </div>
                   </button>
 
+                  {/* Option 2: Microsoft Excel (.xlsx) */}
                   <button
                     type="button"
                     onClick={() => {
-                      handleExportData('csv');
                       setIsExportMenuOpen(false);
+                      handleExportData('excel');
+                    }}
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 flex items-center space-x-2.5 transition cursor-pointer font-medium"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <FileSpreadsheet size={16} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800">মাইক্রোসফট এক্সেল (.xlsx)</div>
+                      <div className="text-[10px] text-slate-500">টেক্সট ফরম্যাট সহ স্প্রেডশিট</div>
+                    </div>
+                  </button>
+
+                  {/* Option 3: CSV (.csv) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handleExportData('csv');
                     }}
                     className="w-full px-3 py-2 text-left rounded-xl hover:bg-teal-50 text-slate-700 hover:text-teal-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mt-1"
                   >
-                    <Download size={16} className="text-teal-600 shrink-0" />
+                    <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                      <Download size={16} />
+                    </div>
                     <div>
                       <div className="font-bold text-slate-800">সিএসভি (.csv) ফাইল</div>
                       <div className="text-[10px] text-slate-500">বাংলা ইউনিকোড UTF-8 ফরম্যাট</div>
@@ -2580,6 +2682,25 @@ const TraineeList: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
+
+      {/* PDF Export Progress Loading Overlay */}
+      {isPdfExporting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto shadow-inner">
+              <RefreshCw size={26} className="animate-spin text-rose-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">পিডিএফ ফাইল প্রস্তুত হচ্ছে...</h3>
+              <p className="text-xs text-slate-600 mt-1.5 font-medium">{pdfExportProgress || 'অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন'}</p>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/60">
+              <div className="bg-rose-600 h-full rounded-full w-3/4 animate-pulse"></div>
+            </div>
+            <p className="text-[11px] text-slate-400">টেবিলের কলাম অনুযায়ী বাংলা ফন্টসহ ফাইল তৈরি হচ্ছে</p>
+          </div>
+        </div>
       )}
 
       {/* Bulk Import Modal */}

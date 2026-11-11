@@ -64,6 +64,7 @@ import {
 } from '../types';
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
+import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 
 const COLORS = ['#059669', '#2563eb', '#d97706', '#db2777', '#7c3aed', '#0891b2', '#ea580c'];
 
@@ -1281,123 +1282,19 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 pb-12 print:p-0 print:space-y-4">
       {/* ======================================================== */}
-      {/* 1. PROFESSIONAL EXECUTIVE DASHBOARD HEADER               */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-              <BarChart3 size={22} />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2.5">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  ড্যাশবোর্ড ওভারভিউ
-                </h1>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
-                  সক্রিয়
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                প্রশিক্ষণ কার্যক্রম, ব্যাচ হাজিরা ও সামগ্রিক পারফরম্যান্স ট্র্যাকিং
-              </p>
-            </div>
-          </div>
-
-          {/* Session & User Info */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
-            <span className="flex items-center space-x-1.5">
-              <span>ব্যবহারকারী: <strong className="text-slate-900 font-semibold">{userProfile?.name}</strong></span>
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200">
-              {userProfile?.role}
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="flex items-center space-x-1">
-              <Calendar size={13} className="text-slate-400" />
-              <span>{safeFormatDate(new Date(), 'dd MMMM yyyy')}</span>
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="text-slate-400 text-[11px]">
-              সিঙ্ক: <span className="font-mono text-slate-600 font-semibold">{format(lastSyncTime, 'hh:mm a')}</span>
-            </span>
-            {syncSuccessMsg && (
-              <>
-                <span className="text-slate-300">•</span>
-                <span className="text-emerald-700 font-semibold flex items-center space-x-1">
-                  <CheckCircle2 size={13} className="text-emerald-600" />
-                  <span>{syncSuccessMsg}</span>
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2 self-start lg:self-center shrink-0 print:hidden">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || syncing}
-            className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs disabled:opacity-60 cursor-pointer"
-            title="ডাটা রিফ্রেশ করুন"
-          >
-            <RefreshCw size={14} className={refreshing || syncing ? 'animate-spin text-emerald-600' : 'text-slate-500'} />
-            <span>{refreshing || syncing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs cursor-pointer"
-            title="ড্যাশবোর্ড সারসংক্ষেপ প্রিন্ট করুন"
-          >
-            <Printer size={14} className="text-slate-500" />
-            <span>প্রিন্ট</span>
-          </button>
-
-          <button
-            onClick={handleExportCSV}
-            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs cursor-pointer"
-            title="হাজিরা সারাংশ সিএসভি এক্সপোর্ট করুন"
-          >
-            <Download size={14} className="text-slate-500" />
-            <span>এক্সপোর্ট</span>
-          </button>
-
-          {canTakeAttendance && (
-            <Link
-              to="/attendance"
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs"
-            >
-              <CalendarCheck size={14} />
-              <span>হাজিরা এন্ট্রি</span>
-            </Link>
-          )}
-
-          {canRegisterTrainee && (
-            <Link
-              to="/trainees/add"
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs"
-            >
-              <PlusCircle size={14} />
-              <span>নতুন ভর্তি</span>
-            </Link>
-          )}
-
-          {/* Link to Dedicated Trainer Dashboard */}
-          {(isCourseDirector || userProfile?.role === 'FMA' || isTrainer) && (
-            <Link
-              to="/trainer-dashboard"
-              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border border-indigo-200 shadow-2xs"
-              title="প্রশিক্ষকদের জন্য তৈরি আলাদা ড্যাশবোর্ডে প্রবেশ করুন"
-            >
-              <UserCheck size={14} className="text-indigo-600" />
-              <span>প্রশিক্ষক ড্যাশবোর্ড</span>
-            </Link>
-          )}
-        </div>
-      </div>
+      {/* 1. PROFESSIONAL HERO HEADER (MATCHING USER DESIGN)       */}
+      {/* ======================================================== */}
+      <DashboardHeroHeader
+        userProfile={userProfile}
+        lastSyncTime={lastSyncTime}
+        onRefresh={handleRefresh}
+        onPrint={handlePrint}
+        onExport={handleExportCSV}
+        isTrainerDashboard={false}
+        refreshing={refreshing || syncing}
+        syncSuccessMsg={syncSuccessMsg}
+      />
 
       {/* ======================================================== */}
       {/* 3. ACTIONABLE EXCEPTIONS & OPERATIONAL ALERTS            */}

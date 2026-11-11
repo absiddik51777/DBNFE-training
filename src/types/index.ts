@@ -37,6 +37,7 @@ export interface UserProfile {
   batchId?: string;
   batchName?: string;
   status: 'Active' | 'Inactive' | 'Pending Approval';
+  photoURL?: string;
   approvedAt?: number;
   approvedBy?: string;
   rejectionReason?: string;
