@@ -106,6 +106,9 @@ const TraineeList: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [pdfExportProgress, setPdfExportProgress] = useState('');
+  const [pdfExportPercent, setPdfExportPercent] = useState<number>(0);
+  const [pdfCurrentPage, setPdfCurrentPage] = useState<number>(1);
+  const [pdfTotalPages, setPdfTotalPages] = useState<number>(1);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Close export menu on click outside
@@ -870,7 +873,11 @@ const TraineeList: React.FC = () => {
     // Direct PDF Export (Specifically optimized for Android APK and Web)
     if (formatType === 'pdf') {
       try {
+        const estPages = Math.ceil(exportList.length / 8) || 1;
         setIsPdfExporting(true);
+        setPdfExportPercent(5);
+        setPdfCurrentPage(1);
+        setPdfTotalPages(estPages);
         setPdfExportProgress('পিডিএফ ইঞ্জিন প্রস্তুত হচ্ছে...');
 
         const activeFilterSummary = [
@@ -891,12 +898,20 @@ const TraineeList: React.FC = () => {
           batches,
           filterDetails: activeFilterSummary || undefined,
           generatedBy: userProfile?.name || 'কোর্স পরিচালক',
-          onProgress: (_current, _total, msg) => {
+          onProgress: (current, total, msg, percent) => {
+            setPdfCurrentPage(current);
+            setPdfTotalPages(total);
             setPdfExportProgress(msg);
+            if (typeof percent === 'number') {
+              setPdfExportPercent(percent);
+            } else {
+              setPdfExportPercent(Math.min(95, Math.round((current / total) * 100)));
+            }
           }
         });
 
-        setPdfExportProgress('ডাউনলোড সম্পন্ন হচ্ছে...');
+        setPdfExportPercent(100);
+        setPdfExportProgress('ডাউনলোড প্রস্তুত হচ্ছে...');
         const downloadRes = await downloadPdfBlob(pdfBlob, baseFilename, 'প্রশিক্ষণার্থী তালিকা');
 
         if (downloadRes.success) {
@@ -926,8 +941,11 @@ const TraineeList: React.FC = () => {
           variant: 'danger'
         });
       } finally {
-        setIsPdfExporting(false);
-        setPdfExportProgress('');
+        setTimeout(() => {
+          setIsPdfExporting(false);
+          setPdfExportProgress('');
+          setPdfExportPercent(0);
+        }, 800);
       }
       return;
     }
@@ -2686,19 +2704,39 @@ const TraineeList: React.FC = () => {
 
       {/* PDF Export Progress Loading Overlay */}
       {isPdfExporting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto shadow-inner">
-              <RefreshCw size={26} className="animate-spin text-rose-600" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto shadow-inner">
+              <RefreshCw size={28} className="animate-spin text-emerald-700" />
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-base">পিডিএফ ফাইল প্রস্তুত হচ্ছে...</h3>
-              <p className="text-xs text-slate-600 mt-1.5 font-medium">{pdfExportProgress || 'অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন'}</p>
+              <p className="text-xs text-slate-600 mt-1 font-medium min-h-[18px]">
+                {pdfExportProgress || 'অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন'}
+              </p>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/60">
-              <div className="bg-rose-600 h-full rounded-full w-3/4 animate-pulse"></div>
+            
+            {/* Functional Animated Progress Bar */}
+            <div className="space-y-1.5 text-left">
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 px-0.5">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {pdfCurrentPage > 0 ? `পৃষ্ঠা: ${toBn(pdfCurrentPage)} / ${toBn(pdfTotalPages)}` : 'প্রসেসিং...'}
+                </span>
+                <span className="text-emerald-700 font-bold font-mono text-xs">
+                  {toBn(pdfExportPercent)}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/80 p-0.5 shadow-inner">
+                <div 
+                  className="bg-emerald-600 h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+                  style={{ width: `${Math.max(5, Math.min(100, pdfExportPercent))}%` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse"></div>
+                </div>
+              </div>
             </div>
-            <p className="text-[11px] text-slate-400">টেবিলের কলাম অনুযায়ী বাংলা ফন্টসহ ফাইল তৈরি হচ্ছে</p>
+
+            <p className="text-[11px] text-slate-400">টেবিলের সকল কলাম ও মার্জিন নির্ভুলভাবে প্রস্তুত হচ্ছে</p>
           </div>
         </div>
       )}

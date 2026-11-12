@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { logActivity } from '../lib/firebase';
 import { Institute, Trade, Batch, Trainee, AttendanceRecord, AttendanceStatus } from '../types';
@@ -23,7 +23,11 @@ import {
   RotateCcw,
   ShieldAlert,
   Info,
-  Trash2
+  Trash2,
+  ChevronDown,
+  MoreVertical,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { toBn, formatBengaliDate, safeFormatDate } from '../lib/dateUtils';
@@ -80,8 +84,9 @@ const Attendance: React.FC = () => {
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
   const [permissionNotice, setPermissionNotice] = useState('');
-  
+
   // Quick Filters & Search
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'present' | 'absent' | 'leave' | 'unmarked' | 'dirty'>('all');
 
@@ -599,6 +604,10 @@ const Attendance: React.FC = () => {
   const savedInDbCount = Object.values(attendanceMap).filter(a => a.isSavedInDb).length;
   const dirtyCount = dirtyItems.length;
 
+  const presentPercent = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+  const absentPercent = totalCount > 0 ? Math.round((absentCount / totalCount) * 100) : 0;
+  const leavePercent = totalCount > 0 ? Math.round((leaveCount / totalCount) * 100) : 0;
+
   const currentInstitute = institutes.find(i => i.id === selectedInstitute);
   const currentTrade = trades.find(t => t.id === selectedTrade);
 
@@ -629,7 +638,7 @@ const Attendance: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="space-y-4 pb-20 max-w-6xl mx-auto">
+      <div className="space-y-4 pb-20 max-w-7xl mx-auto">
         <div className="h-6 w-48 bg-slate-200/80 rounded animate-pulse" />
         <TableSkeleton rows={8} cols={6} />
       </div>
@@ -637,69 +646,79 @@ const Attendance: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 pb-20 max-w-6xl mx-auto">
+    <div className="space-y-5 pb-32 max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
       {/* ======================================================== */}
-      {/* 1. MINIMAL HEADER & COMPACT CONTROLS                      */}
+      {/* 1. PAGE HEADER (RESPONSIVE)                              */}
       {/* ======================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <span>দৈনিক হাজিরা</span>
-            <span className="text-xs font-normal text-slate-400">| Daily Attendance</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            দৈনিক হাজিরা
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {formatBengaliDate(selectedDate)} {!isTrainer && currentBatch ? `• ${currentBatch.name}` : ''}
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+            {formatBengaliDate(selectedDate)}
+            {currentBatch ? ` • ${currentBatch.name}` : ''}
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2.5 shrink-0">
+          {/* View Mode Switcher (Grid Cards vs Table) */}
+          <div className="inline-flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                viewMode === 'grid'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="কার্ড গ্রিড ভিউ"
+            >
+              <LayoutGrid size={15} />
+              <span className="hidden sm:inline">কার্ড ভিউ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                viewMode === 'table'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="টেবিল স্প্রেডশিট ভিউ"
+            >
+              <List size={15} />
+              <span className="hidden sm:inline">টেবিল ভিউ</span>
+            </button>
+          </div>
+
           <Link
             to="/attendance-sheet"
-            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 shadow-2xs flex items-center space-x-1.5 transition"
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl text-xs font-bold border border-slate-200/90 shadow-2xs flex items-center space-x-1.5 transition shrink-0"
           >
-            <CalendarDays size={14} className="text-emerald-700" />
+            <CalendarDays size={16} className="text-emerald-700" />
             <span>মাসিক শিট</span>
           </Link>
-
-          {allTraineesInBatch.length > 0 && canTakeAttendance && (
-            <button
-              onClick={() => executeSave()}
-              disabled={saving || !hasUnsavedChanges || isFutureDate || isBeforeBatchStart}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition ${
-                hasUnsavedChanges && !isFutureDate && !isBeforeBatchStart
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-700/20 active:scale-95'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <Save size={14} />
-              <span>{saving ? 'সংরক্ষণ...' : 'সংরক্ষণ করুন'}</span>
-              {dirtyCount > 0 && (
-                <span className="bg-white text-emerald-800 text-[10px] px-1.5 rounded-full font-black">
-                  {toBn(dirtyCount)}
-                </span>
-              )}
-            </button>
-          )}
         </div>
       </div>
 
       {/* Inline Feedback Alerts */}
       {saveSuccessMessage && (
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center space-x-2 shadow-2xs">
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center space-x-2 shadow-2xs">
           <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           <span>{saveSuccessMessage}</span>
         </div>
       )}
 
       {saveErrorMessage && (
-        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
+        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-900 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center space-x-2">
             <AlertCircle size={16} className="text-red-600 shrink-0" />
             <span>{saveErrorMessage}</span>
           </div>
           <button
             onClick={() => executeSave()}
-            className="px-2.5 py-0.5 bg-red-600 text-white rounded text-[11px] font-bold"
+            className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-[11px] font-bold"
           >
             পুনরায় চেষ্টা
           </button>
@@ -707,404 +726,639 @@ const Attendance: React.FC = () => {
       )}
 
       {permissionNotice && (
-        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center space-x-2 shadow-2xs animate-fadeIn">
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center space-x-2 shadow-2xs animate-fadeIn">
           <ShieldAlert size={16} className="text-amber-600 shrink-0" />
           <span>{permissionNotice}</span>
         </div>
       )}
 
       {isBeforeBatchStart && (
-        <div className="p-2.5 rounded-xl bg-red-50 border border-red-300 text-red-900 text-xs flex items-center space-x-2">
+        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-300 text-red-900 text-xs flex items-center space-x-2">
           <AlertTriangle size={15} className="text-red-600 shrink-0" />
           <span>
-            নির্বাচিত তারিখটি ({formatBengaliDate(selectedDate)}) ব্যাচ শুরুর তারিখের ({formatBengaliDate(batchStartDateIso)}) পূর্বের। ব্যাচ শুরুর আগের কোনো তারিখে হাজিরা গ্রহণ বা সংরক্ষণ করা যাবে না।
+            নির্বাচিত তারিখটি ({formatBengaliDate(selectedDate)}) ব্যাচ শুরুর তারিখের ({formatBengaliDate(batchStartDateIso)}) পূর্বের। ব্যাচ শুরুর আগের তারিখে হাজিরা গ্রহণ সম্ভব নয়।
           </span>
         </div>
       )}
 
       {isFutureDate && (
-        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center space-x-2">
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center space-x-2">
           <AlertTriangle size={15} className="text-amber-600 shrink-0" />
           <span>ভবিষ্যতের তারিখের জন্য হাজিরা গ্রহণ স্থগিত। আজকের বা অতীতের তারিখ নির্বাচন করুন।</span>
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* 2. COMPACT SELECTOR & STATS BAR                          */}
+      {/* 2. RESPONSIVE DASHBOARD: HERO CARD & CONTROLS DECK       */}
       {/* ======================================================== */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          {/* Selectors */}
-          {isTrainer ? (
-            <div className="flex items-center space-x-2">
-              <span className="text-slate-500 font-medium">তারিখ:</span>
-              <input
-                type="date"
-                min={batchStartDateIso || undefined}
-                max={todayDateStr}
-                value={selectedDate}
-                onChange={(e) => requestSelectorChange('date', e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-          ) : (
-            <div className="flex items-center flex-wrap gap-2">
-              <select
-                value={selectedInstitute}
-                onChange={(e) => requestSelectorChange('institute', e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
-              >
-                <option value="">প্রতিষ্ঠান</option>
-                {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-
-              <select
-                value={selectedBatch}
-                onChange={(e) => requestSelectorChange('batch', e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none"
-              >
-                <option value="">ব্যাচ নির্বাচন</option>
-                {batches
-                  .filter(b => (!selectedInstitute || b.instituteId === selectedInstitute))
-                  .map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-
-              <input
-                type="date"
-                min={batchStartDateIso || undefined}
-                max={todayDateStr}
-                value={selectedDate}
-                onChange={(e) => requestSelectorChange('date', e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-semibold focus:outline-none"
-              />
-            </div>
-          )}
-
-          {/* Quick Metrics Strip */}
-          {allTraineesInBatch.length > 0 && (
-            <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-600 flex-wrap">
-              <span className="px-2 py-0.5 bg-slate-100 rounded-md">মোট: <strong>{toBn(totalCount)}</strong></span>
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-md border border-emerald-100">
-                উপস্থিত: <strong>{toBn(presentCount)}</strong>
-              </span>
-              <span className="px-2 py-0.5 bg-red-50 text-red-800 rounded-md border border-red-100">
-                অনুপস্থিত: <strong>{toBn(absentCount)}</strong>
-              </span>
-              {leaveCount > 0 && (
-                <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md border border-amber-100">
-                  ছুটি: <strong>{toBn(leaveCount)}</strong>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
+        {/* Left: Hero Stats Card (5 cols on lg, 4 cols on xl) */}
+        <div className="lg:col-span-5 xl:col-span-4 bg-[#0c1829] rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col justify-between space-y-4">
+          <div className="flex items-center space-x-4 sm:space-x-5">
+            {/* Circular Progress Gauge */}
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  className="stroke-slate-800"
+                  strokeWidth="6"
+                  fill="transparent"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  className="stroke-emerald-500 transition-all duration-500 ease-out"
+                  strokeWidth="6"
+                  strokeDasharray={163.36}
+                  strokeDashoffset={163.36 - (163.36 * presentPercent) / 100}
+                  strokeLinecap="round"
+                  fill="transparent"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-sm sm:text-base font-bold text-white font-mono">
+                  {toBn(presentPercent)}%
                 </span>
+              </div>
+            </div>
+
+            {/* Stats Info */}
+            <div>
+              <span className="text-xs text-slate-300 font-medium block">আজকের উপস্থিতি</span>
+              <div className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">
+                {toBn(presentCount)} জন উপস্থিত
+              </div>
+              <span className="text-xs text-slate-400 block mt-0.5">
+                বাকি {toBn(Math.max(0, totalCount - presentCount))} জনের হাজিরা
+              </span>
+            </div>
+          </div>
+
+          {/* Multi-Segmented Progress Bar */}
+          <div className="space-y-2">
+            <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden flex">
+              {presentPercent > 0 && (
+                <div 
+                  style={{ width: `${(presentCount / (totalCount || 1)) * 100}%` }} 
+                  className="bg-emerald-500 h-full transition-all duration-300"
+                />
               )}
-              {unmarkedCount > 0 && (
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
-                  বাকি: <strong>{toBn(unmarkedCount)}</strong>
-                </span>
+              {absentPercent > 0 && (
+                <div 
+                  style={{ width: `${(absentCount / (totalCount || 1)) * 100}%` }} 
+                  className="bg-rose-500 h-full transition-all duration-300"
+                />
+              )}
+              {leavePercent > 0 && (
+                <div 
+                  style={{ width: `${(leaveCount / (totalCount || 1)) * 100}%` }} 
+                  className="bg-amber-400 h-full transition-all duration-300"
+                />
               )}
             </div>
-          )}
+
+            {/* Legend Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-300 pt-1">
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+                <span>উপস্থিত: {toBn(presentCount)}</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shrink-0" />
+                <span>অনুপস্থিত: {toBn(absentCount)}</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shrink-0" />
+                <span>ছুটি: {toBn(leaveCount)}</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block shrink-0" />
+                <span>বাকি: {toBn(unmarkedCount)}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Toolbar: Filters & Quick Marking */}
-        {allTraineesInBatch.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100 text-xs">
-            {/* Filter Tabs */}
-            <div className="flex items-center space-x-1 overflow-x-auto pb-1 sm:pb-0">
+        {/* Right: Controls & Actions Deck (7 cols on lg, 8 cols on xl) */}
+        <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3.5">
+          {/* Selectors Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Institute Selector */}
+            {!isTrainer ? (
+              <div className="relative">
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">প্রতিষ্ঠান</label>
+                <div className="relative">
+                  <select
+                    value={selectedInstitute}
+                    onChange={(e) => requestSelectorChange('institute', e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-8 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs appearance-none transition cursor-pointer truncate"
+                  >
+                    <option value="">সকল প্রতিষ্ঠান</option>
+                    {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            ) : null}
+
+            {/* Batch Selector */}
+            <div className={`relative ${isTrainer ? 'sm:col-span-2' : ''}`}>
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">প্রশিক্ষণ ব্যাচ</label>
+              <div className="relative">
+                <select
+                  value={selectedBatch}
+                  disabled={isTrainer}
+                  onChange={(e) => requestSelectorChange('batch', e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-8 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs appearance-none transition cursor-pointer disabled:bg-slate-100 disabled:text-slate-600 truncate"
+                >
+                  <option value="">ব্যাচ নির্বাচন করুন</option>
+                  {batches
+                    .filter(b => (!selectedInstitute || b.instituteId === selectedInstitute))
+                    .map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Date Selector */}
+            <div className="relative">
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">হাজিরার তারিখ</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  min={batchStartDateIso || undefined}
+                  max={todayDateStr}
+                  value={selectedDate}
+                  onChange={(e) => requestSelectorChange('date', e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-8 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs transition cursor-pointer font-mono"
+                />
+                <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Middle Row: Search and Quick Action Buttons */}
+          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            {/* Search Field */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="শিক্ষার্থীর নাম বা রোল দিয়ে খুঁজুন..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs transition"
+              />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Actions Buttons */}
+            {allTraineesInBatch.length > 0 && canTakeAttendance && !isFutureDate && (
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleBulkActionClick('Present')}
+                  className="px-3 py-2 bg-[#e6f7ef] hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98"
+                  title="সকল শিক্ষার্থীকে উপস্থিত হিসেবে চিহ্নিত করুন"
+                >
+                  <Check size={14} className="text-emerald-700" />
+                  <span>সবাই উপস্থিত</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleBulkActionClick('Absent')}
+                  className="px-3 py-2 bg-[#ffebee] hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98"
+                  title="সকল শিক্ষার্থীকে অনুপস্থিত হিসেবে চিহ্নিত করুন"
+                >
+                  <X size={14} className="text-rose-700" />
+                  <span>সবাই অনুপস্থিত</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!hasUnsavedChanges}
+                  onClick={handleResetToSaved}
+                  className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl flex items-center justify-center shadow-2xs transition active:scale-98 disabled:opacity-40"
+                  title="পরিবর্তন রিসেট করুন"
+                >
+                  <RotateCcw size={15} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Filter Tabs Row */}
+          {allTraineesInBatch.length > 0 && (
+            <div className="flex items-center space-x-1.5 overflow-x-auto pb-0.5 pt-1 scrollbar-none border-t border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 mr-1 hidden sm:inline">ফিল্টার:</span>
               <button
                 type="button"
                 onClick={() => setActiveFilterTab('all')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition ${
-                  activeFilterTab === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                  activeFilterTab === 'all'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 }`}
               >
                 সবাই ({toBn(totalCount)})
               </button>
+
               <button
                 type="button"
                 onClick={() => setActiveFilterTab('present')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition ${
-                  activeFilterTab === 'present' ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                  activeFilterTab === 'present'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 }`}
               >
                 উপস্থিত ({toBn(presentCount)})
               </button>
+
               <button
                 type="button"
                 onClick={() => setActiveFilterTab('absent')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition ${
-                  activeFilterTab === 'absent' ? 'bg-red-700 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                  activeFilterTab === 'absent'
+                    ? 'bg-rose-600 text-white shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 }`}
               >
                 অনুপস্থিত ({toBn(absentCount)})
               </button>
+
+              {leaveCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilterTab('leave')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                    activeFilterTab === 'leave'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  ছুটি ({toBn(leaveCount)})
+                </button>
+              )}
+
               {unmarkedCount > 0 && (
                 <button
                   type="button"
                   onClick={() => setActiveFilterTab('unmarked')}
-                  className={`px-2.5 py-1 rounded-lg font-semibold transition ${
-                    activeFilterTab === 'unmarked' ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                    activeFilterTab === 'unmarked'
+                      ? 'bg-slate-700 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                   }`}
                 >
                   চিহ্নিত নয় ({toBn(unmarkedCount)})
                 </button>
               )}
+
               {dirtyCount > 0 && (
                 <button
                   type="button"
                   onClick={() => setActiveFilterTab('dirty')}
-                  className={`px-2.5 py-1 rounded-lg font-semibold transition ${
-                    activeFilterTab === 'dirty' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                    activeFilterTab === 'dirty'
+                      ? 'bg-amber-500 text-white shadow-2xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
                   }`}
                 >
                   অসংরক্ষিত ({toBn(dirtyCount)})
                 </button>
               )}
             </div>
-
-            {/* Quick Bulk Actions */}
-            {canTakeAttendance && !isFutureDate && (
-              <div className="flex items-center space-x-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleBulkActionClick('Present')}
-                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg font-semibold transition flex items-center space-x-1"
-                  title="সবাইকে উপস্থিত করুন"
-                >
-                  <CheckCheck size={13} />
-                  <span>সবাই উপস্থিত</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBulkActionClick('Absent')}
-                  className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 rounded-lg font-semibold transition flex items-center space-x-1"
-                  title="সবাইকে অনুপস্থিত করুন"
-                >
-                  <X size={13} />
-                  <span>সবাই অনুপস্থিত</span>
-                </button>
-                {/* Delete / Reset Saved Attendance Button */}
-                {Object.values(attendanceMap).some(i => i.isSavedInDb) && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteDateAttendance}
-                    disabled={!isDeletionAllowed || saving}
-                    className={`px-2.5 py-1 rounded-lg font-semibold transition flex items-center space-x-1 ${
-                      !isDeletionAllowed
-                        ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                        : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200'
-                    }`}
-                    title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে' : 'এই তারিখের সংরক্ষিত হাজিরা ডাটাবেজ থেকে মুছে ফেলুন'}
-                  >
-                    <Trash2 size={13} />
-                    <span>{isDeletionAllowed ? 'হাজিরা মুছুন' : 'ডিলিট লক 🔒'}</span>
-                  </button>
-                )}
-                {hasUnsavedChanges && (
-                  <button
-                    type="button"
-                    onClick={handleResetToSaved}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-                    title="পরিবর্তন রিসেট করুন"
-                  >
-                    <RotateCcw size={14} />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ======================================================== */}
-      {/* 3. MINIMAL ATTENDANCE TABLE                              */}
-      {/* ======================================================== */}
-      {/* 3. MINIMAL ATTENDANCE TABLE                              */}
+      {/* 3. TRAINEE LIST: RESPONSIVE GRID OR TABLE VIEW           */}
       {/* ======================================================== */}
       {fetchingTrainees ? (
-        <TableSkeleton rows={6} cols={5} showHeader={false} showToolbar={false} />
+        <TableSkeleton rows={6} cols={3} showHeader={false} showToolbar={false} />
       ) : allTraineesInBatch.length === 0 ? (
-        <div className="bg-white p-12 text-center text-slate-400 rounded-2xl border border-dashed border-slate-200 text-xs">
+        <div className="bg-white p-12 text-center text-slate-400 rounded-3xl border border-dashed border-slate-200 text-xs">
           কোনো সক্রিয় শিক্ষার্থী পাওয়া যায়নি।
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      ) : displayedTrainees.length === 0 ? (
+        <div className="bg-white p-12 text-center text-slate-400 rounded-3xl border border-dashed border-slate-200 text-xs">
+          কোনো শিক্ষার্থী এই তালিকায় নেই।
+        </div>
+      ) : viewMode === 'table' ? (
+        /* TABLE VIEW (DESKTOP OPTIMIZED) */
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100 text-left">
-              <thead className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="px-3 py-2.5 w-10 text-center">ক্র.</th>
-                  {/* Trainee ID & Reg: strictly hidden on mobile view, visible on md: and larger screens */}
-                  <th className="px-3.5 py-2.5 hidden md:table-cell w-36">আইডি ও রেজিঃ</th>
-                  <th className="px-3.5 py-2.5">শিক্ষার্থীর নাম</th>
-                  <th className="px-2.5 py-2.5 text-center w-24">স্থিতি</th>
-                  <th className="px-3 py-2.5 text-center w-52 sm:w-56">হাজিরা</th>
+                  <th className="py-3.5 px-4 w-14 text-center">ক্র.</th>
+                  <th className="py-3.5 px-4 w-36">আইডি ও রোল</th>
+                  <th className="py-3.5 px-4">প্রশিক্ষণার্থীর নাম ও অভিভাবক</th>
+                  <th className="py-3.5 px-4 text-center w-72">হাজিরা স্ট্যাটাস</th>
+                  <th className="py-3.5 px-4 text-center w-28">অবস্থা</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-100 text-xs">
-                {displayedTrainees.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                      কোনো শিক্ষার্থী এই তালিকায় নেই।
-                    </td>
-                  </tr>
-                ) : (
-                  displayedTrainees.map((t, idx) => {
-                    const item = attendanceMap[t.id];
-                    const status = item?.status || 'Unmarked';
-                    const isDirty = item?.status !== item?.initialStatus;
-                    const isSaved = item?.isSavedInDb && !isDirty;
-                    const isLocked = item?.isSavedInDb && !canEditAttendance;
+              <tbody className="divide-y divide-slate-100">
+                {displayedTrainees.map((t, idx) => {
+                  const item = attendanceMap[t.id];
+                  const status = item?.status || 'Unmarked';
+                  const isDirty = item?.status !== item?.initialStatus;
+                  const isSaved = item?.isSavedInDb && !isDirty;
+                  const isLocked = item?.isSavedInDb && !canEditAttendance;
 
-                    return (
-                      <tr 
-                        key={t.id}
-                        className={`transition-colors ${
-                          isDirty 
-                            ? 'bg-amber-50/25 hover:bg-amber-50/40' 
-                            : status === 'Present'
-                            ? 'hover:bg-emerald-50/15'
-                            : status === 'Absent'
-                            ? 'hover:bg-red-50/15'
-                            : 'hover:bg-slate-50/60'
-                        }`}
-                      >
-                        {/* Serial */}
-                        <td className="px-3 py-2 text-center font-bold text-slate-400 font-mono text-[11px]">
-                          {toBn(idx + 1)}
-                        </td>
-
-                        {/* Trainee ID & Reg: STRICTLY HIDDEN ON MOBILE */}
-                        <td className="px-3.5 py-2 whitespace-nowrap hidden md:table-cell font-mono text-[11px]">
-                          <span className="font-bold text-slate-800 block">{t.traineeId}</span>
-                          <span className="text-[10px] text-slate-400">রেজিঃ {t.registrationNumber}</span>
-                        </td>
-
-                        {/* Trainee Name */}
-                        <td className="px-3.5 py-2">
-                          <span className="font-bold text-slate-800 text-xs block leading-tight">
-                            {t.nameBn || t.nameEn}
+                  return (
+                    <tr 
+                      key={t.id} 
+                      className={`hover:bg-slate-50/80 transition-colors ${
+                        status === 'Present' 
+                          ? 'bg-emerald-50/20' 
+                          : status === 'Absent' 
+                          ? 'bg-rose-50/20' 
+                          : status === 'Leave' 
+                          ? 'bg-amber-50/20' 
+                          : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-center font-bold text-slate-500">
+                        {toBn(idx + 1)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-bold text-slate-800 text-xs block">
+                          {t.traineeId || t.id}
+                        </span>
+                        {t.registrationNumber && (
+                          <span className="text-[11px] text-slate-400 font-mono block">
+                            {t.registrationNumber}
                           </span>
-                        </td>
-
-                        {/* DB State Badge */}
-                        <td className="px-2.5 py-2 text-center whitespace-nowrap">
-                          {isDirty ? (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                              • অসংরক্ষিত
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200/80">
+                            {(t.nameBn || t.nameEn || 'শ').trim().charAt(0)}
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 block text-sm">
+                              {t.nameBn || t.nameEn}
                             </span>
-                          ) : isSaved ? (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              {isLocked ? <Lock size={10} className="mr-0.5 text-slate-400" /> : null}
-                              <span>সংরক্ষিত</span>
+                            <span className="text-[11px] text-slate-500 block">
+                              পিতা: {t.fatherNameBn || t.fatherNameEn || '—'}
                             </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">চিহ্নিত নয়</span>
-                          )}
-                        </td>
-
-                        {/* Minimal Status Action Buttons */}
-                        <td className="px-3 py-2 text-center whitespace-nowrap">
-                          {isLocked ? (
-                            <button 
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {isLocked ? (
+                          <div 
+                            onClick={() => {
+                              setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
+                              setTimeout(() => setPermissionNotice(''), 4500);
+                            }}
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 border border-slate-200 cursor-pointer"
+                          >
+                            <Lock size={12} className="text-slate-400" />
+                            <span className={status === 'Present' ? 'text-emerald-700 font-bold' : status === 'Absent' ? 'text-rose-700 font-bold' : 'text-amber-700 font-bold'}>
+                              {status === 'Present' ? 'উপস্থিত (লকড)' : status === 'Absent' ? 'অনুপস্থিত (লকড)' : status === 'Leave' ? 'ছুটি (লকড)' : 'চিহ্নিত নয়'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex bg-slate-100 p-1 rounded-xl items-center gap-1 border border-slate-200/80">
+                            <button
                               type="button"
-                              onClick={() => {
-                                setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। সংরক্ষিত রেকর্ড পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
-                                setTimeout(() => setPermissionNotice(''), 4500);
-                              }}
-                              className="inline-flex items-center space-x-1 text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1 rounded-lg border border-slate-200 transition cursor-pointer"
-                              title="সংরক্ষিত রেকর্ড পরিবর্তনের অনুমতি নেই (edit_attendance প্রয়োজন - ক্লিক করে বিস্তারিত দেখুন)"
+                              disabled={!canTakeAttendance || isFutureDate}
+                              onClick={() => setStatus(t.id, 'Present')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                status === 'Present'
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                              }`}
                             >
-                              <Lock size={11} className="text-slate-400 shrink-0" />
-                              <span className={status === 'Present' ? 'text-emerald-700 font-bold' : status === 'Absent' ? 'text-red-700 font-bold' : 'text-amber-700 font-bold'}>
-                                {status === 'Present' ? 'উপস্থিত' : status === 'Absent' ? 'অনুপস্থিত' : status === 'Leave' ? 'ছুটি' : 'চিহ্নিত নয়'}
-                              </span>
-                              <span className="text-[9px] text-slate-400 hidden sm:inline">(লকড)</span>
+                              উপস্থিত
                             </button>
-                          ) : (
-                            <div className="inline-flex rounded-lg p-0.5 bg-slate-100 border border-slate-200 space-x-0.5">
-                              {/* Present */}
-                              <button
-                                type="button"
-                                disabled={!canTakeAttendance || isFutureDate}
-                                onClick={() => setStatus(t.id, 'Present')}
-                                className={`px-2 sm:px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center space-x-0.5 ${
-                                  status === 'Present'
-                                    ? 'bg-emerald-600 text-white shadow-2xs'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                                }`}
-                                title="উপস্থিত চিহ্নিত করুন"
-                              >
-                                <Check size={12} />
-                                <span>উপস্থিত</span>
-                              </button>
-
-                              {/* Absent */}
-                              <button
-                                type="button"
-                                disabled={!canTakeAttendance || isFutureDate}
-                                onClick={() => setStatus(t.id, 'Absent')}
-                                className={`px-2 sm:px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center space-x-0.5 ${
-                                  status === 'Absent'
-                                    ? 'bg-red-600 text-white shadow-2xs'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                                }`}
-                                title="অনুপস্থিত চিহ্নিত করুন"
-                              >
-                                <X size={12} />
-                                <span>অনুপস্থিত</span>
-                              </button>
-
-                              {/* Leave */}
-                              <button
-                                type="button"
-                                disabled={!canTakeAttendance || isFutureDate}
-                                onClick={() => setStatus(t.id, 'Leave')}
-                                className={`px-2 sm:px-2 py-1 rounded-md text-xs font-bold transition flex items-center space-x-0.5 ${
-                                  status === 'Leave'
-                                    ? 'bg-amber-600 text-white shadow-2xs'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                                }`}
-                                title="ছুটি চিহ্নিত করুন"
-                              >
-                                <Clock size={12} />
-                                <span>ছুটি</span>
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+                            <button
+                              type="button"
+                              disabled={!canTakeAttendance || isFutureDate}
+                              onClick={() => setStatus(t.id, 'Absent')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                status === 'Absent'
+                                  ? 'bg-rose-600 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                              }`}
+                            >
+                              অনুপস্থিত
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!canTakeAttendance || isFutureDate}
+                              onClick={() => setStatus(t.id, 'Leave')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                status === 'Leave'
+                                  ? 'bg-amber-600 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                              }`}
+                            >
+                              ছুটি
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {isDirty ? (
+                          <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+                            অসংরক্ষিত
+                          </span>
+                        ) : isSaved ? (
+                          <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            {isLocked && <Lock size={10} className="text-slate-400" />}
+                            <span>সংরক্ষিত</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
+      ) : (
+        /* GRID VIEW (RESPONSIVE MULTI-COLUMN CARDS: 1 col on mobile, 2 cols on tablet, 3 cols on desktop, 4 cols on ultrawide) */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4">
+          {displayedTrainees.map((t, idx) => {
+            const item = attendanceMap[t.id];
+            const status = item?.status || 'Unmarked';
+            const isDirty = item?.status !== item?.initialStatus;
+            const isSaved = item?.isSavedInDb && !isDirty;
+            const isLocked = item?.isSavedInDb && !canEditAttendance;
+
+            return (
+              <div 
+                key={t.id}
+                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-4 sm:p-5 relative overflow-hidden transition-all duration-200 hover:shadow-md flex flex-col justify-between"
+              >
+                {/* Left Colored Vertical Accent Strip */}
+                <div 
+                  className={`absolute left-0 top-0 bottom-0 w-2.5 rounded-l-3xl transition-colors duration-200 ${
+                    status === 'Present'
+                      ? 'bg-emerald-600'
+                      : status === 'Absent'
+                      ? 'bg-rose-600'
+                      : status === 'Leave'
+                      ? 'bg-amber-500'
+                      : 'bg-slate-200'
+                  }`}
+                />
+
+                {/* Card Top Row: Avatar, Name, Roll/Serial, Status Badge */}
+                <div className="flex items-start justify-between pl-1.5 gap-2">
+                  <div className="flex items-center space-x-3 min-w-0">
+                    {/* Avatar Circle with Initial */}
+                    <div className="w-11 h-11 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-base shrink-0 border border-slate-200/70 shadow-2xs">
+                      {(t.nameBn || t.nameEn || 'শ').trim().charAt(0)}
+                    </div>
+
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-base sm:text-lg leading-snug truncate">
+                        {t.nameBn || t.nameEn}
+                      </h4>
+                      <div className="flex items-center space-x-2 text-xs text-slate-500 font-medium mt-0.5">
+                        <span>ক্র. {toBn(idx + 1)}</span>
+                        {t.traineeId && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono">{t.traineeId}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Badges */}
+                  <div className="shrink-0">
+                    {isDirty ? (
+                      <span className="inline-block bg-amber-100/90 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-amber-200/80 shadow-2xs">
+                        অসংরক্ষিত
+                      </span>
+                    ) : isSaved ? (
+                      <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        {isLocked && <Lock size={10} className="text-slate-400" />}
+                        <span>সংরক্ষিত</span>
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Card Bottom Row: 3-Segmented Toggle Buttons */}
+                <div className="mt-4 pl-1.5">
+                  {isLocked ? (
+                    <div 
+                      onClick={() => {
+                        setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। সংরক্ষিত রেকর্ড পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
+                        setTimeout(() => setPermissionNotice(''), 4500);
+                      }}
+                      className="bg-slate-100/90 p-2.5 rounded-2xl flex items-center justify-center space-x-2 text-xs font-semibold text-slate-600 border border-slate-200 cursor-pointer"
+                    >
+                      <Lock size={14} className="text-slate-400" />
+                      <span className={status === 'Present' ? 'text-emerald-700 font-bold' : status === 'Absent' ? 'text-rose-700 font-bold' : 'text-amber-700 font-bold'}>
+                        {status === 'Present' ? 'উপস্থিত (সংরক্ষিত ও লকড)' : status === 'Absent' ? 'অনুপস্থিত (সংরক্ষিত ও লকড)' : status === 'Leave' ? 'ছুটি (সংরক্ষিত ও লকড)' : 'চিহ্নিত নয়'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-100/90 p-1 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/70">
+                      {/* উপস্থিত (Present) */}
+                      <button
+                        type="button"
+                        disabled={!canTakeAttendance || isFutureDate}
+                        onClick={() => setStatus(t.id, 'Present')}
+                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center ${
+                          status === 'Present'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                        }`}
+                      >
+                        উপস্থিত
+                      </button>
+
+                      {/* অনুপস্থিত (Absent) */}
+                      <button
+                        type="button"
+                        disabled={!canTakeAttendance || isFutureDate}
+                        onClick={() => setStatus(t.id, 'Absent')}
+                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center ${
+                          status === 'Absent'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                        }`}
+                      >
+                        অনুপস্থিত
+                      </button>
+
+                      {/* ছুটি (Leave) */}
+                      <button
+                        type="button"
+                        disabled={!canTakeAttendance || isFutureDate}
+                        onClick={() => setStatus(t.id, 'Leave')}
+                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center ${
+                          status === 'Leave'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                        }`}
+                      >
+                        ছুটি
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* ======================================================== */}
-      {/* 4. MINIMAL STICKY BOTTOM SAVE BAR                        */}
+      {/* 4. FLOATING STICKY SAVE BAR (RESPONSIVE)                 */}
       {/* ======================================================== */}
       {allTraineesInBatch.length > 0 && hasUnsavedChanges && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 z-40 bg-slate-900/90 text-white backdrop-blur-md rounded-2xl shadow-xl px-4 py-2.5 border border-slate-800 flex items-center space-x-3 animate-in fade-in slide-in-from-bottom-2">
-          <div className="text-xs">
-            <span className="text-amber-400 font-bold">{toBn(dirtyCount)}</span> জনের অসংরক্ষিত পরিবর্তন
+        <div className="fixed bottom-5 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-40 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl shadow-2xl px-5 sm:px-6 py-3.5 border border-slate-700/80 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="text-xs sm:text-sm font-medium flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse inline-block shrink-0" />
+            <span>
+              <span className="text-amber-400 font-black">{toBn(dirtyCount)}</span> জনের অসংরক্ষিত পরিবর্তন
+            </span>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <button
               type="button"
               onClick={handleResetToSaved}
-              className="text-xs text-slate-400 hover:text-white px-2 py-1"
+              className="text-xs sm:text-sm text-slate-300 hover:text-white font-medium px-2.5 py-1.5 transition"
             >
               বাতিল
             </button>
 
             <button
+              type="button"
               onClick={() => executeSave()}
               disabled={saving}
-              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-1"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition active:scale-95 flex items-center space-x-1.5"
             >
-              <Save size={14} />
+              <Save size={16} />
               <span>{saving ? 'সংরক্ষণ...' : 'সংরক্ষণ করুন'}</span>
             </button>
           </div>

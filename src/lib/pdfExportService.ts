@@ -10,7 +10,7 @@ export interface TraineePdfExportOptions {
   batches: Batch[];
   filterDetails?: string;
   generatedBy?: string;
-  onProgress?: (current: number, total: number, message: string) => void;
+  onProgress?: (current: number, total: number, message: string, percent?: number) => void;
 }
 
 /**
@@ -193,35 +193,45 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
   container.style.position = 'fixed';
   container.style.top = '-99999px';
   container.style.left = '-99999px';
-  container.style.width = '1080px';
+  container.style.width = '1140px';
   container.style.opacity = '1';
   container.style.pointerEvents = 'none';
   container.style.zIndex = '-999';
   document.body.appendChild(container);
 
   try {
+    if (onProgress) {
+      onProgress(0, totalPages, 'পিডিএফ ইঞ্জিন শুরু হচ্ছে...', 5);
+      await new Promise(r => setTimeout(r, 60));
+    }
+
     for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+      const curPage = pageIdx + 1;
+      const startPercent = Math.round(8 + (pageIdx / totalPages) * 78);
       if (onProgress) {
-        onProgress(pageIdx + 1, totalPages, `পৃষ্ঠা ${toBn(pageIdx + 1)} / ${toBn(totalPages)} প্রস্তুত হচ্ছে...`);
+        onProgress(curPage, totalPages, `পৃষ্ঠা ${toBn(curPage)} / ${toBn(totalPages)} রেন্ডার হচ্ছে...`, startPercent);
       }
+      // Brief yield so the UI bar can animate smoothly
+      await new Promise(r => setTimeout(r, 70));
 
       const startIdx = pageIdx * ROWS_PER_PAGE;
       const pageTrainees = trainees.slice(startIdx, startIdx + ROWS_PER_PAGE);
 
       // Construct HTML for the page
-      // Content height is compact (~600px) leaving over 20mm bottom margin on A4 landscape
+      // Width 1100px with 25px horizontal padding allows safe 1050px content box
       const pageEl = document.createElement('div');
-      pageEl.style.width = '1080px';
+      pageEl.style.width = '1100px';
       pageEl.style.boxSizing = 'border-box';
-      pageEl.style.padding = '18px 22px 24px 22px';
+      pageEl.style.padding = '18px 25px 22px 25px';
       pageEl.style.backgroundColor = '#ffffff';
       pageEl.style.fontFamily = "'Noto Sans Bengali', Arial, sans-serif";
       pageEl.style.color = '#000000';
       pageEl.style.display = 'flex';
       pageEl.style.flexDirection = 'column';
       pageEl.style.justifyContent = 'flex-start';
+      pageEl.style.overflow = 'visible';
 
-      // Rows HTML - All text and borders set to black (#000000)
+      // Rows HTML - All text and borders set to black (#000000), right border ensured
       const rowsHtml = pageTrainees.map((t, rowIdx) => {
         const sl = startIdx + rowIdx + 1;
         const inst = getInstName(t.instituteId);
@@ -241,45 +251,45 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
         const mobile = (t.mobileNumber || '-').trim();
 
         return `
-          <tr style="border-bottom: 1px solid #000000; font-size: 10px; background-color: #ffffff; color: #000000;">
+          <tr style="border-bottom: 1px solid #94a3b8; font-size: 10px; background-color: #ffffff; color: #000000;">
             <!-- 1. SL -->
-            <td style="padding: 7px 5px; text-align: center; font-weight: bold; width: 40px; color: #000000; border-right: 1px solid #000000;">
+            <td style="padding: 7px 5px; text-align: center; font-weight: bold; width: 40px; color: #000000; border-right: 1px solid #94a3b8;">
               ${toBn(sl)}
             </td>
 
             <!-- 2. ID & Reg -->
-            <td style="padding: 7px 8px; width: 120px; border-right: 1px solid #000000; color: #000000;">
+            <td style="padding: 7px 8px; width: 120px; border-right: 1px solid #94a3b8; color: #000000;">
               <div style="font-weight: bold; color: #000000; font-family: monospace; font-size: 10.5px; margin: 0; padding: 0;">${(t.traineeId || '-').trim()}</div>
               <div style="color: #000000; font-size: 9.5px; font-family: monospace; margin-top: 2px; margin: 0; padding: 0;">${(t.registrationNumber || '-').trim()}</div>
             </td>
 
-            <!-- 3. Trainee Info (Name, Mobile, Father) - Solid Black -->
-            <td style="padding: 7px 8px; width: 195px; border-right: 1px solid #000000; text-align: left; color: #000000;">
+            <!-- 3. Trainee Info (Name, Mobile, Father) - Solid Black Text, Gray Border -->
+            <td style="padding: 7px 8px; width: 190px; border-right: 1px solid #94a3b8; text-align: left; color: #000000;">
               <div style="font-weight: bold; color: #000000; font-size: 11px; line-height: 1.25; margin: 0; padding: 0; text-align: left;">${traineeName}</div>
               <div style="color: #000000; font-size: 9.5px; margin-top: 2px; font-family: monospace; margin: 0; padding: 0; text-align: left;">${mobile}</div>
               <div style="color: #000000; font-size: 9px; margin-top: 1px; margin: 0; padding: 0; text-align: left;">পিতা: ${father}</div>
             </td>
 
-            <!-- 4. Institute & Trade - Solid Black -->
-            <td style="padding: 7px 8px; width: 195px; border-right: 1px solid #000000; text-align: left; color: #000000;">
+            <!-- 4. Institute & Trade - Solid Black Text, Gray Border -->
+            <td style="padding: 7px 8px; width: 190px; border-right: 1px solid #94a3b8; text-align: left; color: #000000;">
               <div style="font-weight: 600; color: #000000; font-size: 10px; line-height: 1.25; margin: 0; padding: 0;">${inst.trim()}</div>
               <div style="color: #000000; font-size: 9.5px; margin-top: 2px; font-weight: 500; margin: 0; padding: 0;">${trd.trim()}</div>
             </td>
 
-            <!-- 5. ID Document & Age - Solid Black -->
-            <td style="padding: 7px 8px; width: 175px; border-right: 1px solid #000000; text-align: left; color: #000000;">
+            <!-- 5. ID Document & Age - Solid Black Text, Gray Border -->
+            <td style="padding: 7px 8px; width: 165px; border-right: 1px solid #94a3b8; text-align: left; color: #000000;">
               <div style="font-weight: bold; font-family: monospace; font-size: 10.5px; color: #000000; letter-spacing: 0.2px; margin: 0; padding: 0;">${docNum}</div>
               <div style="color: #000000; font-size: 9.5px; margin-top: 2px; margin: 0; padding: 0;">জন্ম: <span style="font-family: monospace;">${toBn(dob)}</span></div>
               <div style="color: #000000; font-size: 9px; margin-top: 1px; margin: 0; padding: 0;">বয়স: <strong style="color: #000000;">${age}</strong></div>
             </td>
 
-            <!-- 6. Present Address - Solid Black -->
-            <td style="padding: 7px 8px; width: 185px; color: #000000; font-size: 9.5px; line-height: 1.35; border-right: 1px solid #000000; text-align: left;">
+            <!-- 6. Present Address - Solid Black Text, Gray Border -->
+            <td style="padding: 7px 8px; width: 180px; color: #000000; font-size: 9.5px; line-height: 1.35; border-right: 1px solid #94a3b8; text-align: left;">
               ${address}
             </td>
 
-            <!-- 7. Previous Education - Solid Black -->
-            <td style="padding: 7px 8px; width: 170px; color: #000000; font-size: 9.5px; line-height: 1.3; text-align: left;">
+            <!-- 7. Previous Education - Solid Black Text, Gray Border -->
+            <td style="padding: 7px 8px; width: 165px; color: #000000; font-size: 9.5px; line-height: 1.3; text-align: left; border-right: 1px solid #94a3b8;">
               <div style="font-weight: 600; color: #000000; margin: 0; padding: 0;">${edu}</div>
               ${dropoutNote ? `<div style="color: #000000; font-size: 8.5px; margin-top: 1px; margin: 0; padding: 0;">${dropoutNote}</div>` : ''}
               ${t.previousSchoolName ? `<div style="color: #000000; font-size: 8.5px; margin-top: 1px; margin: 0; padding: 0;">বিদ্যালয়: ${t.previousSchoolName.trim()}</div>` : ''}
@@ -310,8 +320,8 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
 
       pageEl.innerHTML = `
         <div>
-          <!-- Header Box - Solid Black -->
-          <div style="text-align: center; border-bottom: 2px solid #000000; padding-bottom: 6px; margin-bottom: 6px;">
+          <!-- Header Box - Gray / Light Black Bottom Horizontal Line -->
+          <div style="text-align: center; border-bottom: 1.5px solid #94a3b8; padding-bottom: 6px; margin-bottom: 6px;">
             <div style="font-size: 15px; font-weight: 900; color: #000000; letter-spacing: 0.3px;">
               গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
             </div>
@@ -331,17 +341,17 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
             </div>
           </div>
 
-          <!-- Main Table - Solid Black Borders and Text -->
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000; background-color: #ffffff; table-layout: fixed;">
+          <!-- Main Table - Gray / Light Black Borders (#94a3b8) and Solid Black Text -->
+          <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #94a3b8; background-color: #ffffff; table-layout: fixed; box-sizing: border-box;">
             <thead>
-              <tr style="background-color: #ffffff; color: #000000; font-size: 9.5px; text-align: left; font-weight: bold; border-bottom: 2px solid #000000;">
-                <th style="padding: 7px 5px; text-align: center; border: 1px solid #000000; width: 40px; color: #000000;">ক্রমিক</th>
-                <th style="padding: 7px 8px; border: 1px solid #000000; width: 120px; color: #000000;">আইডি ও রেজিঃ</th>
-                <th style="padding: 7px 8px; border: 1px solid #000000; width: 195px; color: #000000;">প্রশিক্ষণার্থী (নাম ও যোগাযোগ)</th>
-                <th style="padding: 7px 8px; border: 1px solid #000000; width: 195px; color: #000000;">প্রতিষ্ঠান ও ট্রেড</th>
-                <th style="padding: 7px 8px; border: 1px solid #000000; width: 175px; color: #000000;">পরিচয়পত্র ও বয়স</th>
-                <th style="padding: 7px 8px; border: 1px solid #000000; width: 185px; color: #000000;">বর্তমান ঠিকানা</th>
-                <th style="padding: 7px 8px; border: 1px solid #000000; width: 170px; color: #000000;">পূর্ববর্তী শিক্ষা</th>
+              <tr style="background-color: #ffffff; color: #000000; font-size: 9.5px; text-align: left; font-weight: bold; border-bottom: 1.5px solid #94a3b8;">
+                <th style="padding: 7px 5px; text-align: center; border: 1px solid #94a3b8; width: 40px; color: #000000;">ক্রমিক</th>
+                <th style="padding: 7px 8px; border: 1px solid #94a3b8; width: 120px; color: #000000;">আইডি ও রেজিঃ</th>
+                <th style="padding: 7px 8px; border: 1px solid #94a3b8; width: 190px; color: #000000;">প্রশিক্ষণার্থী (নাম ও যোগাযোগ)</th>
+                <th style="padding: 7px 8px; border: 1px solid #94a3b8; width: 190px; color: #000000;">প্রতিষ্ঠান ও ট্রেড</th>
+                <th style="padding: 7px 8px; border: 1px solid #94a3b8; width: 165px; color: #000000;">পরিচয়পত্র ও বয়স</th>
+                <th style="padding: 7px 8px; border: 1px solid #94a3b8; width: 180px; color: #000000;">বর্তমান ঠিকানা</th>
+                <th style="padding: 7px 8px; border: 1px solid #94a3b8; width: 165px; color: #000000;">পূর্ববর্তী শিক্ষা</th>
               </tr>
             </thead>
             <tbody>
@@ -350,14 +360,14 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
           </table>
         </div>
 
-        <!-- Footer Bar with Preparer Name, Timestamp, Note and Page Number - Solid Black -->
-        <div style="margin-top: 12px; border-top: 1px solid #000000; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #000000;">
+        <!-- Footer Bar with Preparer Name, Timestamp, Note and Page Number - Gray Border -->
+        <div style="margin-top: 12px; border-top: 1px solid #94a3b8; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #000000;">
           <div>
             * BNFE প্রশিক্ষণার্থী তথ্য ব্যবস্থাপনা সিস্টেম হতে প্রস্তুতকৃত
           </div>
           <div>
             <strong>প্রস্তুতকারী:</strong> ${generatedBy}
-            <span style="margin: 0 5px; color: #000000;">|</span>
+            <span style="margin: 0 5px; color: #94a3b8;">|</span>
             মুদ্রণের সময়: ${dateNowBn}, ${timeNowBn}
           </div>
           <div style="font-weight: bold; color: #000000; font-size: 9.5px;">
@@ -368,36 +378,51 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
 
       container.replaceChildren(pageEl);
 
-      // Render DOM element to canvas via html2canvas
+      // Render DOM element to canvas via html2canvas with scale: 2 for ultra crisp borders
       const canvas = await html2canvas(pageEl, {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        windowWidth: 1080
+        windowWidth: 1200
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       
       // Calculate dimensions in mm for A4 landscape (297mm x 210mm)
-      // Top offset 10mm, left 10mm, width 277mm guarantees 20mm+ bottom margin
-      const imgWidthMm = 277;
+      // Exactly 12mm left and 12mm right margins: (297 - 273) / 2 = 12mm
+      // Together with 25px container padding, right border is completely protected from clipping
+      const imgWidthMm = 273;
       const imgHeightMm = (canvas.height / canvas.width) * imgWidthMm;
+      const leftOffsetMm = 12;
       const topOffsetMm = 10;
 
       if (pageIdx === 0) {
-        pdf.addImage(imgData, 'JPEG', 10, topOffsetMm, imgWidthMm, imgHeightMm, undefined, 'FAST');
+        pdf.addImage(imgData, 'JPEG', leftOffsetMm, topOffsetMm, imgWidthMm, imgHeightMm, undefined, 'FAST');
       } else {
         pdf.addPage('a4', 'landscape');
-        pdf.addImage(imgData, 'JPEG', 10, topOffsetMm, imgWidthMm, imgHeightMm, undefined, 'FAST');
+        pdf.addImage(imgData, 'JPEG', leftOffsetMm, topOffsetMm, imgWidthMm, imgHeightMm, undefined, 'FAST');
       }
+
+      const endPercent = Math.round(8 + (curPage / totalPages) * 78);
+      if (onProgress) {
+        onProgress(curPage, totalPages, `পৃষ্ঠা ${toBn(curPage)} / ${toBn(totalPages)} প্রস্তুত সম্পন্ন`, endPercent);
+      }
+      await new Promise(r => setTimeout(r, 40));
     }
 
     if (onProgress) {
-      onProgress(totalPages, totalPages, 'পিডিএফ ফাইল তৈরি সমাপ্ত হচ্ছে...');
+      onProgress(totalPages, totalPages, 'পিডিএফ ফাইল তৈরি ও কম্প্রেস সম্পন্ন হচ্ছে...', 92);
+      await new Promise(r => setTimeout(r, 120));
     }
 
     const pdfBlob = pdf.output('blob');
+
+    if (onProgress) {
+      onProgress(totalPages, totalPages, 'ডাউনলোড প্রস্তুত হচ্ছে...', 100);
+      await new Promise(r => setTimeout(r, 80));
+    }
+
     return pdfBlob;
   } finally {
     if (container && container.parentNode) {
