@@ -25,12 +25,14 @@ import {
 
 import { usePermissions } from '../contexts/PermissionsContext';
 import { SHOW_CALENDAR_MODULES } from '../config/features';
+import { MobileBottomNav } from './navigation/MobileBottomNav';
+import { MobileMoreMenu } from './navigation/MobileMoreMenu';
 
 const Layout: React.FC = () => {
   const { userProfile, signOut, permissionError } = useAuth();
   const { canViewPage, isCourseDirector } = usePermissions();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [dismissPermNotice, setDismissPermNotice] = useState(false);
 
   const isTrainer = userProfile?.role === 'Trainer';
@@ -124,19 +126,9 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row antialiased">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
+      {/* Desktop and Large Tablet Sidebar (Unchanged on Desktop, Hidden on Mobile) */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-72 h-screen bg-slate-900 text-white flex flex-col justify-between transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 shadow-2xl lg:shadow-none ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className="hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen lg:shrink-0 w-72 bg-slate-900 text-white justify-between shadow-none z-30"
       >
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Header & Logo */}
@@ -150,12 +142,6 @@ const Layout: React.FC = () => {
                 <span className="text-[11px] text-emerald-400 font-medium block">উপানুষ্ঠানিক শিক্ষা ব্যুরো</span>
               </div>
             </div>
-            <button 
-              className="lg:hidden text-slate-400 hover:text-white p-1"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X size={22} />
-            </button>
           </div>
 
           {/* User quick card in sidebar */}
@@ -182,7 +168,6 @@ const Layout: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={() => setSidebarOpen(false)}
                   className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
@@ -217,18 +202,24 @@ const Layout: React.FC = () => {
         {/* Top Navbar */}
         <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100"
-            >
-              <Menu size={22} />
-            </button>
-            <div className="hidden sm:block text-slate-700 font-semibold text-sm">
+            {/* Mobile Native App Branding */}
+            <div className="flex items-center space-x-2.5 lg:hidden">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                <GraduationCap size={20} />
+              </div>
+              <div className="leading-tight">
+                <span className="font-bold text-slate-900 text-sm block tracking-tight">BNFE ট্রেইনিং</span>
+                <span className="text-[10px] text-emerald-700 font-semibold block">উপানুষ্ঠানিক শিক্ষা ব্যুরো</span>
+              </div>
+            </div>
+
+            {/* Desktop Program Title */}
+            <div className="hidden lg:block text-slate-700 font-semibold text-sm">
               ঝরে পড়া শিক্ষার্থীদের দক্ষতা উন্নয়ন প্রশিক্ষণ কর্মসূচি (Class 8 Dropout Program)
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
             {getRoleBadge(userProfile?.role)}
             <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
             <div className="text-right hidden sm:block">
@@ -238,15 +229,15 @@ const Layout: React.FC = () => {
             <button
               onClick={() => signOut()}
               title="লগআউট"
-              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition active:scale-95"
             >
               <LogOut size={18} />
             </button>
           </div>
         </header>
 
-        {/* Page Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        {/* Page Container: pb-24 ensures page content is never hidden behind mobile bottom nav */}
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto pb-24 lg:pb-8">
           {permissionError && !dismissPermNotice && (
             <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs flex items-start justify-between gap-3 shadow-xs">
               <div className="space-y-1">
@@ -268,6 +259,18 @@ const Layout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Native Bottom Navigation */}
+      <MobileBottomNav 
+        onOpenMore={() => setMobileMoreOpen(true)} 
+        isMoreOpen={mobileMoreOpen} 
+      />
+
+      {/* Mobile More Modules Sheet / Menu */}
+      <MobileMoreMenu 
+        isOpen={mobileMoreOpen} 
+        onClose={() => setMobileMoreOpen(false)} 
+      />
     </div>
   );
 };

@@ -1335,7 +1335,7 @@ const Attendance: React.FC = () => {
       {/* 4. FLOATING STICKY SAVE BAR (RESPONSIVE)                 */}
       {/* ======================================================== */}
       {allTraineesInBatch.length > 0 && hasUnsavedChanges && (
-        <div className="fixed bottom-5 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-40 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl shadow-2xl px-5 sm:px-6 py-3.5 border border-slate-700/80 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-20 left-4 right-4 lg:bottom-6 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-40 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl shadow-2xl px-5 sm:px-6 py-3.5 border border-slate-700/80 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
           <div className="text-xs sm:text-sm font-medium flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse inline-block shrink-0" />
             <span>

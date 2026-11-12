@@ -339,7 +339,7 @@ const TradeCalendar: React.FC = () => {
     <div className="space-y-6 pb-12">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-5 duration-300 border border-slate-700">
+        <div className="fixed bottom-20 right-6 lg:bottom-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-5 duration-300 border border-slate-700">
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
           <span>{toastMsg}</span>
         </div>

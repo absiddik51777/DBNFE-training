@@ -660,7 +660,7 @@ const ShikhonCalendar: React.FC = () => {
     <div className="space-y-6 pb-12 print:p-0 print:space-y-3">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 bg-emerald-800 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-bold animate-in fade-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-20 right-5 lg:bottom-5 z-50 bg-emerald-800 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-bold animate-in fade-in slide-in-from-bottom duration-200">
           <CheckCircle2 size={16} className="text-emerald-300 shrink-0" />
           <span>{toastMsg}</span>
         </div>
