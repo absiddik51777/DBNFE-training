@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
+import { printCurrentDocument } from '../lib/fileExportService';
 
 const MIN_ATTENDANCE_REQUIRED = 75; // 75% minimum attendance required
 
@@ -139,8 +140,9 @@ const Certificates: React.FC = () => {
 
         {selectedTraineeForCert && canGenerate && (
           <button
-            onClick={() => window.print()}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition"
+            type="button"
+            onClick={() => printCurrentDocument({ jobName: 'BNFE_Certificate', landscape: true })}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition cursor-pointer"
           >
             <Printer size={16} />
             <span>সার্টিফিকেট প্রিন্ট (Print Certificate)</span>

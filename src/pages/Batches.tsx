@@ -55,6 +55,7 @@ import { Link } from 'react-router-dom';
 import { SHOW_CALENDAR_MODULES } from '../config/features';
 import { TableSkeleton } from '../components/Skeleton';
 import { DataTableToolbar, ColumnOption, GroupByOption, ActiveFilterChip } from '../components/TableToolbar/DataTableToolbar';
+import { downloadCSV } from '../lib/exportUtils';
 
 const FISCAL_YEARS = ['২০২৫-২০২৬', '২০২৪-২০২৫', '২০২৬-২০২৭'];
 const ITEMS_PER_PAGE = 6;
@@ -63,6 +64,7 @@ const LOGS_PER_PAGE = 10;
 const Batches: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
+  const [exportingLogs, setExportingLogs] = useState(false);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -328,51 +330,60 @@ const Batches: React.FC = () => {
   };
 
   // Export Activity Logs to CSV
-  const exportActivityLogsCSV = () => {
-    if (filteredProgressLogs.length === 0) return;
+  const exportActivityLogsCSV = async () => {
+    if (filteredProgressLogs.length === 0 || exportingLogs) return;
+    setExportingLogs(true);
+    try {
+      const headers = [
+        "তারিখ (Date)",
+        "কার্যদিবস নং (Day)",
+        "ব্যাচ আইডি (Batch ID)",
+        "ব্যাচের নাম (Batch Name)",
+        "ট্রেড (Trade)",
+        "মডিউলের ধরন (Module Type)",
+        "কাজ নং (Task No)",
+        "পাঠের বিষয় / শিরোনাম (Topic)",
+        "স্থিতি (Status)",
+        "প্রশিক্ষকের নাম (Trainer Name)",
+        "প্রশিক্ষক আইডি (Trainer ID)",
+        "প্রশিক্ষকের ভূমিকা (Trainer Type)",
+        "মন্তব্য ও পর্যবেক্ষণ (Remarks)"
+      ];
 
-    const headers = [
-      "তারিখ (Date)",
-      "কার্যদিবস নং (Day)",
-      "ব্যাচ আইডি (Batch ID)",
-      "ব্যাচের নাম (Batch Name)",
-      "ট্রেড (Trade)",
-      "মডিউলের ধরন (Module Type)",
-      "কাজ নং (Task No)",
-      "পাঠের বিষয় / শিরোনাম (Topic)",
-      "স্থিতি (Status)",
-      "প্রশিক্ষকের নাম (Trainer Name)",
-      "প্রশিক্ষক আইডি (Trainer ID)",
-      "প্রশিক্ষকের ভূমিকা (Trainer Type)",
-      "মন্তব্য ও পর্যবেক্ষণ (Remarks)"
-    ];
+      const rows = filteredProgressLogs.map(l => [
+        l.completedAt || '',
+        l.dayNumber || '',
+        l.batchId || '',
+        l.batchName || '',
+        l.tradeName || '',
+        l.moduleType === 'skill' ? 'স্কিল ফোকাসড' : 'লিটারেসি ফোকাসড',
+        l.taskNo || '',
+        l.topic || '',
+        l.isCompleted ? 'সম্পন্ন (Completed)' : 'বাতিল / অসম্পূর্ণ',
+        l.trainerName || '',
+        l.trainerId || '',
+        l.trainerType || '',
+        l.remarks || ''
+      ]);
 
-    const rows = filteredProgressLogs.map(l => [
-      `"${l.completedAt || ''}"`,
-      `"${l.dayNumber || ''}"`,
-      `"${l.batchId || ''}"`,
-      `"${(l.batchName || '').replace(/"/g, '""')}"`,
-      `"${(l.tradeName || '').replace(/"/g, '""')}"`,
-      `"${l.moduleType === 'skill' ? 'স্কিল ফোকাসড' : 'লিটারেসি ফোকাসড'}"`,
-      `"${(l.taskNo || '').replace(/"/g, '""')}"`,
-      `"${(l.topic || '').replace(/"/g, '""')}"`,
-      `"${l.isCompleted ? 'সম্পন্ন (Completed)' : 'বাতিল / অসম্পূর্ণ'}"`,
-      `"${(l.trainerName || '').replace(/"/g, '""')}"`,
-      `"${(l.trainerId || '').replace(/"/g, '""')}"`,
-      `"${(l.trainerType || '').replace(/"/g, '""')}"`,
-      `"${(l.remarks || '').replace(/"/g, '""')}"`
-    ]);
+      const selectedBatchName = logSelectedBatch !== 'all'
+        ? (batches.find(b => b.id === logSelectedBatch)?.batchCode || logSelectedBatch)
+        : 'all_batches';
 
-    const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const selectedBatchName = logSelectedBatch !== 'all' ? (batches.find(b => b.id === logSelectedBatch)?.batchCode || logSelectedBatch) : 'all_batches';
-    link.setAttribute('download', `trainer_activity_logs_${selectedBatchName}_${format(new Date(), 'yyyyMMdd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const res = await downloadCSV(
+        `trainer_activity_logs_${selectedBatchName}_${format(new Date(), 'yyyyMMdd')}`,
+        headers,
+        rows
+      );
+
+      await showAlert({
+        title: res.success ? 'ডাউনলোড সম্পন্ন' : 'ডাউনলোড ব্যর্থ',
+        message: res.message,
+        variant: res.success ? 'info' : 'danger'
+      });
+    } finally {
+      setExportingLogs(false);
+    }
   };
 
   // Seed sample trainer activity log for testing if completely empty
@@ -1323,13 +1334,14 @@ const Batches: React.FC = () => {
           {activeMainTab === 'activity_logs' ? (
             <>
               <button
+                type="button"
                 onClick={exportActivityLogsCSV}
-                disabled={filteredProgressLogs.length === 0}
+                disabled={filteredProgressLogs.length === 0 || exportingLogs}
                 className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
                 title="লগ ডেটা CSV ফরম্যাটে এক্সপোর্ট করুন"
               >
                 <Download size={14} />
-                <span>CSV এক্সপোর্ট</span>
+                <span>{exportingLogs ? 'সংরক্ষণ হচ্ছে...' : 'CSV এক্সপোর্ট'}</span>
               </button>
               {progressLogs.length === 0 && (
                 <button

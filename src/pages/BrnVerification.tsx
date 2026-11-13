@@ -36,7 +36,14 @@ import { Trainee, Institute, Trade, Batch } from '../types';
 import { dataService } from '../lib/dataService';
 import { logActivity } from '../lib/firebase';
 import { toBn, normalizeUBRN, normalizeBirthDate, formatBengaliDate } from '../lib/dateUtils';
-import { downloadCSV, downloadExcel, printBRNReportPDF } from '../lib/exportUtils';
+import {
+  downloadCSV,
+  downloadExcel,
+  generateBRNReportPDF,
+  downloadPdfBlob,
+  printBRNReportPDF,
+  FileExportResult
+} from '../lib/exportUtils';
 import BrnExportModal, { ExportScope } from '../components/BrnExportModal';
 import { useModalViewportPosition } from '../hooks/useModalViewportPosition';
 import { TableSkeleton, StatsSkeleton } from '../components/Skeleton';
@@ -72,6 +79,7 @@ const BrnVerification: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isQuickExporting, setIsQuickExporting] = useState(false);
 
   // View mode: 'card' is default as requested
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
@@ -445,118 +453,151 @@ const BrnVerification: React.FC = () => {
   };
 
   // Quick Export Handler for filtered view
-  const handleQuickExport = (format: 'excel' | 'csv' | 'pdf') => {
-    const scopeLabel = statusFilter === 'pending'
-      ? 'অপেক্ষমাণ শিক্ষার্থী (Pending Trainees)'
-      : statusFilter === 'verified'
-        ? 'বৈধ ও যাচাইকৃত শিক্ষার্থী (Valid / Verified Trainees)'
-        : statusFilter === 'invalid'
-          ? 'অবৈধ / তথ্যে অমিল শিক্ষার্থী (Invalid Trainees)'
-          : 'সকল শিক্ষার্থী (All Trainees)';
+  const handleQuickExport = async (format: 'excel' | 'csv' | 'pdf' | 'print') => {
+    if (isQuickExporting) return;
 
-    const dateTag = new Date().toISOString().split('T')[0];
-    const baseFilename = `BNFE_BRN_${statusFilter.toUpperCase()}_TRAINEES_${dateTag}`;
+    if (filteredTrainees.length === 0) {
+      showToast('এক্সপোর্ট করার মতো কোনো শিক্ষার্থী পাওয়া যায়নি।');
+      return;
+    }
 
-    const headers = [
-      'ক্রমিক',
-      'প্রশিক্ষণার্থী আইডি',
-      'রেজিস্ট্রেশন নম্বর',
-      'শিক্ষার্থীর নাম (বাংলা)',
-      'শিক্ষার্থীর নাম (ইংরেজি)',
-      'জন্ম নিবন্ধন নম্বর (UBRN)',
-      '১৭ ডিজিট যাচাই',
-      'জন্ম তারিখ',
-      'লিঙ্গ',
-      'মোবাইল নম্বর',
-      'প্রশিক্ষণ কেন্দ্র / প্রতিষ্ঠান',
-      'বৃত্তিমূলক ট্রেড',
-      'প্রশিক্ষণ ব্যাচ',
-      'অনলাইন যাচাই অবস্থা',
-      'যাচাই মন্তব্য (Remark)',
-      'যাচাইয়ের তারিখ',
-      'যাচাইকারী'
-    ];
+    setIsQuickExporting(true);
+    try {
+      const scopeLabel = statusFilter === 'pending'
+        ? 'অপেক্ষমাণ শিক্ষার্থী (Pending Trainees)'
+        : statusFilter === 'verified'
+          ? 'বৈধ ও যাচাইকৃত শিক্ষার্থী (Valid / Verified Trainees)'
+          : statusFilter === 'invalid'
+            ? 'অবৈধ / তথ্যে অমিল শিক্ষার্থী (Invalid Trainees)'
+            : 'সকল শিক্ষার্থী (All Trainees)';
 
-    const rows = filteredTrainees.map((t, idx) => {
-      const rawUbrn = normalizeUBRN(t.nidOrBirthRegistration);
-      const is17 = rawUbrn.length === 17 ? '১৭ ডিজিট সঠিক' : `${rawUbrn.length} ডিজিট (১৭ নয়)`;
-      const dob = normalizeBirthDate(t.dateOfBirth);
-      const statusStr = t.is_brn_verified === true 
-        ? 'Valid (যাচাইকৃত)' 
-        : t.is_brn_verified === false 
-          ? 'Invalid (অবৈধ)' 
-          : 'Pending (অপেক্ষমাণ)';
-      const verifiedAtStr = t.brn_verified_at ? new Date(t.brn_verified_at).toLocaleDateString('bn-BD') : '—';
+      const dateTag = new Date().toISOString().split('T')[0];
+      const baseFilename = `BNFE_BRN_${statusFilter.toUpperCase()}_TRAINEES_${dateTag}`;
 
-      return [
-        idx + 1,
-        t.traineeId || '',
-        t.registrationNumber || 'অপেক্ষমাণ',
-        t.nameBn || '',
-        t.nameEn || '',
-        rawUbrn || t.nidOrBirthRegistration || 'অনুপস্থিত',
-        is17,
-        dob || '',
-        t.gender === 'Female' ? 'নারী' : 'পুরুষ',
-        t.mobileNumber || '',
-        getInstituteName(t.instituteId),
-        getTradeName(t.tradeId),
-        getBatchName(t.batchId),
-        statusStr,
-        t.brn_remark || '',
-        verifiedAtStr,
-        t.brn_verified_by || '—'
+      const headers = [
+        'ক্রমিক',
+        'প্রশিক্ষণার্থী আইডি',
+        'রেজিস্ট্রেশন নম্বর',
+        'শিক্ষার্থীর নাম (বাংলা)',
+        'শিক্ষার্থীর নাম (ইংরেজি)',
+        'জন্ম নিবন্ধন নম্বর (UBRN)',
+        '১৭ ডিজিট যাচাই',
+        'জন্ম তারিখ',
+        'লিঙ্গ',
+        'মোবাইল নম্বর',
+        'প্রশিক্ষণ কেন্দ্র / প্রতিষ্ঠান',
+        'বৃত্তিমূলক ট্রেড',
+        'প্রশিক্ষণ ব্যাচ',
+        'অনলাইন যাচাই অবস্থা',
+        'যাচাই মন্তব্য (Remark)',
+        'যাচাইয়ের তারিখ',
+        'যাচাইকারী'
       ];
-    });
 
-    if (format === 'excel') {
-      const colWidths = [8, 16, 18, 24, 24, 22, 16, 14, 10, 16, 26, 20, 18, 20, 28, 16, 18];
-      downloadExcel(baseFilename, 'BRN_Verification', headers, rows, colWidths);
-      showToast(`${scopeLabel}-এর Excel (.xlsx) ফাইল ডাউনলোড সম্পন্ন হয়েছে।`);
-    } else if (format === 'csv') {
-      downloadCSV(baseFilename, headers, rows);
-      showToast(`${scopeLabel}-এর CSV (.csv) ফাইল ডাউনলোড সম্পন্ন হয়েছে।`);
-    } else if (format === 'pdf') {
-      const printableItems = filteredTrainees.map((t, idx) => {
+      const rows = filteredTrainees.map((t, idx) => {
         const rawUbrn = normalizeUBRN(t.nidOrBirthRegistration);
-        const is17 = rawUbrn.length === 17 ? '✓ ১৭ ডিজিট সঠিক' : `⚠️ ${toBn(rawUbrn.length)} ডিজিট`;
-        const status = t.is_brn_verified === true 
-          ? 'Verified' as const 
+        const is17 = rawUbrn.length === 17 ? '১৭ ডিজিট সঠিক' : `${rawUbrn.length} ডিজিট (১৭ নয়)`;
+        const dob = normalizeBirthDate(t.dateOfBirth);
+        const statusStr = t.is_brn_verified === true 
+          ? 'Valid (যাচাইকৃত)' 
           : t.is_brn_verified === false 
-            ? 'Invalid' as const 
-            : 'Pending' as const;
+            ? 'Invalid (অবৈধ)' 
+            : 'Pending (অপেক্ষমাণ)';
+        const verifiedAtStr = t.brn_verified_at ? new Date(t.brn_verified_at).toLocaleDateString('bn-BD') : '—';
 
-        return {
-          sl: toBn(idx + 1),
-          id: t.traineeId || '',
-          regNo: t.registrationNumber || 'অপেক্ষমাণ',
-          nameBn: t.nameBn || '',
-          nameEn: t.nameEn || '',
-          ubrn: rawUbrn || t.nidOrBirthRegistration || 'অনুপস্থিত',
-          ubrnValidation: is17,
-          dob: normalizeBirthDate(t.dateOfBirth) || '—',
-          gender: t.gender === 'Female' ? 'নারী' : 'পুরুষ',
-          institute: getInstituteName(t.instituteId),
-          batch: getBatchName(t.batchId),
-          status,
-          remark: t.brn_remark || '—',
-          verifiedAt: t.brn_verified_at ? new Date(t.brn_verified_at).toLocaleDateString('bn-BD') : undefined,
-          verifiedBy: t.brn_verified_by
-        };
+        return [
+          idx + 1,
+          t.traineeId || '',
+          t.registrationNumber || 'অপেক্ষমাণ',
+          t.nameBn || '',
+          t.nameEn || '',
+          rawUbrn || t.nidOrBirthRegistration || 'অনুপস্থিত',
+          is17,
+          dob || '',
+          t.gender === 'Female' ? 'নারী' : 'পুরুষ',
+          t.mobileNumber || '',
+          getInstituteName(t.instituteId),
+          getTradeName(t.tradeId),
+          getBatchName(t.batchId),
+          statusStr,
+          t.brn_remark || '',
+          verifiedAtStr,
+          t.brn_verified_by || '—'
+        ];
       });
 
-      printBRNReportPDF({
-        scopeLabel,
-        filterDetails: activeFilterSummary,
-        generatedBy: userProfile?.name || 'Course Director',
-        stats: {
-          total: trainees.length,
-          verified: stats.verified,
-          invalid: stats.invalid,
-          pending: stats.pending
-        },
-        trainees: printableItems
-      });
+      let result: FileExportResult;
+
+      if (format === 'excel') {
+        const colWidths = [8, 16, 18, 24, 24, 22, 16, 14, 10, 16, 26, 20, 18, 20, 28, 16, 18];
+        result = await downloadExcel(baseFilename, 'BRN_Verification', headers, rows, colWidths);
+      } else if (format === 'csv') {
+        result = await downloadCSV(baseFilename, headers, rows);
+      } else {
+        const printableItems = filteredTrainees.map((t, idx) => {
+          const rawUbrn = normalizeUBRN(t.nidOrBirthRegistration);
+          const is17 = rawUbrn.length === 17 ? '✓ ১৭ ডিজিট সঠিক' : `⚠️ ${toBn(rawUbrn.length)} ডিজিট`;
+          const status = t.is_brn_verified === true 
+            ? 'Verified' as const 
+            : t.is_brn_verified === false 
+              ? 'Invalid' as const 
+              : 'Pending' as const;
+
+          return {
+            sl: toBn(idx + 1),
+            id: t.traineeId || '',
+            regNo: t.registrationNumber || 'অপেক্ষমাণ',
+            nameBn: t.nameBn || '',
+            nameEn: t.nameEn || '',
+            ubrn: rawUbrn || t.nidOrBirthRegistration || 'অনুপস্থিত',
+            ubrnValidation: is17,
+            dob: normalizeBirthDate(t.dateOfBirth) || '—',
+            gender: t.gender === 'Female' ? 'নারী' : 'পুরুষ',
+            institute: getInstituteName(t.instituteId),
+            batch: getBatchName(t.batchId),
+            status,
+            remark: t.brn_remark || '—',
+            verifiedAt: t.brn_verified_at ? new Date(t.brn_verified_at).toLocaleDateString('bn-BD') : undefined,
+            verifiedBy: t.brn_verified_by
+          };
+        });
+
+        if (format === 'print') {
+          result = await printBRNReportPDF({
+            scopeLabel,
+            filterDetails: activeFilterSummary,
+            generatedBy: userProfile?.name || 'Course Director',
+            stats: {
+              total: trainees.length,
+              verified: stats.verified,
+              invalid: stats.invalid,
+              pending: stats.pending
+            },
+            trainees: printableItems
+          });
+        } else {
+          const pdfBlob = await generateBRNReportPDF({
+            scopeLabel,
+            filterDetails: activeFilterSummary,
+            generatedBy: userProfile?.name || 'কোর্স পরিচালক',
+            stats: {
+              total: trainees.length,
+              verified: stats.verified,
+              invalid: stats.invalid,
+              pending: stats.pending
+            },
+            trainees: printableItems
+          });
+          result = await downloadPdfBlob(pdfBlob, `${baseFilename}.pdf`, 'জন্ম নিবন্ধন যাচাই প্রতিবেদন');
+        }
+      }
+
+      showToast(result.message);
+    } catch (err: any) {
+      console.error('Quick export failed:', err);
+      showToast(err?.message || 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।');
+    } finally {
+      setIsQuickExporting(false);
     }
   };
 
@@ -1225,11 +1266,12 @@ const BrnVerification: React.FC = () => {
                   <div className="p-1 space-y-0.5">
                     <button
                       type="button"
+                      disabled={isQuickExporting}
                       onClick={() => {
-                        handleQuickExport('excel');
                         setIsExportMenuOpen(false);
+                        handleQuickExport('excel');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition cursor-pointer text-left group"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition cursor-pointer text-left group disabled:opacity-50"
                     >
                       <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <FileSpreadsheet size={15} />
@@ -1242,11 +1284,12 @@ const BrnVerification: React.FC = () => {
 
                     <button
                       type="button"
+                      disabled={isQuickExporting}
                       onClick={() => {
-                        handleQuickExport('csv');
                         setIsExportMenuOpen(false);
+                        handleQuickExport('csv');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-800 transition cursor-pointer text-left group"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-800 transition cursor-pointer text-left group disabled:opacity-50"
                     >
                       <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <FileText size={15} />
@@ -1259,18 +1302,37 @@ const BrnVerification: React.FC = () => {
 
                     <button
                       type="button"
+                      disabled={isQuickExporting}
                       onClick={() => {
-                        handleQuickExport('pdf');
                         setIsExportMenuOpen(false);
+                        handleQuickExport('pdf');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-800 transition cursor-pointer text-left group"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-800 transition cursor-pointer text-left group disabled:opacity-50"
                     >
                       <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                        <Download size={15} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 group-hover:text-purple-800">PDF ফাইল (.pdf)</div>
+                        <div className="text-[10.5px] text-slate-400">সরাসরি Downloads ফোল্ডারে সেভ</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isQuickExporting}
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleQuickExport('print');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer text-left group disabled:opacity-50"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <Printer size={15} />
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800 group-hover:text-purple-800">PDF Report</div>
-                        <div className="text-[10.5px] text-slate-400">অফিসিয়াল প্রিন্ট বা সেভ করুন</div>
+                        <div className="font-bold text-slate-800">প্রিন্ট করুন (Print)</div>
+                        <div className="text-[10.5px] text-slate-400">সরাসরি প্রিন্ট ডায়ালগ খুলুন</div>
                       </div>
                     </button>
                   </div>

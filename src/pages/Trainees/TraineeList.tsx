@@ -104,6 +104,7 @@ const TraineeList: React.FC = () => {
 
   // Export Dropdown State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isExportingFile, setIsExportingFile] = useState(false);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [pdfExportProgress, setPdfExportProgress] = useState('');
   const [pdfExportPercent, setPdfExportPercent] = useState<number>(0);
@@ -848,6 +849,8 @@ const TraineeList: React.FC = () => {
 
   // Enhanced Export: Supports Direct PDF (.pdf), Excel (.xlsx) and CSV
   const handleExportData = async (formatType: 'csv' | 'excel' | 'pdf') => {
+    if (isExportingFile || isPdfExporting) return;
+
     if (!canExport) {
       await showAlert({
         title: 'অনুমতি নেই',
@@ -911,28 +914,26 @@ const TraineeList: React.FC = () => {
         });
 
         setPdfExportPercent(100);
-        setPdfExportProgress('ডাউনলোড প্রস্তুত হচ্ছে...');
+        setPdfExportProgress('Downloads ফোল্ডারে সংরক্ষণ হচ্ছে...');
         const downloadRes = await downloadPdfBlob(pdfBlob, baseFilename, 'প্রশিক্ষণার্থী তালিকা');
 
         if (downloadRes.success) {
-          setActionSuccessMessage(`পিডিএফ ফাইল সফলভাবে তৈরি ও ডাউনলোড সম্পন্ন হয়েছে (${toBn(exportList.length)} জন শিক্ষার্থী)`);
+          setActionSuccessMessage(`${downloadRes.message} (${toBn(exportList.length)} জন শিক্ষার্থী)`);
           setTimeout(() => setActionSuccessMessage(''), 6000);
+          logActivity(
+            userProfile?.id || '',
+            userProfile?.name || 'User',
+            `প্রশিক্ষণার্থী তালিকা PDF এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
+            'Trainees',
+            'export_pdf'
+          );
         } else {
           await showAlert({
-            title: 'ডাউনলোড সতর্কতা',
-            message: 'ডিভাইস বা ব্রাউজারে ফাইল ডাউনলোড অনুমতি প্রয়োজন হতে পারে।',
-            variant: 'warning'
+            title: 'ডাউনলোড ব্যর্থ',
+            message: downloadRes.message || 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+            variant: 'danger'
           });
         }
-
-        // Audit log
-        logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `প্রশিক্ষণার্থী তালিকা PDF এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
-          'Trainees',
-          'export_pdf'
-        );
       } catch (pdfErr: any) {
         console.error('PDF Export Error:', pdfErr);
         await showAlert({
@@ -1027,21 +1028,45 @@ const TraineeList: React.FC = () => {
     const dateStr = new Date().toISOString().split('T')[0];
     const baseFilename = `BNFE_Trainee_List_${dateStr}`;
 
-    if (formatType === 'excel') {
-      const colWidths = [18, 16, 24, 24, 20, 20, 20, 20, 14, 10, 26, 24, 20, 24, 16, 16, 26, 22, 20, 24, 24, 18, 14];
-      downloadExcel(baseFilename, 'Trainees', headers, rows, colWidths);
-    } else {
-      downloadCSV(baseFilename, headers, rows);
-    }
+    setIsExportingFile(true);
+    try {
+      const exportResult = formatType === 'excel'
+        ? await downloadExcel(
+            baseFilename,
+            'Trainees',
+            headers,
+            rows,
+            [18, 16, 24, 24, 20, 20, 20, 20, 14, 10, 26, 24, 20, 24, 16, 16, 26, 22, 20, 24, 24, 18, 14]
+          )
+        : await downloadCSV(baseFilename, headers, rows);
 
-    // Audit log
-    logActivity(
-      userProfile?.id || '',
-      userProfile?.name || 'User',
-      `প্রশিক্ষণার্থী তালিকা ${formatType.toUpperCase()} এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
-      'Trainees',
-      `export_${formatType}`
-    );
+      if (exportResult.success) {
+        setActionSuccessMessage(`${exportResult.message} (${toBn(exportList.length)} জন শিক্ষার্থী)`);
+        setTimeout(() => setActionSuccessMessage(''), 6000);
+        logActivity(
+          userProfile?.id || '',
+          userProfile?.name || 'User',
+          `প্রশিক্ষণার্থী তালিকা ${formatType.toUpperCase()} এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
+          'Trainees',
+          `export_${formatType}`
+        );
+      } else {
+        await showAlert({
+          title: 'ডাউনলোড ব্যর্থ',
+          message: exportResult.message || 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+          variant: 'danger'
+        });
+      }
+    } catch (exportErr: any) {
+      console.error('Export Error:', exportErr);
+      await showAlert({
+        title: 'এক্সপোর্ট ত্রুটি',
+        message: exportErr?.message || 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+        variant: 'danger'
+      });
+    } finally {
+      setIsExportingFile(false);
+    }
   };
 
   const renderStatusBadge = (status?: TraineeStatus) => {
@@ -1138,12 +1163,12 @@ const TraineeList: React.FC = () => {
                   {/* Option 1: Direct PDF (.pdf) File Download (APK & Mobile Friendly) */}
                   <button
                     type="button"
-                    disabled={isPdfExporting}
+                    disabled={isPdfExporting || isExportingFile}
                     onClick={() => {
                       setIsExportMenuOpen(false);
                       handleExportData('pdf');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-rose-50 text-slate-700 hover:text-rose-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mb-1 border border-transparent hover:border-rose-100 group"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-rose-50 text-slate-700 hover:text-rose-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mb-1 border border-transparent hover:border-rose-100 group disabled:opacity-50"
                   >
                     <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                       <FileText size={17} />
@@ -1160,11 +1185,12 @@ const TraineeList: React.FC = () => {
                   {/* Option 2: Microsoft Excel (.xlsx) */}
                   <button
                     type="button"
+                    disabled={isExportingFile || isPdfExporting}
                     onClick={() => {
                       setIsExportMenuOpen(false);
                       handleExportData('excel');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 flex items-center space-x-2.5 transition cursor-pointer font-medium"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 flex items-center space-x-2.5 transition cursor-pointer font-medium disabled:opacity-50"
                   >
                     <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                       <FileSpreadsheet size={16} />
@@ -1178,11 +1204,12 @@ const TraineeList: React.FC = () => {
                   {/* Option 3: CSV (.csv) */}
                   <button
                     type="button"
+                    disabled={isExportingFile || isPdfExporting}
                     onClick={() => {
                       setIsExportMenuOpen(false);
                       handleExportData('csv');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-teal-50 text-slate-700 hover:text-teal-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mt-1"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-teal-50 text-slate-700 hover:text-teal-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mt-1 disabled:opacity-50"
                   >
                     <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
                       <Download size={16} />
@@ -1564,16 +1591,18 @@ const TraineeList: React.FC = () => {
             {canExport && (
               <div className="flex items-center space-x-1.5">
                 <button
+                  disabled={isExportingFile || isPdfExporting}
                   onClick={() => handleExportData('excel')}
-                  className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-bold transition flex items-center space-x-1"
+                  className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-bold transition flex items-center space-x-1 disabled:opacity-50"
                   title="নির্বাচিত শিক্ষার্থীদের এক্সেল (.xlsx) ফাইলে এক্সপোর্ট"
                 >
                   <FileSpreadsheet size={13} />
                   <span>এক্সেল</span>
                 </button>
                 <button
+                  disabled={isExportingFile || isPdfExporting}
                   onClick={() => handleExportData('csv')}
-                  className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-bold transition flex items-center space-x-1"
+                  className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-bold transition flex items-center space-x-1 disabled:opacity-50"
                   title="নির্বাচিত শিক্ষার্থীদের সিএসভি (.csv) ফাইলে এক্সপোর্ট"
                 >
                   <Download size={13} />

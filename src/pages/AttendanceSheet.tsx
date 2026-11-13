@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { dataService } from '../lib/dataService';
 import { Institute, Batch, Trainee, AttendanceRecord, Trade } from '../types';
+import { printCurrentDocument } from '../lib/fileExportService';
 
 const MONTH_NAMES_BN = [
   'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 
@@ -324,7 +325,7 @@ export default function AttendanceSheet() {
     : (selectedInstitute ? batches.filter(b => b.instituteId === selectedInstitute) : batches);
 
   const handlePrint = () => {
-    window.print();
+    printCurrentDocument({ jobName: 'BNFE_Attendance_Sheet', landscape: true });
   };
 
   if (loading) {

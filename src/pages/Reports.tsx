@@ -9,12 +9,15 @@ import {
   Calendar, 
   Award, 
   Building2, 
-  Layers 
+  Layers,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { dataService } from '../lib/dataService';
+import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
 
 type ReportType = 
   | 'trainees_master' 
@@ -29,6 +32,8 @@ const Reports: React.FC = () => {
   const { hasPermission } = usePermissions();
   const canExport = hasPermission('export_reports');
   const [reportType, setReportType] = useState<ReportType>('trainees_master');
+  const [exporting, setExporting] = useState(false);
+  const [exportNotice, setExportNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -102,53 +107,87 @@ const Reports: React.FC = () => {
     return matchInst && matchTrade && matchBatch;
   });
 
-  const exportCurrentReportCSV = () => {
-    let csv = '';
-    const dateStr = format(new Date(), 'yyyy-MM-dd');
+  const exportCurrentReportCSV = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportNotice(null);
 
-    if (reportType === 'trainees_master' || reportType === 'institute_trainees' || reportType === 'trade_trainees') {
-      csv = 'SL,Registration No,Name (BN),Name (EN),Mobile,Gender,Institute,Trade,Batch,Status\n';
-      filteredTrainees.forEach((t, i) => {
-        csv += `${i + 1},"${t.registrationNumber}","${t.nameBn}","${t.nameEn}","${t.mobileNumber}","${t.gender}","${getInstituteName(t.instituteId)}","${getTradeName(t.tradeId)}","${getBatchName(t.batchId)}","${t.status}"\n`;
+    try {
+      const dateStr = format(new Date(), 'yyyy-MM-dd');
+      let headers: string[] = [];
+      let rows: (string | number | undefined | null)[][] = [];
+
+      if (reportType === 'trainees_master' || reportType === 'institute_trainees' || reportType === 'trade_trainees') {
+        headers = ['SL', 'Registration No', 'Name (BN)', 'Name (EN)', 'Mobile', 'Gender', 'Institute', 'Trade', 'Batch', 'Status'];
+        rows = filteredTrainees.map((t, i) => [
+          i + 1,
+          t.registrationNumber || '',
+          t.nameBn || '',
+          t.nameEn || '',
+          t.mobileNumber || '',
+          t.gender || '',
+          getInstituteName(t.instituteId),
+          getTradeName(t.tradeId),
+          getBatchName(t.batchId),
+          t.status || ''
+        ]);
+      } else if (reportType === 'attendance_summary') {
+        headers = ['SL', 'Registration No', 'Name', 'Total Classes', 'Present', 'Absent', 'Percentage (%)'];
+        rows = filteredTrainees.map((t, i) => {
+          const traineeAtt = attendance.filter(a => a.traineeId === t.id);
+          const present = traineeAtt.filter(a => a.status === 'Present').length;
+          const total = traineeAtt.length;
+          const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+          return [i + 1, t.registrationNumber || '', t.nameBn || '', total, present, total - present, `${pct}%`];
+        });
+      } else if (reportType === 'exam_results') {
+        headers = ['SL', 'Registration No', 'Name', 'Exam', 'Marks', 'Grade', 'Result'];
+        rows = marks
+          .map((m, i) => {
+            const trainee = trainees.find(t => t.id === m.traineeId);
+            const exam = exams.find(e => e.id === m.examId);
+            if (!trainee || !exam) return null;
+            return [i + 1, trainee.registrationNumber || '', trainee.nameBn || '', exam.name, m.marksObtained, m.grade, m.result];
+          })
+          .filter((r): r is (string | number)[] => r !== null);
+      } else {
+        headers = ['SL', 'Registration No', 'Name', 'Institute', 'Trade', 'Attendance %', 'Exam Result', 'Certificate Status'];
+        rows = filteredTrainees.map((t, i) => {
+          const traineeAtt = attendance.filter(a => a.traineeId === t.id);
+          const present = traineeAtt.filter(a => a.status === 'Present').length;
+          const total = traineeAtt.length;
+          const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+          const passed = marks.some(m => m.traineeId === t.id && m.result === 'Pass');
+          const eligible = total > 0 && pct >= 75 && passed;
+          return [
+            i + 1,
+            t.registrationNumber || '',
+            t.nameBn || '',
+            getInstituteName(t.instituteId),
+            getTradeName(t.tradeId),
+            `${pct}%`,
+            passed ? 'Pass' : 'Pending',
+            eligible ? 'Eligible' : 'Not Eligible'
+          ];
+        });
+      }
+
+      const res = await downloadCSV(`bnfe_report_${reportType}_${dateStr}`, headers, rows);
+      setExportNotice({
+        type: res.success ? 'success' : 'error',
+        message: res.message
       });
-    } else if (reportType === 'attendance_summary') {
-      csv = 'SL,Registration No,Name,Total Classes,Present,Absent,Percentage (%)\n';
-      filteredTrainees.forEach((t, i) => {
-        const traineeAtt = attendance.filter(a => a.traineeId === t.id);
-        const present = traineeAtt.filter(a => a.status === 'Present').length;
-        const total = traineeAtt.length;
-        const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-        csv += `${i + 1},"${t.registrationNumber}","${t.nameBn}",${total},${present},${total - present},${pct}%\n`;
+      if (res.success) {
+        setTimeout(() => setExportNotice(null), 5000);
+      }
+    } catch (err: any) {
+      setExportNotice({
+        type: 'error',
+        message: err?.message || 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।'
       });
-    } else if (reportType === 'exam_results') {
-      csv = 'SL,Registration No,Name,Exam,Marks,Grade,Result\n';
-      marks.forEach((m, i) => {
-        const trainee = trainees.find(t => t.id === m.traineeId);
-        const exam = exams.find(e => e.id === m.examId);
-        if (trainee && exam) {
-          csv += `${i + 1},"${trainee.registrationNumber}","${trainee.nameBn}","${exam.name}",${m.marksObtained},"${m.grade}","${m.result}"\n`;
-        }
-      });
-    } else {
-      csv = 'SL,Registration No,Name,Institute,Trade,Attendance %,Exam Result,Certificate Status\n';
-      filteredTrainees.forEach((t, i) => {
-        const traineeAtt = attendance.filter(a => a.traineeId === t.id);
-        const present = traineeAtt.filter(a => a.status === 'Present').length;
-        const total = traineeAtt.length;
-        const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-        const passed = marks.some(m => m.traineeId === t.id && m.result === 'Pass');
-        const eligible = total > 0 && pct >= 75 && passed;
-        csv += `${i + 1},"${t.registrationNumber}","${t.nameBn}","${getInstituteName(t.instituteId)}","${getTradeName(t.tradeId)}",${pct}%,${passed ? 'Pass' : 'Pending'},${eligible ? 'Eligible' : 'Not Eligible'}\n`;
-      });
+    } finally {
+      setExporting(false);
     }
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `bnfe_report_${reportType}_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -173,15 +212,18 @@ const Reports: React.FC = () => {
         {canExport && (
           <div className="flex items-center space-x-2.5">
             <button
+              type="button"
+              disabled={exporting}
               onClick={exportCurrentReportCSV}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
               <Download size={16} />
-              <span>এক্সপোর্ট (CSV)</span>
+              <span>{exporting ? 'সংরক্ষণ হচ্ছে...' : 'এক্সপোর্ট (CSV)'}</span>
             </button>
             <button
-              onClick={() => window.print()}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition"
+              type="button"
+              onClick={() => printCurrentDocument({ jobName: `BNFE_Report_${reportType}`, landscape: true })}
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition cursor-pointer"
             >
               <Printer size={16} />
               <span>প্রিন্ট করুন</span>
@@ -189,6 +231,21 @@ const Reports: React.FC = () => {
           </div>
         )}
       </div>
+
+      {exportNotice && (
+        <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center space-x-2 print:hidden ${
+          exportNotice.type === 'success'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            : 'bg-rose-50 border-rose-200 text-rose-900'
+        }`}>
+          {exportNotice.type === 'success' ? (
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle size={16} className="text-rose-600 shrink-0" />
+          )}
+          <span>{exportNotice.message}</span>
+        </div>
+      )}
 
       {/* Report Selection Tabs */}
       <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap gap-1.5 print:hidden">

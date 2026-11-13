@@ -37,10 +37,10 @@ jobs:
           # Add any VITE_* values from .env.example as repo secrets
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
 
-      - name: Add Capacitor
+      - name: Add Capacitor Android platform
         run: |
-          bun add @capacitor/core @capacitor/android
-          bun add -d @capacitor/cli
+          bun add @capacitor/android@^8.6.2
+          bun add -d @capacitor/cli@^8.6.2
           cat > capacitor.config.json <<EOF
           {
             "appId": "${APP_ID}",
@@ -49,10 +49,15 @@ jobs:
           }
           EOF
 
-      - name: Create Android project
+      - name: Create Android project and sync plugins
         run: |
           bunx cap add android
           bunx cap sync android
+          echo "=== Synced Capacitor Plugins ==="
+          cat android/app/src/main/assets/capacitor.plugins.json
+          grep -q "FileDownloadPlugin" android/app/src/main/assets/capacitor.plugins.json
+          grep -q "SharePlugin" android/app/src/main/assets/capacitor.plugins.json
+          grep -q "bnfe-file-download" android/capacitor.settings.gradle
 
       - name: Generate app icons
         if: ${{ hashFiles('assets/icon-only.png', 'assets/icon-foreground.png') != '' }}

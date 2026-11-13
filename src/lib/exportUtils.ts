@@ -4,6 +4,14 @@
  * formula injection prevention, and official BNFE document layout.
  */
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import {
+  saveFileToDevice,
+  saveCsvFile,
+  printCustomHtmlDocument,
+  FileExportResult
+} from './fileExportService';
 
 /**
  * Format a cell value for CSV export.
@@ -52,38 +60,37 @@ export function sanitizeForCSV(val: any): string {
 }
 
 /**
- * Download as CSV with UTF-8 BOM encoding for proper Bengali text rendering in Excel
+ * Download as CSV with UTF-8 BOM encoding for proper Bengali text rendering in Excel.
+ * Routed through centralized fileExportService (native MediaStore Downloads on Android APK, Blob anchor on Web).
  */
-export function downloadCSV(filename: string, headers: string[], rows: (string | number | undefined | null)[][]): void {
+export async function downloadCSV(
+  filename: string,
+  headers: string[],
+  rows: (string | number | undefined | null)[][]
+): Promise<FileExportResult> {
   const headerRow = headers.map(h => formatTextCellForCsv(h)).join(',');
   const dataRows = rows.map(row => row.map(cell => formatTextCellForCsv(cell)).join(','));
 
   // Prepend UTF-8 BOM (\uFEFF) so Microsoft Excel recognizes UTF-8 encoding for Bengali script
   const csvContent = '\uFEFF' + [headerRow, ...dataRows].join('\r\n');
+  const safeFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename.endsWith('.csv') ? filename : `${filename}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  return saveCsvFile(safeFilename, csvContent, 'csv');
 }
 
 /**
- * Download as formatted Microsoft Excel (.xlsx) file
+ * Download as formatted Microsoft Excel (.xlsx) file.
  * Enforces text cell type (t: 's', z: '@') for numeric IDs (UBRN, phone, NID) to prevent
  * Excel's 15-digit precision limit from truncating 17-digit birth registration numbers.
+ * Generates binary ArrayBuffer via XLSX.write and routes through centralized fileExportService.
  */
-export function downloadExcel(
+export async function downloadExcel(
   filename: string,
   sheetName: string,
   headers: string[],
   rows: (string | number | undefined | null)[][],
   colWidths?: number[]
-): void {
+): Promise<FileExportResult> {
   // Map rows: ensure null/undefined are empty strings and preserve raw values
   const aoa = [
     headers,
@@ -140,7 +147,15 @@ export function downloadExcel(
   const safeSheetName = sheetName.replace(/[:\\/?*\[\]]/g, '').substring(0, 31) || 'Trainees';
   XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
   const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
-  XLSX.writeFile(wb, safeFilename);
+
+  const xlsxArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+
+  return saveFileToDevice({
+    fileName: safeFilename,
+    content: new Uint8Array(xlsxArrayBuffer),
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    category: 'excel'
+  });
 }
 
 /**
@@ -180,9 +195,9 @@ export interface BRNPrintReportOptions {
 }
 
 /**
- * Prints / saves as official PDF using native high-resolution vector browser rendering
+ * Prints official BRN Report via browser iframe (Web) or native Android PrintManager (APK).
  */
-export function printBRNReportPDF(options: BRNPrintReportOptions): void {
+export async function printBRNReportPDF(options: BRNPrintReportOptions): Promise<FileExportResult> {
   const {
     title = 'প্রশিক্ষণার্থীদের জন্ম নিবন্ধন অনলাইন যাচাইকরণ প্রতিবেদন (BRN Verification Report)',
     scopeLabel,
@@ -522,40 +537,177 @@ export function printBRNReportPDF(options: BRNPrintReportOptions): void {
   <div class="footer-note">
     * এই প্রতিবেদনটি BNFE প্রশিক্ষণার্থী ব্যবস্থাপনা সিস্টেম হতে স্বয়ংক্রিয়ভাবে প্রস্তুতকৃত। BDRIS পোর্টালে অনলাইন অনুসন্ধানের ভিত্তিতে ডেটা হালনাগাদকৃত।
   </div>
-
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 350);
-    };
-  </script>
 </body>
 </html>`;
 
-  // Use an invisible iframe for seamless print triggering
-  let printFrame = document.getElementById('brn-print-iframe') as HTMLIFrameElement | null;
-  if (!printFrame) {
-    printFrame = document.createElement('iframe');
-    printFrame.id = 'brn-print-iframe';
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    document.body.appendChild(printFrame);
-  }
+  return printCustomHtmlDocument({
+    html,
+    jobName: title,
+    landscape: true,
+    iframeId: 'brn-print-iframe'
+  });
+}
 
-  const frameDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-  if (frameDoc) {
-    frameDoc.open();
-    frameDoc.write(html);
-    frameDoc.close();
+/**
+ * Generates an actual binary PDF Blob for BRN Verification Report so both Web and Android APK
+ * can save it directly into the user's Downloads folder without relying on browser Print dialogs.
+ */
+export async function generateBRNReportPDF(options: BRNPrintReportOptions): Promise<Blob> {
+  const {
+    title = 'প্রশিক্ষণার্থীদের জন্ম নিবন্ধন অনলাইন যাচাইকরণ প্রতিবেদন (BRN Verification Report)',
+    scopeLabel,
+    generatedBy = 'Course Director',
+    generatedDateStr = new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
+    filterDetails,
+    stats,
+    trainees
+  } = options;
+
+  const ROWS_PER_PAGE = 9;
+  const totalPages = Math.max(1, Math.ceil(trainees.length / ROWS_PER_PAGE));
+
+  const pdf = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+    compress: true
+  });
+
+  const container = document.createElement('div');
+  container.id = 'brn-pdf-offscreen-container';
+  container.style.position = 'fixed';
+  container.style.top = '-99999px';
+  container.style.left = '-99999px';
+  container.style.width = '1140px';
+  container.style.pointerEvents = 'none';
+  container.style.zIndex = '-999';
+  document.body.appendChild(container);
+
+  try {
+    for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+      const startIdx = pageIdx * ROWS_PER_PAGE;
+      const pageItems = trainees.slice(startIdx, startIdx + ROWS_PER_PAGE);
+
+      const pageEl = document.createElement('div');
+      pageEl.style.width = '1100px';
+      pageEl.style.boxSizing = 'border-box';
+      pageEl.style.padding = '18px 24px 20px 24px';
+      pageEl.style.backgroundColor = '#ffffff';
+      pageEl.style.fontFamily = "'Noto Sans Bengali', Arial, sans-serif";
+      pageEl.style.color = '#000000';
+
+      const rowsHtml = pageItems.length === 0
+        ? `<tr><td colspan="9" style="text-align:center; padding:24px; color:#475569;">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</td></tr>`
+        : pageItems.map((t, idx) => {
+            const statusText = t.status === 'Verified'
+              ? 'Valid (যাচাইকৃত)'
+              : t.status === 'Invalid'
+                ? 'Invalid (অবৈধ)'
+                : 'Pending (অপেক্ষমাণ)';
+            const statusColor = t.status === 'Verified'
+              ? '#065f46'
+              : t.status === 'Invalid'
+                ? '#9f1239'
+                : '#92400e';
+
+            return `
+              <tr style="border-bottom: 1px solid #94a3b8; font-size: 9.5px; color: #000000;">
+                <td style="padding: 6px 5px; text-align: center; font-weight: bold; border-right: 1px solid #94a3b8;">${t.sl || (startIdx + idx + 1)}</td>
+                <td style="padding: 6px 7px; font-family: monospace; font-weight: bold; border-right: 1px solid #94a3b8;">
+                  <div>${t.id || '-'}</div>
+                  <div style="font-weight: normal; font-size: 8.5px;">${t.regNo || '—'}</div>
+                </td>
+                <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">
+                  <div style="font-weight: bold;">${t.nameBn || '-'}</div>
+                  <div style="font-size: 8.5px; color: #334155;">${t.nameEn || '-'}</div>
+                </td>
+                <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">
+                  <div style="font-family: monospace; font-weight: bold; font-size: 10px;">${t.ubrn || 'অনুপস্থিত'}</div>
+                  <div style="font-size: 8px; color: #334155;">${t.ubrnValidation}</div>
+                </td>
+                <td style="padding: 6px 7px; font-family: monospace; border-right: 1px solid #94a3b8;">${t.dob || '—'}</td>
+                <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">${t.gender || '-'}</td>
+                <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">
+                  <div style="font-weight: 600;">${t.batch || '-'}</div>
+                  <div style="font-size: 8.5px; color: #334155;">${t.institute || '-'}</div>
+                </td>
+                <td style="padding: 6px 7px; text-align: center; font-weight: bold; color: ${statusColor}; border-right: 1px solid #94a3b8;">${statusText}</td>
+                <td style="padding: 6px 7px; font-size: 8.5px;">${t.remark || '—'}</td>
+              </tr>
+            `;
+          }).join('');
+
+      pageEl.innerHTML = `
+        <div style="text-align: center; border-bottom: 1.5px solid #94a3b8; padding-bottom: 6px; margin-bottom: 8px;">
+          <div style="font-size: 15px; font-weight: 900; color: #000000;">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</div>
+          <div style="font-size: 12px; font-weight: bold; color: #000000; margin-top: 2px;">উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE), প্রাথমিক ও গণশিক্ষা মন্ত্রণালয়</div>
+          <div style="font-size: 11.5px; font-weight: 800; color: #000000; margin-top: 2px;">${title}</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 9.5px;">
+          <div><strong>আওতা:</strong> ${scopeLabel} ${filterDetails ? `• ${filterDetails}` : ''}</div>
+          <div><strong>যাচাইকৃত:</strong> ${stats.verified} | <strong>অবৈধ:</strong> ${stats.invalid} | <strong>অপেক্ষমাণ:</strong> ${stats.pending} • <strong>তারিখ:</strong> ${generatedDateStr}</div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #94a3b8; table-layout: fixed;">
+          <thead>
+            <tr style="background-color: #f8fafc; color: #000000; font-size: 9px; font-weight: bold; border-bottom: 1.5px solid #94a3b8; text-align: left;">
+              <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #94a3b8; width: 40px;">ক্রমিক</th>
+              <th style="padding: 6px 7px; border-right: 1px solid #94a3b8; width: 105px;">আইডি ও রেজিঃ</th>
+              <th style="padding: 6px 7px; border-right: 1px solid #94a3b8; width: 175px;">শিক্ষার্থীর নাম</th>
+              <th style="padding: 6px 7px; border-right: 1px solid #94a3b8; width: 165px;">জন্ম নিবন্ধন (UBRN)</th>
+              <th style="padding: 6px 7px; border-right: 1px solid #94a3b8; width: 85px;">জন্ম তারিখ</th>
+              <th style="padding: 6px 7px; border-right: 1px solid #94a3b8; width: 55px;">লিঙ্গ</th>
+              <th style="padding: 6px 7px; border-right: 1px solid #94a3b8; width: 175px;">প্রতিষ্ঠান ও ব্যাচ</th>
+              <th style="padding: 6px 7px; text-align: center; border-right: 1px solid #94a3b8; width: 110px;">যাচাই স্ট্যাটাস</th>
+              <th style="padding: 6px 7px; width: 140px;">মন্তব্য</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="margin-top: 10px; border-top: 1px solid #94a3b8; padding-top: 5px; display: flex; justify-content: space-between; font-size: 8.5px;">
+          <div>* BNFE জন্ম নিবন্ধন যাচাই সিস্টেম</div>
+          <div><strong>প্রস্তুতকারী:</strong> ${generatedBy}</div>
+          <div><strong>পৃষ্ঠা ${pageIdx + 1} এর ${totalPages}</strong></div>
+        </div>
+      `;
+
+      container.replaceChildren(pageEl);
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 1200
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgWidthMm = 273;
+      const imgHeightMm = (canvas.height / canvas.width) * imgWidthMm;
+
+      if (pageIdx > 0) {
+        pdf.addPage('a4', 'landscape');
+      }
+      pdf.addImage(imgData, 'JPEG', 12, 10, imgWidthMm, imgHeightMm, undefined, 'FAST');
+    }
+
+    return pdf.output('blob');
+  } finally {
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
   }
 }
 
-// Re-export direct PDF generation & Android APK download service
-export { generateTraineesPDF, downloadPdfBlob } from './pdfExportService';
+// Re-export direct PDF generation, centralized export service, and print helpers
+export { generateTraineesPDF, downloadPdfBlob, sharePdfBlob } from './pdfExportService';
 export type { TraineePdfExportOptions } from './pdfExportService';
+export {
+  saveFileToDevice,
+  saveCsvFile,
+  saveTextFile,
+  shareExportedFile,
+  printCurrentDocument,
+  printCustomHtmlDocument
+} from './fileExportService';
+export type { FileExportInput, FileExportResult } from './fileExportService';
+
 

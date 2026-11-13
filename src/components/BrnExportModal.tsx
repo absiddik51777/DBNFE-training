@@ -15,7 +15,15 @@ import {
   FileDown
 } from 'lucide-react';
 import { Trainee, Institute, Trade, Batch } from '../types';
-import { downloadCSV, downloadExcel, printBRNReportPDF, BRNPrintReportTraineeItem, generateTraineesPDF, downloadPdfBlob } from '../lib/exportUtils';
+import {
+  downloadCSV,
+  downloadExcel,
+  generateBRNReportPDF,
+  printBRNReportPDF,
+  BRNPrintReportTraineeItem,
+  downloadPdfBlob,
+  FileExportResult
+} from '../lib/exportUtils';
 import { toBn, normalizeUBRN, normalizeBirthDate } from '../lib/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useModalViewportPosition } from '../hooks/useModalViewportPosition';
@@ -50,6 +58,7 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
   const [selectedScope, setSelectedScope] = useState<ExportScope>(initialScope);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('excel');
   const [isExporting, setIsExporting] = useState(false);
+  const [exportStatus, setExportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Dynamic viewport & modal height calculation hook for mobile & desktop positioning
   const { modalRef, alignmentClasses, backdropClasses } = useModalViewportPosition<HTMLDivElement>(isOpen, {
@@ -105,10 +114,21 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
   };
 
   const handleExport = async (formatToUse: ExportFormat = selectedFormat) => {
+    if (isExporting) return;
     setIsExporting(true);
+    setExportStatus(null);
 
     try {
       const targetData = getTargetTrainees(selectedScope);
+      if (targetData.length === 0) {
+        setExportStatus({
+          type: 'error',
+          message: 'এক্সপোর্ট করার মতো কোনো শিক্ষার্থী পাওয়া যায়নি।'
+        });
+        setIsExporting(false);
+        return;
+      }
+
       const scopeLabel = getScopeLabel(selectedScope);
       const dateTag = new Date().toISOString().split('T')[0];
       const baseFilename = `BNFE_BRN_${selectedScope.toUpperCase()}_TRAINEES_${dateTag}`;
@@ -168,13 +188,14 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
         ];
       });
 
+      let exportResult: FileExportResult;
+
       if (formatToUse === 'excel') {
         const colWidths = [8, 16, 18, 24, 24, 22, 16, 14, 10, 16, 26, 20, 18, 20, 28, 16, 18];
-        downloadExcel(baseFilename, 'BRN_Verification', headers, rows, colWidths);
+        exportResult = await downloadExcel(baseFilename, 'BRN_Verification', headers, rows, colWidths);
       } else if (formatToUse === 'csv') {
-        downloadCSV(baseFilename, headers, rows);
-      } else if (formatToUse === 'pdf') {
-        // Map data for PDF print
+        exportResult = await downloadCSV(baseFilename, headers, rows);
+      } else {
         const printableItems: BRNPrintReportTraineeItem[] = targetData.map((t, idx) => {
           const rawUbrn = normalizeUBRN(t.nidOrBirthRegistration);
           const is17 = rawUbrn.length === 17 ? '✓ ১৭ ডিজিট সঠিক' : `⚠️ ${toBn(rawUbrn.length)} ডিজিট`;
@@ -203,44 +224,46 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
           };
         });
 
-        const dateStr = new Date().toISOString().split('T')[0];
-        const baseFilename = `BRN_Report_${selectedScope}_${dateStr}.pdf`;
+        const pdfFilename = `BRN_Report_${selectedScope}_${dateTag}.pdf`;
+        const pdfBlob = await generateBRNReportPDF({
+          scopeLabel,
+          filterDetails: activeFilterSummary,
+          generatedBy: userProfile?.name || 'কোর্স পরিচালক',
+          stats: {
+            total: allTrainees.length,
+            verified: verifiedTrainees.length,
+            invalid: invalidTrainees.length,
+            pending: pendingTrainees.length
+          },
+          trainees: printableItems
+        });
 
-        try {
-          const pdfBlob = await generateTraineesPDF({
-            trainees: targetData,
-            institutes,
-            trades,
-            batches,
-            filterDetails: `${scopeLabel} ${activeFilterSummary ? `• ${activeFilterSummary}` : ''}`,
-            generatedBy: userProfile?.name || 'কোর্স পরিচালক'
-          });
-
-          await downloadPdfBlob(pdfBlob, baseFilename, 'জন্ম নিবন্ধন যাচাই প্রতিবেদন');
-        } catch (pdfErr) {
-          console.warn('Direct PDF blob download fallback to print:', pdfErr);
-          printBRNReportPDF({
-            scopeLabel,
-            filterDetails: activeFilterSummary,
-            generatedBy: userProfile?.name || 'Course Director',
-            stats: {
-              total: allTrainees.length,
-              verified: verifiedTrainees.length,
-              invalid: invalidTrainees.length,
-              pending: pendingTrainees.length
-            },
-            trainees: printableItems
-          });
-        }
+        exportResult = await downloadPdfBlob(pdfBlob, pdfFilename, 'জন্ম নিবন্ধন যাচাই প্রতিবেদন');
       }
 
-      setTimeout(() => {
+      if (exportResult.success) {
+        setExportStatus({
+          type: 'success',
+          message: exportResult.message
+        });
+        setTimeout(() => {
+          setIsExporting(false);
+          setExportStatus(null);
+          onClose();
+        }, 1200);
+      } else {
+        setExportStatus({
+          type: 'error',
+          message: exportResult.message || 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।'
+        });
         setIsExporting(false);
-        onClose();
-      }, 400);
-    } catch (err) {
+      }
+    } catch (err: any) {
       console.error("Export error:", err);
-      alert("এক্সপোর্ট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      setExportStatus({
+        type: 'error',
+        message: err?.message || "এক্সপোর্ট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।"
+      });
       setIsExporting(false);
     }
   };
@@ -481,12 +504,29 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
           </span>
         </div>
 
+        {/* Inline Export Feedback Banner */}
+        {exportStatus && (
+          <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center space-x-2 ${
+            exportStatus.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}>
+            {exportStatus.type === 'success' ? (
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            ) : (
+              <XCircle size={16} className="text-rose-600 shrink-0" />
+            )}
+            <span>{exportStatus.message}</span>
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-3">
           <button
             type="button"
+            disabled={isExporting}
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer disabled:opacity-40"
           >
             বাতিল (Cancel)
           </button>

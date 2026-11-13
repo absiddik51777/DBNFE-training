@@ -28,6 +28,7 @@ import { dataService } from '../lib/dataService';
 import { logActivity } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { toBn, toEnDigits } from '../lib/dateUtils';
+import { downloadCSV, saveFileToDevice, FileExportResult } from '../lib/exportUtils';
 
 interface TraineeBulkImportModalProps {
   isOpen: boolean;
@@ -100,6 +101,8 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
   const [importing, setImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [downloadingExport, setDownloadingExport] = useState(false);
+  const [exportNotice, setExportNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Post-import summary modal state
   const [importSummary, setImportSummary] = useState<ImportSummaryData | null>(null);
@@ -140,108 +143,134 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
   }, [batches]);
 
   // Download Sample Template (Excel or CSV)
-  const handleDownloadTemplate = (format: 'xlsx' | 'csv') => {
-    const defaultBatch = batches.find(b => b.id === defaultBatchId) || batches[0];
-    const sampleBatchCode = defaultBatch?.batchCode || defaultBatch?.name || 'BATCH-01';
+  const handleDownloadTemplate = async (format: 'xlsx' | 'csv') => {
+    if (downloadingExport) return;
+    setDownloadingExport(true);
+    setExportNotice(null);
 
-    const headers = [
-      'প্রশিক্ষণার্থী আইডি (Trainee ID)',
-      'রেজিস্ট্রেশন নম্বর (Registration No)',
-      'পূর্ণ নাম বাংলা (Name Bn)',
-      'পূর্ণ নাম ইংরেজি (Name En)',
-      'পিতার নাম বাংলা (Father Name Bn)',
-      'পিতার নাম ইংরেজি (Father Name En)',
-      'মাতার নাম বাংলা (Mother Name Bn)',
-      'মাতার নাম ইংরেজি (Mother Name En)',
-      'জন্ম তারিখ (YYYY-MM-DD)',
-      'লিঙ্গ (Male/Female/Other)',
-      'এনআইডি বা জন্ম নিবন্ধন',
-      'মোবাইল নম্বর (11 Digits)',
-      'স্থায়ী ঠিকানা (Permanent Address)',
-      'বর্তমান ঠিকানা (Present Address)',
-      'ব্যাচ কোড বা নাম (Batch)',
-      'সর্বশেষ পাসকৃত শ্রেণি (Last Class)',
-      'পূর্ববর্তী স্কুল (Previous School)',
-      'ড্রপআউটের বছর (Dropout Year)',
-      'ড্রপআউটের কারণ (Dropout Reason)'
-    ];
+    try {
+      const defaultBatch = batches.find(b => b.id === defaultBatchId) || batches[0];
+      const sampleBatchCode = defaultBatch?.batchCode || defaultBatch?.name || 'BATCH-01';
 
-    const sampleRow1 = [
-      'TR-1001',
-      'REG-2026-001',
-      'রাকিব হাসান',
-      'Rakib Hasan',
-      'মোঃ রফিকুল ইসলাম',
-      'Md. Rafiqul Islam',
-      'মোসাঃ রহিমা বেগম',
-      'Mst. Rahima Begum',
-      '2008-03-15',
-      'Male',
-      '20081234567890123',
-      '01711223344',
-      'গ্রাম: চরকালীবাড়ি, ডাকঘর: হালুয়াঘাট, ময়মনসিংহ',
-      'গ্রাম: চরকালীবাড়ি, ডাকঘর: হালুয়াঘাট, ময়মনসিংহ',
-      sampleBatchCode,
-      'Class 7 (৭ম শ্রেণি)',
-      'হালুয়াঘাট আদর্শ উচ্চ বিদ্যালয়',
-      '2023',
-      'আর্থিক অসচ্ছলতা ও পারিবারিক সমস্যা'
-    ];
-
-    const sampleRow2 = [
-      '', // Auto-generated ID
-      '', // Optional registration
-      'ফাতেমা আক্তার',
-      'Fatema Akter',
-      'আব্দুল জলিল',
-      'Abdul Jalil',
-      'আমেনা খাতুন',
-      'Amena Khatun',
-      '2008-07-20',
-      'Female',
-      '20089876543210987',
-      '01922334455',
-      'পৌরসভা রোড, হালুয়াঘাট, ময়মনসিংহ',
-      '', // Will copy permanent address
-      sampleBatchCode,
-      'Class 8 (৮ম শ্রেণি)',
-      'নকলা বালিকা উচ্চ বিদ্যালয়',
-      '2023',
-      'পারিবারিক অসচ্ছলতা'
-    ];
-
-    if (format === 'csv') {
-      const csvString = '\uFEFF' + [
-        headers.join(','),
-        sampleRow1.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','),
-        sampleRow2.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
-      ].join('\n');
-
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `BNFE_Trainee_Bulk_Import_Template.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } else {
-      const worksheetData = [headers, sampleRow1, sampleRow2];
-      const ws = XLSX.utils.aoa_to_sheet(worksheetData);
-      
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 22 },
-        { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 24 },
-        { wch: 16 }, { wch: 14 }, { wch: 22 }, { wch: 18 },
-        { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 18 },
-        { wch: 22 }, { wch: 14 }, { wch: 25 }
+      const headers = [
+        'প্রশিক্ষণার্থী আইডি (Trainee ID)',
+        'রেজিস্ট্রেশন নম্বর (Registration No)',
+        'পূর্ণ নাম বাংলা (Name Bn)',
+        'পূর্ণ নাম ইংরেজি (Name En)',
+        'পিতার নাম বাংলা (Father Name Bn)',
+        'পিতার নাম ইংরেজি (Father Name En)',
+        'মাতার নাম বাংলা (Mother Name Bn)',
+        'মাতার নাম ইংরেজি (Mother Name En)',
+        'জন্ম তারিখ (YYYY-MM-DD)',
+        'লিঙ্গ (Male/Female/Other)',
+        'এনআইডি বা জন্ম নিবন্ধন',
+        'মোবাইল নম্বর (11 Digits)',
+        'স্থায়ী ঠিকানা (Permanent Address)',
+        'বর্তমান ঠিকানা (Present Address)',
+        'ব্যাচ কোড বা নাম (Batch)',
+        'সর্বশেষ পাসকৃত শ্রেণি (Last Class)',
+        'পূর্ববর্তী স্কুল (Previous School)',
+        'ড্রপআউটের বছর (Dropout Year)',
+        'ড্রপআউটের কারণ (Dropout Reason)'
       ];
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Trainees_Template');
-      XLSX.writeFile(wb, `BNFE_Trainee_Bulk_Import_Template.xlsx`);
+      const sampleRow1 = [
+        'TR-1001',
+        'REG-2026-001',
+        'রাকিব হাসান',
+        'Rakib Hasan',
+        'মোঃ রফিকুল ইসলাম',
+        'Md. Rafiqul Islam',
+        'মোসাঃ রহিমা বেগম',
+        'Mst. Rahima Begum',
+        '2008-03-15',
+        'Male',
+        '20081234567890123',
+        '01711223344',
+        'গ্রাম: চরকালীবাড়ি, ডাকঘর: হালুয়াঘাট, ময়মনসিংহ',
+        'গ্রাম: চরকালীবাড়ি, ডাকঘর: হালুয়াঘাট, ময়মনসিংহ',
+        sampleBatchCode,
+        'Class 7 (৭ম শ্রেণি)',
+        'হালুয়াঘাট আদর্শ উচ্চ বিদ্যালয়',
+        '2023',
+        'আর্থিক অসচ্ছলতা ও পারিবারিক সমস্যা'
+      ];
+
+      const sampleRow2 = [
+        '', // Auto-generated ID
+        '', // Optional registration
+        'ফাতেমা আক্তার',
+        'Fatema Akter',
+        'আব্দুল জলিল',
+        'Abdul Jalil',
+        'আমেনা খাতুন',
+        'Amena Khatun',
+        '2008-07-20',
+        'Female',
+        '20089876543210987',
+        '01922334455',
+        'পৌরসভা রোড, হালুয়াঘাট, ময়মনসিংহ',
+        '', // Will copy permanent address
+        sampleBatchCode,
+        'Class 8 (৮ম শ্রেণি)',
+        'নকলা বালিকা উচ্চ বিদ্যালয়',
+        '2023',
+        'পারিবারিক অসচ্ছলতা'
+      ];
+
+      let res: FileExportResult;
+
+      if (format === 'csv') {
+        res = await downloadCSV('BNFE_Trainee_Bulk_Import_Template', headers, [sampleRow1, sampleRow2]);
+      } else {
+        const worksheetData = [headers, sampleRow1, sampleRow2];
+        const ws = XLSX.utils.aoa_to_sheet(worksheetData, { cellDates: false });
+
+        // Enforce text cell type for 17-digit UBRN and mobile numbers
+        for (const addr in ws) {
+          if (addr.startsWith('!')) continue;
+          const cell = ws[addr];
+          if (!cell) continue;
+          const valStr = String(cell.v ?? '').trim();
+          if (/^\d{6,}$/.test(valStr) || /^0\d{8,}$/.test(valStr) || typeof cell.v === 'string') {
+            cell.t = 's';
+            cell.v = valStr;
+            cell.z = '@';
+          }
+        }
+
+        // Set column widths
+        ws['!cols'] = [
+          { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 22 },
+          { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 24 },
+          { wch: 16 }, { wch: 14 }, { wch: 22 }, { wch: 18 },
+          { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 18 },
+          { wch: 22 }, { wch: 14 }, { wch: 25 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Trainees_Template');
+        const xlsxBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+
+        res = await saveFileToDevice({
+          fileName: 'BNFE_Trainee_Bulk_Import_Template.xlsx',
+          content: new Uint8Array(xlsxBuf),
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          category: 'template'
+        });
+      }
+
+      setExportNotice({
+        type: res.success ? 'success' : 'error',
+        text: res.message
+      });
+    } catch (err: any) {
+      setExportNotice({
+        type: 'error',
+        text: err?.message || 'টেমপ্লেট ডাউনলোড করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।'
+      });
+    } finally {
+      setDownloadingExport(false);
     }
   };
 
@@ -972,45 +1001,51 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
   };
 
   // Download Failed Rows CSV Report
-  const handleDownloadFailedReport = () => {
-    if (!importSummary || importSummary.failedRows.length === 0) return;
-    
-    const headers = [
-      'সারি নং (Row)',
-      'প্রশিক্ষণার্থী আইডি (Trainee ID)',
-      'রেজিস্ট্রেশন নম্বর (Reg No)',
-      'নাম বাংলা (Name Bn)',
-      'নাম ইংরেজি (Name En)',
-      'মোবাইল নম্বর (Mobile)',
-      'ব্যাচ (Batch)',
-      'ব্যর্থ হওয়ার কারণ ও ত্রুটি (Error Reasons)'
-    ];
+  const handleDownloadFailedReport = async () => {
+    if (!importSummary || importSummary.failedRows.length === 0 || downloadingExport) return;
+    setDownloadingExport(true);
+    setExportNotice(null);
 
-    const rows = importSummary.failedRows.map(r => [
-      r.rowNumber,
-      r.traineeId,
-      r.registrationNumber || '',
-      r.nameBn,
-      r.nameEn,
-      r.mobileNumber,
-      r.resolvedBatchName,
-      r.errors.join('; ')
-    ]);
+    try {
+      const headers = [
+        'সারি নং (Row)',
+        'প্রশিক্ষণার্থী আইডি (Trainee ID)',
+        'রেজিস্ট্রেশন নম্বর (Reg No)',
+        'নাম বাংলা (Name Bn)',
+        'নাম ইংরেজি (Name En)',
+        'মোবাইল নম্বর (Mobile)',
+        'ব্যাচ (Batch)',
+        'ব্যর্থ হওয়ার কারণ ও ত্রুটি (Error Reasons)'
+      ];
 
-    const csvContent = '\uFEFF' + [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
+      const rows = importSummary.failedRows.map(r => [
+        r.rowNumber,
+        r.traineeId,
+        r.registrationNumber || '',
+        r.nameBn,
+        r.nameEn,
+        r.mobileNumber,
+        r.resolvedBatchName,
+        r.errors.join('; ')
+      ]);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Failed_Trainees_Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const res = await downloadCSV(
+        `Failed_Trainees_Report_${new Date().toISOString().split('T')[0]}`,
+        headers,
+        rows
+      );
+      setExportNotice({
+        type: res.success ? 'success' : 'error',
+        text: res.message
+      });
+    } catch (err: any) {
+      setExportNotice({
+        type: 'error',
+        text: err?.message || 'রিপোর্ট ডাউনলোড করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।'
+      });
+    } finally {
+      setDownloadingExport(false);
+    }
   };
 
   // Filtered rows for the post-import summary modal
@@ -1157,12 +1192,28 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
                   <button
                     type="button"
+                    disabled={downloadingExport}
                     onClick={handleDownloadFailedReport}
-                    className="px-3.5 py-2 bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer"
+                    className="px-3.5 py-2 bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer disabled:opacity-50"
                   >
                     <Download size={14} className="text-amber-700" />
-                    <span>ব্যর্থ সারির রিপোর্ট (.csv)</span>
+                    <span>{downloadingExport ? 'সংরক্ষণ হচ্ছে...' : 'ব্যর্থ সারির রিপোর্ট (.csv)'}</span>
                   </button>
+                </div>
+              )}
+
+              {exportNotice && importSummary && (
+                <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center space-x-2 ${
+                  exportNotice.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                }`}>
+                  {exportNotice.type === 'success' ? (
+                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-rose-600 shrink-0" />
+                  )}
+                  <span>{exportNotice.text}</span>
                 </div>
               )}
 
@@ -1345,11 +1396,12 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 {importSummary.failedCount > 0 && (
                   <button
                     type="button"
+                    disabled={downloadingExport}
                     onClick={handleDownloadFailedReport}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
                   >
                     <Download size={14} className="text-rose-600" />
-                    <span>ব্যর্থ সারির রিপোর্ট (.csv)</span>
+                    <span>{downloadingExport ? 'সংরক্ষণ হচ্ছে...' : 'ব্যর্থ সারির রিপোর্ট (.csv)'}</span>
                   </button>
                 )}
 
@@ -1417,17 +1469,19 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
             <div className="flex items-center space-x-2 shrink-0">
               <button
                 type="button"
+                disabled={downloadingExport}
                 onClick={() => handleDownloadTemplate('xlsx')}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                 title="Excel টেমপ্লেট ডাউনলোড"
               >
                 <Download size={14} />
-                <span>টেমপ্লেট (Excel)</span>
+                <span>{downloadingExport ? 'সংরক্ষণ হচ্ছে...' : 'টেমপ্লেট (Excel)'}</span>
               </button>
               <button
                 type="button"
+                disabled={downloadingExport}
                 onClick={() => handleDownloadTemplate('csv')}
-                className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+                className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                 title="CSV টেমপ্লেট ডাউনলোড"
               >
                 <Download size={14} className="text-emerald-700" />
@@ -1435,6 +1489,21 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               </button>
             </div>
           </div>
+
+          {exportNotice && !importSummary && (
+            <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center space-x-2 ${
+              exportNotice.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}>
+              {exportNotice.type === 'success' ? (
+                <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle size={15} className="text-rose-600 shrink-0" />
+              )}
+              <span>{exportNotice.text}</span>
+            </div>
+          )}
 
           {/* Upload & Configuration Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

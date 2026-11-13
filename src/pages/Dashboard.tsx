@@ -65,6 +65,7 @@ import {
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
+import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
 
 const COLORS = ['#059669', '#2563eb', '#d97706', '#db2777', '#7c3aed', '#0891b2', '#ea580c'];
 
@@ -79,6 +80,8 @@ const Dashboard: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportToast, setExportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>('attendance');
 
   // Core collections
@@ -596,34 +599,33 @@ const Dashboard: React.FC = () => {
 
   // Print executive summary handler
   const handlePrint = () => {
-    window.print();
+    printCurrentDocument({ jobName: 'BNFE_Executive_Dashboard' });
   };
 
   // Export CSV summary of batch attendance
-  const handleExportCSV = () => {
-    const headers = ['ব্যাচের নাম', 'ট্রেড', 'প্রতিষ্ঠান', 'মোট শিক্ষার্থী', 'উপস্থিত', 'অনুপস্থিত', 'ছুটি', 'উপস্থিতির হার (%)', 'তারিখ'];
-    const rows = batchAttendanceStats.map(b => [
-      `"${b.batchName.replace(/"/g, '""')}"`,
-      `"${b.tradeName.replace(/"/g, '""')}"`,
-      `"${b.instituteName.replace(/"/g, '""')}"`,
-      b.totalEnrolled,
-      b.present,
-      b.absent,
-      b.leave,
-      `${b.rate}%`,
-      selectedDate
-    ]);
+  const handleExportCSV = async () => {
+    if (exportingCsv) return;
+    setExportingCsv(true);
+    try {
+      const headers = ['ব্যাচের নাম', 'ট্রেড', 'প্রতিষ্ঠান', 'মোট শিক্ষার্থী', 'উপস্থিত', 'অনুপস্থিত', 'ছুটি', 'উপস্থিতির হার (%)', 'তারিখ'];
+      const rows = batchAttendanceStats.map(b => [
+        b.batchName,
+        b.tradeName,
+        b.instituteName,
+        b.totalEnrolled,
+        b.present,
+        b.absent,
+        b.leave,
+        `${b.rate}%`,
+        selectedDate
+      ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `BNFE_Batch_Attendance_Summary_${selectedDate}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const res = await downloadCSV(`BNFE_Batch_Attendance_Summary_${selectedDate}`, headers, rows);
+      setExportToast({ type: res.success ? 'success' : 'error', message: res.message });
+      setTimeout(() => setExportToast(null), 5000);
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   // Auto-reset dropout pagination on filter or search changes
@@ -772,55 +774,54 @@ const Dashboard: React.FC = () => {
   }, [filteredDropoutList, currentDropoutPage, dropoutPageSize]);
 
   // Export CSV for dropout risk
-  const exportDropoutRiskCSV = () => {
-    const headers = [
-      'ক্রমিক',
-      'রেজিস্ট্রেশন নং',
-      'নাম (বাংলা)',
-      'নাম (ইংরেজি)',
-      'মোবাইল নম্বর',
-      'পিতা/অভিভাবক',
-      'প্রতিষ্ঠান',
-      'ট্রেড',
-      'ব্যাচ',
-      'মোট ক্লাস',
-      'উপস্থিতি',
-      'অনুপস্থিতি',
-      'ছুটি',
-      'হাজিরার হার (%)',
-      'ঝুঁকির স্তর',
-      'স্ট্যাটাস'
-    ];
+  const exportDropoutRiskCSV = async () => {
+    if (exportingCsv || filteredDropoutList.length === 0) return;
+    setExportingCsv(true);
+    try {
+      const headers = [
+        'ক্রমিক',
+        'রেজিস্ট্রেশন নং',
+        'নাম (বাংলা)',
+        'নাম (ইংরেজি)',
+        'মোবাইল নম্বর',
+        'পিতা/অভিভাবক',
+        'প্রতিষ্ঠান',
+        'ট্রেড',
+        'ব্যাচ',
+        'মোট ক্লাস',
+        'উপস্থিতি',
+        'অনুপস্থিতি',
+        'ছুটি',
+        'হাজিরার হার (%)',
+        'ঝুঁকির স্তর',
+        'স্ট্যাটাস'
+      ];
 
-    const rows = filteredDropoutList.map((t, idx) => [
-      idx + 1,
-      `"${(t.registrationNumber || '').replace(/"/g, '""')}"`,
-      `"${(t.nameBn || '').replace(/"/g, '""')}"`,
-      `"${(t.nameEn || '').replace(/"/g, '""')}"`,
-      `"${(t.mobileNumber || '').replace(/"/g, '""')}"`,
-      `"${(t.fatherNameBn || '').replace(/"/g, '""')}"`,
-      `"${(t.instituteName || '').replace(/"/g, '""')}"`,
-      `"${(t.tradeName || '').replace(/"/g, '""')}"`,
-      `"${(t.batchName || '').replace(/"/g, '""')}"`,
-      t.totalRecorded,
-      t.present,
-      t.absent,
-      t.leave,
-      `${t.rate}%`,
-      t.riskLevel === 'dropped' ? 'ড্রপআউট' : t.riskLevel === 'critical' ? 'উচ্চ ঝুঁকি' : t.riskLevel === 'moderate' ? 'মাঝারি ঝুঁকি' : 'সতর্কতা',
-      t.status
-    ]);
+      const rows = filteredDropoutList.map((t, idx) => [
+        idx + 1,
+        t.registrationNumber || '',
+        t.nameBn || '',
+        t.nameEn || '',
+        t.mobileNumber || '',
+        t.fatherNameBn || '',
+        t.instituteName || '',
+        t.tradeName || '',
+        t.batchName || '',
+        t.totalRecorded,
+        t.present,
+        t.absent,
+        t.leave,
+        `${t.rate}%`,
+        t.riskLevel === 'dropped' ? 'ড্রপআউট' : t.riskLevel === 'critical' ? 'উচ্চ ঝুঁকি' : t.riskLevel === 'moderate' ? 'মাঝারি ঝুঁকি' : 'সতর্কতা',
+        t.status
+      ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `BNFE_Dropout_Risk_Trainees_${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const res = await downloadCSV(`BNFE_Dropout_Risk_Trainees_${format(new Date(), 'yyyy-MM-dd')}`, headers, rows);
+      setExportToast({ type: res.success ? 'success' : 'error', message: res.message });
+      setTimeout(() => setExportToast(null), 5000);
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   // Reusable Dropout Risk Monitoring Paginated Table
@@ -869,15 +870,24 @@ const Dashboard: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={exportDropoutRiskCSV}
-              disabled={filteredDropoutList.length === 0}
+              disabled={filteredDropoutList.length === 0 || exportingCsv}
               className="px-3.5 py-2 bg-white hover:bg-slate-50 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs disabled:opacity-50 cursor-pointer"
               title="ঝুঁকিপূর্ণ শিক্ষার্থীদের তালিকা সিএসভি ফাইলে ডাউনলোড করুন"
             >
               <Download size={14} className="text-rose-600" />
-              <span>ঝুঁকি তালিকা এক্সপোর্ট</span>
+              <span>{exportingCsv ? 'সংরক্ষণ হচ্ছে...' : 'ঝুঁকি তালিকা এক্সপোর্ট'}</span>
             </button>
           </div>
+          {exportToast && (
+            <div className={`fixed bottom-20 right-5 lg:bottom-5 z-50 px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-bold ${
+              exportToast.type === 'success' ? 'bg-emerald-800 text-white' : 'bg-rose-800 text-white'
+            }`}>
+              <CheckCircle2 size={16} className="shrink-0" />
+              <span>{exportToast.message}</span>
+            </div>
+          )}
         </div>
 
         {/* Quick summary status tags */}

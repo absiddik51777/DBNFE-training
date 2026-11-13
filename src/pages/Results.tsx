@@ -16,6 +16,7 @@ import {
 import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { dataService } from '../lib/dataService';
+import { printCurrentDocument } from '../lib/fileExportService';
 
 const Results: React.FC = () => {
   const { userProfile } = useAuth();
@@ -308,8 +309,9 @@ const Results: React.FC = () => {
 
           {activeTab === 'sheet' && (
             <button
-              onClick={() => window.print()}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition"
+              type="button"
+              onClick={() => printCurrentDocument({ jobName: 'BNFE_Result_Sheet', landscape: true })}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition cursor-pointer"
             >
               <Printer size={16} />
               <span>প্রিন্ট করুন</span>

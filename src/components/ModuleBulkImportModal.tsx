@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { BatchSkillModule, BatchLiteracyModule } from '../types/calendar';
 import { toBn } from '../lib/dateUtils';
+import { saveCsvFile, FileExportResult } from '../lib/fileExportService';
 
 interface ModuleBulkImportModalProps {
   isOpen: boolean;
@@ -46,20 +47,11 @@ export const LITERACY_DEMO_CSV = `dayNumber,moduleName,taskNo,topic,startTime,en
 37,মৌলিক উদ্যোক্তা দক্ষতা ব্যবহার করা,কাজ ৩৭,উদ্যোক্তার গুণাবলি ও স্থানীয় বাজারের চাহিদা নিরূপণ,০৯:০০,১১:০০,120,উদ্যোক্তা দক্ষতা,মার্কেট সার্ভে শিট
 49,সেক্টর ভিত্তিক ডিজিটাল স্বাক্ষরতা প্রয়োগ করা,কাজ ৪৯,স্মার্টফোন ও ইন্টারনেটের মৌলিক পরিচিতি ও সার্চ কৌশল,০৯:০০,১১:০০,120,ডিজিটাল স্বাক্ষরতা,স্মার্টফোন ডেমো`;
 
-export const downloadDemoCSV = (type: 'skill' | 'literacy') => {
+export const downloadDemoCSV = async (type: 'skill' | 'literacy'): Promise<FileExportResult> => {
   const content = type === 'skill' ? SKILL_DEMO_CSV : LITERACY_DEMO_CSV;
   const filename = type === 'skill' ? 'demo_skill_modules.csv' : 'demo_literacy_modules.csv';
-  
-  // UTF-8 BOM for Bengali support in Excel
-  const blob = new Blob(['\uFEFF' + content.trim()], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+
+  return saveCsvFile(filename, content.trim(), 'template');
 };
 
 const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
@@ -78,6 +70,8 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [copiedDemo, setCopiedDemo] = useState<boolean>(false);
+  const [downloadingDemo, setDownloadingDemo] = useState<boolean>(false);
+  const [demoDownloadNotice, setDemoDownloadNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -279,15 +273,28 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => downloadDemoCSV(moduleType)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition shadow-xs cursor-pointer"
+              type="button"
+              disabled={downloadingDemo}
+              onClick={async () => {
+                if (downloadingDemo) return;
+                setDownloadingDemo(true);
+                setDemoDownloadNotice(null);
+                const res = await downloadDemoCSV(moduleType);
+                setDemoDownloadNotice({
+                  type: res.success ? 'success' : 'error',
+                  text: res.message
+                });
+                setDownloadingDemo(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
               title="ডেমো CSV ফাইল ডাউনলোড করুন"
             >
               <Download size={14} />
-              <span>ডেমো ফাইল ডাউনলোড (.csv)</span>
+              <span>{downloadingDemo ? 'সংরক্ষণ হচ্ছে...' : 'ডেমো ফাইল ডাউনলোড (.csv)'}</span>
             </button>
 
             <button
+              type="button"
               onClick={handleCopyDemo}
               className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 font-semibold transition cursor-pointer"
               title="নমুনা টেক্সট কপি করুন"
@@ -297,6 +304,21 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
             </button>
           </div>
         </div>
+
+        {demoDownloadNotice && (
+          <div className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+            demoDownloadNotice.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}>
+            {demoDownloadNotice.type === 'success' ? (
+              <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle size={14} className="text-rose-600 shrink-0" />
+            )}
+            <span>{demoDownloadNotice.text}</span>
+          </div>
+        )}
 
         {/* Tab Selection (Upload vs Paste) */}
         <div className="flex items-center space-x-2 border-b border-slate-200">

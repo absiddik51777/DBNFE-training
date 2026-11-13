@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Trainee, Institute, Trade, Batch, AttendanceRecord, ExamMark, Exam } from '../../types';
+import { printCurrentDocument } from '../../lib/fileExportService';
 import { 
   ArrowLeft, 
   User, 
@@ -143,7 +144,7 @@ const TraineeProfile: React.FC = () => {
   };
 
   const printProfile = () => {
-    window.print();
+    printCurrentDocument({ jobName: 'BNFE_Trainee_Profile' });
   };
 
   // Lifetime Attendance Calculations

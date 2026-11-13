@@ -55,6 +55,7 @@ import { toBn } from '../lib/dateUtils';
 import { format } from 'date-fns';
 import ModuleBulkImportModal, { downloadDemoCSV } from '../components/ModuleBulkImportModal';
 import ModuleInputModal from '../components/ModuleInputModal';
+import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
 
 const ShikhonCalendar: React.FC = () => {
   const { userProfile } = useAuth();
@@ -73,6 +74,7 @@ const ShikhonCalendar: React.FC = () => {
   const [selectedTradeId, setSelectedTradeId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [savingDay, setSavingDay] = useState<number | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   // Tab State: 'integrated' | 'logs' | 'skill' | 'literacy'
   const [activeMainTab, setActiveMainTab] = useState<'integrated' | 'logs' | 'skill' | 'literacy'>('integrated');
@@ -432,43 +434,42 @@ const ShikhonCalendar: React.FC = () => {
     });
   }, [progressLogs, logSearchQuery, logTypeFilter, logTrainerFilter]);
 
-  const exportLogsCSV = () => {
-    const headers = [
-      'ক্রমিক',
-      'তারিখ',
-      'ক্লাস নং',
-      'ধরন',
-      'কাজ নং',
-      'পঠিত বিষয়',
-      'ট্রেইনারের নাম',
-      'ট্রেইনারের ধরন',
-      'ট্রেইনার আইডি',
-      'অবস্থা',
-      'মন্তব্য'
-    ];
-    const rows = filteredLogs.map((l, idx) => [
-      idx + 1,
-      l.completedAt,
-      `ক্লাস ${l.dayNumber}`,
-      l.moduleType === 'skill' ? 'স্কিল' : 'লিটারেসি',
-      l.taskNo || '',
-      `"${(l.topic || '').replace(/"/g, '""')}"`,
-      l.trainerName || '',
-      l.trainerType || '',
-      l.trainerId || '',
-      l.isCompleted ? 'সম্পন্ন' : 'বাতিল',
-      `"${(l.remarks || '').replace(/"/g, '""')}"`
-    ]);
+  const exportLogsCSV = async () => {
+    if (exportingCsv || filteredLogs.length === 0) return;
+    setExportingCsv(true);
+    try {
+      const headers = [
+        'ক্রমিক',
+        'তারিখ',
+        'ক্লাস নং',
+        'ধরন',
+        'কাজ নং',
+        'পঠিত বিষয়',
+        'ট্রেইনারের নাম',
+        'ট্রেইনারের ধরন',
+        'ট্রেইনার আইডি',
+        'অবস্থা',
+        'মন্তব্য'
+      ];
+      const rows = filteredLogs.map((l, idx) => [
+        idx + 1,
+        l.completedAt,
+        `ক্লাস ${l.dayNumber}`,
+        l.moduleType === 'skill' ? 'স্কিল' : 'লিটারেসি',
+        l.taskNo || '',
+        l.topic || '',
+        l.trainerName || '',
+        l.trainerType || '',
+        l.trainerId || '',
+        l.isCompleted ? 'সম্পন্ন' : 'বাতিল',
+        l.remarks || ''
+      ]);
 
-    const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `batch_${selectedBatch?.name || 'calendar'}_progress_logs.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const res = await downloadCSV(`batch_${selectedBatch?.name || 'calendar'}_progress_logs`, headers, rows);
+      showToast(res.message);
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   // Reset or Seed BNFE Defaults for current batch
@@ -653,7 +654,7 @@ const ShikhonCalendar: React.FC = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    printCurrentDocument({ jobName: `BNFE_Shikhon_Calendar_${selectedBatch?.name || 'Batch'}` });
   };
 
   return (
@@ -1381,12 +1382,13 @@ const ShikhonCalendar: React.FC = () => {
               </button>
 
               <button
+                type="button"
                 onClick={exportLogsCSV}
-                disabled={filteredLogs.length === 0}
+                disabled={filteredLogs.length === 0 || exportingCsv}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition cursor-pointer shadow-xs disabled:opacity-50"
               >
                 <Download size={14} />
-                <span>অডিট লগ ডাউনলোড (.csv)</span>
+                <span>{exportingCsv ? 'সংরক্ষণ হচ্ছে...' : 'অডিট লগ ডাউনলোড (.csv)'}</span>
               </button>
             </div>
           </div>
@@ -1597,7 +1599,11 @@ const ShikhonCalendar: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => downloadDemoCSV('skill')}
+                type="button"
+                onClick={async () => {
+                  const res = await downloadDemoCSV('skill');
+                  showToast(res.message);
+                }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition cursor-pointer shadow-xs"
                 title="বাল্ক ইনপুটের নমুনা ডেমো ফাইল"
               >
@@ -1815,7 +1821,11 @@ const ShikhonCalendar: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => downloadDemoCSV('literacy')}
+                type="button"
+                onClick={async () => {
+                  const res = await downloadDemoCSV('literacy');
+                  showToast(res.message);
+                }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition cursor-pointer shadow-xs"
                 title="বাল্ক ইনপুটের নমুনা ডেমো ফাইল"
               >

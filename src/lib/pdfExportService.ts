@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Trainee, Institute, Trade, Batch } from '../types';
 import { toBn, safeFormatDate } from './dateUtils';
+import { saveFileToDevice, shareExportedFile, FileExportResult } from './fileExportService';
 
 export interface TraineePdfExportOptions {
   trainees: Trainee[];
@@ -46,83 +47,41 @@ function calculateTraineeAge(t: Trainee, batches: Batch[]): string {
 }
 
 /**
- * Helper to download blob securely across both Web browsers and Android APK (Capacitor WebView)
+ * Save a generated PDF Blob via the centralized export service.
+ * On Android APK: writes directly into public Downloads via MediaStore.
+ * On Web: performs clean Blob URL anchor download.
  */
 export async function downloadPdfBlob(
   blob: Blob,
   filename: string,
   title: string = 'প্রশিক্ষণার্থী তালিকা'
-): Promise<{ success: boolean; method: string }> {
-  // Method 1: Web Share API with File
-  // In Android Capacitor WebView and mobile browsers, this opens native system Save/Share sheet directly
-  if (typeof navigator !== 'undefined' && navigator.share && typeof File !== 'undefined') {
-    try {
-      const file = new File([blob], filename, { type: 'application/pdf' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: title,
-          text: `${title} - ${filename}`
-        });
-        return { success: true, method: 'native_share' };
-      }
-    } catch (shareErr: any) {
-      if (shareErr.name === 'AbortError') {
-        // User closed or dismissed the share sheet
-        return { success: true, method: 'share_dismissed' };
-      }
-      console.warn('Native share failed, falling back to anchor download:', shareErr);
-    }
-  }
+): Promise<FileExportResult> {
+  const safeFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+  return saveFileToDevice({
+    fileName: safeFilename,
+    content: blob,
+    mimeType: 'application/pdf',
+    category: 'pdf',
+    title
+  });
+}
 
-  // Method 2: Standard Anchor download with Blob URL
-  // Works reliably on desktop browsers and standard Android webviews with download listener
-  try {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 4000);
-    return { success: true, method: 'anchor_blob' };
-  } catch (downloadErr) {
-    console.warn('Blob anchor download failed, trying data URI:', downloadErr);
-  }
-
-  // Method 3: Data URI fallback for restricted WebViews
-  try {
-    const reader = new FileReader();
-    return new Promise((resolve) => {
-      reader.onloadend = () => {
-        try {
-          const base64Data = reader.result as string;
-          const link = document.createElement('a');
-          link.href = base64Data;
-          link.download = filename;
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          setTimeout(() => {
-            document.body.removeChild(link);
-          }, 4000);
-          resolve({ success: true, method: 'data_uri' });
-        } catch (e) {
-          console.error('Data URI download error:', e);
-          resolve({ success: false, method: 'error' });
-        }
-      };
-      reader.onerror = () => resolve({ success: false, method: 'error' });
-      reader.readAsDataURL(blob);
-    });
-  } catch (dataErr) {
-    console.error('All download mechanisms failed:', dataErr);
-    return { success: false, method: 'error' };
-  }
+/**
+ * Share a generated PDF Blob via Capacitor Share (Android/iOS) or Web Share API.
+ */
+export async function sharePdfBlob(
+  blob: Blob,
+  filename: string,
+  title: string = 'প্রশিক্ষণার্থী তালিকা'
+): Promise<FileExportResult> {
+  const safeFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+  return shareExportedFile({
+    fileName: safeFilename,
+    content: blob,
+    mimeType: 'application/pdf',
+    category: 'pdf',
+    title
+  });
 }
 
 /**

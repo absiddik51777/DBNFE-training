@@ -31,6 +31,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import ModuleInputModal from '../components/ModuleInputModal';
 import ModuleBulkImportModal from '../components/ModuleBulkImportModal';
+import { saveCsvFile } from '../lib/fileExportService';
 
 const TradeCalendar: React.FC = () => {
   const { userProfile } = useAuth();
@@ -203,38 +204,29 @@ const TradeCalendar: React.FC = () => {
   }, [literacyModules, searchQuery, selectedCategory]);
 
   // Download Demo CSV
-  const downloadDemoCSV = (type: 'skill' | 'literacy') => {
-    if (type === 'skill') {
-      const csvHeader = "dayNumber,moduleName,taskNo,topic,theoryMinutes,practicalMinutes,phaseGroup,toolsRequired,notes\n";
-      const sampleRows = [
-        `1,টুলস পরিচিতি,কাজ ০১,সৌন্দর্য চর্চায় ব্যবহৃত বিভিন্ন যন্ত্রপাতি ও উপকরণের পরিচিতি,৫০,৭০,টুলস ও বিউটি কেয়ার,কাঁচি চিরুনি ট্রিমার,প্রাথমিক নিরাপত্তা নির্দেশনা`,
-        `2,টুলস জীবাণুমুক্তকরণ,কাজ ০২,যন্ত্রপাতি পরিষ্কার ও স্বাস্থ্যসম্মতভাবে জীবাণুমুক্তকরণ পদ্ধতি,৪০,৮০,টুলস ও বিউটি কেয়ার,স্টেরিলাইজার ড্রপস অ্যালকোহল,পরিচ্ছন্নতার গুরুত্ব`,
-        `3,স্কিন টাইপ বিশ্লেষণ,কাজ ০৩,ত্বকের প্রকারভেদ নির্ণয় ও ক্লায়েন্ট কাউন্সেলিং,৬০,৬০,স্কিন কেয়ার,ম্যাগনিফাইং গ্লাস কটন স্কিন অ্যানালাইজার,সঠিক পরামর্শ প্রদান`
-      ].join("\n");
-      const blob = new Blob(["\uFEFF" + csvHeader + sampleRows], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `trade_${selectedTrade?.code || 'sample'}_demo_skill_modules.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      const csvHeader = "dayNumber,moduleName,taskNo,topic,startTime,endTime,totalMinutes,category,notes\n";
-      const sampleRows = [
-        `1,মৌলিক বাংলা দক্ষতা,কাজ ০১,দৈনন্দিন যোগাযোগে প্রমিত ও শুদ্ধ বাংলা ভাষার ব্যবহার,০৯:০০,১১:০০,120,বাংলা,মৌখিক অনুশীলন`,
-        `2,গাণিতিক দক্ষতা,কাজ ০২,ব্যাবহারিক হিসাব-নিকাশ যোগ বিয়োগ ও পরিমাপ পদ্ধতি,০৯:০০,১১:০০,120,গণিত,ব্যবসায়িক হিসাব`,
-        `3,মৌলিক ইংরেজি,কাজ ০৩,ক্লায়েন্টদের সাথে অভ্যর্থনা ও সাধারণ ইংরেজি শিষ্টাচার,০৯:০০,১১:০০,120,ইংরেজি,স্পোকেন ড্রিল`
-      ].join("\n");
-      const blob = new Blob(["\uFEFF" + csvHeader + sampleRows], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `trade_${selectedTrade?.code || 'sample'}_demo_literacy_modules.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+  const downloadDemoCSV = async (type: 'skill' | 'literacy') => {
+    const csvHeader = type === 'skill'
+      ? "dayNumber,moduleName,taskNo,topic,theoryMinutes,practicalMinutes,phaseGroup,toolsRequired,notes\n"
+      : "dayNumber,moduleName,taskNo,topic,startTime,endTime,totalMinutes,category,notes\n";
+
+    const sampleRows = type === 'skill'
+      ? [
+          `1,টুলস পরিচিতি,কাজ ০১,সৌন্দর্য চর্চায় ব্যবহৃত বিভিন্ন যন্ত্রপাতি ও উপকরণের পরিচিতি,৫০,৭০,টুলস ও বিউটি কেয়ার,কাঁচি চিরুনি ট্রিমার,প্রাথমিক নিরাপত্তা নির্দেশনা`,
+          `2,টুলস জীবাণুমুক্তকরণ,কাজ ০২,যন্ত্রপাতি পরিষ্কার ও স্বাস্থ্যসম্মতভাবে জীবাণুমুক্তকরণ পদ্ধতি,৪০,৮০,টুলস ও বিউটি কেয়ার,স্টেরিলাইজার ড্রপস অ্যালকোহল,পরিচ্ছন্নতার গুরুত্ব`,
+          `3,স্কিন টাইপ বিশ্লেষণ,কাজ ০৩,ত্বকের প্রকারভেদ নির্ণয় ও ক্লায়েন্ট কাউন্সেলিং,৬০,৬০,স্কিন কেয়ার,ম্যাগনিফাইং গ্লাস কটন স্কিন অ্যানালাইজার,সঠিক পরামর্শ প্রদান`
+        ].join("\n")
+      : [
+          `1,মৌলিক বাংলা দক্ষতা,কাজ ০১,দৈনন্দিন যোগাযোগে প্রমিত ও শুদ্ধ বাংলা ভাষার ব্যবহার,০৯:০০,১১:০০,120,বাংলা,মৌখিক অনুশীলন`,
+          `2,গাণিতিক দক্ষতা,কাজ ০২,ব্যাবহারিক হিসাব-নিকাশ যোগ বিয়োগ ও পরিমাপ পদ্ধতি,০৯:০০,১১:০০,120,গণিত,ব্যবসায়িক হিসাব`,
+          `3,মৌলিক ইংরেজি,কাজ ০৩,ক্লায়েন্টদের সাথে অভ্যর্থনা ও সাধারণ ইংরেজি শিষ্টাচার,০৯:০০,১১:০০,120,ইংরেজি,স্পোকেন ড্রিল`
+        ].join("\n");
+
+    const fileName = type === 'skill'
+      ? `trade_${selectedTrade?.code || 'sample'}_demo_skill_modules.csv`
+      : `trade_${selectedTrade?.code || 'sample'}_demo_literacy_modules.csv`;
+
+    const res = await saveCsvFile(fileName, csvHeader + sampleRows, 'template');
+    showToast(res.message);
   };
 
   // Request single module delete
