@@ -121,8 +121,8 @@ const Certificates: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
         <span>সার্টিফিকেট মডিউল লোড হচ্ছে...</span>
       </div>
     );
@@ -132,8 +132,8 @@ const Certificates: React.FC = () => {
     <div className="space-y-6 pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">সার্টিফিকেট ও কোর্স সমাপন (Certificates & Completion)</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-theme-text-primary">সার্টিফিকেট ও কোর্স সমাপন (Certificates & Completion)</h1>
+          <p className="text-sm text-theme-text-secondary mt-0.5">
             ন্যূনতম ৭৫% উপস্থিতি ও পরীক্ষায় উত্তীর্ণ শিক্ষার্থীদের সরকারি সনদপত্র প্রদান
           </p>
         </div>
@@ -142,7 +142,7 @@ const Certificates: React.FC = () => {
           <button
             type="button"
             onClick={() => printCurrentDocument({ jobName: 'BNFE_Certificate', landscape: true })}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition cursor-pointer"
+            className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition cursor-pointer"
           >
             <Printer size={16} />
             <span>সার্টিফিকেট প্রিন্ট (Print Certificate)</span>
@@ -154,21 +154,21 @@ const Certificates: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:block">
         {/* Left Side: Trainee Eligibility Table (Hidden during print) */}
         <div className="lg:col-span-5 space-y-4 print:hidden">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs">
             <div className="relative mb-3">
               <input
                 type="text"
                 placeholder="প্রশিক্ষণার্থী খুঁজুন..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-9 pr-3 py-2 bg-theme-surface-subtle border border-theme-border text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               />
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
+              <Search className="absolute left-3 top-2.5 text-theme-text-muted" size={15} />
             </div>
 
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
               {filtered.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 text-xs">
+                <div className="py-12 text-center text-theme-text-muted text-xs">
                   কোনো প্রশিক্ষণার্থী পাওয়া যায়নি।
                 </div>
               ) : (
@@ -183,26 +183,28 @@ const Certificates: React.FC = () => {
                       onClick={() => setSelectedTraineeForCert(t)}
                       className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                         isSelected
-                          ? 'border-emerald-500 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500'
-                          : 'border-slate-200/80 hover:bg-slate-50'
+                          ? 'border-theme-primary bg-theme-primary-soft shadow-xs ring-1 ring-theme-primary'
+                          : 'border-theme-border hover:bg-theme-surface-hover'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="text-sm font-bold text-slate-800">{t.nameBn}</h4>
-                          <p className="text-xs text-slate-500">{t.nameEn}</p>
-                          <span className="text-[11px] font-mono text-slate-400">{t.registrationNumber}</span>
+                          <h4 className="text-sm font-bold text-theme-text-primary">{t.nameBn}</h4>
+                          <p className="text-xs text-theme-text-secondary">{t.nameEn}</p>
+                          <span className="text-[11px] font-mono text-theme-text-muted tabular-nums">{t.registrationNumber}</span>
                         </div>
-                        <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full ${
-                          eligible ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${
+                          eligible
+                            ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                            : 'bg-theme-warning-soft text-theme-warning border-theme-warning-border'
                         }`}>
                           {eligible ? 'সনদ যোগ্য' : 'অযোগ্য'}
                         </span>
                       </div>
 
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
-                        <span>উপস্থিতি: <b className="text-slate-800">{attPct}%</b></span>
-                        <span>ট্রেড: <b className="text-slate-800">{getTradeName(t.tradeId)}</b></span>
+                      <div className="mt-2.5 pt-2 border-t border-theme-border flex items-center justify-between text-[11px] text-theme-text-secondary">
+                        <span className="tabular-nums">উপস্থিতি: <b className="text-theme-text-primary">{attPct}%</b></span>
+                        <span>ট্রেড: <b className="text-theme-text-primary">{getTradeName(t.tradeId)}</b></span>
                       </div>
                     </div>
                   );
@@ -300,7 +302,7 @@ const Certificates: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+            <div className="bg-theme-surface rounded-2xl border border-theme-border p-12 text-center text-theme-text-muted">
               বামদিকের তালিকা থেকে শিক্ষার্থী নির্বাচন করুন।
             </div>
           )}

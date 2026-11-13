@@ -639,7 +639,7 @@ const Attendance: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 pb-20 max-w-7xl mx-auto">
-        <div className="h-6 w-48 bg-slate-200/80 rounded animate-pulse" />
+        <div className="h-6 w-48 bg-theme-surface-subtle rounded animate-pulse" />
         <TableSkeleton rows={8} cols={6} />
       </div>
     );
@@ -652,10 +652,10 @@ const Attendance: React.FC = () => {
       {/* ======================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-theme-text-primary tracking-tight">
             দৈনিক হাজিরা
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+          <p className="text-xs sm:text-sm text-theme-text-secondary font-medium">
             {formatBengaliDate(selectedDate)}
             {currentBatch ? ` • ${currentBatch.name}` : ''}
           </p>
@@ -663,14 +663,14 @@ const Attendance: React.FC = () => {
 
         <div className="flex items-center space-x-2.5 shrink-0">
           {/* View Mode Switcher (Grid Cards vs Table) */}
-          <div className="inline-flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="inline-flex items-center p-1 bg-theme-surface-subtle rounded-2xl border border-theme-border shadow-2xs">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                 viewMode === 'grid'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-theme-surface text-theme-text-primary shadow-2xs border border-theme-border'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary'
               }`}
               title="কার্ড গ্রিড ভিউ"
             >
@@ -680,10 +680,10 @@ const Attendance: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                 viewMode === 'table'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-theme-surface text-theme-text-primary shadow-2xs border border-theme-border'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary'
               }`}
               title="টেবিল স্প্রেডশিট ভিউ"
             >
@@ -694,9 +694,9 @@ const Attendance: React.FC = () => {
 
           <Link
             to="/attendance-sheet"
-            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl text-xs font-bold border border-slate-200/90 shadow-2xs flex items-center space-x-1.5 transition shrink-0"
+            className="px-3.5 py-2 bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary rounded-2xl text-xs font-bold border border-theme-border shadow-2xs flex items-center space-x-1.5 transition shrink-0"
           >
-            <CalendarDays size={16} className="text-emerald-700" />
+            <CalendarDays size={16} className="text-theme-primary" />
             <span>মাসিক শিট</span>
           </Link>
         </div>
@@ -704,21 +704,21 @@ const Attendance: React.FC = () => {
 
       {/* Inline Feedback Alerts */}
       {saveSuccessMessage && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center space-x-2 shadow-2xs">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-theme-success-soft border border-theme-success-border text-theme-success text-xs font-semibold flex items-center space-x-2 shadow-2xs">
+          <CheckCircle2 size={16} className="shrink-0" />
           <span>{saveSuccessMessage}</span>
         </div>
       )}
 
       {saveErrorMessage && (
-        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-900 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
+        <div className="p-3.5 rounded-2xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center space-x-2">
-            <AlertCircle size={16} className="text-red-600 shrink-0" />
+            <AlertCircle size={16} className="shrink-0" />
             <span>{saveErrorMessage}</span>
           </div>
           <button
             onClick={() => executeSave()}
-            className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-[11px] font-bold"
+            className="px-2.5 py-1 bg-theme-danger text-theme-danger-fg rounded-lg text-[11px] font-bold cursor-pointer"
           >
             পুনরায় চেষ্টা
           </button>
@@ -726,15 +726,15 @@ const Attendance: React.FC = () => {
       )}
 
       {permissionNotice && (
-        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center space-x-2 shadow-2xs animate-fadeIn">
-          <ShieldAlert size={16} className="text-amber-600 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-theme-warning-soft border border-theme-warning-border text-theme-warning text-xs font-medium flex items-center space-x-2 shadow-2xs animate-fadeIn">
+          <ShieldAlert size={16} className="shrink-0" />
           <span>{permissionNotice}</span>
         </div>
       )}
 
       {isBeforeBatchStart && (
-        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-300 text-red-900 text-xs flex items-center space-x-2">
-          <AlertTriangle size={15} className="text-red-600 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-xs flex items-center space-x-2">
+          <AlertTriangle size={15} className="shrink-0" />
           <span>
             নির্বাচিত তারিখটি ({formatBengaliDate(selectedDate)}) ব্যাচ শুরুর তারিখের ({formatBengaliDate(batchStartDateIso)}) পূর্বের। ব্যাচ শুরুর আগের তারিখে হাজিরা গ্রহণ সম্ভব নয়।
           </span>
@@ -742,8 +742,8 @@ const Attendance: React.FC = () => {
       )}
 
       {isFutureDate && (
-        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center space-x-2">
-          <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-theme-warning-soft border border-theme-warning-border text-theme-warning text-xs flex items-center space-x-2">
+          <AlertTriangle size={15} className="shrink-0" />
           <span>ভবিষ্যতের তারিখের জন্য হাজিরা গ্রহণ স্থগিত। আজকের বা অতীতের তারিখ নির্বাচন করুন।</span>
         </div>
       )}
@@ -753,7 +753,7 @@ const Attendance: React.FC = () => {
       {/* ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
         {/* Left: Hero Stats Card (5 cols on lg, 4 cols on xl) */}
-        <div className="lg:col-span-5 xl:col-span-4 bg-[#0c1829] rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-5 xl:col-span-4 bg-theme-surface rounded-3xl p-5 sm:p-6 text-theme-text-primary border border-theme-border shadow-xs flex flex-col justify-between space-y-4 transition-colors tabular-nums">
           <div className="flex items-center space-x-4 sm:space-x-5">
             {/* Circular Progress Gauge */}
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
@@ -762,7 +762,7 @@ const Attendance: React.FC = () => {
                   cx="32"
                   cy="32"
                   r="26"
-                  className="stroke-slate-800"
+                  className="stroke-theme-border"
                   strokeWidth="6"
                   fill="transparent"
                 />
@@ -770,7 +770,7 @@ const Attendance: React.FC = () => {
                   cx="32"
                   cy="32"
                   r="26"
-                  className="stroke-emerald-500 transition-all duration-500 ease-out"
+                  className="stroke-theme-primary transition-all duration-500 ease-out"
                   strokeWidth="6"
                   strokeDasharray={163.36}
                   strokeDashoffset={163.36 - (163.36 * presentPercent) / 100}
@@ -779,7 +779,7 @@ const Attendance: React.FC = () => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm sm:text-base font-bold text-white font-mono">
+                <span className="text-sm sm:text-base font-bold text-theme-text-primary font-mono">
                   {toBn(presentPercent)}%
                 </span>
               </div>
@@ -787,11 +787,11 @@ const Attendance: React.FC = () => {
 
             {/* Stats Info */}
             <div>
-              <span className="text-xs text-slate-300 font-medium block">আজকের উপস্থিতি</span>
-              <div className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">
+              <span className="text-xs text-theme-text-secondary font-medium block">আজকের উপস্থিতি</span>
+              <div className="text-xl sm:text-2xl font-bold text-theme-text-primary tracking-tight mt-0.5">
                 {toBn(presentCount)} জন উপস্থিত
               </div>
-              <span className="text-xs text-slate-400 block mt-0.5">
+              <span className="text-xs text-theme-text-muted block mt-0.5">
                 বাকি {toBn(Math.max(0, totalCount - presentCount))} জনের হাজিরা
               </span>
             </div>
@@ -799,43 +799,43 @@ const Attendance: React.FC = () => {
 
           {/* Multi-Segmented Progress Bar */}
           <div className="space-y-2">
-            <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden flex">
+            <div className="h-2.5 w-full bg-theme-surface-subtle rounded-full overflow-hidden flex">
               {presentPercent > 0 && (
-                <div 
-                  style={{ width: `${(presentCount / (totalCount || 1)) * 100}%` }} 
-                  className="bg-emerald-500 h-full transition-all duration-300"
+                <div
+                  style={{ width: `${(presentCount / (totalCount || 1)) * 100}%` }}
+                  className="bg-theme-success h-full transition-all duration-300"
                 />
               )}
               {absentPercent > 0 && (
-                <div 
-                  style={{ width: `${(absentCount / (totalCount || 1)) * 100}%` }} 
-                  className="bg-rose-500 h-full transition-all duration-300"
+                <div
+                  style={{ width: `${(absentCount / (totalCount || 1)) * 100}%` }}
+                  className="bg-theme-danger h-full transition-all duration-300"
                 />
               )}
               {leavePercent > 0 && (
-                <div 
-                  style={{ width: `${(leaveCount / (totalCount || 1)) * 100}%` }} 
-                  className="bg-amber-400 h-full transition-all duration-300"
+                <div
+                  style={{ width: `${(leaveCount / (totalCount || 1)) * 100}%` }}
+                  className="bg-theme-warning h-full transition-all duration-300"
                 />
               )}
             </div>
 
             {/* Legend Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-300 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-theme-text-secondary pt-1">
               <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+                <span className="w-2.5 h-2.5 rounded-full bg-theme-success inline-block shrink-0" />
                 <span>উপস্থিত: {toBn(presentCount)}</span>
               </div>
               <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shrink-0" />
+                <span className="w-2.5 h-2.5 rounded-full bg-theme-danger inline-block shrink-0" />
                 <span>অনুপস্থিত: {toBn(absentCount)}</span>
               </div>
               <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shrink-0" />
+                <span className="w-2.5 h-2.5 rounded-full bg-theme-warning inline-block shrink-0" />
                 <span>ছুটি: {toBn(leaveCount)}</span>
               </div>
               <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block shrink-0" />
+                <span className="w-2.5 h-2.5 rounded-full bg-theme-text-muted inline-block shrink-0" />
                 <span>বাকি: {toBn(unmarkedCount)}</span>
               </div>
             </div>
@@ -843,49 +843,49 @@ const Attendance: React.FC = () => {
         </div>
 
         {/* Right: Controls & Actions Deck (7 cols on lg, 8 cols on xl) */}
-        <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3.5">
+        <div className="lg:col-span-7 xl:col-span-8 bg-theme-surface rounded-3xl p-4 sm:p-5 border border-theme-border shadow-xs flex flex-col justify-between space-y-3.5 transition-colors">
           {/* Selectors Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Institute Selector */}
             {!isTrainer ? (
               <div className="relative">
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">প্রতিষ্ঠান</label>
+                <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রতিষ্ঠান</label>
                 <div className="relative">
                   <select
                     value={selectedInstitute}
                     onChange={(e) => requestSelectorChange('institute', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-8 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs appearance-none transition cursor-pointer truncate"
+                    className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl px-3.5 py-2.5 pr-8 text-theme-text-primary text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs appearance-none transition cursor-pointer truncate"
                   >
                     <option value="">সকল প্রতিষ্ঠান</option>
                     {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
                 </div>
               </div>
             ) : null}
 
             {/* Batch Selector */}
             <div className={`relative ${isTrainer ? 'sm:col-span-2' : ''}`}>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">প্রশিক্ষণ ব্যাচ</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রশিক্ষণ ব্যাচ</label>
               <div className="relative">
                 <select
                   value={selectedBatch}
                   disabled={isTrainer}
                   onChange={(e) => requestSelectorChange('batch', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-8 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs appearance-none transition cursor-pointer disabled:bg-slate-100 disabled:text-slate-600 truncate"
+                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl px-3.5 py-2.5 pr-8 text-theme-text-primary text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs appearance-none transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed truncate"
                 >
                   <option value="">ব্যাচ নির্বাচন করুন</option>
                   {batches
                     .filter(b => (!selectedInstitute || b.instituteId === selectedInstitute))
                     .map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
               </div>
             </div>
 
             {/* Date Selector */}
             <div className="relative">
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">হাজিরার তারিখ</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">হাজিরার তারিখ</label>
               <div className="relative">
                 <input
                   type="date"
@@ -893,9 +893,9 @@ const Attendance: React.FC = () => {
                   max={todayDateStr}
                   value={selectedDate}
                   onChange={(e) => requestSelectorChange('date', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-8 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs transition cursor-pointer font-mono"
+                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl px-3.5 py-2.5 pr-8 text-theme-text-primary text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs transition cursor-pointer font-mono tabular-nums"
                 />
-                <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
               </div>
             </div>
           </div>
@@ -909,14 +909,14 @@ const Attendance: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="শিক্ষার্থীর নাম বা রোল দিয়ে খুঁজুন..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs transition"
+                className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl pl-9 pr-8 py-2 text-theme-text-primary placeholder:text-theme-text-muted text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs transition"
               />
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted hover:text-theme-text-primary cursor-pointer"
                 >
                   <X size={15} />
                 </button>
@@ -929,20 +929,20 @@ const Attendance: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleBulkActionClick('Present')}
-                  className="px-3 py-2 bg-[#e6f7ef] hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98"
+                  className="px-3 py-2 bg-theme-success-soft hover:opacity-90 text-theme-success border border-theme-success-border rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98 cursor-pointer"
                   title="সকল শিক্ষার্থীকে উপস্থিত হিসেবে চিহ্নিত করুন"
                 >
-                  <Check size={14} className="text-emerald-700" />
+                  <Check size={14} />
                   <span>সবাই উপস্থিত</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleBulkActionClick('Absent')}
-                  className="px-3 py-2 bg-[#ffebee] hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98"
+                  className="px-3 py-2 bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98 cursor-pointer"
                   title="সকল শিক্ষার্থীকে অনুপস্থিত হিসেবে চিহ্নিত করুন"
                 >
-                  <X size={14} className="text-rose-700" />
+                  <X size={14} />
                   <span>সবাই অনুপস্থিত</span>
                 </button>
 
@@ -950,7 +950,7 @@ const Attendance: React.FC = () => {
                   type="button"
                   disabled={!hasUnsavedChanges}
                   onClick={handleResetToSaved}
-                  className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl flex items-center justify-center shadow-2xs transition active:scale-98 disabled:opacity-40"
+                  className="p-2 bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border rounded-xl flex items-center justify-center shadow-2xs transition active:scale-98 disabled:opacity-40 cursor-pointer"
                   title="পরিবর্তন রিসেট করুন"
                 >
                   <RotateCcw size={15} />
@@ -961,15 +961,15 @@ const Attendance: React.FC = () => {
 
           {/* Filter Tabs Row */}
           {allTraineesInBatch.length > 0 && (
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-0.5 pt-1 scrollbar-none border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 mr-1 hidden sm:inline">ফিল্টার:</span>
+            <div className="flex items-center space-x-1.5 overflow-x-auto pb-0.5 pt-2 scrollbar-none border-t border-theme-border">
+              <span className="text-[11px] font-bold text-theme-text-muted mr-1 hidden sm:inline">ফিল্টার:</span>
               <button
                 type="button"
                 onClick={() => setActiveFilterTab('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
                   activeFilterTab === 'all'
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    ? 'bg-theme-text-primary text-theme-surface shadow-2xs'
+                    : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
                 }`}
               >
                 সবাই ({toBn(totalCount)})
@@ -978,10 +978,10 @@ const Attendance: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveFilterTab('present')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
                   activeFilterTab === 'present'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    ? 'bg-theme-success text-theme-success-fg shadow-2xs'
+                    : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
                 }`}
               >
                 উপস্থিত ({toBn(presentCount)})
@@ -990,10 +990,10 @@ const Attendance: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveFilterTab('absent')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
                   activeFilterTab === 'absent'
-                    ? 'bg-rose-600 text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    ? 'bg-theme-danger text-theme-danger-fg shadow-2xs'
+                    : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
                 }`}
               >
                 অনুপস্থিত ({toBn(absentCount)})
@@ -1003,10 +1003,10 @@ const Attendance: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveFilterTab('leave')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
                     activeFilterTab === 'leave'
-                      ? 'bg-amber-600 text-white shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
+                      : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
                   }`}
                 >
                   ছুটি ({toBn(leaveCount)})
@@ -1017,10 +1017,10 @@ const Attendance: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveFilterTab('unmarked')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
                     activeFilterTab === 'unmarked'
-                      ? 'bg-slate-700 text-white shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      ? 'bg-theme-text-secondary text-theme-surface shadow-2xs'
+                      : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
                   }`}
                 >
                   চিহ্নিত নয় ({toBn(unmarkedCount)})
@@ -1031,10 +1031,10 @@ const Attendance: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveFilterTab('dirty')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
                     activeFilterTab === 'dirty'
-                      ? 'bg-amber-500 text-white shadow-2xs'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
+                      ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
+                      : 'bg-theme-warning-soft hover:bg-theme-warning-soft/80 text-theme-warning border border-theme-warning-border'
                   }`}
                 >
                   অসংরক্ষিত ({toBn(dirtyCount)})
@@ -1051,19 +1051,19 @@ const Attendance: React.FC = () => {
       {fetchingTrainees ? (
         <TableSkeleton rows={6} cols={3} showHeader={false} showToolbar={false} />
       ) : allTraineesInBatch.length === 0 ? (
-        <div className="bg-white p-12 text-center text-slate-400 rounded-3xl border border-dashed border-slate-200 text-xs">
+        <div className="bg-theme-surface p-12 text-center text-theme-text-muted rounded-3xl border border-dashed border-theme-border text-xs">
           কোনো সক্রিয় শিক্ষার্থী পাওয়া যায়নি।
         </div>
       ) : displayedTrainees.length === 0 ? (
-        <div className="bg-white p-12 text-center text-slate-400 rounded-3xl border border-dashed border-slate-200 text-xs">
+        <div className="bg-theme-surface p-12 text-center text-theme-text-muted rounded-3xl border border-dashed border-theme-border text-xs">
           কোনো শিক্ষার্থী এই তালিকায় নেই।
         </div>
       ) : viewMode === 'table' ? (
         /* TABLE VIEW (DESKTOP OPTIMIZED) */
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="bg-theme-surface rounded-3xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+              <thead className="bg-theme-surface-subtle border-b border-theme-border text-theme-text-secondary font-bold uppercase tracking-wider">
                 <tr>
                   <th className="py-3.5 px-4 w-14 text-center">ক্র.</th>
                   <th className="py-3.5 px-4 w-36">আইডি ও রোল</th>
@@ -1072,7 +1072,7 @@ const Attendance: React.FC = () => {
                   <th className="py-3.5 px-4 text-center w-28">অবস্থা</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-theme-border">
                 {displayedTrainees.map((t, idx) => {
                   const item = attendanceMap[t.id];
                   const status = item?.status || 'Unmarked';
@@ -1081,41 +1081,41 @@ const Attendance: React.FC = () => {
                   const isLocked = item?.isSavedInDb && !canEditAttendance;
 
                   return (
-                    <tr 
-                      key={t.id} 
-                      className={`hover:bg-slate-50/80 transition-colors ${
-                        status === 'Present' 
-                          ? 'bg-emerald-50/20' 
-                          : status === 'Absent' 
-                          ? 'bg-rose-50/20' 
-                          : status === 'Leave' 
-                          ? 'bg-amber-50/20' 
+                    <tr
+                      key={t.id}
+                      className={`hover:bg-theme-surface-hover transition-colors ${
+                        status === 'Present'
+                          ? 'bg-theme-success-soft/30'
+                          : status === 'Absent'
+                          ? 'bg-theme-danger-soft/30'
+                          : status === 'Leave'
+                          ? 'bg-theme-warning-soft/30'
                           : ''
                       }`}
                     >
-                      <td className="py-3 px-4 text-center font-bold text-slate-500">
+                      <td className="py-3 px-4 text-center font-bold text-theme-text-secondary tabular-nums">
                         {toBn(idx + 1)}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-slate-800 text-xs block">
+                        <span className="font-mono font-bold text-theme-text-primary text-xs block tabular-nums">
                           {t.traineeId || t.id}
                         </span>
                         {t.registrationNumber && (
-                          <span className="text-[11px] text-slate-400 font-mono block">
+                          <span className="text-[11px] text-theme-text-muted font-mono block tabular-nums">
                             {t.registrationNumber}
                           </span>
                         )}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-2.5">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200/80">
+                          <div className="w-8 h-8 rounded-full bg-theme-surface-subtle text-theme-text-primary font-bold flex items-center justify-center text-xs shrink-0 border border-theme-border">
                             {(t.nameBn || t.nameEn || 'শ').trim().charAt(0)}
                           </div>
                           <div>
-                            <span className="font-bold text-slate-900 block text-sm">
+                            <span className="font-bold text-theme-text-primary block text-sm">
                               {t.nameBn || t.nameEn}
                             </span>
-                            <span className="text-[11px] text-slate-500 block">
+                            <span className="text-[11px] text-theme-text-secondary block">
                               পিতা: {t.fatherNameBn || t.fatherNameEn || '—'}
                             </span>
                           </div>
@@ -1123,28 +1123,28 @@ const Attendance: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         {isLocked ? (
-                          <div 
+                          <div
                             onClick={() => {
                               setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
                               setTimeout(() => setPermissionNotice(''), 4500);
                             }}
-                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 border border-slate-200 cursor-pointer"
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-theme-surface-subtle rounded-xl text-xs font-semibold text-theme-text-secondary border border-theme-border cursor-pointer"
                           >
-                            <Lock size={12} className="text-slate-400" />
-                            <span className={status === 'Present' ? 'text-emerald-700 font-bold' : status === 'Absent' ? 'text-rose-700 font-bold' : 'text-amber-700 font-bold'}>
+                            <Lock size={12} className="text-theme-text-muted" />
+                            <span className={status === 'Present' ? 'text-theme-success font-bold' : status === 'Absent' ? 'text-theme-danger font-bold' : 'text-theme-warning font-bold'}>
                               {status === 'Present' ? 'উপস্থিত (লকড)' : status === 'Absent' ? 'অনুপস্থিত (লকড)' : status === 'Leave' ? 'ছুটি (লকড)' : 'চিহ্নিত নয়'}
                             </span>
                           </div>
                         ) : (
-                          <div className="inline-flex bg-slate-100 p-1 rounded-xl items-center gap-1 border border-slate-200/80">
+                          <div className="inline-flex bg-theme-surface-subtle p-1 rounded-xl items-center gap-1 border border-theme-border">
                             <button
                               type="button"
                               disabled={!canTakeAttendance || isFutureDate}
                               onClick={() => setStatus(t.id, 'Present')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                 status === 'Present'
-                                  ? 'bg-emerald-600 text-white shadow-2xs'
-                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                                  ? 'bg-theme-success text-theme-success-fg shadow-2xs'
+                                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                               }`}
                             >
                               উপস্থিত
@@ -1153,10 +1153,10 @@ const Attendance: React.FC = () => {
                               type="button"
                               disabled={!canTakeAttendance || isFutureDate}
                               onClick={() => setStatus(t.id, 'Absent')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                 status === 'Absent'
-                                  ? 'bg-rose-600 text-white shadow-2xs'
-                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                                  ? 'bg-theme-danger text-theme-danger-fg shadow-2xs'
+                                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                               }`}
                             >
                               অনুপস্থিত
@@ -1165,10 +1165,10 @@ const Attendance: React.FC = () => {
                               type="button"
                               disabled={!canTakeAttendance || isFutureDate}
                               onClick={() => setStatus(t.id, 'Leave')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                 status === 'Leave'
-                                  ? 'bg-amber-600 text-white shadow-2xs'
-                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                                  ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
+                                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                               }`}
                             >
                               ছুটি
@@ -1178,16 +1178,16 @@ const Attendance: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         {isDirty ? (
-                          <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+                          <span className="inline-block bg-theme-warning-soft text-theme-warning text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-theme-warning-border shadow-2xs">
                             অসংরক্ষিত
                           </span>
                         ) : isSaved ? (
-                          <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            {isLocked && <Lock size={10} className="text-slate-400" />}
+                          <span className="inline-flex items-center space-x-1 bg-theme-success-soft text-theme-success text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-theme-success-border">
+                            {isLocked && <Lock size={10} className="text-theme-text-muted" />}
                             <span>সংরক্ষিত</span>
                           </span>
                         ) : (
-                          <span className="text-slate-300 text-xs">—</span>
+                          <span className="text-theme-text-muted text-xs">—</span>
                         )}
                       </td>
                     </tr>
@@ -1208,20 +1208,20 @@ const Attendance: React.FC = () => {
             const isLocked = item?.isSavedInDb && !canEditAttendance;
 
             return (
-              <div 
+              <div
                 key={t.id}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-4 sm:p-5 relative overflow-hidden transition-all duration-200 hover:shadow-md flex flex-col justify-between"
+                className="bg-theme-surface rounded-3xl border border-theme-border shadow-xs p-4 sm:p-5 relative overflow-hidden transition-all duration-200 hover:shadow-md flex flex-col justify-between"
               >
                 {/* Left Colored Vertical Accent Strip */}
-                <div 
-                  className={`absolute left-0 top-0 bottom-0 w-2.5 rounded-l-3xl transition-colors duration-200 ${
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-3xl transition-colors duration-200 ${
                     status === 'Present'
-                      ? 'bg-emerald-600'
+                      ? 'bg-theme-success'
                       : status === 'Absent'
-                      ? 'bg-rose-600'
+                      ? 'bg-theme-danger'
                       : status === 'Leave'
-                      ? 'bg-amber-500'
-                      : 'bg-slate-200'
+                      ? 'bg-theme-warning'
+                      : 'bg-theme-border-strong'
                   }`}
                 />
 
@@ -1229,15 +1229,15 @@ const Attendance: React.FC = () => {
                 <div className="flex items-start justify-between pl-1.5 gap-2">
                   <div className="flex items-center space-x-3 min-w-0">
                     {/* Avatar Circle with Initial */}
-                    <div className="w-11 h-11 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-base shrink-0 border border-slate-200/70 shadow-2xs">
+                    <div className="w-11 h-11 rounded-full bg-theme-surface-subtle text-theme-text-primary font-bold flex items-center justify-center text-base shrink-0 border border-theme-border shadow-2xs">
                       {(t.nameBn || t.nameEn || 'শ').trim().charAt(0)}
                     </div>
 
                     <div className="min-w-0">
-                      <h4 className="font-bold text-slate-900 text-base sm:text-lg leading-snug truncate">
+                      <h4 className="font-bold text-theme-text-primary text-base sm:text-lg leading-snug truncate">
                         {t.nameBn || t.nameEn}
                       </h4>
-                      <div className="flex items-center space-x-2 text-xs text-slate-500 font-medium mt-0.5">
+                      <div className="flex items-center space-x-2 text-xs text-theme-text-secondary font-medium mt-0.5 tabular-nums">
                         <span>ক্র. {toBn(idx + 1)}</span>
                         {t.traineeId && (
                           <>
@@ -1252,12 +1252,12 @@ const Attendance: React.FC = () => {
                   {/* Status Badges */}
                   <div className="shrink-0">
                     {isDirty ? (
-                      <span className="inline-block bg-amber-100/90 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-amber-200/80 shadow-2xs">
+                      <span className="inline-block bg-theme-warning-soft text-theme-warning text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-theme-warning-border shadow-2xs">
                         অসংরক্ষিত
                       </span>
                     ) : isSaved ? (
-                      <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        {isLocked && <Lock size={10} className="text-slate-400" />}
+                      <span className="inline-flex items-center space-x-1 bg-theme-success-soft text-theme-success text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-theme-success-border">
+                        {isLocked && <Lock size={10} className="text-theme-text-muted" />}
                         <span>সংরক্ষিত</span>
                       </span>
                     ) : null}
@@ -1267,29 +1267,29 @@ const Attendance: React.FC = () => {
                 {/* Card Bottom Row: 3-Segmented Toggle Buttons */}
                 <div className="mt-4 pl-1.5">
                   {isLocked ? (
-                    <div 
+                    <div
                       onClick={() => {
                         setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। সংরক্ষিত রেকর্ড পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
                         setTimeout(() => setPermissionNotice(''), 4500);
                       }}
-                      className="bg-slate-100/90 p-2.5 rounded-2xl flex items-center justify-center space-x-2 text-xs font-semibold text-slate-600 border border-slate-200 cursor-pointer"
+                      className="bg-theme-surface-subtle p-2.5 rounded-2xl flex items-center justify-center space-x-2 text-xs font-semibold text-theme-text-secondary border border-theme-border cursor-pointer"
                     >
-                      <Lock size={14} className="text-slate-400" />
-                      <span className={status === 'Present' ? 'text-emerald-700 font-bold' : status === 'Absent' ? 'text-rose-700 font-bold' : 'text-amber-700 font-bold'}>
+                      <Lock size={14} className="text-theme-text-muted" />
+                      <span className={status === 'Present' ? 'text-theme-success font-bold' : status === 'Absent' ? 'text-theme-danger font-bold' : 'text-theme-warning font-bold'}>
                         {status === 'Present' ? 'উপস্থিত (সংরক্ষিত ও লকড)' : status === 'Absent' ? 'অনুপস্থিত (সংরক্ষিত ও লকড)' : status === 'Leave' ? 'ছুটি (সংরক্ষিত ও লকড)' : 'চিহ্নিত নয়'}
                       </span>
                     </div>
                   ) : (
-                    <div className="bg-slate-100/90 p-1 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/70">
+                    <div className="bg-theme-surface-subtle p-1 rounded-2xl flex items-center justify-between gap-1 border border-theme-border">
                       {/* উপস্থিত (Present) */}
                       <button
                         type="button"
                         disabled={!canTakeAttendance || isFutureDate}
                         onClick={() => setStatus(t.id, 'Present')}
-                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center ${
+                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
                           status === 'Present'
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                            ? 'bg-theme-success text-theme-success-fg shadow-xs'
+                            : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                         }`}
                       >
                         উপস্থিত
@@ -1300,10 +1300,10 @@ const Attendance: React.FC = () => {
                         type="button"
                         disabled={!canTakeAttendance || isFutureDate}
                         onClick={() => setStatus(t.id, 'Absent')}
-                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center ${
+                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
                           status === 'Absent'
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                            ? 'bg-theme-danger text-theme-danger-fg shadow-xs'
+                            : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                         }`}
                       >
                         অনুপস্থিত
@@ -1314,10 +1314,10 @@ const Attendance: React.FC = () => {
                         type="button"
                         disabled={!canTakeAttendance || isFutureDate}
                         onClick={() => setStatus(t.id, 'Leave')}
-                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center ${
+                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
                           status === 'Leave'
-                            ? 'bg-amber-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                            ? 'bg-theme-warning text-theme-warning-fg shadow-xs'
+                            : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                         }`}
                       >
                         ছুটি
@@ -1335,11 +1335,11 @@ const Attendance: React.FC = () => {
       {/* 4. FLOATING STICKY SAVE BAR (RESPONSIVE)                 */}
       {/* ======================================================== */}
       {allTraineesInBatch.length > 0 && hasUnsavedChanges && (
-        <div className="fixed bottom-20 left-4 right-4 lg:bottom-6 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-40 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl shadow-2xl px-5 sm:px-6 py-3.5 border border-slate-700/80 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-40 bg-theme-elevated/95 backdrop-blur-md text-theme-text-primary rounded-2xl shadow-2xl px-5 sm:px-6 py-3.5 border border-theme-border-strong flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
           <div className="text-xs sm:text-sm font-medium flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse inline-block shrink-0" />
+            <span className="w-2.5 h-2.5 rounded-full bg-theme-warning inline-block shrink-0" />
             <span>
-              <span className="text-amber-400 font-black">{toBn(dirtyCount)}</span> জনের অসংরক্ষিত পরিবর্তন
+              <span className="text-theme-warning font-black tabular-nums">{toBn(dirtyCount)}</span> জনের অসংরক্ষিত পরিবর্তন
             </span>
           </div>
 
@@ -1347,7 +1347,7 @@ const Attendance: React.FC = () => {
             <button
               type="button"
               onClick={handleResetToSaved}
-              className="text-xs sm:text-sm text-slate-300 hover:text-white font-medium px-2.5 py-1.5 transition"
+              className="text-xs sm:text-sm text-theme-text-secondary hover:text-theme-text-primary font-medium px-2.5 py-1.5 transition cursor-pointer"
             >
               বাতিল
             </button>
@@ -1356,7 +1356,7 @@ const Attendance: React.FC = () => {
               type="button"
               onClick={() => executeSave()}
               disabled={saving}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition active:scale-95 flex items-center space-x-1.5"
+              className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold shadow-md transition active:scale-95 flex items-center space-x-1.5 cursor-pointer disabled:opacity-60"
             >
               <Save size={16} />
               <span>{saving ? 'সংরক্ষণ...' : 'সংরক্ষণ করুন'}</span>
@@ -1369,29 +1369,29 @@ const Attendance: React.FC = () => {
       {/* 5. BULK ACTION CONFIRMATION MODAL                        */}
       {/* ======================================================== */}
       {bulkConfirmModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-sm w-full p-5 shadow-xl border border-theme-border space-y-3 text-theme-text-primary">
             <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-theme-primary-soft text-theme-primary flex items-center justify-center shrink-0">
                 <CheckCheck size={20} />
               </div>
-              <h3 className="text-sm font-bold text-slate-900">{bulkConfirmModal.title}</h3>
+              <h3 className="text-sm font-bold text-theme-text-primary">{bulkConfirmModal.title}</h3>
             </div>
 
-            <p className="text-xs text-slate-600">{bulkConfirmModal.description}</p>
+            <p className="text-xs text-theme-text-secondary">{bulkConfirmModal.description}</p>
 
             <div className="flex items-center justify-end space-x-2 pt-2 text-xs">
               <button
                 type="button"
                 onClick={() => setBulkConfirmModal(null)}
-                className="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium"
+                className="px-3 py-1.5 border border-theme-border text-theme-text-secondary rounded-lg hover:bg-theme-surface-hover font-medium cursor-pointer"
               >
                 বাতিল
               </button>
               <button
                 type="button"
                 onClick={() => applyBulkAction(bulkConfirmModal.status)}
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-xs transition"
+                className="px-4 py-1.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-lg font-bold shadow-xs transition cursor-pointer"
               >
                 নিশ্চিত করুন
               </button>
@@ -1404,38 +1404,38 @@ const Attendance: React.FC = () => {
       {/* 6. UNSAVED CHANGES NAVIGATION WARNING MODAL              */}
       {/* ======================================================== */}
       {pendingChange && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-sm w-full p-5 shadow-xl border border-theme-border space-y-3 text-theme-text-primary">
             <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center shrink-0">
                 <AlertCircle size={20} />
               </div>
-              <h3 className="text-sm font-bold text-slate-900">অসংরক্ষিত পরিবর্তন রয়েছে</h3>
+              <h3 className="text-sm font-bold text-theme-text-primary">অসংরক্ষিত পরিবর্তন রয়েছে</h3>
             </div>
 
-            <p className="text-xs text-slate-600">
-              আপনার {toBn(dirtyCount)} জন শিক্ষার্থীর পরিবর্তিত হাজিরা রয়েছে। আপনি কি সংরক্ষণ না করে অন্য ব্যাচ/তারিখে যেতে চান?
+            <p className="text-xs text-theme-text-secondary">
+              আপনার <span className="tabular-nums font-bold">{toBn(dirtyCount)}</span> জন শিক্ষার্থীর পরিবর্তিত হাজিরা রয়েছে। আপনি কি সংরক্ষণ না করে অন্য ব্যাচ/তারিখে যেতে চান?
             </p>
 
             <div className="flex items-center justify-end space-x-2 pt-2 text-xs">
               <button
                 type="button"
                 onClick={() => setPendingChange(null)}
-                className="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg"
+                className="px-3 py-1.5 border border-theme-border text-theme-text-secondary rounded-lg hover:bg-theme-surface-hover cursor-pointer"
               >
                 থাকুন
               </button>
               <button
                 type="button"
                 onClick={handleDiscardAndProceed}
-                className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold"
+                className="px-3 py-1.5 bg-theme-danger-soft text-theme-danger border border-theme-danger-border rounded-lg font-bold hover:opacity-90 cursor-pointer"
               >
                 বাতিল করে যান
               </button>
               <button
                 type="button"
                 onClick={handleSaveAndProceed}
-                className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg font-bold"
+                className="px-4 py-1.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-lg font-bold cursor-pointer"
               >
                 সংরক্ষণ করুন
               </button>

@@ -2,7 +2,8 @@
 <html lang="bn">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#FFFFFF" />
     <title>BNFE Training Management</title>
     <meta name="description" content="Bangladesh Bureau of Non-Formal Education (BNFE) Training Management System" />
     <meta property="og:title" content="BNFE Training Management" />
@@ -11,7 +12,54 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('bnfe_theme_config_v1');
+          var cfg = raw ? JSON.parse(raw) : null;
+          var mode = cfg && (cfg.mode === 'light' || cfg.mode === 'dark' || cfg.mode === 'system') ? cfg.mode : 'system';
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var resolved = mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
+          var root = document.documentElement;
+          if (resolved === 'dark') {
+            root.classList.add('dark');
+          } else {
+            root.classList.remove('dark');
+          }
+          root.style.colorScheme = resolved;
+          var defaults = resolved === 'dark'
+            ? {
+                primary: '#34D399', primaryHover: '#6EE7B7', primarySoft: '#064E3B', accent: '#2DD4BF',
+                background: '#020617', surface: '#0F172A', elevatedSurface: '#1E293B', navigation: '#0F172A',
+                textPrimary: '#F1F5F9', textSecondary: '#94A3B8', textMuted: '#64748B', border: '#1E293B',
+                success: '#34D399', warning: '#FBBF24', danger: '#F87171', info: '#60A5FA'
+              }
+            : {
+                primary: '#059669', primaryHover: '#047857', primarySoft: '#D1FAE5', accent: '#0D9488',
+                background: '#F8FAFC', surface: '#FFFFFF', elevatedSurface: '#FFFFFF', navigation: '#FFFFFF',
+                textPrimary: '#0F172A', textSecondary: '#64748B', textMuted: '#94A3B8', border: '#E2E8F0',
+                success: '#059669', warning: '#D97706', danger: '#DC2626', info: '#2563EB'
+              };
+          var stored = cfg && cfg[resolved] ? cfg[resolved] : {};
+          var tokens = Object.assign({}, defaults, stored);
+          var map = {
+            primary: '--theme-primary', primaryHover: '--theme-primary-hover', primarySoft: '--theme-primary-soft',
+            accent: '--theme-accent', background: '--theme-bg', surface: '--theme-surface',
+            elevatedSurface: '--theme-elevated', navigation: '--theme-nav', textPrimary: '--theme-text-primary',
+            textSecondary: '--theme-text-secondary', textMuted: '--theme-text-muted', border: '--theme-border',
+            success: '--theme-success', warning: '--theme-warning', danger: '--theme-danger', info: '--theme-info'
+          };
+          Object.keys(map).forEach(function (k) {
+            if (typeof tokens[k] === 'string' && /^#[0-9A-Fa-f]{6}$/.test(tokens[k])) {
+              root.style.setProperty(map[k], tokens[k]);
+            }
+          });
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta && tokens.navigation) meta.setAttribute('content', tokens.navigation);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

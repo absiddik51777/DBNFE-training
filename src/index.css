@@ -1,22 +1,200 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-body {
-  font-family: 'Noto Sans Bengali', sans-serif;
+@theme inline {
+  --font-sans: "Inter", "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+
+  --color-theme-primary: var(--theme-primary);
+  --color-theme-primary-hover: var(--theme-primary-hover);
+  --color-theme-primary-soft: var(--theme-primary-soft);
+  --color-theme-primary-fg: var(--theme-primary-fg);
+  --color-theme-primary-soft-fg: var(--theme-primary-soft-fg);
+  --color-theme-primary-border: var(--theme-primary-border);
+
+  --color-theme-accent: var(--theme-accent);
+  --color-theme-accent-fg: var(--theme-accent-fg);
+  --color-theme-accent-soft: var(--theme-accent-soft);
+  --color-theme-accent-border: var(--theme-accent-border);
+
+  --color-theme-bg: var(--theme-bg);
+  --color-theme-surface: var(--theme-surface);
+  --color-theme-surface-subtle: var(--theme-surface-subtle);
+  --color-theme-surface-hover: var(--theme-surface-hover);
+  --color-theme-elevated: var(--theme-elevated);
+  --color-theme-nav: var(--theme-nav);
+
+  --color-theme-text-primary: var(--theme-text-primary);
+  --color-theme-text-secondary: var(--theme-text-secondary);
+  --color-theme-text-muted: var(--theme-text-muted);
+  --color-theme-border: var(--theme-border);
+  --color-theme-border-strong: var(--theme-border-strong);
+
+  --color-theme-success: var(--theme-success);
+  --color-theme-success-fg: var(--theme-success-fg);
+  --color-theme-success-soft: var(--theme-success-soft);
+  --color-theme-success-border: var(--theme-success-border);
+
+  --color-theme-warning: var(--theme-warning);
+  --color-theme-warning-fg: var(--theme-warning-fg);
+  --color-theme-warning-soft: var(--theme-warning-soft);
+  --color-theme-warning-border: var(--theme-warning-border);
+
+  --color-theme-danger: var(--theme-danger);
+  --color-theme-danger-fg: var(--theme-danger-fg);
+  --color-theme-danger-soft: var(--theme-danger-soft);
+  --color-theme-danger-border: var(--theme-danger-border);
+
+  --color-theme-info: var(--theme-info);
+  --color-theme-info-fg: var(--theme-info-fg);
+  --color-theme-info-soft: var(--theme-info-soft);
+  --color-theme-info-border: var(--theme-info-border);
 }
 
-/* Subtle modern scrollbar for dark sidebar navigation */
-aside nav::-webkit-scrollbar {
-  width: 5px;
+:root {
+  --theme-primary: #059669;
+  --theme-primary-hover: #047857;
+  --theme-primary-soft: #D1FAE5;
+  --theme-primary-fg: #FFFFFF;
+  --theme-primary-soft-fg: #047857;
+  --theme-primary-border: rgba(5, 150, 105, 0.26);
+  --theme-primary-ring: rgba(5, 150, 105, 0.22);
+
+  --theme-accent: #0D9488;
+  --theme-accent-fg: #FFFFFF;
+  --theme-accent-soft: rgba(13, 148, 136, 0.11);
+  --theme-accent-border: rgba(13, 148, 136, 0.26);
+
+  --theme-bg: #F8FAFC;
+  --theme-surface: #FFFFFF;
+  --theme-surface-subtle: #F1F5F9;
+  --theme-surface-hover: #F8FAFC;
+  --theme-elevated: #FFFFFF;
+  --theme-nav: #FFFFFF;
+
+  --theme-text-primary: #0F172A;
+  --theme-text-secondary: #64748B;
+  --theme-text-muted: #94A3B8;
+  --theme-border: #E2E8F0;
+  --theme-border-strong: #CBD5E1;
+
+  --theme-success: #059669;
+  --theme-success-fg: #FFFFFF;
+  --theme-success-soft: rgba(5, 150, 105, 0.11);
+  --theme-success-border: rgba(5, 150, 105, 0.26);
+
+  --theme-warning: #D97706;
+  --theme-warning-fg: #FFFFFF;
+  --theme-warning-soft: rgba(217, 119, 6, 0.11);
+  --theme-warning-border: rgba(217, 119, 6, 0.26);
+
+  --theme-danger: #DC2626;
+  --theme-danger-fg: #FFFFFF;
+  --theme-danger-soft: rgba(220, 38, 38, 0.11);
+  --theme-danger-border: rgba(220, 38, 38, 0.26);
+
+  --theme-info: #2563EB;
+  --theme-info-fg: #FFFFFF;
+  --theme-info-soft: rgba(37, 99, 235, 0.11);
+  --theme-info-border: rgba(37, 99, 235, 0.26);
 }
-aside nav::-webkit-scrollbar-track {
+
+.dark {
+  --theme-primary: #34D399;
+  --theme-primary-hover: #6EE7B7;
+  --theme-primary-soft: #064E3B;
+  --theme-primary-fg: #0F172A;
+  --theme-primary-soft-fg: #6EE7B7;
+  --theme-primary-border: rgba(52, 211, 153, 0.32);
+  --theme-primary-ring: rgba(52, 211, 153, 0.35);
+
+  --theme-accent: #2DD4BF;
+  --theme-accent-fg: #0F172A;
+  --theme-accent-soft: rgba(45, 212, 191, 0.16);
+  --theme-accent-border: rgba(45, 212, 191, 0.32);
+
+  --theme-bg: #020617;
+  --theme-surface: #0F172A;
+  --theme-surface-subtle: #091022;
+  --theme-surface-hover: #1E293B;
+  --theme-elevated: #1E293B;
+  --theme-nav: #0F172A;
+
+  --theme-text-primary: #F1F5F9;
+  --theme-text-secondary: #94A3B8;
+  --theme-text-muted: #64748B;
+  --theme-border: #1E293B;
+  --theme-border-strong: #334155;
+
+  --theme-success: #34D399;
+  --theme-success-fg: #0F172A;
+  --theme-success-soft: rgba(52, 211, 153, 0.16);
+  --theme-success-border: rgba(52, 211, 153, 0.32);
+
+  --theme-warning: #FBBF24;
+  --theme-warning-fg: #0F172A;
+  --theme-warning-soft: rgba(251, 191, 36, 0.16);
+  --theme-warning-border: rgba(251, 191, 36, 0.32);
+
+  --theme-danger: #F87171;
+  --theme-danger-fg: #0F172A;
+  --theme-danger-soft: rgba(248, 113, 113, 0.16);
+  --theme-danger-border: rgba(248, 113, 113, 0.32);
+
+  --theme-info: #60A5FA;
+  --theme-info-fg: #0F172A;
+  --theme-info-soft: rgba(96, 165, 250, 0.16);
+  --theme-info-border: rgba(96, 165, 250, 0.32);
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--theme-bg);
+    color: var(--theme-text-primary);
+    font-family: "Inter", "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Ensure select options remain legible in Dark Mode */
+  select option {
+    background-color: var(--theme-elevated);
+    color: var(--theme-text-primary);
+  }
+}
+
+/* Numeric tabular alignment for metrics and tables */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Themed subtle scrollbars for navigation & scrollable areas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
   background: transparent;
 }
-aside nav::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-border-strong);
+  border-radius: 9999px;
 }
-aside nav::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-text-muted);
+}
+
+/* Hide scrollbars cleanly where horizontal chip rows are used */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @media print {
@@ -24,10 +202,12 @@ aside nav::-webkit-scrollbar-thumb:hover {
     size: A4 landscape;
     margin: 12mm 10mm;
   }
-  
+
+  html,
   body {
-    background: white !important;
-    color: black !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    color-scheme: light !important;
   }
 
   table {

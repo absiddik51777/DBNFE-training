@@ -610,11 +610,11 @@ const BrnVerification: React.FC = () => {
     if (t.is_brn_verified === true) {
       return (
         <span 
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-theme-success-soft text-theme-success border border-theme-success-border shadow-2xs"
           title={t.brn_verified_by ? `যাচাইকারী: ${t.brn_verified_by}` : 'BDRIS অনলাইন যাচাই সম্পন্ন'}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-          <CheckCircle2 size={12} className="text-emerald-700 shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-theme-success shrink-0"></span>
+          <CheckCircle2 size={12} className="text-theme-success shrink-0" />
           <span>যাচাইকৃত</span>
         </span>
       );
@@ -622,19 +622,19 @@ const BrnVerification: React.FC = () => {
     if (t.is_brn_verified === false) {
       return (
         <span 
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200/90 shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-theme-danger-soft text-theme-danger border border-theme-danger-border shadow-2xs"
           title={t.brn_remark ? `কারণ: ${t.brn_remark}` : 'সার্ভারে অমিল বা ত্রুটিযুক্ত'}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
-          <XCircle size={12} className="text-rose-700 shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-theme-danger shrink-0"></span>
+          <XCircle size={12} className="text-theme-danger shrink-0" />
           <span>অবৈধ</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/90 shadow-2xs">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-        <Clock size={12} className="text-amber-600 shrink-0" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-theme-warning-soft text-theme-warning border border-theme-warning-border shadow-2xs">
+        <span className="w-1.5 h-1.5 rounded-full bg-theme-warning shrink-0"></span>
+        <Clock size={12} className="text-theme-warning shrink-0" />
         <span>অপেক্ষমাণ</span>
       </span>
     );
@@ -649,12 +649,12 @@ const BrnVerification: React.FC = () => {
     return (
       <div
         key={trainee.id}
-        className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+        className="bg-theme-surface rounded-2xl border border-theme-border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
       >
         <div>
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center space-x-3 min-w-0">
-              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-base border border-purple-100 shrink-0 overflow-hidden shadow-2xs">
+              <div className="w-11 h-11 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold text-base border border-theme-accent-border shrink-0 overflow-hidden shadow-2xs">
                 {trainee.photoUrl ? (
                   <img src={trainee.photoUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -664,17 +664,17 @@ const BrnVerification: React.FC = () => {
               <div className="min-w-0">
                 <Link
                   to={`/trainees/${trainee.id}`}
-                  className="font-bold text-slate-900 hover:text-purple-700 transition flex items-center space-x-1 group/link truncate"
+                  className="font-bold text-theme-text-primary hover:text-theme-primary transition flex items-center space-x-1 group/link truncate"
                   title="প্রশিক্ষণার্থীর প্রোফাইল দেখুন"
                 >
                   <span className="truncate">{trainee.nameBn || trainee.nameEn}</span>
-                  <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 text-purple-600 shrink-0 transition" />
+                  <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 text-theme-primary shrink-0 transition" />
                 </Link>
                 {trainee.nameEn && trainee.nameBn && (
-                  <p className="text-[11px] text-slate-400 truncate">{trainee.nameEn}</p>
+                  <p className="text-[11px] text-theme-text-muted truncate">{trainee.nameEn}</p>
                 )}
-                <div className="flex items-center space-x-2 mt-0.5 text-[11px] font-mono text-slate-500">
-                  <span>ID: <strong className="text-slate-700">{trainee.traineeId}</strong></span>
+                <div className="flex items-center space-x-2 mt-0.5 text-[11px] font-mono text-theme-text-secondary tabular-nums">
+                  <span>ID: <strong className="text-theme-text-primary">{trainee.traineeId}</strong></span>
                   {trainee.registrationNumber && (
                     <span>• রেজিঃ {trainee.registrationNumber}</span>
                   )}
@@ -687,20 +687,20 @@ const BrnVerification: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-3.5 bg-slate-50/80 rounded-xl p-3 border border-slate-100 space-y-1.5">
+          <div className="mt-3.5 bg-theme-surface-subtle rounded-xl p-3 border border-theme-border space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-theme-text-muted">
                 জন্ম নিবন্ধন নম্বর (UBRN)
               </span>
               {rawUbrn ? (
                 is17Digit ? (
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700">
-                    <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-theme-success">
+                    <CheckCircle2 size={11} className="text-theme-success shrink-0" />
                     <span>১৭ ডিজিট</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-amber-700">
-                    <AlertTriangle size={11} className="text-amber-600 shrink-0" />
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-theme-warning tabular-nums">
+                    <AlertTriangle size={11} className="text-theme-warning shrink-0" />
                     <span>{toBn(rawUbrn.length)} ডিজিট (১৭ প্রয়োজন)</span>
                   </span>
                 )
@@ -708,50 +708,50 @@ const BrnVerification: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono font-bold text-slate-900 text-sm tracking-wider select-all break-all">
+              <span className="font-mono font-bold text-theme-text-primary text-sm tracking-wider select-all break-all tabular-nums">
                 {trainee.nidOrBirthRegistration || (
-                  <span className="text-rose-500 italic font-sans font-normal text-xs">অনুপস্থিত</span>
+                  <span className="text-theme-danger italic font-sans font-normal text-xs">অনুপস্থিত</span>
                 )}
               </span>
               {rawUbrn && (
                 <button
                   type="button"
                   onClick={() => handleCopyUbrn(trainee.id, rawUbrn)}
-                  className="p-1 rounded-md text-slate-400 hover:text-purple-700 hover:bg-purple-50 transition shrink-0 cursor-pointer"
+                  className="p-1 rounded-md text-theme-text-muted hover:text-theme-primary hover:bg-theme-primary-soft transition shrink-0 cursor-pointer"
                   title={isCopied ? 'কপি সম্পন্ন!' : 'নম্বরটি কপি করুন'}
                 >
-                  {isCopied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                  {isCopied ? <Check size={13} className="text-theme-success" /> : <Copy size={13} />}
                 </button>
               )}
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-theme-text-secondary">
             <div>
-              <span className="text-[10px] text-slate-400 block">জন্ম তারিখ:</span>
-              <span className="font-mono font-semibold text-slate-800">{formattedDob || '-'}</span>
+              <span className="text-[10px] text-theme-text-muted block">জন্ম তারিখ:</span>
+              <span className="font-mono font-semibold text-theme-text-primary tabular-nums">{formattedDob || '-'}</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 block">লিঙ্গ:</span>
-              <span className="font-medium text-slate-800">{trainee.gender === 'Female' ? 'নারী' : 'পুরুষ'}</span>
+              <span className="text-[10px] text-theme-text-muted block">লিঙ্গ:</span>
+              <span className="font-medium text-theme-text-primary">{trainee.gender === 'Female' ? 'নারী' : 'পুরুষ'}</span>
             </div>
-            <div className="col-span-2 pt-1 border-t border-slate-100">
-              <span className="text-[10px] text-slate-400 block">প্রতিষ্ঠান ও ব্যাচ:</span>
-              <span className="font-medium text-slate-800 block truncate" title={`${getInstituteName(trainee.instituteId)} • ${getBatchName(trainee.batchId)}`}>
+            <div className="col-span-2 pt-1 border-t border-theme-border">
+              <span className="text-[10px] text-theme-text-muted block">প্রতিষ্ঠান ও ব্যাচ:</span>
+              <span className="font-medium text-theme-text-primary block truncate" title={`${getInstituteName(trainee.instituteId)} • ${getBatchName(trainee.batchId)}`}>
                 {getBatchName(trainee.batchId)} ({getInstituteName(trainee.instituteId)})
               </span>
             </div>
           </div>
 
           {trainee.brn_remark && (
-            <div className="mt-3 bg-purple-50/60 border border-purple-100 rounded-xl p-2.5 text-xs text-purple-900">
-              <span className="text-[10px] font-bold text-purple-600 uppercase block mb-0.5">যাচাই মন্তব্য:</span>
+            <div className="mt-3 bg-theme-accent-soft border border-theme-accent-border rounded-xl p-2.5 text-xs text-theme-text-primary">
+              <span className="text-[10px] font-bold text-theme-accent uppercase block mb-0.5">যাচাই মন্তব্য:</span>
               <p className="italic font-medium leading-relaxed">{trainee.brn_remark}</p>
             </div>
           )}
         </div>
 
-        <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+        <div className="pt-3 border-t border-theme-border flex items-center gap-2">
           <form
             action="https://everify.bdris.gov.bd/UBRNVerification/Search"
             encType="multipart/form-data"
@@ -765,10 +765,10 @@ const BrnVerification: React.FC = () => {
               type="submit"
               name="Submit"
               value="Check birth registration"
-              className="w-full py-2 px-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200/90 font-bold text-xs inline-flex items-center justify-center space-x-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+              className="w-full py-2 px-2.5 rounded-xl bg-theme-info-soft hover:opacity-90 text-theme-info border border-theme-info-border font-bold text-xs inline-flex items-center justify-center space-x-1.5 transition shadow-2xs cursor-pointer active:scale-95"
               title="সরকারি BDRIS সার্ভারে জন্ম নিবন্ধন অনলাইন যাচাই করুন (নতুন ট্যাবে খুলবে)"
             >
-              <ExternalLink size={13} className="text-sky-600 shrink-0" />
+              <ExternalLink size={13} className="text-theme-info shrink-0" />
               <span>BDRIS চেক</span>
             </button>
           </form>
@@ -776,10 +776,10 @@ const BrnVerification: React.FC = () => {
           <button
             type="button"
             onClick={() => handleOpenVerifyModal(trainee)}
-            className="flex-1 py-2 px-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs inline-flex items-center justify-center space-x-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+            className="flex-1 py-2 px-2.5 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg font-bold text-xs inline-flex items-center justify-center space-x-1.5 transition shadow-2xs cursor-pointer active:scale-95"
             title="জন্ম নিবন্ধন যাচাই স্ট্যাটাস ও মন্তব্য হালনাগাদ করুন"
           >
-            <ShieldCheck size={13} className="text-purple-200 shrink-0" />
+            <ShieldCheck size={13} className="shrink-0" />
             <span>যাচাইকরণ</span>
           </button>
         </div>
@@ -794,9 +794,9 @@ const BrnVerification: React.FC = () => {
     const isCopied = copiedId === trainee.id;
 
     return (
-      <tr key={trainee.id} className="hover:bg-purple-50/30 transition-colors group">
+      <tr key={trainee.id} className="hover:bg-theme-surface-hover transition-colors group">
         {isColVisible('sl') && (
-          <td className="px-4 py-3 text-center font-mono text-slate-400 font-semibold text-xs">
+          <td className="px-4 py-3 text-center font-mono text-theme-text-muted font-semibold text-xs tabular-nums">
             {toBn(sl)}
           </td>
         )}
@@ -805,7 +805,7 @@ const BrnVerification: React.FC = () => {
             <div className="flex items-center space-x-3">
               <Link
                 to={`/trainees/${trainee.id}`}
-                className="w-10 h-10 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-purple-200/80 hover:ring-2 hover:ring-purple-400 transition"
+                className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-theme-accent-border hover:ring-2 hover:ring-theme-accent transition"
                 title="প্রোফাইল দেখুন"
               >
                 {trainee.photoUrl ? (
@@ -817,13 +817,13 @@ const BrnVerification: React.FC = () => {
               <div className="min-w-0">
                 <Link
                   to={`/trainees/${trainee.id}`}
-                  className="font-bold text-slate-900 hover:text-purple-700 transition block truncate text-xs sm:text-sm"
+                  className="font-bold text-theme-text-primary hover:text-theme-primary transition block truncate text-xs sm:text-sm"
                   title="প্রোফাইল দেখুন"
                 >
                   {trainee.nameBn || trainee.nameEn}
                 </Link>
-                <div className="flex items-center space-x-2 mt-0.5 text-[10px] text-slate-400 font-mono">
-                  <span>আইডি: <strong className="text-slate-700 font-bold">{trainee.traineeId}</strong></span>
+                <div className="flex items-center space-x-2 mt-0.5 text-[10px] text-theme-text-muted font-mono tabular-nums">
+                  <span>আইডি: <strong className="text-theme-text-primary font-bold">{trainee.traineeId}</strong></span>
                   {trainee.registrationNumber && (
                     <span>• রেজিঃ {trainee.registrationNumber}</span>
                   )}
@@ -836,20 +836,20 @@ const BrnVerification: React.FC = () => {
           <td className="px-4 py-3 min-w-[210px]">
             <div className="space-y-1">
               <div className="flex items-center space-x-1.5">
-                <span className="select-all font-mono font-bold text-slate-900 text-xs tracking-wider inline-block">
+                <span className="select-all font-mono font-bold text-theme-text-primary text-xs tracking-wider inline-block tabular-nums">
                   {trainee.nidOrBirthRegistration || (
-                    <span className="text-rose-600 font-sans font-medium text-[11px] not-italic">অনুপস্থিত</span>
+                    <span className="text-theme-danger font-sans font-medium text-[11px] not-italic">অনুপস্থিত</span>
                   )}
                 </span>
                 {rawUbrn && (
                   <button
                     type="button"
                     onClick={() => handleCopyUbrn(trainee.id, rawUbrn)}
-                    className="p-1 rounded-md text-slate-400 hover:text-purple-700 hover:bg-purple-50 transition cursor-pointer"
+                    className="p-1 rounded-md text-theme-text-muted hover:text-theme-primary hover:bg-theme-primary-soft transition cursor-pointer"
                     title={isCopied ? 'কপি হয়েছে!' : 'UBRN নম্বর কপি করুন'}
                   >
                     {isCopied ? (
-                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <CheckCircle2 size={13} className="text-theme-success" />
                     ) : (
                       <Copy size={13} />
                     )}
@@ -858,13 +858,13 @@ const BrnVerification: React.FC = () => {
               </div>
               {rawUbrn ? (
                 is17Digit ? (
-                  <span className="inline-flex items-center text-[10.5px] font-semibold text-emerald-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
+                  <span className="inline-flex items-center text-[10.5px] font-semibold text-theme-success">
+                    <span className="w-1.5 h-1.5 rounded-full bg-theme-success mr-1.5 inline-block" />
                     ১৭ ডিজিট সঠিক
                   </span>
                 ) : (
-                  <span className="inline-flex items-center text-[10.5px] font-semibold text-amber-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 inline-block" />
+                  <span className="inline-flex items-center text-[10.5px] font-semibold text-theme-warning tabular-nums">
+                    <span className="w-1.5 h-1.5 rounded-full bg-theme-warning mr-1.5 inline-block" />
                     {toBn(rawUbrn.length)} ডিজিট (১৭ প্রয়োজন)
                   </span>
                 )
@@ -874,20 +874,20 @@ const BrnVerification: React.FC = () => {
         )}
         {isColVisible('dob') && (
           <td className="px-4 py-3 whitespace-nowrap">
-            <div className="flex items-center space-x-1.5 text-slate-700">
-              <Calendar size={13} className="text-slate-400 shrink-0" />
-              <span className="font-mono font-semibold text-xs">
-                {formattedDob || <span className="text-slate-400 font-sans text-xs">নির্ধারিত নেই</span>}
+            <div className="flex items-center space-x-1.5 text-theme-text-primary">
+              <Calendar size={13} className="text-theme-text-muted shrink-0" />
+              <span className="font-mono font-semibold text-xs tabular-nums">
+                {formattedDob || <span className="text-theme-text-muted font-sans text-xs">নির্ধারিত নেই</span>}
               </span>
             </div>
           </td>
         )}
         {isColVisible('instituteBatch') && (
           <td className="px-4 py-3">
-            <div className="font-bold text-slate-800 text-xs truncate max-w-[190px]">
+            <div className="font-bold text-theme-text-primary text-xs truncate max-w-[190px]">
               {getBatchName(trainee.batchId)}
             </div>
-            <div className="text-[11px] text-slate-400 truncate max-w-[190px]">
+            <div className="text-[11px] text-theme-text-muted truncate max-w-[190px]">
               {getInstituteName(trainee.instituteId)}
             </div>
           </td>
@@ -900,11 +900,11 @@ const BrnVerification: React.FC = () => {
         {isColVisible('remark') && (
           <td className="px-4 py-3 max-w-[190px]">
             {trainee.brn_remark ? (
-              <span className="text-slate-700 text-[11px] line-clamp-2 leading-relaxed" title={trainee.brn_remark}>
+              <span className="text-theme-text-secondary text-[11px] line-clamp-2 leading-relaxed" title={trainee.brn_remark}>
                 "{trainee.brn_remark}"
               </span>
             ) : (
-              <span className="text-slate-300 italic text-[11px]">—</span>
+              <span className="text-theme-text-muted italic text-[11px]">—</span>
             )}
           </td>
         )}
@@ -924,10 +924,10 @@ const BrnVerification: React.FC = () => {
                   type="submit"
                   name="Submit"
                   value="Check birth registration"
-                  className="h-8 px-2.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 hover:border-sky-300 font-bold text-xs inline-flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+                  className="h-8 px-2.5 rounded-lg bg-theme-info-soft hover:opacity-90 text-theme-info border border-theme-info-border font-bold text-xs inline-flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
                   title="সরকারি BDRIS সার্ভারে জন্ম নিবন্ধন অনলাইন যাচাই করুন (নতুন ট্যাবে খুলবে)"
                 >
-                  <ExternalLink size={12} className="text-sky-600 shrink-0" />
+                  <ExternalLink size={12} className="text-theme-info shrink-0" />
                   <span>Check online</span>
                 </button>
               </form>
@@ -935,10 +935,10 @@ const BrnVerification: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleOpenVerifyModal(trainee)}
-                className="h-8 px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs inline-flex items-center space-x-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+                className="h-8 px-3 rounded-lg bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg font-bold text-xs inline-flex items-center space-x-1.5 transition shadow-2xs cursor-pointer active:scale-95"
                 title="জন্ম নিবন্ধন যাচাই স্ট্যাটাস ও মন্তব্য হালনাগাদ করুন"
               >
-                <ShieldCheck size={13} className="text-purple-200 shrink-0" />
+                <ShieldCheck size={13} className="shrink-0" />
                 <span>Verify</span>
               </button>
             </div>
@@ -953,7 +953,7 @@ const BrnVerification: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-emerald-700 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-semibold animate-bounce">
+        <div className="fixed top-5 right-5 z-50 bg-theme-primary text-theme-primary-fg px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-semibold animate-bounce">
           <CheckCircle2 size={18} />
           <span>{toastMsg}</span>
         </div>
@@ -985,7 +985,7 @@ const BrnVerification: React.FC = () => {
                 onClick={() => setViewMode('card')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   viewMode === 'card'
-                    ? 'bg-white text-purple-900 shadow-sm'
+                    ? 'bg-theme-surface text-theme-text-primary shadow-sm'
                     : 'text-purple-200 hover:text-white hover:bg-white/5'
                 }`}
                 title="কার্ড ভিউ (ডিফল্ট)"
@@ -998,7 +998,7 @@ const BrnVerification: React.FC = () => {
                 onClick={() => setViewMode('table')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   viewMode === 'table'
-                    ? 'bg-white text-purple-900 shadow-sm'
+                    ? 'bg-theme-surface text-theme-text-primary shadow-sm'
                     : 'text-purple-200 hover:text-white hover:bg-white/5'
                 }`}
                 title="টেবিল ভিউ"
@@ -1012,7 +1012,7 @@ const BrnVerification: React.FC = () => {
             <button
               type="button"
               onClick={() => openExportForScope(statusFilter === 'all' ? 'all' : statusFilter)}
-              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 border border-purple-400 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm hover:shadow transition cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg text-xs font-bold flex items-center space-x-1.5 shadow-sm hover:shadow transition cursor-pointer active:scale-95"
               title="CSV, Excel ও PDF ফরম্যাটে বৈধ, অবৈধ ও অপেক্ষমাণ শিক্ষার্থীদের তালিকা এক্সপোর্ট করুন"
             >
               <Download size={15} />
@@ -1035,25 +1035,25 @@ const BrnVerification: React.FC = () => {
       {/* KPI Cards Strip with Quick Export Icons */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Total Trainees */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between group">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between group">
           <div>
             <div className="flex items-center space-x-1">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">মোট শিক্ষার্থী</span>
+              <span className="text-[11px] font-semibold text-theme-text-secondary uppercase tracking-wider block">মোট শিক্ষার্থী</span>
               <button
                 type="button"
                 onClick={() => openExportForScope('all')}
-                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-purple-700 transition p-0.5"
+                className="opacity-0 group-hover:opacity-100 text-theme-text-muted hover:text-theme-primary transition p-0.5"
                 title="সকল শিক্ষার্থী এক্সপোর্ট (CSV, Excel, PDF)"
               >
                 <Download size={12} />
               </button>
             </div>
-            <span className="text-2xl font-extrabold text-slate-800 mt-1 block">{toBn(stats.total)} জন</span>
+            <span className="text-2xl font-extrabold text-theme-text-primary mt-1 block tabular-nums">{toBn(stats.total)} জন</span>
           </div>
           <button
             type="button"
             onClick={() => openExportForScope('all')}
-            className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-purple-100 hover:text-purple-800 flex items-center justify-center transition cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-primary-soft hover:text-theme-primary-soft-fg flex items-center justify-center transition cursor-pointer"
             title="সকল শিক্ষার্থী এক্সপোর্ট করুন"
           >
             <User size={20} />
@@ -1061,25 +1061,25 @@ const BrnVerification: React.FC = () => {
         </div>
 
         {/* Pending (Default Focus) */}
-        <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between ring-1 ring-amber-100 group">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-warning-border shadow-xs flex items-center justify-between ring-1 ring-theme-warning-border/40 group">
           <div>
             <div className="flex items-center space-x-1">
-              <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider block">অপেক্ষমাণ (Pending)</span>
+              <span className="text-[11px] font-semibold text-theme-warning uppercase tracking-wider block">অপেক্ষমাণ (Pending)</span>
               <button
                 type="button"
                 onClick={() => openExportForScope('pending')}
-                className="opacity-0 group-hover:opacity-100 text-amber-600 hover:text-amber-900 transition p-0.5"
+                className="opacity-0 group-hover:opacity-100 text-theme-warning hover:opacity-80 transition p-0.5"
                 title="অপেক্ষমাণ শিক্ষার্থী এক্সপোর্ট (CSV, Excel, PDF)"
               >
                 <Download size={12} />
               </button>
             </div>
-            <span className="text-2xl font-extrabold text-amber-600 mt-1 block">{toBn(stats.pending)} জন</span>
+            <span className="text-2xl font-extrabold text-theme-warning mt-1 block tabular-nums">{toBn(stats.pending)} জন</span>
           </div>
           <button
             type="button"
             onClick={() => openExportForScope('pending')}
-            className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-800 flex items-center justify-center transition cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-theme-warning-soft text-theme-warning hover:opacity-90 flex items-center justify-center transition cursor-pointer"
             title="অপেক্ষমাণ শিক্ষার্থী এক্সপোর্ট করুন"
           >
             <Clock size={20} />
@@ -1087,25 +1087,25 @@ const BrnVerification: React.FC = () => {
         </div>
 
         {/* Verified / Valid */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between group">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between group">
           <div>
             <div className="flex items-center space-x-1">
-              <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider block">বৈধ ও যাচাইকৃত (Valid)</span>
+              <span className="text-[11px] font-semibold text-theme-success uppercase tracking-wider block">বৈধ ও যাচাইকৃত (Valid)</span>
               <button
                 type="button"
                 onClick={() => openExportForScope('verified')}
-                className="opacity-0 group-hover:opacity-100 text-emerald-600 hover:text-emerald-900 transition p-0.5"
+                className="opacity-0 group-hover:opacity-100 text-theme-success hover:opacity-80 transition p-0.5"
                 title="বৈধ শিক্ষার্থী এক্সপোর্ট (CSV, Excel, PDF)"
               >
                 <Download size={12} />
               </button>
             </div>
-            <span className="text-2xl font-extrabold text-emerald-700 mt-1 block">{toBn(stats.verified)} জন</span>
+            <span className="text-2xl font-extrabold text-theme-success mt-1 block tabular-nums">{toBn(stats.verified)} জন</span>
           </div>
           <button
             type="button"
             onClick={() => openExportForScope('verified')}
-            className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800 flex items-center justify-center transition cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-theme-success-soft text-theme-success hover:opacity-90 flex items-center justify-center transition cursor-pointer"
             title="বৈধ শিক্ষার্থী এক্সপোর্ট করুন"
           >
             <CheckCircle2 size={20} />
@@ -1113,25 +1113,25 @@ const BrnVerification: React.FC = () => {
         </div>
 
         {/* Invalid */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between group">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between group">
           <div>
             <div className="flex items-center space-x-1">
-              <span className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider block">অবৈধ / অমিল (Invalid)</span>
+              <span className="text-[11px] font-semibold text-theme-danger uppercase tracking-wider block">অবৈধ / অমিল (Invalid)</span>
               <button
                 type="button"
                 onClick={() => openExportForScope('invalid')}
-                className="opacity-0 group-hover:opacity-100 text-rose-600 hover:text-rose-900 transition p-0.5"
+                className="opacity-0 group-hover:opacity-100 text-theme-danger hover:opacity-80 transition p-0.5"
                 title="অবৈধ শিক্ষার্থী এক্সপোর্ট (CSV, Excel, PDF)"
               >
                 <Download size={12} />
               </button>
             </div>
-            <span className="text-2xl font-extrabold text-rose-700 mt-1 block">{toBn(stats.invalid)} জন</span>
+            <span className="text-2xl font-extrabold text-theme-danger mt-1 block tabular-nums">{toBn(stats.invalid)} জন</span>
           </div>
           <button
             type="button"
             onClick={() => openExportForScope('invalid')}
-            className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-800 flex items-center justify-center transition cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-theme-danger-soft text-theme-danger hover:opacity-90 flex items-center justify-center transition cursor-pointer"
             title="অবৈধ শিক্ষার্থী এক্সপোর্ট করুন"
           >
             <XCircle size={20} />
@@ -1139,12 +1139,12 @@ const BrnVerification: React.FC = () => {
         </div>
 
         {/* Verification Rate */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
           <div>
-            <span className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider block">যাচাইয়ের অগ্রগতি</span>
-            <span className="text-2xl font-extrabold text-purple-800 mt-1 block">{toBn(stats.rate)}%</span>
+            <span className="text-[11px] font-semibold text-theme-accent uppercase tracking-wider block">যাচাইয়ের অগ্রগতি</span>
+            <span className="text-2xl font-extrabold text-theme-accent mt-1 block tabular-nums">{toBn(stats.rate)}%</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center">
             <Sparkles size={20} />
           </div>
         </div>
@@ -1167,11 +1167,11 @@ const BrnVerification: React.FC = () => {
         renderFilterContent={(close) => (
           <div className="space-y-3.5 text-xs">
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">যাচাই অবস্থা (Status):</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">যাচাই অবস্থা (Status):</label>
               <select
                 value={statusFilter}
                 onChange={e => { setStatusFilter(e.target.value as any); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               >
                 <option value="pending">অপেক্ষমাণ (Pending - {toBn(stats.pending)} জন)</option>
                 <option value="verified">বৈধ ও যাচাইকৃত (Verified - {toBn(stats.verified)} জন)</option>
@@ -1181,11 +1181,11 @@ const BrnVerification: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">প্রতিষ্ঠান নির্বাচন:</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রতিষ্ঠান নির্বাচন:</label>
               <select
                 value={instituteFilter}
                 onChange={e => { setInstituteFilter(e.target.value); setBatchFilter(''); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               >
                 <option value="">সকল প্রতিষ্ঠান ({toBn(institutes.length)}টি)</option>
                 {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -1193,11 +1193,11 @@ const BrnVerification: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">বৃত্তিমূলক ট্রেড:</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">বৃত্তিমূলক ট্রেড:</label>
               <select
                 value={tradeFilter}
                 onChange={e => { setTradeFilter(e.target.value); setBatchFilter(''); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               >
                 <option value="">সকল ট্রেড ({toBn(trades.length)}টি)</option>
                 {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1205,29 +1205,29 @@ const BrnVerification: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">প্রশিক্ষণ ব্যাচ:</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রশিক্ষণ ব্যাচ:</label>
               <select
                 value={batchFilter}
                 onChange={e => { setBatchFilter(e.target.value); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               >
                 <option value="">সকল ব্যাচ ({toBn(availableBatches.length)}টি)</option>
                 {availableBatches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-2 border-t border-theme-border flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => { handleClearFilters(); close(); }}
-                className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                className="text-xs text-theme-danger hover:opacity-80 font-semibold cursor-pointer"
               >
                 ফিল্টার রিসেট
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+                className="px-3 py-1.5 bg-theme-primary text-theme-primary-fg rounded-lg text-xs font-bold hover:bg-theme-primary-hover transition cursor-pointer"
               >
                 প্রয়োগ করুন
               </button>
@@ -1246,21 +1246,21 @@ const BrnVerification: React.FC = () => {
                 onClick={() => setIsExportMenuOpen(prev => !prev)}
                 className={`h-9 px-3 rounded-xl border font-bold text-xs flex items-center space-x-1.5 transition cursor-pointer shadow-2xs active:scale-95 ${
                   isExportMenuOpen
-                    ? 'bg-purple-700 text-white border-purple-700 ring-2 ring-purple-300'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                    ? 'bg-theme-primary text-theme-primary-fg border-theme-primary ring-2 ring-theme-primary/30'
+                    : 'bg-theme-surface text-theme-text-primary border-theme-border hover:bg-theme-surface-hover hover:border-theme-border-strong'
                 }`}
                 title="তথ্য এক্সপোর্ট করুন (Excel, CSV, PDF)"
               >
-                <Download size={14} className={isExportMenuOpen ? 'text-white' : 'text-purple-700'} />
+                <Download size={14} className={isExportMenuOpen ? 'text-theme-primary-fg' : 'text-theme-primary'} />
                 <span>এক্সপোর্ট</span>
-                <ChevronDown size={13} className={`transition-transform duration-200 ${isExportMenuOpen ? 'rotate-180 text-white' : 'text-slate-400'}`} />
+                <ChevronDown size={13} className={`transition-transform duration-200 ${isExportMenuOpen ? 'rotate-180 text-theme-primary-fg' : 'text-theme-text-muted'}`} />
               </button>
 
               {isExportMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-2 z-50 animate-fadeIn">
-                  <div className="px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
+                <div className="absolute right-0 mt-2 w-56 bg-theme-elevated rounded-2xl shadow-xl border border-theme-border py-2 z-50 animate-fadeIn">
+                  <div className="px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-theme-text-muted border-b border-theme-border flex items-center justify-between">
                     <span>এক্সপোর্ট ফরম্যাট</span>
-                    <span className="text-[10px] text-purple-700 font-semibold">{toBn(filteredTrainees.length)} জন</span>
+                    <span className="text-[10px] text-theme-primary font-semibold tabular-nums">{toBn(filteredTrainees.length)} জন</span>
                   </div>
 
                   <div className="p-1 space-y-0.5">
@@ -1271,14 +1271,14 @@ const BrnVerification: React.FC = () => {
                         setIsExportMenuOpen(false);
                         handleQuickExport('excel');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition cursor-pointer text-left group disabled:opacity-50"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-theme-text-primary hover:bg-theme-surface-hover transition cursor-pointer text-left group disabled:opacity-50"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                      <div className="w-7 h-7 rounded-lg bg-theme-success-soft text-theme-success flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <FileSpreadsheet size={15} />
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800 group-hover:text-emerald-800">Excel (.xlsx)</div>
-                        <div className="text-[10.5px] text-slate-400">মাইক্রোসফট এক্সেল স্প্রেডশীট</div>
+                        <div className="font-bold text-theme-text-primary">Excel (.xlsx)</div>
+                        <div className="text-[10.5px] text-theme-text-muted">মাইক্রোসফট এক্সেল স্প্রেডশীট</div>
                       </div>
                     </button>
 
@@ -1289,14 +1289,14 @@ const BrnVerification: React.FC = () => {
                         setIsExportMenuOpen(false);
                         handleQuickExport('csv');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-800 transition cursor-pointer text-left group disabled:opacity-50"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-theme-text-primary hover:bg-theme-surface-hover transition cursor-pointer text-left group disabled:opacity-50"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                      <div className="w-7 h-7 rounded-lg bg-theme-info-soft text-theme-info flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <FileText size={15} />
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800 group-hover:text-blue-800">CSV (.csv)</div>
-                        <div className="text-[10.5px] text-slate-400">স্ট্যান্ডার্ড কমা সেপারেটেড ফাইল</div>
+                        <div className="font-bold text-theme-text-primary">CSV (.csv)</div>
+                        <div className="text-[10.5px] text-theme-text-muted">স্ট্যান্ডার্ড কমা সেপারেটেড ফাইল</div>
                       </div>
                     </button>
 
@@ -1307,14 +1307,14 @@ const BrnVerification: React.FC = () => {
                         setIsExportMenuOpen(false);
                         handleQuickExport('pdf');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-800 transition cursor-pointer text-left group disabled:opacity-50"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-theme-text-primary hover:bg-theme-surface-hover transition cursor-pointer text-left group disabled:opacity-50"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                      <div className="w-7 h-7 rounded-lg bg-theme-accent-soft text-theme-accent flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <Download size={15} />
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800 group-hover:text-purple-800">PDF ফাইল (.pdf)</div>
-                        <div className="text-[10.5px] text-slate-400">সরাসরি Downloads ফোল্ডারে সেভ</div>
+                        <div className="font-bold text-theme-text-primary">PDF ফাইল (.pdf)</div>
+                        <div className="text-[10.5px] text-theme-text-muted">সরাসরি Downloads ফোল্ডারে সেভ</div>
                       </div>
                     </button>
 
@@ -1325,19 +1325,19 @@ const BrnVerification: React.FC = () => {
                         setIsExportMenuOpen(false);
                         handleQuickExport('print');
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer text-left group disabled:opacity-50"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-theme-text-primary hover:bg-theme-surface-hover transition cursor-pointer text-left group disabled:opacity-50"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                      <div className="w-7 h-7 rounded-lg bg-theme-surface-subtle text-theme-text-secondary flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                         <Printer size={15} />
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800">প্রিন্ট করুন (Print)</div>
-                        <div className="text-[10.5px] text-slate-400">সরাসরি প্রিন্ট ডায়ালগ খুলুন</div>
+                        <div className="font-bold text-theme-text-primary">প্রিন্ট করুন (Print)</div>
+                        <div className="text-[10.5px] text-theme-text-muted">সরাসরি প্রিন্ট ডায়ালগ খুলুন</div>
                       </div>
                     </button>
                   </div>
 
-                  <div className="border-t border-slate-100 my-1" />
+                  <div className="border-t border-theme-border my-1" />
 
                   <div className="p-1">
                     <button
@@ -1346,7 +1346,7 @@ const BrnVerification: React.FC = () => {
                         setIsExportMenuOpen(false);
                         openExportForScope(statusFilter === 'all' ? 'all' : statusFilter);
                       }}
-                      className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-purple-700 hover:bg-purple-50 transition cursor-pointer"
+                      className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-theme-primary hover:bg-theme-primary-soft transition cursor-pointer"
                     >
                       <SlidersHorizontal size={14} />
                       <span>কাস্টম এক্সপোর্ট উইন্ডো...</span>
@@ -1357,14 +1357,14 @@ const BrnVerification: React.FC = () => {
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+            <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9">
               <button
                 type="button"
                 onClick={() => setViewMode('card')}
                 className={`h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition cursor-pointer ${
                   viewMode === 'card'
-                    ? 'bg-white text-slate-800 shadow-2xs font-bold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-theme-surface text-theme-text-primary shadow-2xs font-bold'
+                    : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="কার্ড ভিউ"
               >
@@ -1376,8 +1376,8 @@ const BrnVerification: React.FC = () => {
                 onClick={() => setViewMode('table')}
                 className={`h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition cursor-pointer ${
                   viewMode === 'table'
-                    ? 'bg-white text-slate-800 shadow-2xs font-bold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-theme-surface text-theme-text-primary shadow-2xs font-bold'
+                    : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="টেবিল ভিউ"
               >
@@ -1393,10 +1393,10 @@ const BrnVerification: React.FC = () => {
       {loading ? (
         <TableSkeleton rows={8} cols={6} showHeader={false} showToolbar={false} />
       ) : filteredTrainees.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs py-16 text-center text-slate-500 space-y-2">
-          <FileText size={40} className="mx-auto text-slate-300" />
-          <p className="font-semibold text-slate-700">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি</p>
-          <p className="text-xs text-slate-400">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs py-16 text-center text-theme-text-secondary space-y-2">
+          <FileText size={40} className="mx-auto text-theme-text-muted" />
+          <p className="font-semibold text-theme-text-primary">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি</p>
+          <p className="text-xs text-theme-text-muted">
             {statusFilter === 'pending'
               ? 'বর্তমানে অপেক্ষমাণ কোনো শিক্ষার্থী নেই। আপনি "সকল" বা অন্যান্য ফিল্টার নির্বাচন করে দেখতে পারেন।'
               : 'অন্য কোনো সার্চ কি-ওয়ার্ড বা ফিল্টার নির্বাচন করে পুনরায় চেষ্টা করুন।'}
@@ -1404,7 +1404,7 @@ const BrnVerification: React.FC = () => {
           {statusFilter !== 'all' && (
             <button
               onClick={() => setStatusFilter('all')}
-              className="mt-2 px-3.5 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold hover:bg-purple-100 transition cursor-pointer"
+              className="mt-2 px-3.5 py-1.5 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border text-xs font-semibold hover:opacity-90 transition cursor-pointer"
             >
               সকল শিক্ষার্থী দেখুন
             </button>
@@ -1415,11 +1415,11 @@ const BrnVerification: React.FC = () => {
         /* 1. CARD VIEW (DEFAULT)                                   */
         /* ======================================================== */
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
+          <div className="flex items-center justify-between text-xs text-theme-text-secondary px-1 font-medium tabular-nums">
             <span>
-              প্রদর্শিত হচ্ছে: <strong className="text-slate-800 font-bold">{toBn(paginatedTrainees.length)} জন</strong> (মোট {toBn(filteredTrainees.length)} জন)
+              প্রদর্শিত হচ্ছে: <strong className="text-theme-text-primary font-bold">{toBn(paginatedTrainees.length)} জন</strong> (মোট {toBn(filteredTrainees.length)} জন)
             </span>
-            <span className="text-[11px] bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded-md border border-purple-200">
+            <span className="text-[11px] bg-theme-accent-soft text-theme-accent font-bold px-2 py-0.5 rounded-md border border-theme-accent-border">
               কার্ড ভিউ
             </span>
           </div>
@@ -1429,20 +1429,20 @@ const BrnVerification: React.FC = () => {
               {groupedTrainees.map(grp => {
                 const isCollapsed = collapsedGroups.has(grp.key);
                 return (
-                  <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                  <div key={grp.key} className="bg-theme-surface-subtle rounded-2xl border border-theme-border p-4 space-y-4">
                     <button
                       type="button"
                       onClick={() => toggleGroupCollapse(grp.key)}
-                      className="w-full flex items-center justify-between text-left hover:text-purple-700 transition cursor-pointer"
+                      className="w-full flex items-center justify-between text-left hover:text-theme-primary transition cursor-pointer"
                     >
                       <div className="flex items-center space-x-2.5">
                         {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
-                        <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                        <span className="font-bold text-theme-text-primary text-sm sm:text-base">{grp.title}</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums">
                           {toBn(grp.items.length)} জন
                         </span>
                       </div>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-theme-text-muted tabular-nums">
                         মোটের {toBn(Math.round((grp.items.length / (filteredTrainees.length || 1)) * 100))}%
                       </span>
                     </button>
@@ -1465,10 +1465,10 @@ const BrnVerification: React.FC = () => {
         /* ======================================================== */
         /* 2. TABLE VIEW (TOGGLEABLE)                               */
         /* ======================================================== */
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto max-h-[70vh] scrollbar-thin">
-            <table className="min-w-full divide-y divide-slate-200 text-left">
-              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
+            <table className="min-w-full divide-y divide-theme-border text-left">
+              <thead className="sticky top-0 z-10 bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider border-b border-theme-border shadow-2xs">
                 <tr>
                   {isColVisible('sl') && <th className="px-4 py-3.5 w-14 text-center">ক্রমিক</th>}
                   {isColVisible('traineeInfo') && <th className="px-4 py-3.5 min-w-[220px]">প্রশিক্ষণার্থী ও আইডি</th>}
@@ -1480,27 +1480,27 @@ const BrnVerification: React.FC = () => {
                   {isColVisible('actions') && <th className="px-4 py-3.5 text-right min-w-[220px] whitespace-nowrap">অ্যাকশন</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-theme-border text-xs">
                 {groupBy !== 'none' && groupedTrainees ? (
                   groupedTrainees.map(grp => {
                     const isCollapsed = collapsedGroups.has(grp.key);
                     return (
                       <React.Fragment key={grp.key}>
-                        <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                        <tr className="bg-theme-surface-subtle hover:bg-theme-surface-hover border-y border-theme-border font-bold transition">
                           <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
                             <div className="flex items-center justify-between">
                               <button
                                 type="button"
                                 onClick={() => toggleGroupCollapse(grp.key)}
-                                className="flex items-center space-x-2 text-slate-800 hover:text-purple-700 cursor-pointer"
+                                className="flex items-center space-x-2 text-theme-text-primary hover:text-theme-primary cursor-pointer"
                               >
                                 {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                 <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums">
                                   {toBn(grp.items.length)} জন
                                 </span>
                               </button>
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-[11px] text-theme-text-muted tabular-nums">
                                 মোটের {toBn(Math.round((grp.items.length / (filteredTrainees.length || 1)) * 100))}%
                               </span>
                             </div>
@@ -1524,8 +1524,8 @@ const BrnVerification: React.FC = () => {
 
       {/* Horizontal Scrolling Pagination Controls */}
       {totalPages > 1 && (
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
-          <span className="text-slate-500 font-medium">
+        <div className="bg-theme-surface p-3.5 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
+          <span className="text-theme-text-secondary font-medium tabular-nums">
             মোট {toBn(filteredTrainees.length)} জনের মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, filteredTrainees.length))} প্রদর্শিত হচ্ছে
           </span>
 
@@ -1535,7 +1535,7 @@ const BrnVerification: React.FC = () => {
                 type="button"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="shrink-0 p-1.5 sm:p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                className="shrink-0 p-1.5 sm:p-2 border border-theme-border text-theme-text-primary rounded-xl hover:bg-theme-surface-hover disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                 title="পূর্ববর্তী পৃষ্ঠা"
               >
                 পূর্ববর্তী
@@ -1548,10 +1548,10 @@ const BrnVerification: React.FC = () => {
                     key={p}
                     type="button"
                     onClick={() => setCurrentPage(p)}
-                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition cursor-pointer ${
+                    className={`shrink-0 w-8 h-8 rounded-xl font-bold tabular-nums transition cursor-pointer ${
                       currentPage === p
-                        ? 'bg-purple-700 text-white shadow-2xs'
-                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                        ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                        : 'border border-theme-border hover:bg-theme-surface-hover text-theme-text-primary'
                     }`}
                   >
                     {toBn(p)}
@@ -1563,7 +1563,7 @@ const BrnVerification: React.FC = () => {
                 type="button"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="shrink-0 p-1.5 sm:p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                className="shrink-0 p-1.5 sm:p-2 border border-theme-border text-theme-text-primary rounded-xl hover:bg-theme-surface-hover disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                 title="পরবর্তী পৃষ্ঠা"
               >
                 পরবর্তী
@@ -1600,43 +1600,43 @@ const BrnVerification: React.FC = () => {
             <div 
               ref={verifyModalRef}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-200 space-y-4 sm:space-y-5"
+              className="bg-theme-elevated rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-theme-border space-y-4 sm:space-y-5"
             >
               {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3.5">
+            <div className="flex items-start justify-between border-b border-theme-border pb-3.5">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold">
                   <ShieldCheck size={22} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-800">Verify Birth Registration</h3>
-                  <p className="text-xs text-slate-500">অনলাইন যাচাই ফলাফল ও মন্তব্য লিপিবদ্ধ করুন</p>
+                  <h3 className="font-bold text-base text-theme-text-primary">Verify Birth Registration</h3>
+                  <p className="text-xs text-theme-text-secondary">অনলাইন যাচাই ফলাফল ও মন্তব্য লিপিবদ্ধ করুন</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveTrainee(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg hover:bg-theme-surface-hover cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Target Trainee Summary Box */}
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs space-y-1.5">
+            <div className="p-3.5 bg-theme-surface-subtle rounded-xl border border-theme-border text-xs space-y-1.5">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-slate-900 text-sm">{activeTrainee.nameBn} ({activeTrainee.nameEn})</span>
-                <span className="text-[11px] font-mono text-slate-500 font-semibold">ID: {activeTrainee.traineeId}</span>
+                <span className="font-bold text-theme-text-primary text-sm">{activeTrainee.nameBn} ({activeTrainee.nameEn})</span>
+                <span className="text-[11px] font-mono text-theme-text-secondary font-semibold tabular-nums">ID: {activeTrainee.traineeId}</span>
               </div>
-              <div className="flex justify-between items-center text-slate-600">
-                <span>জন্ম নিবন্ধন: <strong className="font-mono text-slate-800">{activeTrainee.nidOrBirthRegistration || 'অনুপস্থিত'}</strong></span>
-                <span>জন্ম তারিখ: <strong className="font-mono text-slate-800">{normalizeBirthDate(activeTrainee.dateOfBirth) || '-'}</strong></span>
+              <div className="flex justify-between items-center text-theme-text-secondary tabular-nums">
+                <span>জন্ম নিবন্ধন: <strong className="font-mono text-theme-text-primary">{activeTrainee.nidOrBirthRegistration || 'অনুপস্থিত'}</strong></span>
+                <span>জন্ম তারিখ: <strong className="font-mono text-theme-text-primary">{normalizeBirthDate(activeTrainee.dateOfBirth) || '-'}</strong></span>
               </div>
             </div>
 
             {/* Field 1: is_brn_verified (Checkbox styled as Button with Yes / No) */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <label className="block text-xs font-bold text-theme-text-primary uppercase tracking-wider">
                 জন্ম নিবন্ধন যাচাইয়ের অবস্থা (is_brn_verified) *
               </label>
 
@@ -1648,12 +1648,12 @@ const BrnVerification: React.FC = () => {
                   onClick={() => setModalVerified(true)}
                   className={`py-3 px-4 rounded-xl border flex items-center justify-center space-x-2 text-sm font-bold transition-all cursor-pointer shadow-xs ${
                     modalVerified === true
-                      ? 'bg-emerald-600 border-emerald-600 text-white ring-2 ring-emerald-400 shadow-emerald-600/25 scale-[1.02]'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300'
+                      ? 'bg-theme-success border-theme-success text-theme-success-fg ring-2 ring-theme-success/35 scale-[1.02]'
+                      : 'bg-theme-surface border-theme-border text-theme-text-primary hover:bg-theme-success-soft hover:border-theme-success-border'
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${
-                    modalVerified === true ? 'bg-white text-emerald-700 border-white' : 'border-slate-300 bg-slate-100'
+                    modalVerified === true ? 'bg-white text-emerald-700 border-white' : 'border-theme-border-strong bg-theme-surface-subtle'
                   }`}>
                     {modalVerified === true && <Check size={14} className="stroke-[3]" />}
                   </div>
@@ -1666,12 +1666,12 @@ const BrnVerification: React.FC = () => {
                   onClick={() => setModalVerified(false)}
                   className={`py-3 px-4 rounded-xl border flex items-center justify-center space-x-2 text-sm font-bold transition-all cursor-pointer shadow-xs ${
                     modalVerified === false
-                      ? 'bg-rose-600 border-rose-600 text-white ring-2 ring-rose-400 shadow-rose-600/25 scale-[1.02]'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-rose-50 hover:border-rose-300'
+                      ? 'bg-theme-danger border-theme-danger text-theme-danger-fg ring-2 ring-theme-danger/35 scale-[1.02]'
+                      : 'bg-theme-surface border-theme-border text-theme-text-primary hover:bg-theme-danger-soft hover:border-theme-danger-border'
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${
-                    modalVerified === false ? 'bg-white text-rose-700 border-white' : 'border-slate-300 bg-slate-100'
+                    modalVerified === false ? 'bg-white text-rose-700 border-white' : 'border-theme-border-strong bg-theme-surface-subtle'
                   }`}>
                     {modalVerified === false && <X size={14} className="stroke-[3]" />}
                   </div>
@@ -1679,7 +1679,7 @@ const BrnVerification: React.FC = () => {
                 </button>
               </div>
 
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-theme-text-secondary">
                 {modalVerified === true
                   ? '✓ এই শিক্ষার্থীর জন্ম নিবন্ধন অনলাইনে সঠিক ও যাচাইকৃত (Verified) হিসেবে সংরক্ষিত হবে।'
                   : '❌ এটি অবৈধ / তথ্যে অমিল রয়েছে (Invalid) হিসেবে চিহ্নিত হবে।'}
@@ -1688,7 +1688,7 @@ const BrnVerification: React.FC = () => {
 
             {/* Field 2: brn_remark (Textarea) */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <label className="block text-xs font-bold text-theme-text-primary uppercase tracking-wider">
                 মন্তব্য (brn_remark)
               </label>
               <textarea
@@ -1696,7 +1696,7 @@ const BrnVerification: React.FC = () => {
                 value={modalRemark}
                 onChange={(e) => setModalRemark(e.target.value)}
                 placeholder="e.g. BDRIS সার্ভারে নাম ও জন্ম তারিখ মিলেছে / জন্ম তারিখ তথ্যে অমিল রয়েছে"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs text-theme-text-primary placeholder:text-theme-text-muted font-medium focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
               />
 
               {/* Quick suggestion tag chips */}
@@ -1718,7 +1718,7 @@ const BrnVerification: React.FC = () => {
                         setModalVerified(true);
                       }
                     }}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md transition font-medium cursor-pointer"
+                    className="text-[10px] bg-theme-surface-subtle hover:bg-theme-surface-hover border border-theme-border text-theme-text-secondary px-2 py-0.5 rounded-md transition font-medium cursor-pointer"
                   >
                     {preset}
                   </button>
@@ -1727,12 +1727,12 @@ const BrnVerification: React.FC = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end space-x-2.5 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end space-x-2.5 pt-3 border-t border-theme-border">
               <button
                 type="button"
                 onClick={() => setActiveTrainee(null)}
                 disabled={saving}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer"
               >
                 বাতিল (Cancel)
               </button>
@@ -1740,7 +1740,7 @@ const BrnVerification: React.FC = () => {
                 type="button"
                 onClick={handleSaveVerification}
                 disabled={saving}
-                className="px-5 py-2 text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl shadow-sm hover:shadow transition flex items-center space-x-1.5 active:scale-95 cursor-pointer"
+                className="px-5 py-2 text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl shadow-sm hover:shadow transition flex items-center space-x-1.5 active:scale-95 cursor-pointer"
               >
                 <Check size={14} />
                 <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন (Save)'}</span>

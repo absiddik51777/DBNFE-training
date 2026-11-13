@@ -7,7 +7,7 @@ interface SkeletonProps {
 export const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => {
   return (
     <div
-      className={`animate-pulse bg-slate-200/80 rounded-lg ${className}`}
+      className={`animate-pulse bg-theme-border/70 rounded-lg ${className}`}
       aria-hidden="true"
     />
   );
@@ -22,7 +22,7 @@ export const TableSkeleton: React.FC<{
   return (
     <div className="space-y-4 w-full" aria-busy="true" aria-label="Loading table data">
       {showToolbar && (
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-2xs space-y-3">
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
             <Skeleton className="h-9 w-full sm:w-72 rounded-xl" />
             <div className="flex items-center space-x-2 w-full sm:w-auto">
@@ -34,17 +34,16 @@ export const TableSkeleton: React.FC<{
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+      <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-2xs overflow-hidden">
         {showHeader && (
-          <div className="bg-slate-50 border-b border-slate-200/80 px-5 py-3.5 flex items-center justify-between">
+          <div className="bg-theme-surface-subtle border-b border-theme-border px-5 py-3.5 flex items-center justify-between">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-4 w-20" />
           </div>
         )}
 
-        <div className="divide-y divide-slate-100">
-          {/* Header Row */}
-          <div className="px-5 py-3.5 bg-slate-50/70 flex items-center gap-4">
+        <div className="divide-y divide-theme-border">
+          <div className="px-5 py-3.5 bg-theme-surface-subtle flex items-center gap-4">
             {Array.from({ length: cols }).map((_, i) => (
               <Skeleton
                 key={`th-${i}`}
@@ -53,7 +52,6 @@ export const TableSkeleton: React.FC<{
             ))}
           </div>
 
-          {/* Body Rows */}
           {Array.from({ length: rows }).map((_, rIdx) => (
             <div key={`tr-${rIdx}`} className="px-5 py-3.5 flex items-center gap-4">
               {Array.from({ length: cols }).map((_, cIdx) => (
@@ -74,8 +72,7 @@ export const TableSkeleton: React.FC<{
           ))}
         </div>
 
-        {/* Pagination footer */}
-        <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+        <div className="px-5 py-3.5 bg-theme-surface-subtle border-t border-theme-border flex items-center justify-between">
           <Skeleton className="h-4 w-40" />
           <div className="flex items-center space-x-2">
             <Skeleton className="h-8 w-16 rounded-lg" />
@@ -95,7 +92,7 @@ export const CardGridSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) =>
       {Array.from({ length: count }).map((_, idx) => (
         <div
           key={idx}
-          className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4"
+          className="bg-theme-surface p-5 rounded-2xl border border-theme-border shadow-2xs space-y-4"
         >
           <div className="flex items-center justify-between">
             <Skeleton className="h-5 w-28 rounded" />
@@ -105,7 +102,7 @@ export const CardGridSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) =>
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
           </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-2 border-t border-theme-border flex items-center justify-between">
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-8 w-20 rounded-lg" />
           </div>
@@ -121,7 +118,7 @@ export const StatsSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => {
       {Array.from({ length: count }).map((_, idx) => (
         <div
           key={idx}
-          className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2"
+          className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-2xs space-y-2"
         >
           <div className="flex items-center justify-between">
             <Skeleton className="h-3.5 w-20" />
@@ -150,9 +147,9 @@ export const FormSkeleton: React.FC<{ sections?: number }> = ({ sections = 3 }) 
         {Array.from({ length: sections }).map((_, idx) => (
           <div
             key={idx}
-            className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4"
+            className="bg-theme-surface p-6 rounded-2xl border border-theme-border shadow-2xs space-y-4"
           >
-            <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+            <div className="flex items-center space-x-2 pb-3 border-b border-theme-border">
               <Skeleton className="h-5 w-5 rounded" />
               <Skeleton className="h-5 w-48 rounded" />
             </div>

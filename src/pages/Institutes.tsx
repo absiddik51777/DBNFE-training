@@ -341,7 +341,7 @@ const Institutes: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-slate-200/80 rounded animate-pulse" />
+        <div className="h-8 w-64 bg-theme-surface-subtle rounded animate-pulse" />
         <TableSkeleton rows={6} cols={5} />
       </div>
     );
@@ -351,12 +351,12 @@ const Institutes: React.FC = () => {
     <div className="space-y-6">
       {/* Status Messages */}
       {statusMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2">
+        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2">
           <span>✓ {statusMessage}</span>
         </div>
       )}
       {errorMessage && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-center space-x-2">
+        <div className="p-4 rounded-xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-sm flex items-center space-x-2">
           <span>⚠️ {errorMessage}</span>
         </div>
       )}
@@ -364,14 +364,14 @@ const Institutes: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">প্রশিক্ষণ প্রতিষ্ঠান (Training Institutes)</h1>
-          <p className="text-sm text-slate-500 mt-0.5">ডিবিএনএফই আওতাধীন প্রশিক্ষণ কেন্দ্র সমূহের বিবরণ</p>
+          <h1 className="text-2xl font-bold text-theme-text-primary">প্রশিক্ষণ প্রতিষ্ঠান (Training Institutes)</h1>
+          <p className="text-sm text-theme-text-secondary mt-0.5">ডিবিএনএফই আওতাধীন প্রশিক্ষণ কেন্দ্র সমূহের বিবরণ</p>
         </div>
         <div className="flex items-center space-x-2">
           {canCreate && (
             <button
               onClick={() => handleOpenModal()}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-600/20"
+              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
             >
               <Plus size={18} />
               <span>নতুন প্রতিষ্ঠান যুক্ত করুন</span>
@@ -382,24 +382,24 @@ const Institutes: React.FC = () => {
 
       {/* Empty State */}
       {institutes.length === 0 ? (
-        <div className="bg-white p-12 text-center text-slate-500 rounded-2xl border border-dashed border-slate-200 text-sm space-y-3">
-          <Building2 size={40} className="mx-auto text-slate-300" />
+        <div className="bg-theme-surface p-12 text-center text-theme-text-secondary rounded-2xl border border-dashed border-theme-border text-sm space-y-3">
+          <Building2 size={40} className="mx-auto text-theme-text-muted" />
           <div>
-            <p className="font-bold text-slate-700 text-base">কোনো প্রশিক্ষণ প্রতিষ্ঠান পাওয়া যায়নি</p>
-            <p className="text-xs text-slate-400 mt-1">সব প্রতিষ্ঠান মুছে ফেলা হয়েছে অথবা এখনো কোনো প্রতিষ্ঠান যোগ করা হয়নি।</p>
+            <p className="font-bold text-theme-text-primary text-base">কোনো প্রশিক্ষণ প্রতিষ্ঠান পাওয়া যায়নি</p>
+            <p className="text-xs text-theme-text-muted mt-1">সব প্রতিষ্ঠান মুছে ফেলা হয়েছে অথবা এখনো কোনো প্রতিষ্ঠান যোগ করা হয়নি।</p>
           </div>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs"
+              className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs font-semibold shadow-xs cursor-pointer"
             >
               নতুন প্রতিষ্ঠান তৈরি করুন
             </button>
             <button
               type="button"
               onClick={handleSeedDefaults}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200"
+              className="px-4 py-2 bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-xs font-semibold border border-theme-border cursor-pointer"
             >
               ডিফল্ট প্রতিষ্ঠান তালিকা লোড করুন (Seed Defaults)
             </button>
@@ -421,11 +421,11 @@ const Institutes: React.FC = () => {
             renderFilterContent={(close) => (
               <div className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">অবস্থা (Status):</label>
+                  <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">অবস্থা (Status):</label>
                   <select
                     value={statusFilter}
                     onChange={e => setStatusFilter(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
                   >
                     <option value="all">সকল প্রতিষ্ঠান ({toBn(institutes.length)}টি)</option>
                     <option value="Active">সক্রিয় প্রতিষ্ঠান ({toBn(institutes.filter(i => i.status === 'Active').length)}টি)</option>
@@ -433,18 +433,18 @@ const Institutes: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-2 border-t border-theme-border flex items-center justify-between">
                   <button
                     type="button"
                     onClick={() => { handleClearFilters(); close(); }}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                    className="text-xs text-theme-danger hover:opacity-80 font-semibold cursor-pointer"
                   >
                     ফিল্টার রিসেট
                   </button>
                   <button
                     type="button"
                     onClick={close}
-                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+                    className="px-3 py-1.5 bg-theme-primary text-theme-primary-fg rounded-lg text-xs font-bold hover:bg-theme-primary-hover transition cursor-pointer"
                   >
                     প্রয়োগ করুন
                   </button>
@@ -455,12 +455,12 @@ const Institutes: React.FC = () => {
             onToggleColumn={toggleColumn}
             onResetColumns={resetColumns}
             extraActions={
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+              <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9">
                 <button
                   type="button"
                   onClick={() => setViewMode('table')}
                   className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                    viewMode === 'table' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                   }`}
                   title="টেবিল ভিউ"
                 >
@@ -470,7 +470,7 @@ const Institutes: React.FC = () => {
                   type="button"
                   onClick={() => setViewMode('cards')}
                   className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                    viewMode === 'cards' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                   }`}
                   title="কার্ড ভিউ"
                 >
@@ -481,16 +481,16 @@ const Institutes: React.FC = () => {
           />
 
           {processedInstitutes.length === 0 ? (
-            <div className="bg-white p-12 text-center text-slate-500 rounded-2xl border border-dashed border-slate-200 text-sm space-y-2">
-              <Building2 size={36} className="mx-auto text-slate-300" />
-              <p className="font-bold text-slate-700">কোনো প্রতিষ্ঠান পাওয়া যায়নি</p>
-              <p className="text-xs text-slate-400">আপনার ফিল্টার বা অনুসন্ধানের সাথে কোনো রেকর্ড মিলছে না।</p>
+            <div className="bg-theme-surface p-12 text-center text-theme-text-secondary rounded-2xl border border-dashed border-theme-border text-sm space-y-2">
+              <Building2 size={36} className="mx-auto text-theme-text-muted" />
+              <p className="font-bold text-theme-text-primary">কোনো প্রতিষ্ঠান পাওয়া যায়নি</p>
+              <p className="text-xs text-theme-text-muted">আপনার ফিল্টার বা অনুসন্ধানের সাথে কোনো রেকর্ড মিলছে না।</p>
             </div>
           ) : viewMode === 'table' ? (
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200 text-left">
-                  <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <table className="min-w-full divide-y divide-theme-border text-left">
+                  <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                     <tr>
                       {isColVisible('code') && <th className="px-4 py-3.5">কোড</th>}
                       {isColVisible('name') && <th className="px-4 py-3.5">প্রতিষ্ঠানের নাম</th>}
@@ -500,59 +500,61 @@ const Institutes: React.FC = () => {
                       {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-slate-100 text-xs">
+                  <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
                     {groupBy !== 'none' && groupedInstitutes ? (
                       groupedInstitutes.map(grp => {
                         const isCollapsed = collapsedGroups.has(grp.key);
                         return (
                           <React.Fragment key={grp.key}>
-                            <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                            <tr className="bg-theme-surface-subtle hover:bg-theme-surface-hover border-y border-theme-border font-bold transition">
                               <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
                                 <div className="flex items-center justify-between">
                                   <button
                                     type="button"
                                     onClick={() => toggleGroupCollapse(grp.key)}
-                                    className="flex items-center space-x-2 text-slate-800 hover:text-emerald-700 cursor-pointer"
+                                    className="flex items-center space-x-2 text-theme-text-primary hover:text-theme-primary cursor-pointer"
                                   >
                                     {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                     <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-theme-info-soft text-theme-info border border-theme-info-border tabular-nums">
                                       {toBn(grp.items.length)}টি প্রতিষ্ঠান
                                     </span>
                                   </button>
-                                  <span className="text-[11px] text-slate-400">
+                                  <span className="text-[11px] text-theme-text-muted tabular-nums">
                                     মোটের {toBn(Math.round((grp.items.length / (processedInstitutes.length || 1)) * 100))}%
                                   </span>
                                 </div>
                               </td>
                             </tr>
                             {!isCollapsed && grp.items.map(inst => (
-                              <tr key={inst.id} className="hover:bg-slate-50/80 transition">
+                              <tr key={inst.id} className="hover:bg-theme-surface-hover transition">
                                 {isColVisible('code') && (
-                                  <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
+                                  <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs font-bold text-theme-text-primary tabular-nums">
                                     {inst.code || inst.id}
                                   </td>
                                 )}
                                 {isColVisible('name') && (
-                                  <td className="px-4 py-3.5 font-bold text-slate-800">
+                                  <td className="px-4 py-3.5 font-bold text-theme-text-primary">
                                     {inst.name}
                                   </td>
                                 )}
                                 {isColVisible('address') && (
-                                  <td className="px-4 py-3.5 text-slate-600 max-w-xs truncate">
+                                  <td className="px-4 py-3.5 text-theme-text-secondary max-w-xs truncate">
                                     {inst.address}
                                   </td>
                                 )}
                                 {isColVisible('contact') && (
-                                  <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                                  <td className="px-4 py-3.5 text-theme-text-secondary whitespace-nowrap">
                                     <div>{inst.contactPerson}</div>
-                                    <div className="text-[11px] text-slate-400">{inst.phone}</div>
+                                    <div className="text-[11px] text-theme-text-muted tabular-nums">{inst.phone}</div>
                                   </td>
                                 )}
                                 {isColVisible('status') && (
                                   <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                    <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                                      inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                    <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                                      inst.status === 'Active'
+                                        ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                                        : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
                                     }`}>
                                       {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                                     </span>
@@ -564,7 +566,7 @@ const Institutes: React.FC = () => {
                                       {canEdit && (
                                         <button
                                           onClick={() => handleOpenModal(inst)}
-                                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                          className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                           title="সম্পাদন"
                                         >
                                           <Edit2 size={15} />
@@ -573,7 +575,7 @@ const Institutes: React.FC = () => {
                                       {canDelete && (
                                         <button
                                           onClick={() => handleDelete(inst.id, inst.name)}
-                                          className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                                          className="p-1.5 rounded-lg transition text-theme-danger hover:bg-theme-danger-soft cursor-pointer"
                                           title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                                         >
                                           <Trash2 size={15} />
@@ -589,32 +591,34 @@ const Institutes: React.FC = () => {
                       })
                     ) : (
                       processedInstitutes.map(inst => (
-                        <tr key={inst.id} className="hover:bg-slate-50/80 transition">
+                        <tr key={inst.id} className="hover:bg-theme-surface-hover transition">
                           {isColVisible('code') && (
-                            <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
+                            <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs font-bold text-theme-text-primary tabular-nums">
                               {inst.code || inst.id}
                             </td>
                           )}
                           {isColVisible('name') && (
-                            <td className="px-4 py-3.5 font-bold text-slate-800">
+                            <td className="px-4 py-3.5 font-bold text-theme-text-primary">
                               {inst.name}
                             </td>
                           )}
                           {isColVisible('address') && (
-                            <td className="px-4 py-3.5 text-slate-600 max-w-xs truncate">
+                            <td className="px-4 py-3.5 text-theme-text-secondary max-w-xs truncate">
                               {inst.address}
                             </td>
                           )}
                           {isColVisible('contact') && (
-                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                            <td className="px-4 py-3.5 text-theme-text-secondary whitespace-nowrap">
                               <div>{inst.contactPerson}</div>
-                              <div className="text-[11px] text-slate-400">{inst.phone}</div>
+                              <div className="text-[11px] text-theme-text-muted tabular-nums">{inst.phone}</div>
                             </td>
                           )}
                           {isColVisible('status') && (
                             <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                              <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                                inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                              <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                                inst.status === 'Active'
+                                  ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                                  : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
                               }`}>
                                 {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                               </span>
@@ -626,7 +630,7 @@ const Institutes: React.FC = () => {
                                 {canEdit && (
                                   <button
                                     onClick={() => handleOpenModal(inst)}
-                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                    className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                     title="সম্পাদন"
                                   >
                                     <Edit2 size={15} />
@@ -635,7 +639,7 @@ const Institutes: React.FC = () => {
                                 {canDelete && (
                                   <button
                                     onClick={() => handleDelete(inst.id, inst.name)}
-                                    className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                                    className="p-1.5 rounded-lg transition text-theme-danger hover:bg-theme-danger-soft cursor-pointer"
                                     title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                                   >
                                     <Trash2 size={15} />
@@ -657,57 +661,59 @@ const Institutes: React.FC = () => {
                 {groupedInstitutes.map(grp => {
                   const isCollapsed = collapsedGroups.has(grp.key);
                   return (
-                    <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                    <div key={grp.key} className="bg-theme-surface-subtle rounded-2xl border border-theme-border p-4 space-y-4">
                       <button
                         type="button"
                         onClick={() => toggleGroupCollapse(grp.key)}
-                        className="w-full flex items-center justify-between text-left hover:text-emerald-700 transition cursor-pointer"
+                        className="w-full flex items-center justify-between text-left hover:text-theme-primary transition cursor-pointer"
                       >
                         <div className="flex items-center space-x-2.5">
                           {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
-                          <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
-                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                          <span className="font-bold text-theme-text-primary text-sm sm:text-base">{grp.title}</span>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-theme-info-soft text-theme-info border border-theme-info-border tabular-nums">
                             {toBn(grp.items.length)}টি প্রতিষ্ঠান
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-theme-text-muted tabular-nums">
                           মোটের {toBn(Math.round((grp.items.length / (processedInstitutes.length || 1)) * 100))}%
                         </span>
                       </button>
                       {!isCollapsed && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {grp.items.map(inst => (
-                            <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                            <div key={inst.id} className="bg-theme-surface rounded-2xl border border-theme-border p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
                               <div className="space-y-4">
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-center space-x-3">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                    <div className="w-12 h-12 rounded-xl bg-theme-info-soft text-theme-info flex items-center justify-center font-bold">
                                       <Building2 size={24} />
                                     </div>
                                     <div>
-                                      <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
-                                      <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
+                                      <h3 className="font-bold text-theme-text-primary text-base leading-snug">{inst.name}</h3>
+                                      <span className="text-xs text-theme-text-muted font-mono tabular-nums">কোড: {inst.code || inst.id}</span>
                                     </div>
                                   </div>
-                                  <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                                    inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                  <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                                    inst.status === 'Active'
+                                      ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                                      : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
                                   }`}>
                                     {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                                   </span>
                                 </div>
 
-                                <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                                <div className="space-y-2 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
                                   <div className="flex items-center space-x-2">
-                                    <MapPin size={15} className="text-slate-400 shrink-0" />
+                                    <MapPin size={15} className="text-theme-text-muted shrink-0" />
                                     <span className="truncate">{inst.address}</span>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    <Phone size={15} className="text-slate-400 shrink-0" />
-                                    <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
+                                    <Phone size={15} className="text-theme-text-muted shrink-0" />
+                                    <span className="tabular-nums">যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
                                   </div>
                                   {inst.email && (
                                     <div className="flex items-center space-x-2">
-                                      <Mail size={15} className="text-slate-400 shrink-0" />
+                                      <Mail size={15} className="text-theme-text-muted shrink-0" />
                                       <span>{inst.email}</span>
                                     </div>
                                   )}
@@ -715,11 +721,11 @@ const Institutes: React.FC = () => {
                               </div>
 
                               {(canEdit || canDelete) && (
-                                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
+                                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-theme-border mt-4">
                                   {canEdit && (
                                     <button
                                       onClick={() => handleOpenModal(inst)}
-                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                      className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                       title="সম্পাদন"
                                     >
                                       <Edit2 size={16} />
@@ -728,7 +734,7 @@ const Institutes: React.FC = () => {
                                   {canDelete && (
                                     <button
                                       onClick={() => handleDelete(inst.id, inst.name)}
-                                      className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                                      className="p-1.5 rounded-lg transition text-theme-danger hover:bg-theme-danger-soft cursor-pointer"
                                       title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                                     >
                                       <Trash2 size={16} />
@@ -747,37 +753,39 @@ const Institutes: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {processedInstitutes.map((inst) => (
-                  <div key={inst.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div key={inst.id} className="bg-theme-surface rounded-2xl border border-theme-border p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                          <div className="w-12 h-12 rounded-xl bg-theme-info-soft text-theme-info flex items-center justify-center font-bold">
                             <Building2 size={24} />
                           </div>
                           <div>
-                            <h3 className="font-bold text-slate-800 text-base leading-snug">{inst.name}</h3>
-                            <span className="text-xs text-slate-400 font-mono">কোড: {inst.code || inst.id}</span>
+                            <h3 className="font-bold text-theme-text-primary text-base leading-snug">{inst.name}</h3>
+                            <span className="text-xs text-theme-text-muted font-mono tabular-nums">কোড: {inst.code || inst.id}</span>
                           </div>
                         </div>
-                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                          inst.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                          inst.status === 'Active'
+                            ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                            : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
                         }`}>
                           {inst.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                         </span>
                       </div>
 
-                      <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                      <div className="space-y-2 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
                         <div className="flex items-center space-x-2">
-                          <MapPin size={15} className="text-slate-400 shrink-0" />
+                          <MapPin size={15} className="text-theme-text-muted shrink-0" />
                           <span className="truncate">{inst.address}</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Phone size={15} className="text-slate-400 shrink-0" />
-                          <span>যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
+                          <Phone size={15} className="text-theme-text-muted shrink-0" />
+                          <span className="tabular-nums">যোগাযোগ: {inst.contactPerson} ({inst.phone})</span>
                         </div>
                         {inst.email && (
                           <div className="flex items-center space-x-2">
-                            <Mail size={15} className="text-slate-400 shrink-0" />
+                            <Mail size={15} className="text-theme-text-muted shrink-0" />
                             <span>{inst.email}</span>
                           </div>
                         )}
@@ -785,11 +793,11 @@ const Institutes: React.FC = () => {
                     </div>
 
                     {(canEdit || canDelete) && (
-                      <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100 mt-4">
+                      <div className="flex items-center justify-end space-x-2 pt-4 border-t border-theme-border mt-4">
                         {canEdit && (
                           <button
                             onClick={() => handleOpenModal(inst)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                             title="সম্পাদন"
                           >
                             <Edit2 size={16} />
@@ -798,7 +806,7 @@ const Institutes: React.FC = () => {
                         {canDelete && (
                           <button
                             onClick={() => handleDelete(inst.id, inst.name)}
-                            className="p-1.5 rounded-lg transition text-red-600 hover:bg-red-50 cursor-pointer"
+                            className="p-1.5 rounded-lg transition text-theme-danger hover:bg-theme-danger-soft cursor-pointer"
                             title={!isDeletionAllowed ? 'আর্কাইভে স্থানান্তর (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                           >
                             <Trash2 size={16} />
@@ -816,105 +824,105 @@ const Institutes: React.FC = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h2 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border text-theme-text-primary">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
+              <h2 className="text-lg font-bold text-theme-text-primary">
                 {editingInstitute ? 'প্রতিষ্ঠান সম্পাদন' : 'নতুন প্রতিষ্ঠান তৈরি'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠানের নাম *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রতিষ্ঠানের নাম *</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                   placeholder="যেমন: হালুয়াঘাট প্রশিক্ষণ কেন্দ্র"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান কোড</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রতিষ্ঠান কোড</label>
                 <input
                   type="text"
                   value={formData.code}
                   onChange={e => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ঠিকানা *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ঠিকানা *</label>
                 <input
                   type="text"
                   required
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">যোগাযোগ ব্যক্তি</label>
+                  <label className="block text-xs font-semibold text-theme-text-secondary mb-1">যোগাযোগ ব্যক্তি</label>
                   <input
                     type="text"
                     value={formData.contactPerson}
                     onChange={e => setFormData({ ...formData, contactPerson: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">ফোন নম্বর</label>
+                  <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ফোন নম্বর</label>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none tabular-nums"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ইমেইল</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ইমেইল</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">স্ট্যাটাস</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">স্ট্যাটাস</label>
                 <select
                   value={formData.status}
                   onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                 >
                   <option value="Active">সক্রিয় (Active)</option>
                   <option value="Inactive">নিষ্ক্রিয় (Inactive)</option>
                 </select>
               </div>
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-slate-100">
+              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-xs"
+                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs cursor-pointer"
                 >
                   সংরক্ষণ করুন
                 </button>

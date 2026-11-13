@@ -471,17 +471,17 @@ const TraineeForm: React.FC = () => {
 
   if (!canPerformAction) {
     return (
-      <div className="max-w-2xl mx-auto my-12 p-8 bg-white border border-red-200 rounded-2xl shadow-xs text-center space-y-4">
-        <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+      <div className="max-w-2xl mx-auto my-12 p-8 bg-theme-surface border border-theme-danger-border rounded-2xl shadow-xs text-center space-y-4">
+        <div className="w-14 h-14 bg-theme-danger-soft text-theme-danger rounded-full flex items-center justify-center mx-auto border border-theme-danger-border">
           <ShieldAlert size={32} />
         </div>
-        <h2 className="text-lg font-bold text-slate-800">অনুমতি নেই (Permission Denied)</h2>
-        <p className="text-sm text-slate-600">
+        <h2 className="text-lg font-bold text-theme-text-primary">অনুমতি নেই (Permission Denied)</h2>
+        <p className="text-sm text-theme-text-secondary">
           আপনার বর্তমান রোলের অধীনে প্রশিক্ষণার্থী {id ? 'সম্পাদনা' : 'নিবন্ধন'} করার অনুমতি নেই।
         </p>
         <button
           onClick={handleReturn}
-          className="inline-flex items-center px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-700 transition"
+          className="inline-flex items-center px-4 py-2 bg-theme-primary text-theme-primary-fg text-xs font-semibold rounded-xl hover:bg-theme-primary-hover transition cursor-pointer"
         >
           প্রশিক্ষণার্থী তালিকায় ফিরে যান
         </button>
@@ -496,34 +496,34 @@ const TraineeForm: React.FC = () => {
         <button
           type="button"
           onClick={handleReturn}
-          className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-2xs"
+          className="p-2.5 rounded-xl border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-text-secondary transition shadow-2xs cursor-pointer"
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-2xl font-bold text-theme-text-primary">
             {id ? 'প্রশিক্ষণার্থী তথ্য সম্পাদনা (Edit Trainee)' : 'নতুন প্রশিক্ষণার্থী নিবন্ধন (Trainee Registration)'}
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-theme-text-secondary mt-0.5">
             অষ্টম শ্রেণির পূর্বে ড্রপআউট শিক্ষার্থীদের বৃত্তিমূলক প্রশিক্ষণ ফর্ম
           </p>
         </div>
       </div>
 
       {!id && (
-        <div className="bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 border border-teal-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
-          <div className="flex items-center space-x-3 text-teal-950">
-            <div className="p-2 bg-teal-600 text-white rounded-xl shrink-0 shadow-2xs">
+        <div className="bg-theme-primary-soft border border-theme-primary-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-center space-x-3 text-theme-text-primary">
+            <div className="p-2 bg-theme-primary text-theme-primary-fg rounded-xl shrink-0 shadow-2xs">
               <Upload size={16} />
             </div>
             <div>
-              <strong className="text-sm font-bold block">একসাথে একাধিক শিক্ষার্থীর তথ্য আপলোড করতে চান?</strong>
-              <p className="text-teal-700 mt-0.5">এক্সেল (.xlsx) বা সিএসভি (.csv) স্প্রেডশিটের মাধ্যমে এক ক্লিকে বাল্ক ইনপুট সম্পন্ন করুন।</p>
+              <strong className="text-sm font-bold block text-theme-primary-soft-fg">একসাথে একাধিক শিক্ষার্থীর তথ্য আপলোড করতে চান?</strong>
+              <p className="text-theme-text-secondary mt-0.5">এক্সেল (.xlsx) বা সিএসভি (.csv) স্প্রেডশিটের মাধ্যমে এক ক্লিকে বাল্ক ইনপুট সম্পন্ন করুন।</p>
             </div>
           </div>
           <Link
             to="/trainees"
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold rounded-xl transition shadow-2xs shrink-0 self-start sm:self-auto flex items-center space-x-1.5"
+            className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg font-bold rounded-xl transition shadow-2xs shrink-0 self-start sm:self-auto flex items-center space-x-1.5"
           >
             <span>বাল্ক আপলোড করুন</span>
             <span>→</span>
@@ -532,23 +532,23 @@ const TraineeForm: React.FC = () => {
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2.5">
-          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600" />
+        <div className="p-4 rounded-xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-sm flex items-start space-x-2.5">
+          <AlertCircle size={18} className="shrink-0 mt-0.5 text-theme-danger" />
           <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Official & Training Details */}
-        <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-          <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100">
-            <Building2 className="text-emerald-600" size={20} />
-            <h2 className="font-bold text-slate-800 text-base">১. প্রাতিষ্ঠানিক ও ভর্তি তথ্য (Official Training Info)</h2>
+        <div className="bg-theme-surface p-6 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-5">
+          <div className="flex items-center space-x-2.5 pb-3 border-b border-theme-border">
+            <Building2 className="text-theme-primary" size={20} />
+            <h2 className="font-bold text-theme-text-primary text-base">১. প্রাতিষ্ঠানিক ও ভর্তি তথ্য (Official Training Info)</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
                 প্রশিক্ষণার্থী আইডি (Trainee ID - Auto)
               </label>
               <div className="relative">
@@ -556,21 +556,21 @@ const TraineeForm: React.FC = () => {
                   type="text"
                   readOnly
                   value={formData.traineeId}
-                  className="w-full px-3 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl text-sm font-mono text-emerald-800 font-semibold focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-primary-soft border border-theme-primary-border rounded-xl text-sm font-mono text-theme-primary-soft-fg font-semibold focus:outline-none tabular-nums"
                 />
-                <span className="absolute right-2.5 top-2 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-sans font-medium">
+                <span className="absolute right-2.5 top-2 text-[10px] bg-theme-surface text-theme-primary border border-theme-primary-border px-1.5 py-0.5 rounded font-sans font-medium">
                   স্বয়ংক্রিয়
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">আইডি স্বয়ংক্রিয়ভাবে নির্ধারিত</p>
+              <p className="text-[11px] text-theme-text-muted mt-1">আইডি স্বয়ংক্রিয়ভাবে নির্ধারিত</p>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-semibold text-theme-text-primary">
                   রেজিস্ট্রেশন নম্বর (Registration No)
                 </label>
-                <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">
+                <span className="text-[10px] text-theme-warning bg-theme-warning-soft px-1.5 py-0.5 rounded border border-theme-warning-border font-medium">
                   ঐচ্ছিক / পরবর্তীতে আপডেটযোগ্য
                 </span>
               </div>
@@ -580,36 +580,36 @@ const TraineeForm: React.FC = () => {
                 value={formData.registrationNumber || ''}
                 onChange={handleChange}
                 placeholder="যেমন: REG-10025 (প্রাথমিক পর্যায়ে ফাঁকা রাখা যাবে)"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm font-mono focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums"
               />
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[11px] text-theme-text-secondary mt-1">
                 প্রাথমিক ভর্তির সময় এটি ফাঁকা রাখা যাবে। রেজিস্ট্রেশন প্রক্রিয়া সম্পন্ন হলে পরবর্তীতে ইউনিক নম্বর হিসেবে আপডেট করা যাবে।
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">বর্তমান স্ট্যাটাস (Status)</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">বর্তমান স্ট্যাটাস (Status)</label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
               >
                 <option value="Active">সক্রিয় (Active)</option>
                 <option value="Completed">সম্পন্ন (Completed)</option>
                 <option value="Dropped Out">ঝরে পড়া (Dropped Out)</option>
               </select>
-              <p className="text-[11px] text-slate-400 mt-1">প্রশিক্ষণার্থী ভর্তি স্ট্যাটাস</p>
+              <p className="text-[11px] text-theme-text-muted mt-1">প্রশিক্ষণার্থী ভর্তি স্ট্যাটাস</p>
             </div>
 
             {/* Batch Selection (Single primary enrollment field) */}
             <div className="sm:col-span-2 lg:col-span-3 pt-2">
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700">
+                <label className="block text-xs font-bold text-theme-text-primary">
                   প্রশিক্ষণ ব্যাচ নির্বাচন (Enrollment Batch) *
                 </label>
                 {batches.length === 0 && (
-                  <Link to="/batches" className="text-xs text-emerald-700 font-semibold hover:underline">
+                  <Link to="/batches" className="text-xs text-theme-primary font-semibold hover:underline">
                     + নতুন ব্যাচ তৈরি করুন
                   </Link>
                 )}
@@ -619,7 +619,7 @@ const TraineeForm: React.FC = () => {
                 name="batchId"
                 value={formData.batchId}
                 onChange={e => handleBatchSelect(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer bg-white"
+                className="w-full px-3.5 py-2.5 border border-theme-border-strong rounded-xl text-sm font-medium focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer bg-theme-surface text-theme-text-primary"
               >
                 <option value="">-- ব্যাচ নির্বাচন করুন --</option>
                 {availableBatches.map(b => {
@@ -632,51 +632,51 @@ const TraineeForm: React.FC = () => {
                   );
                 })}
               </select>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[11px] text-theme-text-secondary mt-1">
                 একজন শিক্ষার্থী মূলত একটি ব্যাচের অধীন নিবন্ধিত হয়। আলাদাভাবে প্রতিষ্ঠান ও ট্রেড নির্বাচন করার প্রয়োজন নেই; নির্বাচিত ব্যাচের ডাটা হতে প্রতিষ্ঠান ও ট্রেড স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে।
               </p>
             </div>
 
             {/* Auto-resolved Batch Details Info Banner */}
             {selectedBatch && (
-              <div className="sm:col-span-2 lg:col-span-3 p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl animate-fadeIn space-y-2.5">
-                <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                  <span className="text-xs font-bold text-emerald-900 flex items-center space-x-1.5">
-                    <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
+              <div className="sm:col-span-2 lg:col-span-3 p-4 bg-theme-primary-soft border border-theme-primary-border rounded-2xl animate-fadeIn space-y-2.5">
+                <div className="flex items-center justify-between border-b border-theme-primary-border pb-2">
+                  <span className="text-xs font-bold text-theme-primary-soft-fg flex items-center space-x-1.5">
+                    <CheckCircle2 size={16} className="text-theme-primary shrink-0" />
                     <span>নির্বাচিত ব্যাচ হতে স্বয়ংক্রিয়ভাবে নির্ধারিত তথ্য (Auto-linked Details):</span>
                   </span>
-                  <span className="text-[11px] font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                  <span className="text-[11px] font-semibold text-theme-primary-soft-fg bg-theme-surface px-2 py-0.5 rounded-md border border-theme-primary-border tabular-nums">
                     কোড: {selectedBatch.batchCode || selectedBatch.id}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                  <div className="bg-white/80 p-3 rounded-xl border border-emerald-200/60">
-                    <span className="text-[11px] text-slate-500 block flex items-center space-x-1">
-                      <GraduationCap size={13} className="text-emerald-700" />
+                  <div className="bg-theme-surface p-3 rounded-xl border border-theme-primary-border">
+                    <span className="text-[11px] text-theme-text-secondary block flex items-center space-x-1">
+                      <GraduationCap size={13} className="text-theme-primary" />
                       <span>বৃত্তিমূলক ট্রেড (Trade):</span>
                     </span>
-                    <strong className="text-slate-800 text-xs mt-1 block">
+                    <strong className="text-theme-text-primary text-xs mt-1 block">
                       {selectedTrade ? `${selectedTrade.name} (${selectedTrade.code || ''})` : (selectedBatch.tradeId ? `ট্রেড আইডি: ${selectedBatch.tradeId}` : 'ব্যাচে ট্রেড বরাদ্দ নেই')}
                     </strong>
                   </div>
 
-                  <div className="bg-white/80 p-3 rounded-xl border border-emerald-200/60">
-                    <span className="text-[11px] text-slate-500 block flex items-center space-x-1">
-                      <Building2 size={13} className="text-emerald-700" />
+                  <div className="bg-theme-surface p-3 rounded-xl border border-theme-primary-border">
+                    <span className="text-[11px] text-theme-text-secondary block flex items-center space-x-1">
+                      <Building2 size={13} className="text-theme-primary" />
                       <span>প্রশিক্ষণ কেন্দ্র (প্রতিষ্ঠান):</span>
                     </span>
-                    <strong className="text-slate-800 text-xs mt-1 block">
+                    <strong className="text-theme-text-primary text-xs mt-1 block">
                       {selectedInstitute ? `${selectedInstitute.name} (${selectedInstitute.code || selectedInstitute.id})` : (selectedBatch.instituteId ? `প্রতিষ্ঠান আইডি: ${selectedBatch.instituteId}` : 'ব্যাচে প্রতিষ্ঠান বরাদ্দ নেই')}
                     </strong>
                   </div>
 
-                  <div className="bg-white/80 p-3 rounded-xl border border-emerald-200/60">
-                    <span className="text-[11px] text-slate-500 block flex items-center space-x-1">
-                      <Calendar size={13} className="text-emerald-700" />
+                  <div className="bg-theme-surface p-3 rounded-xl border border-theme-primary-border">
+                    <span className="text-[11px] text-theme-text-secondary block flex items-center space-x-1">
+                      <Calendar size={13} className="text-theme-primary" />
                       <span>অর্থবছর ও ধারণক্ষমতা:</span>
                     </span>
-                    <strong className="text-slate-800 text-xs mt-1 block">
+                    <strong className="text-theme-text-primary text-xs mt-1 block tabular-nums">
                       {selectedBatch.fiscalYear || '২০২৫-২০২৬'} • আসন: {selectedBatch.maxTrainees || 30} জন
                     </strong>
                   </div>
@@ -687,27 +687,27 @@ const TraineeForm: React.FC = () => {
         </div>
 
         {/* Section 2: Personal Details */}
-        <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-          <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100">
-            <User className="text-blue-600" size={20} />
-            <h2 className="font-bold text-slate-800 text-base">২. শিক্ষার্থীর ব্যক্তিগত তথ্য (Personal Information)</h2>
+        <div className="bg-theme-surface p-6 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-5">
+          <div className="flex items-center space-x-2.5 pb-3 border-b border-theme-border">
+            <User className="text-theme-info" size={20} />
+            <h2 className="font-bold text-theme-text-primary text-base">২. শিক্ষার্থীর ব্যক্তিগত তথ্য (Personal Information)</h2>
           </div>
 
-          {/* Dual Inputs (Bootstrap Multiple Inputs style) for Name, Father Name, Mother Name */}
+          {/* Dual Inputs for Name, Father Name, Mother Name */}
           <div className="space-y-4">
             {/* 1. Trainee Full Name Dual Inputs Group */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-800">
-                  ১. শিক্ষার্থীর পূর্ণ নাম (Trainee Full Name) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-theme-text-primary">
+                  ১. শিক্ষার্থীর পূর্ণ নাম (Trainee Full Name) <span className="text-theme-danger">*</span>
                 </label>
-                <span className="text-[11px] text-slate-500 font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
+                <span className="text-[11px] text-theme-text-secondary font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-theme-surface-subtle border border-theme-border rounded-2xl">
                 {/* Bangla Name */}
                 <div>
-                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white overflow-hidden transition">
-                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border-r border-slate-200 shrink-0 select-none">
+                  <div className="flex rounded-xl shadow-2xs border border-theme-border-strong focus-within:border-theme-primary focus-within:ring-2 focus-within:ring-theme-primary/20 bg-theme-surface overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-theme-primary-soft text-theme-primary-soft-fg border-r border-theme-border shrink-0 select-none">
                       বাংলা
                     </span>
                     <input
@@ -717,11 +717,11 @@ const TraineeForm: React.FC = () => {
                       value={formData.nameBn || ''}
                       onChange={handleBengaliChange}
                       placeholder="বাংলায় নাম লিখুন (যেমন: মোঃ শাকিল আহমেদ)"
-                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent"
+                      className="w-full px-3 py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none bg-transparent"
                     />
                   </div>
                   {fieldWarnings.nameBn && (
-                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{fieldWarnings.nameBn}</span>
                     </p>
@@ -730,8 +730,8 @@ const TraineeForm: React.FC = () => {
 
                 {/* English Name */}
                 <div>
-                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 bg-white overflow-hidden transition">
-                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-blue-50 text-blue-800 border-r border-slate-200 shrink-0 select-none">
+                  <div className="flex rounded-xl shadow-2xs border border-theme-border-strong focus-within:border-theme-info focus-within:ring-2 focus-within:ring-theme-info/20 bg-theme-surface overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-theme-info-soft text-theme-info border-r border-theme-border shrink-0 select-none">
                       English
                     </span>
                     <input
@@ -741,11 +741,11 @@ const TraineeForm: React.FC = () => {
                       value={formData.nameEn || ''}
                       onChange={handleEnglishChange}
                       placeholder="Enter name in English (e.g. Md. Shakil Ahmed)"
-                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent font-sans"
+                      className="w-full px-3 py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none bg-transparent font-sans"
                     />
                   </div>
                   {fieldWarnings.nameEn && (
-                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{fieldWarnings.nameEn}</span>
                     </p>
@@ -757,16 +757,16 @@ const TraineeForm: React.FC = () => {
             {/* 2. Father's Name Dual Inputs Group */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-800">
-                  ২. পিতার নাম (Father's Name) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-theme-text-primary">
+                  ২. পিতার নাম (Father's Name) <span className="text-theme-danger">*</span>
                 </label>
-                <span className="text-[11px] text-slate-500 font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
+                <span className="text-[11px] text-theme-text-secondary font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-theme-surface-subtle border border-theme-border rounded-2xl">
                 {/* Bangla Father Name */}
                 <div>
-                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white overflow-hidden transition">
-                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border-r border-slate-200 shrink-0 select-none">
+                  <div className="flex rounded-xl shadow-2xs border border-theme-border-strong focus-within:border-theme-primary focus-within:ring-2 focus-within:ring-theme-primary/20 bg-theme-surface overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-theme-primary-soft text-theme-primary-soft-fg border-r border-theme-border shrink-0 select-none">
                       বাংলা
                     </span>
                     <input
@@ -776,11 +776,11 @@ const TraineeForm: React.FC = () => {
                       value={formData.fatherNameBn || ''}
                       onChange={handleBengaliChange}
                       placeholder="বাংলায় পিতার নাম লিখুন (যেমন: মোঃ রফিকুল ইসলাম)"
-                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent"
+                      className="w-full px-3 py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none bg-transparent"
                     />
                   </div>
                   {fieldWarnings.fatherNameBn && (
-                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{fieldWarnings.fatherNameBn}</span>
                     </p>
@@ -789,8 +789,8 @@ const TraineeForm: React.FC = () => {
 
                 {/* English Father Name */}
                 <div>
-                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 bg-white overflow-hidden transition">
-                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-blue-50 text-blue-800 border-r border-slate-200 shrink-0 select-none">
+                  <div className="flex rounded-xl shadow-2xs border border-theme-border-strong focus-within:border-theme-info focus-within:ring-2 focus-within:ring-theme-info/20 bg-theme-surface overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-theme-info-soft text-theme-info border-r border-theme-border shrink-0 select-none">
                       English
                     </span>
                     <input
@@ -800,11 +800,11 @@ const TraineeForm: React.FC = () => {
                       value={formData.fatherNameEn || ''}
                       onChange={handleEnglishChange}
                       placeholder="Enter father's name in English (e.g. Md. Rafiqul Islam)"
-                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent font-sans"
+                      className="w-full px-3 py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none bg-transparent font-sans"
                     />
                   </div>
                   {fieldWarnings.fatherNameEn && (
-                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{fieldWarnings.fatherNameEn}</span>
                     </p>
@@ -816,16 +816,16 @@ const TraineeForm: React.FC = () => {
             {/* 3. Mother's Name Dual Inputs Group */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-800">
-                  ৩. মাতার নাম (Mother's Name) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-theme-text-primary">
+                  ৩. মাতার নাম (Mother's Name) <span className="text-theme-danger">*</span>
                 </label>
-                <span className="text-[11px] text-slate-500 font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
+                <span className="text-[11px] text-theme-text-secondary font-medium">বাংলা ও ইংরেজি উভয় আবশ্যক</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 bg-theme-surface-subtle border border-theme-border rounded-2xl">
                 {/* Bangla Mother Name */}
                 <div>
-                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white overflow-hidden transition">
-                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border-r border-slate-200 shrink-0 select-none">
+                  <div className="flex rounded-xl shadow-2xs border border-theme-border-strong focus-within:border-theme-primary focus-within:ring-2 focus-within:ring-theme-primary/20 bg-theme-surface overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-theme-primary-soft text-theme-primary-soft-fg border-r border-theme-border shrink-0 select-none">
                       বাংলা
                     </span>
                     <input
@@ -835,11 +835,11 @@ const TraineeForm: React.FC = () => {
                       value={formData.motherNameBn || ''}
                       onChange={handleBengaliChange}
                       placeholder="বাংলায় মাতার নাম লিখুন (যেমন: মোসাঃ রহিমা বেগম)"
-                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent"
+                      className="w-full px-3 py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none bg-transparent"
                     />
                   </div>
                   {fieldWarnings.motherNameBn && (
-                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{fieldWarnings.motherNameBn}</span>
                     </p>
@@ -848,8 +848,8 @@ const TraineeForm: React.FC = () => {
 
                 {/* English Mother Name */}
                 <div>
-                  <div className="flex rounded-xl shadow-2xs border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 bg-white overflow-hidden transition">
-                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-blue-50 text-blue-800 border-r border-slate-200 shrink-0 select-none">
+                  <div className="flex rounded-xl shadow-2xs border border-theme-border-strong focus-within:border-theme-info focus-within:ring-2 focus-within:ring-theme-info/20 bg-theme-surface overflow-hidden transition">
+                    <span className="inline-flex items-center px-3 text-xs font-semibold bg-theme-info-soft text-theme-info border-r border-theme-border shrink-0 select-none">
                       English
                     </span>
                     <input
@@ -859,11 +859,11 @@ const TraineeForm: React.FC = () => {
                       value={formData.motherNameEn || ''}
                       onChange={handleEnglishChange}
                       placeholder="Enter mother's name in English (e.g. Mst. Rahima Begum)"
-                      className="w-full px-3 py-2 text-sm text-slate-800 focus:outline-none bg-transparent font-sans"
+                      className="w-full px-3 py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none bg-transparent font-sans"
                     />
                   </div>
                   {fieldWarnings.motherNameEn && (
-                    <p className="text-[11px] text-rose-600 mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{fieldWarnings.motherNameEn}</span>
                     </p>
@@ -873,27 +873,27 @@ const TraineeForm: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-theme-border">
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">জন্ম তারিখ *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">জন্ম তারিখ *</label>
               <input
                 required
                 type="date"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">লিঙ্গ (Gender) *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">লিঙ্গ (Gender) *</label>
               <select
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
               >
                 <option value="Male">পুরুষ (Male)</option>
                 <option value="Female">নারী (Female)</option>
@@ -902,7 +902,7 @@ const TraineeForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">জন্ম নিবন্ধন / এনআইডি নম্বর *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">জন্ম নিবন্ধন / এনআইডি নম্বর *</label>
               <input
                 required
                 type="text"
@@ -910,12 +910,12 @@ const TraineeForm: React.FC = () => {
                 value={formData.nidOrBirthRegistration}
                 onChange={handleChange}
                 placeholder="১৭ ডিজিটের জন্ম নিবন্ধন বা এনআইডি"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none font-mono tabular-nums"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">মোবাইল নম্বর *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">মোবাইল নম্বর *</label>
               <input
                 required
                 type="tel"
@@ -923,23 +923,23 @@ const TraineeForm: React.FC = () => {
                 value={formData.mobileNumber}
                 onChange={handleChange}
                 placeholder="017xxxxxxxx"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none font-mono tabular-nums"
               />
             </div>
 
             {/* Separate Permanent and Present Address with 'Same as Permanent Address' checkbox */}
-            <div className="sm:col-span-2 space-y-3 pt-3 border-t border-slate-100">
+            <div className="sm:col-span-2 space-y-3 pt-3 border-t border-theme-border">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700">
+                <span className="text-xs font-bold text-theme-text-primary">
                   ঠিকানা সংক্রান্ত তথ্য (Address Details)
                 </span>
                 
-                <label className="inline-flex items-center space-x-2 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100/70 px-3 py-1.5 rounded-lg border border-emerald-200/80 cursor-pointer transition select-none">
+                <label className="inline-flex items-center space-x-2 text-xs font-medium text-theme-primary-soft-fg bg-theme-primary-soft hover:opacity-90 px-3 py-1.5 rounded-lg border border-theme-primary-border cursor-pointer transition select-none">
                   <input
                     type="checkbox"
                     checked={!!formData.sameAsPermanentAddress}
                     onChange={handleSameAddressToggle}
-                    className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500"
+                    className="w-4 h-4 rounded accent-theme-primary border-theme-border-strong focus:ring-theme-primary"
                   />
                   <span>স্থায়ী ঠিকানার অনুরূপ (Same as Permanent Address)</span>
                 </label>
@@ -948,7 +948,7 @@ const TraineeForm: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Permanent Address */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
                     স্থায়ী ঠিকানা (Permanent Address) *
                   </label>
                   <textarea
@@ -958,18 +958,18 @@ const TraineeForm: React.FC = () => {
                     value={formData.permanentAddress || ''}
                     onChange={handlePermanentAddressChange}
                     placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
                   />
                 </div>
 
                 {/* Present Address */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-600">
+                    <label className="block text-xs font-semibold text-theme-text-secondary">
                       বর্তমান ঠিকানা (Present Address) *
                     </label>
                     {formData.sameAsPermanentAddress && (
-                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      <span className="text-[10px] text-theme-primary-soft-fg bg-theme-primary-soft px-1.5 py-0.5 rounded border border-theme-primary-border">
                         স্থায়ী ঠিকানার সাথে সংযুক্ত
                       </span>
                     )}
@@ -982,10 +982,10 @@ const TraineeForm: React.FC = () => {
                     onChange={handlePresentAddressChange}
                     readOnly={formData.sameAsPermanentAddress}
                     placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা"
-                    className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none ${
+                    className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none placeholder:text-theme-text-muted ${
                       formData.sameAsPermanentAddress
-                        ? 'bg-slate-50 border-slate-200 text-slate-600 cursor-not-allowed'
-                        : 'border-slate-300 text-slate-800'
+                        ? 'bg-theme-surface-subtle border-theme-border text-theme-text-secondary cursor-not-allowed'
+                        : 'bg-theme-surface border-theme-border-strong text-theme-text-primary'
                     }`}
                   />
                 </div>
@@ -995,15 +995,15 @@ const TraineeForm: React.FC = () => {
         </div>
 
         {/* Section 3: Dropout & Education Information */}
-        <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-          <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100">
-            <GraduationCap className="text-amber-600" size={20} />
-            <h2 className="font-bold text-slate-800 text-base">৩. ড্রপআউট ও পূর্ববর্তী শিক্ষাগত তথ্য (Educational Background)</h2>
+        <div className="bg-theme-surface p-6 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-5">
+          <div className="flex items-center space-x-2.5 pb-3 border-b border-theme-border">
+            <GraduationCap className="text-theme-warning" size={20} />
+            <h2 className="font-bold text-theme-text-primary text-base">৩. ড্রপআউট ও পূর্ববর্তী শিক্ষাগত তথ্য (Educational Background)</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">সর্বশেষ উত্তীর্ণ/পঠিত শ্রেণি *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">সর্বশেষ উত্তীর্ণ/পঠিত শ্রেণি *</label>
               <input
                 required
                 type="text"
@@ -1011,12 +1011,12 @@ const TraineeForm: React.FC = () => {
                 value={formData.lastClassCompleted}
                 onChange={handleChange}
                 placeholder="e.g. ৭ম শ্রেণি (Class 7)"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">পূর্ববর্তী বিদ্যালয়ের নাম *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পূর্ববর্তী বিদ্যালয়ের নাম *</label>
               <input
                 required
                 type="text"
@@ -1024,12 +1024,12 @@ const TraineeForm: React.FC = () => {
                 value={formData.previousSchoolName}
                 onChange={handleChange}
                 placeholder="পূর্ববর্তী স্কুলের নাম"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">ঝরে পড়ার বছর (Year of Dropout) *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ঝরে পড়ার বছর (Year of Dropout) *</label>
               <input
                 required
                 type="text"
@@ -1037,12 +1037,12 @@ const TraineeForm: React.FC = () => {
                 value={formData.yearOfDropout}
                 onChange={handleChange}
                 placeholder="e.g. 2022"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none font-mono tabular-nums"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">ঝরে পড়ার কারণ (Reason for Dropout) *</label>
+              <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ঝরে পড়ার কারণ (Reason for Dropout) *</label>
               <input
                 required
                 type="text"
@@ -1050,7 +1050,7 @@ const TraineeForm: React.FC = () => {
                 value={formData.reasonForDropout}
                 onChange={handleChange}
                 placeholder="e.g. দারিদ্র্য / পারিবারিক অসচ্ছলতা / দূরবর্তী স্কুল"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
               />
             </div>
           </div>
@@ -1061,14 +1061,14 @@ const TraineeForm: React.FC = () => {
           <button
             type="button"
             onClick={handleReturn}
-            className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+            className="px-5 py-2.5 border border-theme-border bg-theme-surface rounded-xl text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
           >
             বাতিল
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center space-x-2 transition disabled:opacity-50"
+            className="px-6 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center space-x-2 transition disabled:opacity-50 cursor-pointer"
           >
             <Save size={18} />
             <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ সম্পন্ন করুন'}</span>

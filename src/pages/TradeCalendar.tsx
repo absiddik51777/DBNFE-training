@@ -331,8 +331,8 @@ const TradeCalendar: React.FC = () => {
     <div className="space-y-6 pb-12">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-20 right-6 lg:bottom-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-5 duration-300 border border-slate-700">
-          <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+        <div className="fixed bottom-20 right-6 lg:bottom-6 z-50 bg-theme-elevated text-theme-text-primary px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-5 duration-300 border border-theme-border-strong">
+          <CheckCircle2 size={18} className="text-theme-primary shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -373,14 +373,14 @@ const TradeCalendar: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. TRADE SELECTOR CARD & REUSABILITY EXPLANATION        */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div className="bg-theme-surface rounded-2xl p-5 sm:p-6 border border-theme-border shadow-xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-theme-border">
           <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <Wrench size={14} className="text-emerald-600" />
+            <span className="text-xs font-bold uppercase tracking-wider text-theme-text-secondary flex items-center gap-1.5">
+              <Wrench size={14} className="text-theme-primary" />
               বৃত্তিমূলক ট্রেড নির্বাচন (Select Trade)
             </span>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-theme-text-secondary">
               যে ট্রেডের কারিকুলাম দেখতে বা পরিবর্তন করতে চান তা নির্বাচন করুন:
             </p>
           </div>
@@ -389,7 +389,7 @@ const TradeCalendar: React.FC = () => {
             <select
               value={selectedTradeId}
               onChange={(e) => setSelectedTradeId(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-emerald-500/40 rounded-xl p-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+              className="w-full bg-theme-surface-subtle border-2 border-theme-primary/40 rounded-xl p-3 text-sm font-bold text-theme-text-primary focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary cursor-pointer shadow-2xs"
             >
               {trades.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -402,29 +402,29 @@ const TradeCalendar: React.FC = () => {
 
         {/* Selected Trade Overview & Reusability Note */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-          <div className="md:col-span-8 p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 flex items-start space-x-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+          <div className="md:col-span-8 p-4 rounded-xl bg-theme-primary-soft/60 border border-theme-primary-border flex items-start space-x-3">
+            <div className="w-9 h-9 rounded-lg bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
               <ShieldCheck size={18} />
             </div>
-            <div className="text-xs text-slate-700 space-y-1">
-              <p className="font-bold text-emerald-900 text-sm">
+            <div className="text-xs text-theme-text-secondary space-y-1">
+              <p className="font-bold text-theme-primary-soft-fg text-sm">
                 রি-ইউজেবল কারিকুলাম নীতি ({selectedTrade?.name})
               </p>
-              <p className="leading-relaxed">
-                এই ট্রেডের জন্য সংরক্ষিত <strong>{toBn(skillModules.length)}টি স্কিল</strong> ও <strong>{toBn(literacyModules.length)}টি লিটারেসি</strong> মডিউল এই ট্রেডের অন্তর্ভুক্ত <strong>{toBn(tradeBatches.length)}টি ব্যাচে</strong> স্বয়ংক্রিয়ভাবে সক্রিয় রয়েছে। নতুন কোনো ব্যাচ তৈরি হলে তারাও তাৎক্ষণিকভাবে এই কারিকুলামটি পাবে।
+              <p className="leading-relaxed tabular-nums">
+                এই ট্রেডের জন্য সংরক্ষিত <strong className="text-theme-text-primary">{toBn(skillModules.length)}টি স্কিল</strong> ও <strong className="text-theme-text-primary">{toBn(literacyModules.length)}টি লিটারেসি</strong> মডিউল এই ট্রেডের অন্তর্ভুক্ত <strong className="text-theme-text-primary">{toBn(tradeBatches.length)}টি ব্যাচে</strong> স্বয়ংক্রিয়ভাবে সক্রিয় রয়েছে। নতুন কোনো ব্যাচ তৈরি হলে তারাও তাৎক্ষণিকভাবে এই কারিকুলামটি পাবে।
               </p>
             </div>
           </div>
 
           {/* Quick Metrics */}
           <div className="md:col-span-4 grid grid-cols-2 gap-3 text-center">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60">
-              <span className="block text-[11px] text-slate-500 font-medium">অন্তর্ভুক্ত ব্যাচ</span>
-              <span className="text-lg font-extrabold text-slate-900">{toBn(tradeBatches.length)}টি ব্যাচ</span>
+            <div className="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border">
+              <span className="block text-[11px] text-theme-text-secondary font-medium">অন্তর্ভুক্ত ব্যাচ</span>
+              <span className="text-lg font-extrabold text-theme-text-primary tabular-nums">{toBn(tradeBatches.length)}টি ব্যাচ</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60">
-              <span className="block text-[11px] text-slate-500 font-medium">মোট কোর্স সময়</span>
-              <span className="text-lg font-extrabold text-emerald-700">৩৬৮ ঘণ্টা</span>
+            <div className="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border">
+              <span className="block text-[11px] text-theme-text-secondary font-medium">মোট কোর্স সময়</span>
+              <span className="text-lg font-extrabold text-theme-primary tabular-nums">৩৬৮ ঘণ্টা</span>
             </div>
           </div>
         </div>
@@ -433,14 +433,14 @@ const TradeCalendar: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. TABS NAVIGATION & ACTIONS BAR                        */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-theme-surface rounded-2xl p-3 border border-theme-border shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setActiveTab('skill')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 tabular-nums ${
               activeTab === 'skill'
-                ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-theme-primary text-theme-primary-fg shadow-md shadow-theme-primary/20'
+                : 'text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
             }`}
           >
             <Wrench size={16} />
@@ -449,10 +449,10 @@ const TradeCalendar: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('literacy')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 tabular-nums ${
               activeTab === 'literacy'
-                ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-theme-info text-white shadow-md shadow-theme-info/20'
+                : 'text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
             }`}
           >
             <BookOpen size={16} />
@@ -465,16 +465,16 @@ const TradeCalendar: React.FC = () => {
             <>
               <button
                 onClick={() => setIsClearModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-theme-danger-fg bg-theme-danger-soft hover:bg-theme-danger/20 border border-theme-danger/30 transition"
                 title="এই ট্রেডের সকল মডিউল তালিকা সম্পূর্ণ খালি করুন যাতে নতুন করে ইনপুট দেওয়া যায়"
               >
-                <Trash2 size={14} className="text-rose-600" />
+                <Trash2 size={14} className="text-theme-danger" />
                 <span>সকল মডিউল খালি করুন</span>
               </button>
 
               <button
                 onClick={() => setIsResetModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover border border-theme-border transition"
                 title="সরকারি BNFE স্ট্যান্ডার্ড সিলেবাস রিস্টোর করুন"
               >
                 <RotateCcw size={14} />
@@ -485,10 +485,10 @@ const TradeCalendar: React.FC = () => {
 
           <button
             onClick={() => downloadDemoCSV(activeTab)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-theme-warning-soft hover:bg-theme-warning/20 text-theme-warning-fg border border-theme-warning/30 text-xs font-bold transition"
             title="বাল্ক ইনপুটের নমুনা ডেমো ফাইল"
           >
-            <Download size={14} className="text-amber-700" />
+            <Download size={14} className="text-theme-warning" />
             <span>ডেমো ফাইল (.csv)</span>
           </button>
 
@@ -499,9 +499,9 @@ const TradeCalendar: React.FC = () => {
                   setBulkModalType(activeTab);
                   setIsBulkModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary border border-theme-border-strong text-xs font-bold transition shadow-xs"
               >
-                <FolderOpen size={14} />
+                <FolderOpen size={14} className="text-theme-primary" />
                 <span>বাল্ক ইনপুট (CSV)</span>
               </button>
 
@@ -511,8 +511,10 @@ const TradeCalendar: React.FC = () => {
                   setEditingModule(null);
                   setIsSingleModalOpen(true);
                 }}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold transition shadow-xs ${
-                  activeTab === 'skill' ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-blue-700 hover:bg-blue-800'
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
+                  activeTab === 'skill'
+                    ? 'bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg'
+                    : 'bg-theme-info hover:opacity-90 text-white'
                 }`}
               >
                 <Plus size={15} />
@@ -526,20 +528,20 @@ const TradeCalendar: React.FC = () => {
       {/* ======================================================== */}
       {/* 4. SEARCH & FILTER BAR                                  */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-theme-surface rounded-2xl p-3.5 border border-theme-border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-text-muted" />
           <input
             type="text"
             placeholder="বিষয়, কাজ বা মডিউল খুঁজুন..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            className="w-full pl-9 pr-4 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs font-medium text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-theme-text-muted hover:text-theme-text-primary"
             >
               ✕
             </button>
@@ -548,13 +550,13 @@ const TradeCalendar: React.FC = () => {
 
         {activeTab === 'skill' ? (
           <div className="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-            <span className="text-xs text-slate-500 whitespace-nowrap hidden sm:inline">বিভাগ:</span>
+            <span className="text-xs text-theme-text-secondary whitespace-nowrap hidden sm:inline">বিভাগ:</span>
             <button
               onClick={() => setSelectedPhase('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer tabular-nums ${
                 selectedPhase === 'all'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+                  ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
+                  : 'bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
               }`}
             >
               সকল বিভাগ ({toBn(skillModules.length)})
@@ -565,10 +567,10 @@ const TradeCalendar: React.FC = () => {
                 <button
                   key={p}
                   onClick={() => setSelectedPhase(p)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer tabular-nums ${
                     selectedPhase === p
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+                      ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
+                      : 'bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
                   }`}
                 >
                   {p} ({toBn(count)})
@@ -578,13 +580,13 @@ const TradeCalendar: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-            <span className="text-xs text-slate-500 whitespace-nowrap hidden sm:inline">বিষয়:</span>
+            <span className="text-xs text-theme-text-secondary whitespace-nowrap hidden sm:inline">বিষয়:</span>
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer tabular-nums ${
                 selectedCategory === 'all'
-                  ? 'bg-blue-700 text-white shadow-xs'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+                  ? 'bg-theme-info text-white shadow-xs'
+                  : 'bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
               }`}
             >
               সকল বিষয় ({toBn(literacyModules.length)})
@@ -595,10 +597,10 @@ const TradeCalendar: React.FC = () => {
                 <button
                   key={c}
                   onClick={() => setSelectedCategory(c)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer tabular-nums ${
                     selectedCategory === c
-                      ? 'bg-blue-700 text-white shadow-xs'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+                      ? 'bg-theme-info text-white shadow-xs'
+                      : 'bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
                   }`}
                 >
                   {c} ({toBn(count)})
@@ -613,18 +615,18 @@ const TradeCalendar: React.FC = () => {
       {/* 5. TABLE: SKILL MODULES (FOR SELECTED TRADE)            */}
       {/* ======================================================== */}
       {activeTab === 'skill' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-          <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span className="font-bold text-slate-800">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
+          <div className="p-4 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between text-xs text-theme-text-secondary tabular-nums">
+            <span className="font-bold text-theme-text-primary">
               {selectedTrade?.name} • স্কিল মডিউল তালিকা ({toBn(filteredSkillModules.length)}টি দেখানো হচ্ছে)
             </span>
-            <span>মোট স্কিল সময়: <strong className="text-emerald-700">{toBn(totalSkillHours)} ঘণ্টা</strong></span>
+            <span>মোট স্কিল সময়: <strong className="text-theme-primary">{toBn(totalSkillHours)} ঘণ্টা</strong></span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-900 text-white font-bold border-b border-slate-800">
+                <tr className="bg-slate-900 dark:bg-theme-surface-subtle text-white dark:text-theme-text-primary font-bold border-b border-theme-border">
                   <th className="py-3 px-3 w-16 text-center">দিন #</th>
                   <th className="py-3 px-3 w-24 text-center">কাজ নং</th>
                   <th className="py-3 px-4 min-w-[180px]">মডিউলের নাম ও বিভাগ</th>
@@ -636,42 +638,42 @@ const TradeCalendar: React.FC = () => {
                   <th className="py-3 px-3 w-24 text-center">একশন</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-theme-border text-theme-text-secondary">
                 {modulesLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-theme-text-muted">
                       মডিউল লোড করা হচ্ছে...
                     </td>
                   </tr>
                 ) : filteredSkillModules.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-theme-text-muted">
                       এই ট্রেডের জন্য কোনো স্কিল মডিউল পাওয়া যায়নি। "+ নতুন স্কিল মডিউল" বা "ডিফল্ট সিলেবাস রিস্টোর" বাটনে ক্লিক করুন।
                     </td>
                   </tr>
                 ) : (
                   filteredSkillModules.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3 px-3 text-center font-bold text-slate-900">
+                    <tr key={item.id} className="hover:bg-theme-surface-hover transition">
+                      <td className="py-3 px-3 text-center font-bold text-theme-text-primary tabular-nums">
                         {toBn(item.dayNumber)}
                       </td>
-                      <td className="py-3 px-3 text-center font-semibold text-emerald-800 bg-emerald-50/50">
+                      <td className="py-3 px-3 text-center font-semibold text-theme-primary-soft-fg bg-theme-primary-soft/50 tabular-nums">
                         {item.taskNo}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-bold text-slate-900 block">{item.moduleName}</span>
-                        <span className="text-[10px] text-slate-500">{item.phaseGroup || 'সাধারণ'}</span>
+                        <span className="font-bold text-theme-text-primary block">{item.moduleName}</span>
+                        <span className="text-[10px] text-theme-text-muted">{item.phaseGroup || 'সাধারণ'}</span>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-medium text-slate-800">{item.topic}</p>
+                        <p className="font-medium text-theme-text-primary">{item.topic}</p>
                         {item.notes && (
-                          <span className="text-[10px] text-slate-400 block mt-0.5">নোট: {item.notes}</span>
+                          <span className="text-[10px] text-theme-text-muted block mt-0.5">নোট: {item.notes}</span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center font-medium">{toBn(item.theoryMinutes)} মি.</td>
-                      <td className="py-3 px-3 text-center font-medium text-emerald-700">{toBn(item.practicalMinutes)} মি.</td>
-                      <td className="py-3 px-3 text-center font-bold text-slate-900">{toBn(item.totalMinutes)} মি.</td>
-                      <td className="py-3 px-4 text-slate-600 text-[11px]">
+                      <td className="py-3 px-3 text-center font-medium tabular-nums">{toBn(item.theoryMinutes)} মি.</td>
+                      <td className="py-3 px-3 text-center font-medium text-theme-primary tabular-nums">{toBn(item.practicalMinutes)} মি.</td>
+                      <td className="py-3 px-3 text-center font-bold text-theme-text-primary tabular-nums">{toBn(item.totalMinutes)} মি.</td>
+                      <td className="py-3 px-4 text-theme-text-secondary text-[11px]">
                         {item.toolsRequired || '-'}
                       </td>
                       <td className="py-3 px-3 text-center">
@@ -683,21 +685,21 @@ const TradeCalendar: React.FC = () => {
                                 setEditingModule(item);
                                 setIsSingleModalOpen(true);
                               }}
-                              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                              className="p-1.5 text-theme-text-secondary hover:text-theme-primary hover:bg-theme-primary-soft rounded-lg transition"
                               title="সম্পাদনা করুন"
                             >
                               <Edit3 size={14} />
                             </button>
                             <button
                               onClick={() => handleRequestDeleteModule(item, 'skill')}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              className="p-1.5 text-theme-text-muted hover:text-theme-danger hover:bg-theme-danger-soft rounded-lg transition"
                               title="মুছে ফেলুন"
                             >
                               <Trash2 size={14} />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400">লকড</span>
+                          <span className="text-[11px] text-theme-text-muted">লকড</span>
                         )}
                       </td>
                     </tr>
@@ -713,18 +715,18 @@ const TradeCalendar: React.FC = () => {
       {/* 6. TABLE: LITERACY MODULES (FOR SELECTED TRADE)         */}
       {/* ======================================================== */}
       {activeTab === 'literacy' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-          <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span className="font-bold text-slate-800">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
+          <div className="p-4 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between text-xs text-theme-text-secondary tabular-nums">
+            <span className="font-bold text-theme-text-primary">
               {selectedTrade?.name} • লিটারেসি ও জীবন-দক্ষতা মডিউল তালিকা ({toBn(filteredLiteracyModules.length)}টি দেখানো হচ্ছে)
             </span>
-            <span>মোট লিটারেসি সময়: <strong className="text-blue-700">{toBn(totalLiteracyHours)} ঘণ্টা</strong></span>
+            <span>মোট লিটারেসি সময়: <strong className="text-theme-info">{toBn(totalLiteracyHours)} ঘণ্টা</strong></span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-900 text-white font-bold border-b border-slate-800">
+                <tr className="bg-slate-900 dark:bg-theme-surface-subtle text-white dark:text-theme-text-primary font-bold border-b border-theme-border">
                   <th className="py-3 px-3 w-16 text-center">দিন #</th>
                   <th className="py-3 px-3 w-24 text-center">কাজ নং</th>
                   <th className="py-3 px-4 min-w-[180px]">মডিউল ও বিষয় বিভাগ</th>
@@ -735,38 +737,38 @@ const TradeCalendar: React.FC = () => {
                   <th className="py-3 px-3 w-24 text-center">একশন</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-theme-border text-theme-text-secondary">
                 {modulesLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={8} className="py-12 text-center text-theme-text-muted">
                       মডিউল লোড করা হচ্ছে...
                     </td>
                   </tr>
                 ) : filteredLiteracyModules.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={8} className="py-12 text-center text-theme-text-muted">
                       এই ট্রেডের জন্য কোনো লিটারেসি মডিউল পাওয়া যায়নি। "+ নতুন লিটারেসি মডিউল" বা "ডিফল্ট সিলেবাস রিস্টোর" বাটনে ক্লিক করুন।
                     </td>
                   </tr>
                 ) : (
                   filteredLiteracyModules.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3 px-3 text-center font-bold text-slate-900">
+                    <tr key={item.id} className="hover:bg-theme-surface-hover transition">
+                      <td className="py-3 px-3 text-center font-bold text-theme-text-primary tabular-nums">
                         {toBn(item.dayNumber)}
                       </td>
-                      <td className="py-3 px-3 text-center font-semibold text-blue-800 bg-blue-50/50">
+                      <td className="py-3 px-3 text-center font-semibold text-theme-info-fg bg-theme-info-soft/50 tabular-nums">
                         {item.taskNo}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-bold text-slate-900 block">{item.moduleName}</span>
-                        <span className="text-[10px] text-blue-700">{item.category || 'বাংলা'}</span>
+                        <span className="font-bold text-theme-text-primary block">{item.moduleName}</span>
+                        <span className="text-[10px] text-theme-info">{item.category || 'বাংলা'}</span>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-medium text-slate-800">{item.topic}</p>
+                        <p className="font-medium text-theme-text-primary">{item.topic}</p>
                       </td>
-                      <td className="py-3 px-3 text-center font-medium">{item.startTime} - {item.endTime}</td>
-                      <td className="py-3 px-3 text-center font-bold text-slate-900">{toBn(item.totalMinutes)} মি.</td>
-                      <td className="py-3 px-4 text-slate-500 text-[11px]">
+                      <td className="py-3 px-3 text-center font-medium tabular-nums">{item.startTime} - {item.endTime}</td>
+                      <td className="py-3 px-3 text-center font-bold text-theme-text-primary tabular-nums">{toBn(item.totalMinutes)} মি.</td>
+                      <td className="py-3 px-4 text-theme-text-muted text-[11px]">
                         {item.notes || '-'}
                       </td>
                       <td className="py-3 px-3 text-center">
@@ -778,21 +780,21 @@ const TradeCalendar: React.FC = () => {
                                 setEditingModule(item);
                                 setIsSingleModalOpen(true);
                               }}
-                              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+                              className="p-1.5 text-theme-text-secondary hover:text-theme-info hover:bg-theme-info-soft rounded-lg transition"
                               title="সম্পাদনা করুন"
                             >
                               <Edit3 size={14} />
                             </button>
                             <button
                               onClick={() => handleRequestDeleteModule(item, 'literacy')}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              className="p-1.5 text-theme-text-muted hover:text-theme-danger hover:bg-theme-danger-soft rounded-lg transition"
                               title="মুছে ফেলুন"
                             >
                               <Trash2 size={14} />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400">লকড</span>
+                          <span className="text-[11px] text-theme-text-muted">লকড</span>
                         )}
                       </td>
                     </tr>
@@ -835,40 +837,40 @@ const TradeCalendar: React.FC = () => {
 
       {/* 7.1 Single Module Delete Confirmation Modal */}
       {deletingModule && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-theme-elevated rounded-3xl max-w-md w-full shadow-2xl border border-theme-border overflow-hidden transform animate-in zoom-in-95 duration-150">
             <div className="p-6">
-              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-theme-danger-soft text-theme-danger flex items-center justify-center mb-4">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1">
+              <h3 className="text-base font-bold text-theme-text-primary mb-1">
                 মডিউল মুছে ফেলার নিশ্চয়তা
               </h3>
-              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
                 আপনি কি নিশ্চিত যে আপনি এই মডিউলটি স্থায়ীভাবে মুছে ফেলতে চান?
               </p>
 
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 mb-5 space-y-1 text-xs">
-                <div className="flex items-center justify-between text-slate-500">
+              <div className="bg-theme-surface-subtle border border-theme-border rounded-2xl p-3.5 mb-5 space-y-1 text-xs">
+                <div className="flex items-center justify-between text-theme-text-secondary">
                   <span>ধরণ:</span>
-                  <span className="font-semibold text-slate-700">
+                  <span className="font-semibold text-theme-text-primary">
                     {deletingModule.type === 'skill' ? 'স্কিল ফোকাসড মডিউল' : 'লিটারেসি ও জীবন-দক্ষতা মডিউল'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-slate-500">
+                <div className="flex items-center justify-between text-theme-text-secondary">
                   <span>ক্লাস দিবস:</span>
-                  <span className="font-bold text-slate-900">দিন #{toBn(deletingModule.dayNumber)}</span>
+                  <span className="font-bold text-theme-text-primary tabular-nums">দিন #{toBn(deletingModule.dayNumber)}</span>
                 </div>
                 {deletingModule.moduleName && (
-                  <div className="flex items-start justify-between text-slate-500 pt-1 border-t border-slate-200/60">
+                  <div className="flex items-start justify-between text-theme-text-secondary pt-1 border-t border-theme-border">
                     <span>মডিউল:</span>
-                    <span className="font-semibold text-slate-800 text-right max-w-[220px]">{deletingModule.moduleName}</span>
+                    <span className="font-semibold text-theme-text-primary text-right max-w-[220px]">{deletingModule.moduleName}</span>
                   </div>
                 )}
                 {deletingModule.topic && (
-                  <div className="flex items-start justify-between text-slate-500 pt-1">
+                  <div className="flex items-start justify-between text-theme-text-secondary pt-1">
                     <span>পাঠ / বিষয়:</span>
-                    <span className="text-slate-700 text-right max-w-[220px]">{deletingModule.topic}</span>
+                    <span className="text-theme-text-primary text-right max-w-[220px]">{deletingModule.topic}</span>
                   </div>
                 )}
               </div>
@@ -878,7 +880,7 @@ const TradeCalendar: React.FC = () => {
                   type="button"
                   disabled={isDeleting}
                   onClick={() => setDeletingModule(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition disabled:opacity-50"
                 >
                   বাতিল
                 </button>
@@ -886,7 +888,7 @@ const TradeCalendar: React.FC = () => {
                   type="button"
                   disabled={isDeleting}
                   onClick={handleConfirmDelete}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-theme-danger hover:opacity-90 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
                 >
                   <Trash2 size={14} />
                   <span>{isDeleting ? 'মুছে ফেলা হচ্ছে...' : 'হ্যাঁ, মুছে ফেলুন'}</span>
@@ -899,21 +901,21 @@ const TradeCalendar: React.FC = () => {
 
       {/* 7.2 Clear All Modules for Trade Modal */}
       {isClearModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-theme-elevated rounded-3xl max-w-md w-full shadow-2xl border border-theme-border overflow-hidden transform animate-in zoom-in-95 duration-150">
             <div className="p-6">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-theme-warning-soft text-theme-warning flex items-center justify-center mb-4">
                 <AlertTriangle size={24} />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1">
+              <h3 className="text-base font-bold text-theme-text-primary mb-1">
                 সকল মডিউল ডাটা খালি করার নিশ্চয়তা
               </h3>
-              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                আপনি <strong>"{selectedTrade?.name}"</strong> ট্রেডের জন্য বর্তমানের সকল স্কিল ও লিটারেসি মডিউল সম্পূর্ণ মুছে ফেলতে যাচ্ছেন। এরপর টেবিলটি খালি থাকবে যাতে আপনি নতুন করে একক বা বাল্ক CSV ইনপুট দিতে পারেন।
+              <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
+                আপনি <strong className="text-theme-text-primary">"{selectedTrade?.name}"</strong> ট্রেডের জন্য বর্তমানের সকল স্কিল ও লিটারেসি মডিউল সম্পূর্ণ মুছে ফেলতে যাচ্ছেন। এরপর টেবিলটি খালি থাকবে যাতে আপনি নতুন করে একক বা বাল্ক CSV ইনপুট দিতে পারেন।
               </p>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 mb-5 flex items-start space-x-2">
-                <Info size={16} className="text-amber-700 shrink-0 mt-0.5" />
+              <div className="bg-theme-warning-soft border border-theme-warning/30 rounded-2xl p-3 text-xs text-theme-warning-fg mb-5 flex items-start space-x-2 tabular-nums">
+                <Info size={16} className="text-theme-warning shrink-0 mt-0.5" />
                 <span>
                   বর্তমানে মোট {toBn(skillModules.length)}টি স্কিল ও {toBn(literacyModules.length)}টি লিটারেসি মডিউল মুছে যাবে।
                 </span>
@@ -924,7 +926,7 @@ const TradeCalendar: React.FC = () => {
                   type="button"
                   disabled={isClearing}
                   onClick={() => setIsClearModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition disabled:opacity-50"
                 >
                   বাতিল
                 </button>
@@ -932,7 +934,7 @@ const TradeCalendar: React.FC = () => {
                   type="button"
                   disabled={isClearing}
                   onClick={handleConfirmClearTradeModules}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-theme-danger hover:opacity-90 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
                 >
                   <Trash2 size={14} />
                   <span>{isClearing ? 'ডাটা খালি করা হচ্ছে...' : 'হ্যাঁ, সকল মডিউল খালি করুন'}</span>
@@ -945,17 +947,17 @@ const TradeCalendar: React.FC = () => {
 
       {/* 7.3 Reset Defaults Modal */}
       {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-theme-elevated rounded-3xl max-w-md w-full shadow-2xl border border-theme-border overflow-hidden transform animate-in zoom-in-95 duration-150">
             <div className="p-6">
-              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-theme-primary-soft text-theme-primary flex items-center justify-center mb-4">
                 <RotateCcw size={24} />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1">
+              <h3 className="text-base font-bold text-theme-text-primary mb-1">
                 ডিফল্ট BNFE সিলেবাস রিস্টোর
               </h3>
-              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                আপনি কি <strong>"{selectedTrade?.name}"</strong> ট্রেডের জন্য সরকারি BNFE স্ট্যান্ডার্ড ৯২ কার্যদিবসের আদর্শ কারিকুলাম ও মডিউলসমূহ লোড করতে চান?
+              <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
+                আপনি কি <strong className="text-theme-text-primary">"{selectedTrade?.name}"</strong> ট্রেডের জন্য সরকারি BNFE স্ট্যান্ডার্ড ৯২ কার্যদিবসের আদর্শ কারিকুলাম ও মডিউলসমূহ লোড করতে চান?
               </p>
 
               <div className="flex items-center justify-end space-x-3">
@@ -963,7 +965,7 @@ const TradeCalendar: React.FC = () => {
                   type="button"
                   disabled={isResetting}
                   onClick={() => setIsResetModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition disabled:opacity-50"
                 >
                   বাতিল
                 </button>
@@ -971,7 +973,7 @@ const TradeCalendar: React.FC = () => {
                   type="button"
                   disabled={isResetting}
                   onClick={handleConfirmReset}
-                  className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
                 >
                   <RotateCcw size={14} />
                   <span>{isResetting ? 'লোড করা হচ্ছে...' : 'হ্যাঁ, রিস্টোর করুন'}</span>

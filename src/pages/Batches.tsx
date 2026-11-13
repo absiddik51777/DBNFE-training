@@ -1060,17 +1060,17 @@ const Batches: React.FC = () => {
   const renderStatusBadge = (status?: Batch['status']) => {
     switch (status) {
       case 'Active':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">চলমান</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-success-soft text-theme-success border border-theme-success-border">চলমান</span>;
       case 'Upcoming':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-200">আসন্ন</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-info-soft text-theme-info border border-theme-info-border">আসন্ন</span>;
       case 'Completed':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-200">সম্পন্ন</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-surface-subtle text-theme-text-secondary border border-theme-border">সম্পন্ন</span>;
       case 'Archived':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-200">আর্কাইভকৃত</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-accent-soft text-theme-accent border border-theme-accent-border">আর্কাইভকৃত</span>;
       case 'Cancelled':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-800 border border-red-200">বাতিলকৃত</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-danger-soft text-theme-danger border border-theme-danger-border">বাতিলকৃত</span>;
       default:
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">চলমান</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-success-soft text-theme-success border border-theme-success-border">চলমান</span>;
     }
   };
 
@@ -1089,20 +1089,20 @@ const Batches: React.FC = () => {
     return (
       <div 
         key={b.id} 
-        className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md hover:border-emerald-300/80 space-y-4"
+        className="bg-theme-surface rounded-2xl border border-theme-border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md hover:border-theme-primary-border space-y-4"
       >
         <div className="space-y-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shadow-2xs">
+              <div className="w-11 h-11 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold shadow-2xs">
                 <Layers size={22} />
               </div>
               <div>
-                <span className="text-xs font-mono font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 inline-block">
+                <span className="text-xs font-mono tabular-nums font-bold bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border inline-block">
                   {b.batchCode || b.id}
                 </span>
                 {b.fiscalYear && (
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                  <span className="text-[10px] text-theme-text-muted block mt-0.5 tabular-nums">
                     অর্থবছর: {b.fiscalYear}
                   </span>
                 )}
@@ -1114,89 +1114,89 @@ const Batches: React.FC = () => {
           </div>
 
           <div>
-            <h3 className="font-bold text-slate-800 text-base leading-snug line-clamp-1">
+            <h3 className="font-bold text-theme-text-primary text-base leading-snug line-clamp-1">
               {b.name}
             </h3>
-            <div className="flex items-center space-x-1.5 text-xs text-emerald-700 font-semibold mt-1">
+            <div className="flex items-center space-x-1.5 text-xs text-theme-primary font-semibold mt-1">
               <Wrench size={13} className="shrink-0" />
               <span className="truncate">{getTradeName(b.tradeId)}</span>
             </div>
-            <div className="flex items-center space-x-1.5 text-xs text-slate-500 mt-0.5">
-              <Building2 size={13} className="shrink-0 text-slate-400" />
+            <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary mt-0.5">
+              <Building2 size={13} className="shrink-0 text-theme-text-muted" />
               <span className="truncate">{getInstituteName(b.instituteId)}</span>
             </div>
           </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-100">
+          <div className="space-y-1.5 pt-2 border-t border-theme-border">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 flex items-center space-x-1">
+              <span className="text-theme-text-secondary flex items-center space-x-1">
                 <Users size={13} />
                 <span>ভর্তি শিক্ষার্থী:</span>
               </span>
-              <span className="font-bold text-slate-800">
-                <strong className="text-emerald-700">{toBn(enrolledCount)}</strong> / {toBn(capacity)} জন ({toBn(capacityPercent)}%)
+              <span className="font-bold text-theme-text-primary tabular-nums">
+                <strong className="text-theme-primary">{toBn(enrolledCount)}</strong> / {toBn(capacity)} জন ({toBn(capacityPercent)}%)
               </span>
             </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-theme-surface-subtle h-2 rounded-full overflow-hidden">
               <div
                 style={{ width: `${capacityPercent}%` }}
                 className={`h-full rounded-full transition-all duration-300 ${
-                  capacityPercent >= 100 ? 'bg-amber-500' : 'bg-emerald-500'
+                  capacityPercent >= 100 ? 'bg-theme-warning' : 'bg-theme-primary'
                 }`}
               />
             </div>
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-theme-text-secondary">
               <span className="flex items-center space-x-1">
                 <Calendar size={12} />
                 <span>মেয়াদ:</span>
               </span>
-              <span className="font-medium text-slate-700">
+              <span className="font-medium text-theme-text-primary tabular-nums">
                 {safeFormatDate(b.startDate, 'dd MMM yy')} - {safeFormatDate(b.endDate, 'dd MMM yy')}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <div className="flex items-center justify-between text-[10px] text-theme-text-muted tabular-nums">
               <span>অগ্রগতি:</span>
               <span>{toBn(elapsedDays)} / {toBn(totalDays)} দিন ({toBn(timelinePercent)}%)</span>
             </div>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-theme-surface-subtle h-1.5 rounded-full overflow-hidden">
               <div
                 style={{ width: `${timelinePercent}%` }}
-                className="bg-blue-600 h-full rounded-full"
+                className="bg-theme-info h-full rounded-full"
               />
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-1.5 text-[11px]">
-            <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-lg p-1.5">
-              <span className="text-[9px] font-bold text-emerald-800 uppercase block">স্কিল ট্রেইনার</span>
-              <span className="font-semibold text-slate-800 truncate block" title={b.skillTrainerName || 'অনির্ধারিত'}>
+          <div className="pt-2 border-t border-theme-border grid grid-cols-2 gap-1.5 text-[11px]">
+            <div className="bg-theme-primary-soft/60 border border-theme-primary-border rounded-lg p-1.5">
+              <span className="text-[9px] font-bold text-theme-primary-soft-fg uppercase block">স্কিল ট্রেইনার</span>
+              <span className="font-semibold text-theme-text-primary truncate block" title={b.skillTrainerName || 'অনির্ধারিত'}>
                 {b.skillTrainerName || 'অনির্ধারিত'}
               </span>
             </div>
-            <div className="bg-sky-50/70 border border-sky-200/60 rounded-lg p-1.5">
-              <span className="text-[9px] font-bold text-sky-800 uppercase block">লিটারেসি ট্রেইনার</span>
-              <span className="font-semibold text-slate-800 truncate block" title={b.literacyTrainerName || 'অনির্ধারিত'}>
+            <div className="bg-theme-info-soft/60 border border-theme-info-border rounded-lg p-1.5">
+              <span className="text-[9px] font-bold text-theme-info uppercase block">লিটারেসি ট্রেইনার</span>
+              <span className="font-semibold text-theme-text-primary truncate block" title={b.literacyTrainerName || 'অনির্ধারিত'}>
                 {b.literacyTrainerName || 'অনির্ধারিত'}
               </span>
             </div>
           </div>
 
           {b.status === 'Cancelled' && b.cancellationReason && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-800 flex items-start space-x-1.5">
-              <AlertCircle size={13} className="shrink-0 mt-0.5 text-red-600" />
+            <div className="p-2 bg-theme-danger-soft border border-theme-danger-border rounded-lg text-[11px] text-theme-danger flex items-start space-x-1.5">
+              <AlertCircle size={13} className="shrink-0 mt-0.5 text-theme-danger" />
               <span>বাতিলের কারণ: {b.cancellationReason}</span>
             </div>
           )}
         </div>
 
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+        <div className="pt-3 border-t border-theme-border flex items-center justify-between text-xs">
           <button
             onClick={() => setViewingBatch(b)}
-            className="px-2.5 py-1 text-slate-700 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+            className="px-2.5 py-1 text-theme-text-primary hover:text-theme-primary bg-theme-surface-subtle hover:bg-theme-primary-soft rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
           >
             <Eye size={13} />
             <span>বিস্তারিত</span>
@@ -1206,7 +1206,7 @@ const Batches: React.FC = () => {
             {canEdit && (
               <button
                 onClick={() => handleOpenModal(b)}
-                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                 title="ব্যাচ সম্পাদন করুন"
               >
                 <Edit2 size={15} />
@@ -1216,7 +1216,7 @@ const Batches: React.FC = () => {
             {canDelete && (
               <button
                 onClick={() => handleDeleteRequest(b)}
-                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                 title="ব্যাচ মুছে ফেলা বা আর্কাইভ করুন"
               >
                 <Trash2 size={15} />
@@ -1231,7 +1231,7 @@ const Batches: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6 pb-12">
-        <div className="h-8 w-64 bg-slate-200/80 rounded animate-pulse" />
+        <div className="h-8 w-64 bg-theme-surface-subtle rounded animate-pulse" />
         <TableSkeleton rows={6} cols={6} />
       </div>
     );
@@ -1244,15 +1244,15 @@ const Batches: React.FC = () => {
       {/* ======================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-700 mb-1">
+          <div className="flex items-center space-x-2 text-xs font-semibold text-theme-primary mb-1">
             <span>উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</span>
             <span>•</span>
             <span>প্রশিক্ষণ ব্যাচ ও শিক্ষার্থী পরিচালনা</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-theme-text-primary tracking-tight">
             প্রশিক্ষণ ব্যাচ (Training Batches)
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-theme-text-secondary mt-0.5">
             প্রতিষ্ঠান ও ট্রেড অনুযায়ী বরাদ্দকৃত ব্যাচের সময়সূচি, আসন সংখ্যা ও অগ্রগতি
           </p>
         </div>
@@ -1261,19 +1261,17 @@ const Batches: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition flex items-center space-x-1 shadow-2xs"
+            className="p-2.5 bg-theme-surface border border-theme-border text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl text-xs font-semibold transition flex items-center space-x-1 shadow-2xs"
             title="তথ্য রিফ্রেশ করুন"
           >
-            <RefreshCw size={15} className={refreshing ? 'animate-spin text-emerald-600' : ''} />
+            <RefreshCw size={15} className={refreshing ? 'animate-spin text-theme-primary' : ''} />
             <span className="hidden sm:inline">রিফ্রেশ</span>
           </button>
-
-
 
           {canCreate && (
             <button
               onClick={() => handleOpenModal()}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-sm font-bold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-700/20"
+              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-sm font-bold transition flex items-center space-x-1.5 shadow-sm"
             >
               <Plus size={18} />
               <span>নতুন ব্যাচ যুক্ত করুন</span>
@@ -1284,8 +1282,8 @@ const Batches: React.FC = () => {
 
       {/* Success Notification Alert */}
       {actionSuccessMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2.5 animate-fadeIn">
-          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2.5 animate-fadeIn">
+          <CheckCircle2 size={18} className="text-theme-success shrink-0" />
           <span className="font-medium">{actionSuccessMessage}</span>
         </div>
       )}
@@ -1293,20 +1291,20 @@ const Batches: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. SECTION TAB NAVIGATION: BATCHES VS ACTIVITY LOGS     */}
       {/* ======================================================== */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center space-x-1.5 p-1 bg-slate-100 rounded-xl">
+      <div className="bg-theme-surface p-2 rounded-2xl border border-theme-border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-1.5 p-1 bg-theme-surface-subtle rounded-xl">
           <button
             onClick={() => setActiveMainTab('batches')}
             className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center space-x-2 ${
               activeMainTab === 'batches'
-                ? 'bg-white text-emerald-800 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                ? 'bg-theme-elevated text-theme-primary shadow-xs'
+                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
             }`}
           >
-            <Layers size={16} className={activeMainTab === 'batches' ? 'text-emerald-600' : 'text-slate-400'} />
+            <Layers size={16} className={activeMainTab === 'batches' ? 'text-theme-primary' : 'text-theme-text-muted'} />
             <span>প্রশিক্ষণ ব্যাচসমূহ</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-              activeMainTab === 'batches' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black tabular-nums ${
+              activeMainTab === 'batches' ? 'bg-theme-primary-soft text-theme-primary-soft-fg' : 'bg-theme-surface border border-theme-border text-theme-text-secondary'
             }`}>
               {toBn(batches.length)}
             </span>
@@ -1316,14 +1314,14 @@ const Batches: React.FC = () => {
             onClick={() => setActiveMainTab('activity_logs')}
             className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center space-x-2 ${
               activeMainTab === 'activity_logs'
-                ? 'bg-white text-purple-800 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                ? 'bg-theme-elevated text-theme-accent shadow-xs'
+                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
             }`}
           >
-            <Activity size={16} className={activeMainTab === 'activity_logs' ? 'text-purple-600' : 'text-slate-400'} />
+            <Activity size={16} className={activeMainTab === 'activity_logs' ? 'text-theme-accent' : 'text-theme-text-muted'} />
             <span>অ্যাক্টিভিটি লগ (জবাবদিহিতা)</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-              activeMainTab === 'activity_logs' ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black tabular-nums ${
+              activeMainTab === 'activity_logs' ? 'bg-theme-accent-soft text-theme-accent' : 'bg-theme-surface border border-theme-border text-theme-text-secondary'
             }`}>
               {toBn(progressLogs.length)}
             </span>
@@ -1337,7 +1335,7 @@ const Batches: React.FC = () => {
                 type="button"
                 onClick={exportActivityLogsCSV}
                 disabled={filteredProgressLogs.length === 0 || exportingLogs}
-                className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                className="px-3 py-1.5 bg-theme-primary-soft text-theme-primary-soft-fg hover:bg-theme-primary hover:text-theme-primary-fg disabled:opacity-50 border border-theme-primary-border rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
                 title="লগ ডেটা CSV ফরম্যাটে এক্সপোর্ট করুন"
               >
                 <Download size={14} />
@@ -1346,7 +1344,7 @@ const Batches: React.FC = () => {
               {progressLogs.length === 0 && (
                 <button
                   onClick={handleSeedSampleActivityLogs}
-                  className="px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  className="px-3 py-1.5 bg-theme-accent-soft text-theme-accent hover:bg-theme-accent hover:text-theme-accent-fg border border-theme-accent-border rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
                 >
                   <Sparkles size={14} />
                   <span>নমুনা লগ যোগ করুন</span>
@@ -1355,7 +1353,7 @@ const Batches: React.FC = () => {
               {SHOW_CALENDAR_MODULES && (
                 <Link
                   to="/shikhon-calendar"
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                  className="px-3 py-1.5 bg-theme-surface-subtle hover:bg-theme-surface-hover border border-theme-border text-theme-text-primary rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
                 >
                   <BookOpen size={14} />
                   <span>শিখন ক্যালেন্ডারে যান</span>
@@ -1368,14 +1366,14 @@ const Batches: React.FC = () => {
                 <>
                   <Link
                     to="/trade-calendar"
-                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                    className="px-3 py-1.5 bg-theme-accent-soft hover:bg-theme-accent hover:text-theme-accent-fg text-theme-accent border border-theme-accent-border rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
                   >
                     <BookOpen size={14} />
                     <span>ট্রেড কারিকুলাম</span>
                   </Link>
                   <Link
                     to="/shikhon-calendar"
-                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                    className="px-3 py-1.5 bg-theme-info-soft hover:bg-theme-info hover:text-theme-info-fg text-theme-info border border-theme-info-border rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
                   >
                     <Calendar size={14} />
                     <span>শিখন ক্যালেন্ডার</span>
@@ -1396,63 +1394,63 @@ const Batches: React.FC = () => {
           {/* 3. SUMMARY KPI METRIC CARDS                              */}
           {/* ======================================================== */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold shrink-0">
             <Layers size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">মোট ব্যাচ</span>
-            <h4 className="text-2xl font-black text-slate-800">{toBn(stats.total)}</h4>
+            <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">মোট ব্যাচ</span>
+            <h4 className="text-2xl font-black text-theme-text-primary tabular-nums">{toBn(stats.total)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-theme-success-soft text-theme-success flex items-center justify-center font-bold shrink-0">
             <CheckCircle2 size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">চলমান</span>
-            <h4 className="text-2xl font-black text-emerald-700">{toBn(stats.active)}</h4>
+            <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">চলমান</span>
+            <h4 className="text-2xl font-black text-theme-success tabular-nums">{toBn(stats.active)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-theme-info-soft text-theme-info flex items-center justify-center font-bold shrink-0">
             <Clock size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">আসন্ন</span>
-            <h4 className="text-2xl font-black text-blue-700">{toBn(stats.upcoming)}</h4>
+            <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">আসন্ন</span>
+            <h4 className="text-2xl font-black text-theme-info tabular-nums">{toBn(stats.upcoming)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-theme-surface-subtle text-theme-text-secondary flex items-center justify-center font-bold shrink-0">
             <FileText size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">সম্পন্ন</span>
-            <h4 className="text-2xl font-black text-slate-700">{toBn(stats.completed)}</h4>
+            <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">সম্পন্ন</span>
+            <h4 className="text-2xl font-black text-theme-text-primary tabular-nums">{toBn(stats.completed)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center font-bold shrink-0">
             <Archive size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">আর্কাইভ/বাতিল</span>
-            <h4 className="text-2xl font-black text-purple-900">{toBn(stats.archived + stats.cancelled)}</h4>
+            <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">আর্কাইভ/বাতিল</span>
+            <h4 className="text-2xl font-black text-theme-warning tabular-nums">{toBn(stats.archived + stats.cancelled)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center font-bold shrink-0">
             <Users size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">মোট শিক্ষার্থী</span>
-            <h4 className="text-2xl font-black text-teal-800">{toBn(stats.totalEnrolled)}</h4>
+            <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">মোট শিক্ষার্থী</span>
+            <h4 className="text-2xl font-black text-theme-primary tabular-nums">{toBn(stats.totalEnrolled)}</h4>
           </div>
         </div>
       </div>
@@ -1474,11 +1472,11 @@ const Batches: React.FC = () => {
         renderFilterContent={(close) => (
           <div className="space-y-3.5 text-xs">
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">প্রশিক্ষণ প্রতিষ্ঠান:</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রশিক্ষণ প্রতিষ্ঠান:</label>
               <select
                 value={filterInstitute}
                 onChange={e => { setFilterInstitute(e.target.value); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
               >
                 <option value="all">সকল প্রতিষ্ঠান ({toBn(institutes.length)}টি)</option>
                 {institutes.map(i => (
@@ -1488,11 +1486,11 @@ const Batches: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">বৃত্তিমূলক ট্রেড:</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">বৃত্তিমূলক ট্রেড:</label>
               <select
                 value={filterTrade}
                 onChange={e => { setFilterTrade(e.target.value); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
               >
                 <option value="all">সকল ট্রেড ({toBn(trades.length)}টি)</option>
                 {trades.map(t => (
@@ -1503,11 +1501,11 @@ const Batches: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">অবস্থা (Status):</label>
+                <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">অবস্থা (Status):</label>
                 <select
                   value={filterStatus}
                   onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
                 >
                   <option value="all">সকল অবস্থা</option>
                   <option value="Active">চলমান (Active)</option>
@@ -1519,11 +1517,11 @@ const Batches: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">অর্থবছর:</label>
+                <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">অর্থবছর:</label>
                 <select
                   value={filterFiscalYear}
                   onChange={e => { setFilterFiscalYear(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
                 >
                   <option value="all">সকল অর্থবছর</option>
                   {FISCAL_YEARS.map(fy => (
@@ -1539,12 +1537,12 @@ const Batches: React.FC = () => {
         onResetColumns={resetColumns}
         extraActions={
           <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 px-2.5 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
+            <div className="flex items-center space-x-1 px-2.5 h-9 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs">
+              <ArrowUpDown size={13} className="text-theme-text-muted shrink-0" />
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent font-medium text-theme-text-primary focus:outline-none cursor-pointer pr-1"
                 title="সাজানোর ক্রম"
               >
                 <option value="code_asc">ব্যাচ কোড</option>
@@ -1554,12 +1552,12 @@ const Batches: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+            <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
                 className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  viewMode === 'table' ? 'bg-theme-elevated text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="টেবিল ভিউ"
               >
@@ -1569,7 +1567,7 @@ const Batches: React.FC = () => {
                 type="button"
                 onClick={() => setViewMode('cards')}
                 className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  viewMode === 'cards' ? 'bg-theme-elevated text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="কার্ড ভিউ"
               >
@@ -1584,10 +1582,10 @@ const Batches: React.FC = () => {
       {/* 4. BATCHES GRID (RESPONSIVE CARDS)                       */}
       {/* ======================================================== */}
       {processedBatches.length === 0 ? (
-        <div className="py-16 text-center text-slate-400 text-xs bg-white border border-dashed border-slate-200 rounded-2xl space-y-2">
-          <Layers size={36} className="mx-auto text-slate-300" />
-          <p className="font-bold text-slate-700 text-sm">কোনো প্রশিক্ষণ ব্যাচ পাওয়া যায়নি</p>
-          <p className="text-slate-500">
+        <div className="py-16 text-center text-theme-text-muted text-xs bg-theme-surface border border-dashed border-theme-border rounded-2xl space-y-2">
+          <Layers size={36} className="mx-auto text-theme-text-muted opacity-60" />
+          <p className="font-bold text-theme-text-primary text-sm">কোনো প্রশিক্ষণ ব্যাচ পাওয়া যায়নি</p>
+          <p className="text-theme-text-secondary">
             {searchTerm || filterInstitute !== 'all' || filterTrade !== 'all' || filterStatus !== 'all'
               ? 'আপনার ফিল্টারের সাথে মিলে এমন কোনো ব্যাচ নেই। ফিল্টার পরিবর্তন করে দেখুন।'
               : 'সিস্টেমে এখনো কোনো ব্যাচ তৈরি করা হয়নি।'}
@@ -1595,7 +1593,7 @@ const Batches: React.FC = () => {
           {canCreate && (
             <button
               onClick={() => handleOpenModal()}
-              className="mt-2 inline-flex items-center space-x-1 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition"
+              className="mt-2 inline-flex items-center space-x-1 px-4 py-2 bg-theme-primary text-theme-primary-fg text-xs font-bold rounded-xl hover:bg-theme-primary-hover transition cursor-pointer"
             >
               <Plus size={15} />
               <span>নতুন ব্যাচ যুক্ত করুন</span>
@@ -1603,10 +1601,10 @@ const Batches: React.FC = () => {
           )}
         </div>
       ) : viewMode === 'table' ? (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left">
-              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-theme-border text-left">
+              <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                 <tr>
                   {isColVisible('batchCode') && <th className="px-4 py-3.5">ব্যাচ কোড</th>}
                   {isColVisible('name') && <th className="px-4 py-3.5">ব্যাচের নাম</th>}
@@ -1618,27 +1616,27 @@ const Batches: React.FC = () => {
                   {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-100 text-xs">
+              <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
                 {groupBy !== 'none' && groupedBatches ? (
                   groupedBatches.map(grp => {
                     const isCollapsed = collapsedGroups.has(grp.key);
                     return (
                       <React.Fragment key={grp.key}>
-                        <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                        <tr className="bg-theme-surface-subtle hover:bg-theme-surface-hover border-y border-theme-border font-bold transition">
                           <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
                             <div className="flex items-center justify-between">
                               <button
                                 type="button"
                                 onClick={() => toggleGroupCollapse(grp.key)}
-                                className="flex items-center space-x-2 text-slate-800 hover:text-emerald-700 cursor-pointer"
+                                className="flex items-center space-x-2 text-theme-text-primary hover:text-theme-primary cursor-pointer"
                               >
                                 {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                 <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums">
                                   {toBn(grp.items.length)}টি ব্যাচ
                                 </span>
                               </button>
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-[11px] text-theme-text-muted tabular-nums">
                                 মোটের {toBn(Math.round((grp.items.length / (processedBatches.length || 1)) * 100))}%
                               </span>
                             </div>
@@ -1649,40 +1647,40 @@ const Batches: React.FC = () => {
                           const enrolledCount = batchTraineesMap[b.id] || 0;
                           const capacity = b.maxTrainees || 30;
                           return (
-                            <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                            <tr key={b.id} className="hover:bg-theme-surface-hover transition-colors">
                               {isColVisible('batchCode') && (
                                 <td className="px-4 py-3.5 whitespace-nowrap">
-                                  <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                                  <span className="font-mono font-bold text-xs bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border tabular-nums">
                                     {b.batchCode || b.id}
                                   </span>
                                 </td>
                               )}
                               {isColVisible('name') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="font-bold text-slate-800 text-xs">{b.name}</div>
+                                  <div className="font-bold text-theme-text-primary text-xs">{b.name}</div>
                                 </td>
                               )}
                               {isColVisible('instituteTrade') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="font-semibold text-emerald-700">{getTradeName(b.tradeId)}</div>
-                                  <div className="text-[11px] text-slate-500">{getInstituteName(b.instituteId)}</div>
+                                  <div className="font-semibold text-theme-primary">{getTradeName(b.tradeId)}</div>
+                                  <div className="text-[11px] text-theme-text-secondary">{getInstituteName(b.instituteId)}</div>
                                 </td>
                               )}
                               {isColVisible('dates') && (
-                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                                <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary tabular-nums">
                                   <div>{safeFormatDate(b.startDate, 'dd/MM/yy')} - {safeFormatDate(b.endDate, 'dd/MM/yy')}</div>
-                                  {b.fiscalYear && <div className="text-[10px] text-slate-400">{b.fiscalYear}</div>}
+                                  {b.fiscalYear && <div className="text-[10px] text-theme-text-muted">{b.fiscalYear}</div>}
                                 </td>
                               )}
                               {isColVisible('trainees') && (
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                  <span className="font-bold text-emerald-700">{toBn(enrolledCount)}</span> / {toBn(capacity)} জন
+                                <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary tabular-nums">
+                                  <span className="font-bold text-theme-primary">{toBn(enrolledCount)}</span> / {toBn(capacity)} জন
                                 </td>
                               )}
                               {isColVisible('trainers') && (
-                                <td className="px-4 py-3.5 text-slate-600">
+                                <td className="px-4 py-3.5 text-theme-text-secondary">
                                   <div className="truncate max-w-[140px] text-[11px]">{b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}</div>
-                                  <div className="truncate max-w-[140px] text-[10px] text-slate-400">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
+                                  <div className="truncate max-w-[140px] text-[10px] text-theme-text-muted">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
                                 </td>
                               )}
                               {isColVisible('status') && (
@@ -1695,7 +1693,7 @@ const Batches: React.FC = () => {
                                   <div className="flex items-center justify-end space-x-1">
                                     <button
                                       onClick={() => setViewingBatch(b)}
-                                      className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition"
+                                      className="p-1.5 text-theme-text-secondary hover:text-theme-primary hover:bg-theme-surface-subtle rounded-lg transition cursor-pointer"
                                       title="বিস্তারিত দেখুন"
                                     >
                                       <Eye size={15} />
@@ -1703,7 +1701,7 @@ const Batches: React.FC = () => {
                                     {canEdit && (
                                       <button
                                         onClick={() => handleOpenModal(b)}
-                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                         title="সম্পাদনা"
                                       >
                                         <Edit2 size={15} />
@@ -1712,7 +1710,7 @@ const Batches: React.FC = () => {
                                     {canDelete && (
                                       <button
                                         onClick={() => handleDeleteRequest(b)}
-                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                                         title="মুছুন বা সংরক্ষণাগার"
                                       >
                                         <Trash2 size={15} />
@@ -1732,40 +1730,40 @@ const Batches: React.FC = () => {
                     const enrolledCount = batchTraineesMap[b.id] || 0;
                     const capacity = b.maxTrainees || 30;
                     return (
-                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={b.id} className="hover:bg-theme-surface-hover transition-colors">
                         {isColVisible('batchCode') && (
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                            <span className="font-mono font-bold text-xs bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border tabular-nums">
                               {b.batchCode || b.id}
                             </span>
                           </td>
                         )}
                         {isColVisible('name') && (
                           <td className="px-4 py-3.5">
-                            <div className="font-bold text-slate-800 text-xs">{b.name}</div>
+                            <div className="font-bold text-theme-text-primary text-xs">{b.name}</div>
                           </td>
                         )}
                         {isColVisible('instituteTrade') && (
                           <td className="px-4 py-3.5">
-                            <div className="font-semibold text-emerald-700">{getTradeName(b.tradeId)}</div>
-                            <div className="text-[11px] text-slate-500">{getInstituteName(b.instituteId)}</div>
+                            <div className="font-semibold text-theme-primary">{getTradeName(b.tradeId)}</div>
+                            <div className="text-[11px] text-theme-text-secondary">{getInstituteName(b.instituteId)}</div>
                           </td>
                         )}
                         {isColVisible('dates') && (
-                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                          <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary tabular-nums">
                             <div>{safeFormatDate(b.startDate, 'dd/MM/yy')} - {safeFormatDate(b.endDate, 'dd/MM/yy')}</div>
-                            {b.fiscalYear && <div className="text-[10px] text-slate-400">{b.fiscalYear}</div>}
+                            {b.fiscalYear && <div className="text-[10px] text-theme-text-muted">{b.fiscalYear}</div>}
                           </td>
                         )}
                         {isColVisible('trainees') && (
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className="font-bold text-emerald-700">{toBn(enrolledCount)}</span> / {toBn(capacity)} জন
+                          <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary tabular-nums">
+                            <span className="font-bold text-theme-primary">{toBn(enrolledCount)}</span> / {toBn(capacity)} জন
                           </td>
                         )}
                         {isColVisible('trainers') && (
-                          <td className="px-4 py-3.5 text-slate-600">
+                          <td className="px-4 py-3.5 text-theme-text-secondary">
                             <div className="truncate max-w-[140px] text-[11px]">{b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}</div>
-                            <div className="truncate max-w-[140px] text-[10px] text-slate-400">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
+                            <div className="truncate max-w-[140px] text-[10px] text-theme-text-muted">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
                           </td>
                         )}
                         {isColVisible('status') && (
@@ -1778,7 +1776,7 @@ const Batches: React.FC = () => {
                             <div className="flex items-center justify-end space-x-1">
                               <button
                                 onClick={() => setViewingBatch(b)}
-                                className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition"
+                                className="p-1.5 text-theme-text-secondary hover:text-theme-primary hover:bg-theme-surface-subtle rounded-lg transition cursor-pointer"
                                 title="বিস্তারিত দেখুন"
                               >
                                 <Eye size={15} />
@@ -1786,7 +1784,7 @@ const Batches: React.FC = () => {
                               {canEdit && (
                                 <button
                                   onClick={() => handleOpenModal(b)}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                   title="সম্পাদনা"
                                 >
                                   <Edit2 size={15} />
@@ -1795,7 +1793,7 @@ const Batches: React.FC = () => {
                               {canDelete && (
                                 <button
                                   onClick={() => handleDeleteRequest(b)}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                                   title="মুছুন বা সংরক্ষণাগার"
                                 >
                                   <Trash2 size={15} />
@@ -1818,20 +1816,20 @@ const Batches: React.FC = () => {
             {groupedBatches.map(grp => {
               const isCollapsed = collapsedGroups.has(grp.key);
               return (
-                <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                <div key={grp.key} className="bg-theme-surface-subtle rounded-2xl border border-theme-border p-4 space-y-4">
                   <button
                     type="button"
                     onClick={() => toggleGroupCollapse(grp.key)}
-                    className="w-full flex items-center justify-between text-left hover:text-emerald-700 transition cursor-pointer"
+                    className="w-full flex items-center justify-between text-left hover:text-theme-primary transition cursor-pointer"
                   >
                     <div className="flex items-center space-x-2.5">
                       {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
-                      <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                      <span className="font-bold text-theme-text-primary text-sm sm:text-base">{grp.title}</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums">
                         {toBn(grp.items.length)}টি ব্যাচ
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-theme-text-muted tabular-nums">
                       মোটের {toBn(Math.round((grp.items.length / (processedBatches.length || 1)) * 100))}%
                     </span>
                   </button>
@@ -1855,8 +1853,8 @@ const Batches: React.FC = () => {
       {/* 5. PAGINATION CONTROLS                                    */}
       {/* ======================================================== */}
       {totalPages > 1 && (
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
-          <span className="text-slate-500 font-medium">
+        <div className="bg-theme-surface p-3.5 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
+          <span className="text-theme-text-secondary font-medium tabular-nums">
             মোট {toBn(processedBatches.length)}টি ব্যাচের মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, processedBatches.length))} প্রদর্শিত হচ্ছে
           </span>
 
@@ -1865,7 +1863,7 @@ const Batches: React.FC = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                className="shrink-0 p-2 border border-theme-border text-theme-text-secondary rounded-xl hover:bg-theme-surface-hover disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                 title="পূর্ববর্তী পৃষ্ঠা"
               >
                 <ChevronLeft size={16} />
@@ -1877,10 +1875,10 @@ const Batches: React.FC = () => {
                   <button
                     key={p}
                     onClick={() => handlePageChange(p)}
-                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition ${
+                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition tabular-nums cursor-pointer ${
                       currentPage === p
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                        ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                        : 'border border-theme-border hover:bg-theme-surface-hover text-theme-text-primary'
                     }`}
                   >
                     {toBn(p)}
@@ -1891,7 +1889,7 @@ const Batches: React.FC = () => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                className="shrink-0 p-2 border border-theme-border text-theme-text-secondary rounded-xl hover:bg-theme-surface-hover disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                 title="পরবর্তী পৃষ্ঠা"
               >
                 <ChevronRight size={16} />
@@ -1909,19 +1907,19 @@ const Batches: React.FC = () => {
       {activeMainTab === 'activity_logs' && (
         <div className="space-y-6 animate-fadeIn">
           {/* ACCOUNTABILITY BANNER */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-theme-elevated border border-theme-accent-border text-theme-text-primary shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-xs font-semibold">
+                <span className="px-2.5 py-0.5 rounded-full bg-theme-accent-soft text-theme-accent border border-theme-accent-border text-xs font-semibold">
                   জবাবদিহিতা ও অডিট ট্রেইল (Accountability & Audit Trail)
                 </span>
-                <span className="text-xs text-purple-300">•</span>
-                <span className="text-xs text-purple-200 font-medium">রিয়েলটাইম ট্রেইনার আপডেট</span>
+                <span className="text-xs text-theme-text-muted">•</span>
+                <span className="text-xs text-theme-text-secondary font-medium">রিয়েলটাইম ট্রেইনার আপডেট</span>
               </div>
-              <h3 className="text-lg sm:text-xl font-black text-white">
+              <h3 className="text-lg sm:text-xl font-black text-theme-text-primary">
                 প্রশিক্ষক কর্তৃক প্রশিক্ষণ মডিউল সম্পন্নকরণ অ্যাক্টিভিটি লগ
               </h3>
-              <p className="text-xs text-purple-200/90 max-w-2xl leading-relaxed">
+              <p className="text-xs text-theme-text-secondary max-w-2xl leading-relaxed">
                 স্কিল ট্রেইনার ও লিটারেসি ট্রেইনারগণ কোনো মডিউল সম্পন্ন মার্ক করলে তা স্বয়ংক্রিয়ভাবে তারিখ, সময়, ব্যাচ, ট্রেড ও ট্রেইনার পরিচিতি সহ অডিট রেকর্ডে লিপিবদ্ধ হয়।
               </p>
             </div>
@@ -1930,7 +1928,7 @@ const Batches: React.FC = () => {
               <div className="flex items-center space-x-2 shrink-0">
                 <Link
                   to="/shikhon-calendar"
-                  className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                  className="px-3.5 py-2 bg-theme-surface hover:bg-theme-surface-hover border border-theme-border-strong text-theme-text-primary rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
                 >
                   <span>শিখন ক্যালেন্ডার দেখুন</span>
                   <ExternalLink size={13} />
@@ -1941,56 +1939,56 @@ const Batches: React.FC = () => {
 
           {/* 4 ACCOUNTABILITY METRIC CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+            <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold shrink-0">
                 <Activity size={20} />
               </div>
               <div>
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">মোট লগ রেকর্ড</span>
-                <h4 className="text-2xl font-black text-slate-800">{toBn(progressLogs.length)}</h4>
+                <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">মোট লগ রেকর্ড</span>
+                <h4 className="text-2xl font-black text-theme-text-primary tabular-nums">{toBn(progressLogs.length)}</h4>
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+            <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-theme-success-soft text-theme-success flex items-center justify-center font-bold shrink-0">
                 <CheckCircle2 size={20} />
               </div>
               <div>
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">স্কিল মডিউল আপডেট</span>
-                <h4 className="text-2xl font-black text-emerald-700">
+                <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">স্কিল মডিউল আপডেট</span>
+                <h4 className="text-2xl font-black text-theme-primary tabular-nums">
                   {toBn(progressLogs.filter(l => l.moduleType === 'skill').length)}
                 </h4>
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+            <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-theme-info-soft text-theme-info flex items-center justify-center font-bold shrink-0">
                 <BookOpen size={20} />
               </div>
               <div>
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">লিটারেসি মডিউল আপডেট</span>
-                <h4 className="text-2xl font-black text-blue-700">
+                <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">লিটারেসি মডিউল আপডেট</span>
+                <h4 className="text-2xl font-black text-theme-info tabular-nums">
                   {toBn(progressLogs.filter(l => l.moduleType === 'literacy').length)}
                 </h4>
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+            <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center font-bold shrink-0">
                 <UserCheck size={20} />
               </div>
               <div>
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">রিপোর্টিং ট্রেইনার</span>
-                <h4 className="text-2xl font-black text-amber-700">{toBn(reportingTrainers.length)} জন</h4>
+                <span className="text-[10px] font-semibold text-theme-text-secondary uppercase tracking-wider block">রিপোর্টিং ট্রেইনার</span>
+                <h4 className="text-2xl font-black text-theme-warning tabular-nums">{toBn(reportingTrainers.length)} জন</h4>
               </div>
             </div>
           </div>
 
           {/* ADVANCED MULTI-FILTER TOOLBAR */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+          <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs space-y-3">
             <div className="flex flex-col lg:flex-row gap-3">
               <div className="relative flex-1">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-text-muted" />
                 <input
                   type="text"
                   placeholder="পাঠের শিরোনাম, বিষয়, কাজ নং, ব্যাচ, ট্রেইনারের নাম/আইডি বা মন্তব্য দিয়ে খুঁজুন..."
@@ -1999,21 +1997,21 @@ const Batches: React.FC = () => {
                     setLogSearchQuery(e.target.value);
                     setLogCurrentPage(1);
                   }}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:bg-white transition"
+                  className="w-full pl-10 pr-4 py-2 bg-theme-surface-subtle border border-theme-border text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:bg-theme-surface transition"
                 />
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 {/* Batch Selector Filter */}
-                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
-                  <Layers size={13} className="text-slate-400" />
+                <div className="flex items-center space-x-1.5 bg-theme-surface-subtle px-2.5 py-1 border border-theme-border rounded-xl text-xs">
+                  <Layers size={13} className="text-theme-text-muted" />
                   <select
                     value={logSelectedBatch}
                     onChange={(e) => {
                       setLogSelectedBatch(e.target.value);
                       setLogCurrentPage(1);
                     }}
-                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer max-w-[160px] truncate"
+                    className="bg-transparent border-none text-theme-text-primary font-semibold focus:outline-hidden cursor-pointer max-w-[160px] truncate"
                   >
                     <option value="all">সকল ব্যাচ ({toBn(batches.length)})</option>
                     {batches.map(b => (
@@ -2025,15 +2023,15 @@ const Batches: React.FC = () => {
                 </div>
 
                 {/* Module Type Selector Filter */}
-                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
-                  <Filter size={13} className="text-slate-400" />
+                <div className="flex items-center space-x-1.5 bg-theme-surface-subtle px-2.5 py-1 border border-theme-border rounded-xl text-xs">
+                  <Filter size={13} className="text-theme-text-muted" />
                   <select
                     value={logModuleType}
                     onChange={(e) => {
                       setLogModuleType(e.target.value as any);
                       setLogCurrentPage(1);
                     }}
-                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer"
+                    className="bg-transparent border-none text-theme-text-primary font-semibold focus:outline-hidden cursor-pointer"
                   >
                     <option value="all">সকল মডিউল ধরন</option>
                     <option value="skill">স্কিল ফোকাসড (Skill)</option>
@@ -2042,15 +2040,15 @@ const Batches: React.FC = () => {
                 </div>
 
                 {/* Trainer Selector Filter */}
-                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
-                  <Users size={13} className="text-slate-400" />
+                <div className="flex items-center space-x-1.5 bg-theme-surface-subtle px-2.5 py-1 border border-theme-border rounded-xl text-xs">
+                  <Users size={13} className="text-theme-text-muted" />
                   <select
                     value={logTrainerFilter}
                     onChange={(e) => {
                       setLogTrainerFilter(e.target.value);
                       setLogCurrentPage(1);
                     }}
-                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer max-w-[150px] truncate"
+                    className="bg-transparent border-none text-theme-text-primary font-semibold focus:outline-hidden cursor-pointer max-w-[150px] truncate"
                   >
                     <option value="all">সকল প্রশিক্ষক</option>
                     {reportingTrainers.map(t => (
@@ -2060,14 +2058,14 @@ const Batches: React.FC = () => {
                 </div>
 
                 {/* Status Filter */}
-                <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-xl text-xs">
+                <div className="flex items-center space-x-1.5 bg-theme-surface-subtle px-2.5 py-1 border border-theme-border rounded-xl text-xs">
                   <select
                     value={logStatusFilter}
                     onChange={(e) => {
                       setLogStatusFilter(e.target.value as any);
                       setLogCurrentPage(1);
                     }}
-                    className="bg-transparent border-none text-slate-700 font-semibold focus:outline-hidden cursor-pointer"
+                    className="bg-transparent border-none text-theme-text-primary font-semibold focus:outline-hidden cursor-pointer"
                   >
                     <option value="all">সকল অবস্থা</option>
                     <option value="completed">সম্পন্ন (Completed)</option>
@@ -2079,7 +2077,7 @@ const Batches: React.FC = () => {
                 {(logSearchQuery || logSelectedBatch !== 'all' || logModuleType !== 'all' || logTrainerFilter !== 'all' || logStatusFilter !== 'all') && (
                   <button
                     onClick={resetLogFilters}
-                    className="p-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-semibold transition cursor-pointer"
+                    className="p-1.5 text-xs text-theme-danger hover:bg-theme-danger-soft rounded-lg font-semibold transition cursor-pointer"
                     title="সকল ফিল্টার রিসেট করুন"
                   >
                     রিসেট
@@ -2090,12 +2088,12 @@ const Batches: React.FC = () => {
           </div>
 
           {/* ACTIVITY LOGS AUDIT TABLE */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
             {filteredProgressLogs.length === 0 ? (
               <div className="p-12 text-center space-y-3">
-                <Activity size={48} className="mx-auto text-slate-300" />
-                <h3 className="text-lg font-bold text-slate-700">কোনো অ্যাক্টিভিটি লগ পাওয়া যায়নি</h3>
-                <p className="text-sm text-slate-500 max-w-md mx-auto">
+                <Activity size={48} className="mx-auto text-theme-text-muted opacity-60" />
+                <h3 className="text-lg font-bold text-theme-text-primary">কোনো অ্যাক্টিভিটি লগ পাওয়া যায়নি</h3>
+                <p className="text-sm text-theme-text-secondary max-w-md mx-auto">
                   {progressLogs.length === 0
                     ? 'এখনো কোনো ট্রেইনার মডিউল সম্পন্ন করার তথ্য মার্ক করেননি। ট্রেইনারগণ কাজ সম্পন্ন মার্ক করলে স্বয়ংক্রিয়ভাবে এখানে লগ চলে আসবে।'
                     : 'আপনার নির্বাচিত ফিল্টারের শর্ত অনুযায়ী কোনো অ্যাক্টিভিটি লগ মিলছে না। অনুগ্রহ করে ফিল্টার পরিবর্তন বা রিসেট করুন।'}
@@ -2104,14 +2102,14 @@ const Batches: React.FC = () => {
                   {(logSearchQuery || logSelectedBatch !== 'all' || logModuleType !== 'all' || logTrainerFilter !== 'all' || logStatusFilter !== 'all') ? (
                     <button
                       onClick={resetLogFilters}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                      className="px-4 py-2 bg-theme-surface-subtle hover:bg-theme-surface-hover border border-theme-border text-theme-text-primary rounded-xl text-xs font-bold transition cursor-pointer"
                     >
                       ফিল্টার রিসেট করুন
                     </button>
                   ) : (
                     <button
                       onClick={handleSeedSampleActivityLogs}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                      className="px-4 py-2 bg-theme-accent hover:opacity-90 text-theme-accent-fg rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm cursor-pointer"
                     >
                       <Sparkles size={14} />
                       <span>পরীক্ষামূলক নমুনা লগ তৈরি করুন</span>
@@ -2123,7 +2121,7 @@ const Batches: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <tr className="bg-theme-surface-subtle border-b border-theme-border text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                       <th className="py-3 px-4">তারিখ ও সময়</th>
                       <th className="py-3 px-4">ব্যাচ ও ট্রেড</th>
                       <th className="py-3 px-4">প্রশিক্ষক (Trainer)</th>
@@ -2133,19 +2131,19 @@ const Batches: React.FC = () => {
                       <th className="py-3 px-4">মন্তব্য ও পর্যবেক্ষণ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  <tbody className="divide-y divide-theme-border text-xs text-theme-text-secondary">
                     {paginatedLogs.map((log) => {
                       const isSkill = log.moduleType === 'skill';
 
                       return (
-                        <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                        <tr key={log.id} className="hover:bg-theme-surface-hover transition">
                           {/* 1. Date & Time */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-1.5 font-bold text-slate-800">
-                              <Calendar size={13} className="text-slate-400 shrink-0" />
+                          <td className="py-3.5 px-4 whitespace-nowrap tabular-nums">
+                            <div className="flex items-center space-x-1.5 font-bold text-theme-text-primary">
+                              <Calendar size={13} className="text-theme-text-muted shrink-0" />
                               <span>{safeFormatDate(log.completedAt || log.createdAt, 'dd MMM yyyy')}</span>
                             </div>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                            <span className="text-[10px] text-theme-text-muted block mt-0.5">
                               {log.createdAt ? format(new Date(log.createdAt), 'hh:mm a') : 'সময় সংরক্ষিত'}
                             </span>
                           </td>
@@ -2153,12 +2151,12 @@ const Batches: React.FC = () => {
                           {/* 2. Batch & Trade */}
                           <td className="py-3.5 px-4">
                             <div className="flex items-center space-x-1.5">
-                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums">
                                 {batches.find(b => b.id === log.batchId)?.batchCode || log.batchId}
                               </span>
-                              <span className="font-semibold text-slate-800 line-clamp-1">{log.batchName}</span>
+                              <span className="font-semibold text-theme-text-primary line-clamp-1">{log.batchName}</span>
                             </div>
-                            <span className="text-[11px] text-emerald-700 block mt-0.5 font-medium line-clamp-1">
+                            <span className="text-[11px] text-theme-primary block mt-0.5 font-medium line-clamp-1">
                               {log.tradeName || 'ট্রেড'}
                             </span>
                           </td>
@@ -2166,18 +2164,18 @@ const Batches: React.FC = () => {
                           {/* 3. Trainer */}
                           <td className="py-3.5 px-4">
                             <div className="flex items-center space-x-1.5">
-                              <span className="font-bold text-slate-800">{log.trainerName || 'প্রশিক্ষক'}</span>
+                              <span className="font-bold text-theme-text-primary">{log.trainerName || 'প্রশিক্ষক'}</span>
                             </div>
                             <div className="flex items-center space-x-1.5 mt-0.5">
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
                                 isSkill 
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' 
-                                  : 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                                  ? 'bg-theme-success-soft text-theme-success border border-theme-success-border' 
+                                  : 'bg-theme-info-soft text-theme-info border border-theme-info-border'
                               }`}>
                                 {isSkill ? 'স্কিল প্রশিক্ষক' : 'লিটারেসি প্রশিক্ষক'}
                               </span>
                               {log.trainerId && (
-                                <span className="text-[10px] font-mono text-slate-400">
+                                <span className="text-[10px] font-mono text-theme-text-muted tabular-nums">
                                   ID: {log.trainerId}
                                 </span>
                               )}
@@ -2185,18 +2183,18 @@ const Batches: React.FC = () => {
                           </td>
 
                           {/* 4. Day & Task # */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className="font-bold text-purple-700 block">
+                          <td className="py-3.5 px-4 whitespace-nowrap tabular-nums">
+                            <span className="font-bold text-theme-accent block">
                               কার্যদিবস {toBn(log.dayNumber)}
                             </span>
-                            <span className="text-[11px] text-slate-500 font-medium">
+                            <span className="text-[11px] text-theme-text-secondary font-medium">
                               {log.taskNo || 'টাস্ক'}
                             </span>
                           </td>
 
                           {/* 5. Topic */}
                           <td className="py-3.5 px-4 max-w-xs">
-                            <p className="font-semibold text-slate-800 line-clamp-2" title={log.topic}>
+                            <p className="font-semibold text-theme-text-primary line-clamp-2" title={log.topic}>
                               {log.topic || 'মডিউল পাঠ'}
                             </p>
                           </td>
@@ -2204,13 +2202,13 @@ const Batches: React.FC = () => {
                           {/* 6. Status */}
                           <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             {log.isCompleted ? (
-                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                <CheckCircle2 size={12} className="text-emerald-600" />
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-theme-success-soft text-theme-success border border-theme-success-border">
+                                <CheckCircle2 size={12} className="text-theme-success" />
                                 <span>সম্পন্ন</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
-                                <XCircle size={12} className="text-red-600" />
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-theme-danger-soft text-theme-danger border border-theme-danger-border">
+                                <XCircle size={12} className="text-theme-danger" />
                                 <span>বাতিল</span>
                               </span>
                             )}
@@ -2219,11 +2217,11 @@ const Batches: React.FC = () => {
                           {/* 7. Remarks */}
                           <td className="py-3.5 px-4 max-w-sm">
                             {log.remarks ? (
-                              <span className="text-slate-600 italic block line-clamp-2" title={log.remarks}>
+                              <span className="text-theme-text-secondary italic block line-clamp-2" title={log.remarks}>
                                 "{log.remarks}"
                               </span>
                             ) : (
-                              <span className="text-slate-400 italic">কোনো মন্তব্য নেই</span>
+                              <span className="text-theme-text-muted italic">কোনো মন্তব্য নেই</span>
                             )}
                           </td>
                         </tr>
@@ -2236,8 +2234,8 @@ const Batches: React.FC = () => {
 
             {/* LOGS PAGINATION BAR */}
             {totalLogPages > 1 && (
-              <div className="bg-slate-50/70 p-3.5 border-t border-slate-200/80 flex items-center justify-between flex-wrap gap-2 text-xs">
-                <span className="text-slate-500 font-medium">
+              <div className="bg-theme-surface-subtle p-3.5 border-t border-theme-border flex items-center justify-between flex-wrap gap-2 text-xs">
+                <span className="text-theme-text-secondary font-medium tabular-nums">
                   মোট {toBn(filteredProgressLogs.length)}টি লগের মধ্যে {toBn((logCurrentPage - 1) * LOGS_PER_PAGE + 1)} থেকে {toBn(Math.min(logCurrentPage * LOGS_PER_PAGE, filteredProgressLogs.length))} প্রদর্শিত হচ্ছে
                 </span>
 
@@ -2246,7 +2244,7 @@ const Batches: React.FC = () => {
                     <button
                       onClick={() => setLogCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={logCurrentPage === 1}
-                      className="shrink-0 p-1.5 sm:p-2 border border-slate-200 rounded-xl hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                      className="shrink-0 p-1.5 sm:p-2 border border-theme-border text-theme-text-secondary rounded-xl hover:bg-theme-surface disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                       title="পূর্ববর্তী পৃষ্ঠা"
                     >
                       <ChevronLeft size={16} />
@@ -2258,10 +2256,10 @@ const Batches: React.FC = () => {
                         <button
                           key={p}
                           onClick={() => setLogCurrentPage(p)}
-                          className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-bold transition cursor-pointer ${
+                          className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-bold transition cursor-pointer tabular-nums ${
                             logCurrentPage === p
-                              ? 'bg-purple-700 text-white shadow-2xs'
-                              : 'border border-slate-200 hover:bg-white text-slate-700'
+                              ? 'bg-theme-accent text-theme-accent-fg shadow-2xs'
+                              : 'border border-theme-border hover:bg-theme-surface text-theme-text-primary'
                           }`}
                         >
                           {toBn(p)}
@@ -2272,7 +2270,7 @@ const Batches: React.FC = () => {
                     <button
                       onClick={() => setLogCurrentPage(prev => Math.min(prev + 1, totalLogPages))}
                       disabled={logCurrentPage === totalLogPages}
-                      className="shrink-0 p-1.5 sm:p-2 border border-slate-200 rounded-xl hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                      className="shrink-0 p-1.5 sm:p-2 border border-theme-border text-theme-text-secondary rounded-xl hover:bg-theme-surface disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                       title="পরবর্তী পৃষ্ঠা"
                     >
                       <ChevronRight size={16} />
@@ -2289,45 +2287,45 @@ const Batches: React.FC = () => {
       {/* 6. DETAILED BATCH VIEW MODAL (INSPECTOR)                  */}
       {/* ======================================================== */}
       {viewingBatch && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-theme-border space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-theme-border">
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-mono font-bold bg-theme-accent-soft text-theme-accent border border-theme-accent-border px-2 py-0.5 rounded-md tabular-nums">
                     {viewingBatch.batchCode || viewingBatch.id}
                   </span>
                   {renderStatusBadge(viewingBatch.status)}
                 </div>
-                <h2 className="text-xl font-bold text-slate-800 mt-1">
+                <h2 className="text-xl font-bold text-theme-text-primary mt-1">
                   {viewingBatch.name}
                 </h2>
               </div>
-              <button onClick={() => setViewingBatch(null)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setViewingBatch(null)} className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             {/* Overview Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 font-semibold block">প্রশিক্ষণ কেন্দ্র (প্রতিষ্ঠান):</span>
-                <span className="text-slate-900 font-bold mt-0.5 block">{getInstituteName(viewingBatch.instituteId)}</span>
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-theme-text-secondary font-semibold block">প্রশিক্ষণ কেন্দ্র (প্রতিষ্ঠান):</span>
+                <span className="text-theme-text-primary font-bold mt-0.5 block">{getInstituteName(viewingBatch.instituteId)}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 font-semibold block">বৃত্তিমূলক ট্রেড:</span>
-                <span className="text-emerald-700 font-bold mt-0.5 block">{getTradeName(viewingBatch.tradeId)}</span>
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-theme-text-secondary font-semibold block">বৃত্তিমূলক ট্রেড:</span>
+                <span className="text-theme-primary font-bold mt-0.5 block">{getTradeName(viewingBatch.tradeId)}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 font-semibold block">অর্থবছর ও কোর্সের সময়সীমা:</span>
-                <span className="text-slate-900 font-bold mt-0.5 block">
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-theme-text-secondary font-semibold block">অর্থবছর ও কোর্সের সময়সীমা:</span>
+                <span className="text-theme-text-primary font-bold mt-0.5 block tabular-nums">
                   {viewingBatch.fiscalYear || '২০২৫-২০২৬'} • {safeFormatDate(viewingBatch.startDate, 'dd MMM yyyy')} হতে {safeFormatDate(viewingBatch.endDate, 'dd MMM yyyy')}
                 </span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 font-semibold block">আসন সংখ্যা ও বর্তমান ভর্তি:</span>
-                <span className="text-slate-900 font-bold mt-0.5 block">
-                  মোট আসন: {toBn(viewingBatch.maxTrainees || 30)} | বর্তমানে ভর্তি: <strong className="text-emerald-700">{toBn(batchTraineesMap[viewingBatch.id] || 0)} জন</strong>
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-theme-text-secondary font-semibold block">আসন সংখ্যা ও বর্তমান ভর্তি:</span>
+                <span className="text-theme-text-primary font-bold mt-0.5 block tabular-nums">
+                  মোট আসন: {toBn(viewingBatch.maxTrainees || 30)} | বর্তমানে ভর্তি: <strong className="text-theme-primary">{toBn(batchTraineesMap[viewingBatch.id] || 0)} জন</strong>
                 </span>
               </div>
             </div>
@@ -2335,12 +2333,12 @@ const Batches: React.FC = () => {
             {/* Enrolled Trainees List */}
             <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                <h4 className="font-bold text-theme-text-primary text-xs uppercase tracking-wider tabular-nums">
                   এই ব্যাচের প্রশিক্ষণার্থীদের তালিকা ({toBn(trainees.filter(t => t.batchId === viewingBatch.id).length)} জন)
                 </h4>
                 <Link
                   to={`/trainees/add?batchId=${viewingBatch.id}`}
-                  className="text-xs text-emerald-700 font-semibold hover:underline flex items-center space-x-1"
+                  className="text-xs text-theme-primary font-semibold hover:underline flex items-center space-x-1"
                 >
                   <UserPlus size={13} />
                   <span>নতুন ভর্তি</span>
@@ -2348,20 +2346,20 @@ const Batches: React.FC = () => {
               </div>
 
               {trainees.filter(t => t.batchId === viewingBatch.id).length === 0 ? (
-                <div className="py-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+                <div className="py-6 text-center text-theme-text-muted text-xs border border-dashed border-theme-border rounded-xl">
                   এই ব্যাচে এখনো কোনো শিক্ষার্থী ভর্তি করা হয়নি।
                 </div>
               ) : (
-                <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
+                <div className="max-h-52 overflow-y-auto border border-theme-border rounded-xl divide-y divide-theme-border text-xs">
                   {trainees.filter(t => t.batchId === viewingBatch.id).map(t => (
-                    <div key={t.id} className="p-2.5 flex items-center justify-between hover:bg-slate-50">
+                    <div key={t.id} className="p-2.5 flex items-center justify-between hover:bg-theme-surface-hover">
                       <div>
-                        <span className="font-bold text-slate-800">{t.nameBn || t.nameEn}</span>
-                        <span className="text-slate-400 font-mono text-[11px] ml-2">({t.traineeId})</span>
-                        <span className="text-[11px] text-slate-500 block">{t.mobileNumber || 'মোবাইল নেই'} • {t.gender === 'Female' ? 'মহিলা' : 'পুরুষ'}</span>
+                        <span className="font-bold text-theme-text-primary">{t.nameBn || t.nameEn}</span>
+                        <span className="text-theme-text-muted font-mono text-[11px] ml-2 tabular-nums">({t.traineeId})</span>
+                        <span className="text-[11px] text-theme-text-secondary block tabular-nums">{t.mobileNumber || 'মোবাইল নেই'} • {t.gender === 'Female' ? 'মহিলা' : 'পুরুষ'}</span>
                       </div>
                       <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                        t.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                        t.status === 'Active' ? 'bg-theme-success-soft text-theme-success' : 'bg-theme-surface-subtle text-theme-text-secondary'
                       }`}>
                         {t.status || 'Active'}
                       </span>
@@ -2372,7 +2370,7 @@ const Batches: React.FC = () => {
             </div>
 
             {/* Quick Actions in View Drawer */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <div className="pt-3 border-t border-theme-border flex items-center justify-between flex-wrap gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => {
@@ -2381,7 +2379,7 @@ const Batches: React.FC = () => {
                     setActiveMainTab('activity_logs');
                     setViewingBatch(null);
                   }}
-                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  className="px-3 py-1.5 bg-theme-accent-soft hover:opacity-90 text-theme-accent border border-theme-accent-border rounded-xl text-xs font-bold transition flex items-center space-x-1 cursor-pointer tabular-nums"
                   title="এই ব্যাচের ট্রেইনারদের অগ্রগতি ও জবাবদিহিতা লগ দেখুন"
                 >
                   <Activity size={14} />
@@ -2390,7 +2388,7 @@ const Batches: React.FC = () => {
                 {SHOW_CALENDAR_MODULES && (
                   <Link
                     to={`/shikhon-calendar?batchId=${viewingBatch.id}`}
-                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center space-x-1"
+                    className="px-3 py-1.5 bg-theme-info-soft hover:opacity-90 text-theme-info border border-theme-info-border rounded-xl text-xs font-bold transition flex items-center space-x-1"
                   >
                     <BookOpen size={14} />
                     <span>শিখন ক্যালেন্ডার</span>
@@ -2398,14 +2396,14 @@ const Batches: React.FC = () => {
                 )}
                 <Link
                   to="/attendance"
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1"
+                  className="px-3 py-1.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs font-bold transition flex items-center space-x-1"
                 >
                   <CalendarCheck size={14} />
                   <span>দৈনিক হাজিরা</span>
                 </Link>
                 <Link
                   to="/attendance-sheet"
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1"
+                  className="px-3 py-1.5 bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary border border-theme-border rounded-xl text-xs font-bold transition flex items-center space-x-1"
                 >
                   <CalendarDays size={14} />
                   <span>মাসিক শিট</span>
@@ -2414,7 +2412,7 @@ const Batches: React.FC = () => {
 
               <button
                 onClick={() => setViewingBatch(null)}
-                className="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold"
+                className="px-4 py-1.5 border border-theme-border text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl text-xs font-semibold cursor-pointer"
               >
                 বন্ধ করুন
               </button>
@@ -2427,47 +2425,47 @@ const Batches: React.FC = () => {
       {/* 7. SAFE LIFECYCLE MODAL (ARCHIVE / CANCEL WORKFLOW)      */}
       {/* ======================================================== */}
       {safeLifecycleBatch && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-theme-border space-y-4">
             <div className="flex items-start space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-theme-warning-soft text-theme-warning border border-theme-warning-border flex items-center justify-center shrink-0">
                 <ShieldAlert size={28} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-theme-text-primary">
                   ব্যাচটি স্থায়ীভাবে মুছে ফেলা নিষিদ্ধ (Referenced Batch Protection)
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   ঐতিহাসিক তথ্য ও শিক্ষার্থী রেকর্ডের অখণ্ডতা রক্ষা নীতি
                 </p>
               </div>
               <button 
                 onClick={() => setSafeLifecycleBatch(null)} 
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl text-xs space-y-2 text-amber-950">
+            <div className="p-4 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs space-y-2 text-theme-text-primary">
               <p className="font-bold">
                 "{safeLifecycleBatch.batch.name}" ব্যাচের সাথে নিম্নলিখিত রেকর্ড সংযুক্ত রয়েছে:
               </p>
-              <ul className="list-disc pl-5 space-y-1 text-slate-700">
+              <ul className="list-disc pl-5 space-y-1 text-theme-text-secondary tabular-nums">
                 <li>ভর্তিকৃত শিক্ষার্থী: <strong>{toBn(safeLifecycleBatch.traineeCount)} জন</strong></li>
                 <li>দৈনিক হাজিরা রেকর্ড: <strong>{toBn(safeLifecycleBatch.attendanceCount)} টি</strong></li>
                 {safeLifecycleBatch.examCount > 0 && (
                   <li>পরীক্ষা ও ফলাফল রেকর্ড: <strong>{toBn(safeLifecycleBatch.examCount)} টি</strong></li>
                 )}
               </ul>
-              <p className="text-[11px] text-amber-900 pt-1 border-t border-amber-200/80">
+              <p className="text-[11px] text-theme-warning pt-1 border-t border-theme-warning-border">
                 ⚠️ এই ব্যাচটি স্থায়ীভাবে মুছে ফেললে সংশ্লিষ্ট সকল শিক্ষার্থীর সনদ ও উপস্থিতির রেকর্ড অকার্যকর হয়ে যাবে।
               </p>
             </div>
 
             {/* Lifecycle Action Options */}
             <div className="space-y-3 pt-1">
-              <label className="block text-xs font-bold text-slate-700">
+              <label className="block text-xs font-bold text-theme-text-secondary">
                 নিরাপদ সমাধান নির্বাচন করুন:
               </label>
 
@@ -2475,17 +2473,17 @@ const Batches: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setLifecycleAction('archive')}
-                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer ${
                     lifecycleAction === 'archive'
-                      ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      ? 'border-theme-accent bg-theme-accent-soft text-theme-accent ring-2 ring-theme-accent/20'
+                      : 'border-theme-border bg-theme-surface-subtle text-theme-text-primary hover:bg-theme-surface-hover'
                   }`}
                 >
                   <div className="flex items-center space-x-2 font-bold mb-1">
-                    <Archive size={16} className="text-purple-600" />
+                    <Archive size={16} className="text-theme-accent" />
                     <span>১. আর্কাইভ করুন</span>
                   </div>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-theme-text-secondary">
                     কোর্স সম্পন্ন বা সংরক্ষণের জন্য। সমস্ত রেকর্ড অক্ষত থাকবে।
                   </span>
                 </button>
@@ -2493,17 +2491,17 @@ const Batches: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setLifecycleAction('cancel')}
-                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer ${
                     lifecycleAction === 'cancel'
-                      ? 'border-red-600 bg-red-50 text-red-900 ring-2 ring-red-600/20'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      ? 'border-theme-danger bg-theme-danger-soft text-theme-danger ring-2 ring-theme-danger/20'
+                      : 'border-theme-border bg-theme-surface-subtle text-theme-text-primary hover:bg-theme-surface-hover'
                   }`}
                 >
                   <div className="flex items-center space-x-2 font-bold mb-1">
-                    <Ban size={16} className="text-red-600" />
+                    <Ban size={16} className="text-theme-danger" />
                     <span>২. ব্যাচ বাতিল করুন</span>
                   </div>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-theme-text-secondary">
                     অনিবার্য কারণে কার্যক্রম স্থগিত। কারণ অডিট লগে জমা থাকবে।
                   </span>
                 </button>
@@ -2511,7 +2509,7 @@ const Batches: React.FC = () => {
 
               {lifecycleAction === 'cancel' && (
                 <div className="mt-2 space-y-1 animate-fadeIn">
-                  <label className="block text-xs font-bold text-red-700">
+                  <label className="block text-xs font-bold text-theme-danger">
                     বাতিলকরণের কারণ (আবশ্যক) *
                   </label>
                   <textarea
@@ -2520,21 +2518,21 @@ const Batches: React.FC = () => {
                     placeholder="যেমন: বাজেট বরাদ্দ স্থগিত / পর্যাপ্ত শিক্ষার্থী না থাকায় স্থগিত..."
                     value={cancellationReason}
                     onChange={e => setCancellationReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-red-300 rounded-xl text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-danger-border rounded-xl text-xs focus:ring-2 focus:ring-theme-danger focus:outline-none"
                   />
                 </div>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-theme-border">
               <button
                 type="button"
                 onClick={handleForceDeleteBatch}
                 disabled={!isDeletionAllowed}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 ${
                   !isDeletionAllowed
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
+                    ? 'bg-theme-surface-subtle text-theme-text-muted border border-theme-border cursor-not-allowed'
+                    : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer'
                 }`}
                 title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে 🔒' : 'ব্যাচ ও সকল ডাটা স্থায়ীভাবে মুছে ফেলুন'}
               >
@@ -2546,17 +2544,17 @@ const Batches: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSafeLifecycleBatch(null)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border border-theme-border rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
                 >
                   ফিরে যান
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmLifecycleAction}
-                  className={`px-4 py-2 text-white rounded-xl text-xs font-bold shadow-xs transition ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer ${
                     lifecycleAction === 'archive'
-                      ? 'bg-purple-600 hover:bg-purple-700'
-                      : 'bg-amber-600 hover:bg-amber-700'
+                      ? 'bg-theme-accent hover:opacity-90 text-theme-accent-fg'
+                      : 'bg-theme-warning hover:opacity-90 text-theme-warning-fg'
                   }`}
                 >
                   {lifecycleAction === 'archive' ? 'আর্কাইভ নিশ্চিত করুন' : 'বাতিল নিশ্চিত করুন'}
@@ -2571,25 +2569,25 @@ const Batches: React.FC = () => {
       {/* 8. CREATE / EDIT BATCH MODAL                             */}
       {/* ======================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-theme-border space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">
+                <h2 className="text-lg font-bold text-theme-text-primary">
                   {editingBatch ? 'ব্যাচ তথ্য সম্পাদন (Edit Batch)' : 'নতুন প্রশিক্ষণ ব্যাচ তৈরি (New Batch)'}
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   BNFE কেন্দ্র ও ট্রেড অনুযায়ী ব্যাচের সময়সূচি ও আসন নির্ধারণ করুন
                 </p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             {duplicateWarning && (
-              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start space-x-2 animate-fadeIn">
-                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="p-3 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs text-theme-text-primary flex items-start space-x-2 animate-fadeIn">
+                <AlertTriangle size={16} className="text-theme-warning shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{duplicateWarning}</span>
               </div>
             )}
@@ -2597,7 +2595,7 @@ const Batches: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Batch Name */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   ব্যাচের নাম *
                 </label>
                 <input
@@ -2609,12 +2607,12 @@ const Batches: React.FC = () => {
                     setFormData({ ...formData, name: e.target.value });
                     if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
                   }}
-                  className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition ${
-                    formErrors.name ? 'border-red-400 bg-red-50/40' : 'border-slate-300'
+                  className={`w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none transition ${
+                    formErrors.name ? 'border-theme-danger bg-theme-danger-soft/40' : 'border-theme-border-strong'
                   }`}
                 />
                 {formErrors.name && (
-                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center space-x-1">
+                  <p className="text-[11px] text-theme-danger font-semibold mt-1 flex items-center space-x-1">
                     <AlertCircle size={12} />
                     <span>{formErrors.name}</span>
                   </p>
@@ -2625,14 +2623,14 @@ const Batches: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">
+                    <label className="block text-xs font-bold text-theme-text-secondary">
                       ব্যাচ কোড *
                     </label>
                     {!editingBatch && (
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, batchCode: generateSafeNextBatchCode(batches) })}
-                        className="text-[10px] text-emerald-700 font-bold hover:underline flex items-center space-x-0.5"
+                        className="text-[10px] text-theme-primary font-bold hover:underline flex items-center space-x-0.5 cursor-pointer"
                       >
                         <Sparkles size={11} />
                         <span>অটো-জেনারেট</span>
@@ -2648,12 +2646,12 @@ const Batches: React.FC = () => {
                       setFormData({ ...formData, batchCode: e.target.value });
                       if (formErrors.batchCode) setFormErrors({ ...formErrors, batchCode: '' });
                     }}
-                    className={`w-full px-3.5 py-2.5 border font-mono font-bold rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none uppercase transition ${
-                      formErrors.batchCode ? 'border-red-400 bg-red-50/40 text-red-900' : 'border-slate-300'
+                    className={`w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border font-mono font-bold rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none uppercase transition tabular-nums ${
+                      formErrors.batchCode ? 'border-theme-danger bg-theme-danger-soft/40 text-theme-danger' : 'border-theme-border-strong'
                     }`}
                   />
                   {formErrors.batchCode && (
-                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center space-x-1">
+                    <p className="text-[11px] text-theme-danger font-semibold mt-1 flex items-center space-x-1">
                       <AlertCircle size={12} />
                       <span>{formErrors.batchCode}</span>
                     </p>
@@ -2661,7 +2659,7 @@ const Batches: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                     অর্থবছর *
                   </label>
                   <select
@@ -2670,7 +2668,7 @@ const Batches: React.FC = () => {
                       setFormData({ ...formData, fiscalYear: e.target.value });
                       checkForDuplicates(formData.instituteId, formData.tradeId, e.target.value, formData.startDate, formData.endDate, editingBatch?.id);
                     }}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer tabular-nums"
                   >
                     {FISCAL_YEARS.map(fy => (
                       <option key={fy} value={fy}>{fy}</option>
@@ -2681,7 +2679,7 @@ const Batches: React.FC = () => {
 
               {/* Training Center / Institute */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   প্রশিক্ষণ কেন্দ্র (প্রতিষ্ঠান) *
                 </label>
                 <select
@@ -2692,7 +2690,7 @@ const Batches: React.FC = () => {
                     setFormData({ ...formData, instituteId: instId });
                     checkForDuplicates(instId, formData.tradeId, formData.fiscalYear, formData.startDate, formData.endDate, editingBatch?.id);
                   }}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                 >
                   <option value="">-- প্রতিষ্ঠান নির্বাচন করুন --</option>
                   {institutes.map(i => (
@@ -2700,7 +2698,7 @@ const Batches: React.FC = () => {
                   ))}
                 </select>
                 {formErrors.instituteId && (
-                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center space-x-1">
+                  <p className="text-[11px] text-theme-danger font-semibold mt-1 flex items-center space-x-1">
                     <AlertCircle size={12} />
                     <span>{formErrors.instituteId}</span>
                   </p>
@@ -2709,7 +2707,7 @@ const Batches: React.FC = () => {
 
               {/* Vocational Trade */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   বৃত্তিমূলক ট্রেড নির্বাচন *
                 </label>
                 <select
@@ -2720,7 +2718,7 @@ const Batches: React.FC = () => {
                     setFormData({ ...formData, tradeId: trdId });
                     checkForDuplicates(formData.instituteId, trdId, formData.fiscalYear, formData.startDate, formData.endDate, editingBatch?.id);
                   }}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                 >
                   <option value="">-- ট্রেড নির্বাচন করুন --</option>
                   {trades.map(t => {
@@ -2738,7 +2736,7 @@ const Batches: React.FC = () => {
                   })}
                 </select>
                 {formErrors.tradeId && (
-                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center space-x-1">
+                  <p className="text-[11px] text-theme-danger font-semibold mt-1 flex items-center space-x-1">
                     <AlertCircle size={12} />
                     <span>{formErrors.tradeId}</span>
                   </p>
@@ -2746,26 +2744,26 @@ const Batches: React.FC = () => {
               </div>
 
               {/* Dual Trainer Assignment (Skill Trainer & Literacy Trainer) */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+              <div className="p-3.5 bg-theme-surface-subtle border border-theme-border rounded-xl space-y-3">
+                <div className="text-xs font-bold text-theme-text-primary flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Users size={14} className="text-emerald-600" />
+                    <Users size={14} className="text-theme-primary" />
                     ব্যাচের দ্বৈত প্রশিক্ষক নির্ধারণ (Dual Trainer Assignment)
                   </span>
-                  <span className="text-[10px] text-slate-500 font-normal">২ জন প্রশিক্ষক (স্কিল ও লিটারেসি)</span>
+                  <span className="text-[10px] text-theme-text-secondary font-normal">২ জন প্রশিক্ষক (স্কিল ও লিটারেসি)</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Skill Trainer */}
                   <div>
-                    <label className="block text-xs font-semibold text-emerald-800 mb-1 flex items-center gap-1">
-                      <Wrench size={12} className="text-emerald-600" />
+                    <label className="block text-xs font-semibold text-theme-primary mb-1 flex items-center gap-1">
+                      <Wrench size={12} className="text-theme-primary" />
                       <span>১. স্কিল ট্রেইনার (ট্রেড ভিত্তিক)</span>
                     </label>
                     <select
                       value={formData.skillTrainerId}
                       onChange={e => setFormData({ ...formData, skillTrainerId: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                      className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-xs font-semibold text-theme-text-primary focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="">-- স্কিল ট্রেইনার নির্বাচন করুন --</option>
                       {users
@@ -2780,14 +2778,14 @@ const Batches: React.FC = () => {
 
                   {/* Literacy Trainer */}
                   <div>
-                    <label className="block text-xs font-semibold text-sky-800 mb-1 flex items-center gap-1">
-                      <BookOpen size={12} className="text-sky-600" />
+                    <label className="block text-xs font-semibold text-theme-info mb-1 flex items-center gap-1">
+                      <BookOpen size={12} className="text-theme-info" />
                       <span>২. লিটারেসি ট্রেইনার (জীবন দক্ষতা)</span>
                     </label>
                     <select
                       value={formData.literacyTrainerId}
                       onChange={e => setFormData({ ...formData, literacyTrainerId: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer"
+                      className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-xs font-semibold text-theme-text-primary focus:ring-2 focus:ring-theme-info/25 focus:border-theme-info focus:outline-none cursor-pointer"
                     >
                       <option value="">-- লিটারেসি ট্রেইনার নির্বাচন করুন --</option>
                       {users
@@ -2800,7 +2798,7 @@ const Batches: React.FC = () => {
                     </select>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-theme-text-secondary">
                   * ট্রেইনারগণ নিজ নিজ মডিউল সম্পন্ন মার্ক করবেন। সমন্বিত ক্যালেন্ডার শুধুমাত্র কোর্স পরিচালক ও FMA পর্যবেক্ষণ করতে পারবেন।
                 </p>
               </div>
@@ -2808,7 +2806,7 @@ const Batches: React.FC = () => {
               {/* Start Date & End Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                     কোর্স শুরুর তারিখ *
                   </label>
                   <input
@@ -2820,17 +2818,17 @@ const Batches: React.FC = () => {
                       setFormData({ ...formData, startDate: sDate });
                       checkForDuplicates(formData.instituteId, formData.tradeId, formData.fiscalYear, sDate, formData.endDate, editingBatch?.id);
                     }}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums"
                   />
                   {formErrors.startDate && (
-                    <p className="text-[11px] text-red-600 font-semibold mt-1">
+                    <p className="text-[11px] text-theme-danger font-semibold mt-1">
                       {formErrors.startDate}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                     কোর্স সমাপ্তির তারিখ *
                   </label>
                   <input
@@ -2842,12 +2840,12 @@ const Batches: React.FC = () => {
                       setFormData({ ...formData, endDate: eDate });
                       checkForDuplicates(formData.instituteId, formData.tradeId, formData.fiscalYear, formData.startDate, eDate, editingBatch?.id);
                     }}
-                    className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none ${
-                      formErrors.endDate ? 'border-red-400 bg-red-50/40' : 'border-slate-300'
+                    className={`w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums ${
+                      formErrors.endDate ? 'border-theme-danger bg-theme-danger-soft/40' : 'border-theme-border-strong'
                     }`}
                   />
                   {formErrors.endDate && (
-                    <p className="text-[11px] text-red-600 font-semibold mt-1">
+                    <p className="text-[11px] text-theme-danger font-semibold mt-1">
                       {formErrors.endDate}
                     </p>
                   )}
@@ -2857,7 +2855,7 @@ const Batches: React.FC = () => {
               {/* Seat Capacity & Status */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                     সর্বোচ্চ আসন সংখ্যা (Capacity) *
                   </label>
                   <input
@@ -2867,19 +2865,19 @@ const Batches: React.FC = () => {
                     required
                     value={formData.maxTrainees}
                     onChange={e => setFormData({ ...formData, maxTrainees: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums"
                   />
-                  <span className="text-[10px] text-slate-400 mt-1 block">BNFE মানদণ্ড: ৩০ জন শিক্ষার্থী প্রতি ব্যাচ</span>
+                  <span className="text-[10px] text-theme-text-muted mt-1 block">BNFE মানদণ্ড: ৩০ জন শিক্ষার্থী প্রতি ব্যাচ</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                     ব্যাচের বর্তমান অবস্থা (Status) *
                   </label>
                   <select
                     value={formData.status}
                     onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                   >
                     <option value="Active">চলমান (Active)</option>
                     <option value="Upcoming">আসন্ন (Upcoming)</option>
@@ -2891,18 +2889,18 @@ const Batches: React.FC = () => {
               </div>
 
               {/* Modal Action Buttons */}
-              <div className="flex items-center justify-end space-x-2.5 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end space-x-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                  className="px-4 py-2.5 border border-theme-border rounded-xl text-xs sm:text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50"
+                  className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'সংরক্ষণ হচ্ছে...' : editingBatch ? 'আপডেট সংরক্ষণ করুন' : 'ব্যাচ তৈরি করুন'}
                 </button>

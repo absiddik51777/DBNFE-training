@@ -144,31 +144,31 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 my-auto">
-        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+      <div className="bg-theme-elevated rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-theme-border space-y-4 animate-in fade-in zoom-in duration-150 my-auto">
+        <div className="flex items-start justify-between border-b border-theme-border pb-3">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <Layers size={13} className="text-emerald-600" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border">
+              <Layers size={13} className="text-theme-primary" />
               <span>ব্যাচ/ট্রেড: {batchName}</span>
             </div>
-            <h2 className="text-lg font-black text-slate-900 tracking-tight mt-1">
+            <h2 className="text-lg font-black text-theme-text-primary tracking-tight mt-1">
               {initialData ? 'মডিউল সম্পাদনা (Edit Module)' : (isSkill ? 'নতুন স্কিল ফোকাসড মডিউল যুক্তকরণ' : 'নতুন লিটারেসি ফোকাসড মডিউল যুক্তকরণ')}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-theme-text-secondary">
               {isSkill ? 'স্বতন্ত্র স্কিল ফোকাসড কারিকুলাম ও শিখন পরিকল্পনা' : 'স্বতন্ত্র লিটারেসি ফোকাসড কারিকুলাম ও শিখন পরিকল্পনা'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            className="p-1 rounded-xl text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover transition"
           >
             <X size={20} />
           </button>
         </div>
 
         {errorMessage && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 font-semibold">
+          <div className="p-3 bg-theme-danger-soft border border-theme-danger-border rounded-2xl text-xs text-theme-danger font-semibold">
             {errorMessage}
           </div>
         )}
@@ -176,7 +176,7 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-slate-700 font-bold mb-1">
+              <label className="block text-theme-text-secondary font-bold mb-1">
                 কার্যদিবস / ক্লাস নং *
               </label>
               <input
@@ -186,12 +186,12 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                 required
                 value={dayNumber}
                 onChange={(e) => setDayNumber(parseInt(e.target.value, 10) || 1)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               />
             </div>
 
             <div>
-              <label className="block text-slate-700 font-bold mb-1">
+              <label className="block text-theme-text-secondary font-bold mb-1">
                 কাজ নং (Task No) *
               </label>
               <input
@@ -200,19 +200,19 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                 value={taskNo}
                 onChange={(e) => setTaskNo(e.target.value)}
                 placeholder="যেমন: কাজ ০১"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               />
             </div>
 
             <div>
-              <label className="block text-slate-700 font-bold mb-1">
+              <label className="block text-theme-text-secondary font-bold mb-1">
                 {isSkill ? 'বিভাগ / ফেজ' : 'বিষয় বিভাগ'} *
               </label>
               {isSkill ? (
                 <select
                   value={phaseGroup}
                   onChange={(e) => setPhaseGroup(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium"
+                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary font-medium"
                 >
                   <option value="টুলস ও বিউটি কেয়ার">টুলস ও বিউটি কেয়ার</option>
                   <option value="স্কিন কেয়ার">স্কিন কেয়ার</option>
@@ -226,7 +226,7 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium"
+                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary font-medium"
                 >
                   <option value="বাংলা">১. মৌলিক বাংলা দক্ষতা</option>
                   <option value="ইংরেজি">২. মৌলিক ইংরেজি দক্ষতা</option>
@@ -242,7 +242,7 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-700 font-bold mb-1">
+            <label className="block text-theme-text-secondary font-bold mb-1">
               মডিউলের নাম (Module Title) *
             </label>
             <input
@@ -251,12 +251,12 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
               value={moduleName}
               onChange={(e) => setModuleName(e.target.value)}
               placeholder={isSkill ? 'যেমন: প্রাথমিক পর্যায়ের ত্বকের পরিসেবা (Skin Care) সম্পাদন করা' : 'যেমন: মৌলিক বাংলা দক্ষতা প্রয়োগ করা'}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 font-bold mb-1">
+            <label className="block text-theme-text-secondary font-bold mb-1">
               পঠিত বিষয় / শিখন ফল (Learning Outcome / Topic) *
             </label>
             <textarea
@@ -265,15 +265,15 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder={isSkill ? 'যেমন: ত্বক পরিষ্কারকরণ (Cleansing) ও মেকআপ রিমুভাল পদ্ধতি অনুশীলন' : 'যেমন: স্বরবর্ণ ও ব্যঞ্জনবর্ণের সঠিক উচ্চারণ ও লিখিত রূপ শনাক্তকরণ'}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium"
+              className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary font-medium"
             />
           </div>
 
           {/* Time & Specific Fields */}
           {isSkill ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-theme-primary-soft/50 rounded-2xl border border-theme-primary-border">
               <div>
-                <label className="block text-emerald-900 font-bold mb-1">
+                <label className="block text-theme-primary-soft-fg font-bold mb-1">
                   তাত্ত্বিক সময় (মিনিট)
                 </label>
                 <input
@@ -281,12 +281,12 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                   min={0}
                   value={theoryMinutes}
                   onChange={(e) => setTheoryMinutes(parseInt(e.target.value, 10) || 0)}
-                  className="w-full bg-white border border-emerald-200 rounded-xl p-2 text-xs text-slate-800"
+                  className="w-full bg-theme-surface border border-theme-primary-border rounded-xl p-2 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25"
                 />
               </div>
 
               <div>
-                <label className="block text-emerald-900 font-bold mb-1">
+                <label className="block text-theme-primary-soft-fg font-bold mb-1">
                   ব্যবহারিক সময় (মিনিট)
                 </label>
                 <input
@@ -294,23 +294,23 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                   min={0}
                   value={practicalMinutes}
                   onChange={(e) => setPracticalMinutes(parseInt(e.target.value, 10) || 0)}
-                  className="w-full bg-white border border-emerald-200 rounded-xl p-2 text-xs text-slate-800"
+                  className="w-full bg-theme-surface border border-theme-primary-border rounded-xl p-2 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25"
                 />
               </div>
 
               <div>
-                <label className="block text-emerald-900 font-bold mb-1">
+                <label className="block text-theme-primary-soft-fg font-bold mb-1">
                   সর্বমোট স্কিল সময়
                 </label>
-                <div className="p-2 bg-emerald-100/70 rounded-xl text-center font-black text-emerald-900">
+                <div className="p-2 bg-theme-primary-soft rounded-xl text-center font-black text-theme-primary-soft-fg border border-theme-primary-border tabular-nums">
                   {toBn(Number(theoryMinutes) + Number(practicalMinutes))} মিনিট
                 </div>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-blue-50/50 rounded-2xl border border-blue-100">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-theme-info-soft/50 rounded-2xl border border-theme-info-border">
               <div>
-                <label className="block text-blue-900 font-bold mb-1">
+                <label className="block text-theme-info font-bold mb-1">
                   শুরুর সময়
                 </label>
                 <input
@@ -318,12 +318,12 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                   placeholder="০৯:০০"
-                  className="w-full bg-white border border-blue-200 rounded-xl p-2 text-xs text-slate-800"
+                  className="w-full bg-theme-surface border border-theme-info-border rounded-xl p-2 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-info/25"
                 />
               </div>
 
               <div>
-                <label className="block text-blue-900 font-bold mb-1">
+                <label className="block text-theme-info font-bold mb-1">
                   সমাপ্তির সময়
                 </label>
                 <input
@@ -331,12 +331,12 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
                   placeholder="১১:০০"
-                  className="w-full bg-white border border-blue-200 rounded-xl p-2 text-xs text-slate-800"
+                  className="w-full bg-theme-surface border border-theme-info-border rounded-xl p-2 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-info/25"
                 />
               </div>
 
               <div>
-                <label className="block text-blue-900 font-bold mb-1">
+                <label className="block text-theme-info font-bold mb-1">
                   মোট লিটারেসি মিনিট
                 </label>
                 <input
@@ -344,7 +344,7 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                   min={0}
                   value={totalMinutes}
                   onChange={(e) => setTotalMinutes(parseInt(e.target.value, 10) || 0)}
-                  className="w-full bg-white border border-blue-200 rounded-xl p-2 text-xs text-slate-800 font-bold"
+                  className="w-full bg-theme-surface border border-theme-info-border rounded-xl p-2 text-xs text-theme-text-primary font-bold tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-info/25"
                 />
               </div>
             </div>
@@ -352,7 +352,7 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
 
           {isSkill && (
             <div>
-              <label className="block text-slate-700 font-bold mb-1">
+              <label className="block text-theme-text-secondary font-bold mb-1">
                 প্রয়োজনীয় যন্ত্রপাতি ও উপকরণ (Tools & Equipment)
               </label>
               <input
@@ -360,13 +360,13 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
                 value={toolsRequired}
                 onChange={(e) => setToolsRequired(e.target.value)}
                 placeholder="যেমন: ম্যাগনিফাইং ল্যাম্প, ক্লিনজিং মিল্ক, স্টিমার"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800"
+                className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-slate-700 font-bold mb-1">
+            <label className="block text-theme-text-secondary font-bold mb-1">
               বিশেষ নোট / নির্দেশনা
             </label>
             <input
@@ -374,22 +374,22 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="অতিরিক্ত নির্দেশনা বা রেফারেন্স"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800"
+              className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
             />
           </div>
 
-          <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-end space-x-2 pt-3 border-t border-theme-border">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition"
             >
               বাতিল
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
             >
               {saving ? (
                 <span>সংরক্ষণ হচ্ছে...</span>

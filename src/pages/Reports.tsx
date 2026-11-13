@@ -192,8 +192,8 @@ const Reports: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
         <span>প্রতিবেদন লোড হচ্ছে...</span>
       </div>
     );
@@ -203,8 +203,8 @@ const Reports: React.FC = () => {
     <div className="space-y-6 pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">প্রতিবেদন ও অ্যানালিটিক্স (Reports & Analytics)</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-theme-text-primary">প্রতিবেদন ও অ্যানালিটিক্স (Reports & Analytics)</h1>
+          <p className="text-sm text-theme-text-secondary mt-0.5">
             প্রশিক্ষণার্থী, উপস্থিতি, ফলাফল ও সনদপত্র সম্পর্কিত বিস্তারিত রিপোর্ট প্রস্তুত ও ডাউনলোড
           </p>
         </div>
@@ -215,7 +215,7 @@ const Reports: React.FC = () => {
               type="button"
               disabled={exporting}
               onClick={exportCurrentReportCSV}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
+              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
               <Download size={16} />
               <span>{exporting ? 'সংরক্ষণ হচ্ছে...' : 'এক্সপোর্ট (CSV)'}</span>
@@ -223,7 +223,7 @@ const Reports: React.FC = () => {
             <button
               type="button"
               onClick={() => printCurrentDocument({ jobName: `BNFE_Report_${reportType}`, landscape: true })}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition cursor-pointer"
+              className="px-4 py-2.5 bg-theme-elevated hover:bg-theme-surface-hover text-theme-text-primary border border-theme-border-strong rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition cursor-pointer"
             >
               <Printer size={16} />
               <span>প্রিন্ট করুন</span>
@@ -235,20 +235,20 @@ const Reports: React.FC = () => {
       {exportNotice && (
         <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center space-x-2 print:hidden ${
           exportNotice.type === 'success'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-            : 'bg-rose-50 border-rose-200 text-rose-900'
+            ? 'bg-theme-success-soft border-theme-success-border text-theme-success'
+            : 'bg-theme-danger-soft border-theme-danger-border text-theme-danger'
         }`}>
           {exportNotice.type === 'success' ? (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <CheckCircle2 size={16} className="text-theme-success shrink-0" />
           ) : (
-            <AlertCircle size={16} className="text-rose-600 shrink-0" />
+            <AlertCircle size={16} className="text-theme-danger shrink-0" />
           )}
           <span>{exportNotice.message}</span>
         </div>
       )}
 
       {/* Report Selection Tabs */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap gap-1.5 print:hidden">
+      <div className="bg-theme-surface p-2 rounded-2xl border border-theme-border shadow-xs flex flex-wrap gap-1.5 print:hidden">
         {[
           { id: 'trainees_master', name: 'প্রশিক্ষণার্থী তালিকা', icon: Users },
           { id: 'attendance_summary', name: 'উপস্থিতির সারসংক্ষেপ', icon: Calendar },
@@ -261,10 +261,10 @@ const Reports: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setReportType(tab.id as any)}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
+                  : 'text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
               }`}
             >
               <Icon size={16} />
@@ -276,14 +276,14 @@ const Reports: React.FC = () => {
 
       {/* Filter Options Bar */}
       {userProfile?.role !== 'Trainer' && (
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
+        <div className="bg-theme-surface p-4.5 rounded-2xl border border-theme-border shadow-xs print:hidden">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">প্রতিষ্ঠান ফিল্টার</label>
+              <label className="block text-[11px] font-semibold text-theme-text-secondary uppercase mb-1">প্রতিষ্ঠান ফিল্টার</label>
               <select
                 value={filterInstitute}
                 onChange={e => setFilterInstitute(e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-1.5 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-lg text-xs focus:ring-1 focus:ring-theme-primary focus:outline-none cursor-pointer"
               >
                 <option value="">সকল প্রতিষ্ঠান</option>
                 {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -291,11 +291,11 @@ const Reports: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">ট্রেড ফিল্টার</label>
+              <label className="block text-[11px] font-semibold text-theme-text-secondary uppercase mb-1">ট্রেড ফিল্টার</label>
               <select
                 value={filterTrade}
                 onChange={e => setFilterTrade(e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-1.5 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-lg text-xs focus:ring-1 focus:ring-theme-primary focus:outline-none cursor-pointer"
               >
                 <option value="">সকল ট্রেড</option>
                 {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -303,11 +303,11 @@ const Reports: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">ব্যাচ ফিল্টার</label>
+              <label className="block text-[11px] font-semibold text-theme-text-secondary uppercase mb-1">ব্যাচ ফিল্টার</label>
               <select
                 value={filterBatch}
                 onChange={e => setFilterBatch(e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-1.5 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-lg text-xs focus:ring-1 focus:ring-theme-primary focus:outline-none cursor-pointer"
               >
                 <option value="">সকল ব্যাচ</option>
                 {batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -318,19 +318,19 @@ const Reports: React.FC = () => {
       )}
 
       {/* Generated Report View Sheet */}
-      <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/80 shadow-xs print:border-none print:shadow-none print:p-0">
+      <div className="bg-theme-surface text-theme-text-primary p-6 sm:p-10 rounded-2xl border border-theme-border shadow-xs print:bg-white print:text-slate-900 print:border-none print:shadow-none print:p-0">
         {/* Printable Official Header */}
-        <div className="text-center border-b-2 border-slate-800 pb-5 mb-6">
-          <h2 className="text-xl font-bold text-slate-900 tracking-wide">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</h2>
-          <h3 className="text-lg font-bold text-slate-800 mt-0.5">উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</h3>
-          <p className="text-xs text-slate-600">ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ কর্মসূচি</p>
-          <div className="mt-3 inline-block px-4 py-1 bg-slate-100 rounded-md font-bold text-sm text-slate-800">
+        <div className="text-center border-b-2 border-theme-border-strong print:border-slate-800 pb-5 mb-6">
+          <h2 className="text-xl font-bold text-theme-text-primary print:text-slate-900 tracking-wide">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</h2>
+          <h3 className="text-lg font-bold text-theme-text-primary print:text-slate-800 mt-0.5">উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</h3>
+          <p className="text-xs text-theme-text-secondary print:text-slate-600">ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ কর্মসূচি</p>
+          <div className="mt-3 inline-block px-4 py-1 bg-theme-surface-subtle print:bg-slate-100 rounded-md font-bold text-sm text-theme-text-primary print:text-slate-800">
             {reportType === 'trainees_master' && 'প্রশিক্ষণার্থী তালিকা প্রতিবেদন (Trainee Master Report)'}
             {reportType === 'attendance_summary' && 'উপস্থিতি সারসংক্ষেপ প্রতিবেদন (Attendance Report)'}
             {reportType === 'exam_results' && 'পরীক্ষার ফলাফল বিবরণী (Examination Results Report)'}
             {reportType === 'completion_certificates' && 'কোর্স সমাপন ও সনদপত্র যোগ্যতা বিবরণী'}
           </div>
-          <div className="text-[11px] text-slate-500 mt-2">
+          <div className="text-[11px] text-theme-text-muted print:text-slate-500 mt-2 tabular-nums">
             প্রতিবেদন প্রস্তুতের তারিখ: {format(new Date(), 'dd MMMM yyyy, hh:mm a')}
           </div>
         </div>
@@ -338,39 +338,39 @@ const Reports: React.FC = () => {
         {/* Report Table Render */}
         <div className="overflow-x-auto">
           {reportType === 'trainees_master' && (
-            <table className="min-w-full border-collapse border border-slate-300 text-xs">
-              <thead className="bg-slate-100">
+            <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-300 text-xs">
+              <thead className="bg-theme-surface-subtle print:bg-slate-100 text-theme-text-primary print:text-slate-900">
                 <tr>
-                  <th className="border border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">রেজিঃ নম্বর</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">নাম (বাংলা ও ইংরেজি)</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">পিতা ও মাতা</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">প্রতিষ্ঠান ও ট্রেড</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">ব্যাচ</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">মোবাইল</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">স্ট্যাটাস</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">রেজিঃ নম্বর</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">নাম (বাংলা ও ইংরেজি)</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">পিতা ও মাতা</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">প্রতিষ্ঠান ও ট্রেড</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">ব্যাচ</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">মোবাইল</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">স্ট্যাটাস</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTrainees.map((t, idx) => (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="border border-slate-300 px-3 py-2 text-center">{idx + 1}</td>
-                    <td className="border border-slate-300 px-3 py-2 font-mono font-bold">{t.registrationNumber}</td>
-                    <td className="border border-slate-300 px-3 py-2 font-medium">
+                  <tr key={t.id} className="hover:bg-theme-surface-hover print:hover:bg-transparent">
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{idx + 1}</td>
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-mono font-bold tabular-nums">{t.registrationNumber}</td>
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-medium">
                       <div>{t.nameBn}</div>
-                      <div className="text-slate-500">{t.nameEn}</div>
+                      <div className="text-theme-text-secondary print:text-slate-500">{t.nameEn}</div>
                     </td>
-                    <td className="border border-slate-300 px-3 py-2">
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2">
                       <div>পিতা: {t.fatherNameBn}</div>
                       <div>মাতা: {t.motherNameBn}</div>
                     </td>
-                    <td className="border border-slate-300 px-3 py-2">
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2">
                       <div className="font-semibold">{getInstituteName(t.instituteId)}</div>
-                      <div className="text-emerald-700">{getTradeName(t.tradeId)}</div>
+                      <div className="text-theme-primary print:text-emerald-700">{getTradeName(t.tradeId)}</div>
                     </td>
-                    <td className="border border-slate-300 px-3 py-2 text-center">{getBatchName(t.batchId)}</td>
-                    <td className="border border-slate-300 px-3 py-2 text-center font-mono">{t.mobileNumber}</td>
-                    <td className="border border-slate-300 px-3 py-2 text-center font-semibold">
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">{getBatchName(t.batchId)}</td>
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-mono tabular-nums">{t.mobileNumber}</td>
+                    <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-semibold">
                       {t.status === 'Active' ? 'সক্রিয়' : t.status === 'Completed' ? 'সম্পন্ন' : 'ঝরে পড়া'}
                     </td>
                   </tr>
@@ -380,17 +380,17 @@ const Reports: React.FC = () => {
           )}
 
           {reportType === 'attendance_summary' && (
-            <table className="min-w-full border-collapse border border-slate-300 text-xs">
-              <thead className="bg-slate-100">
+            <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-300 text-xs">
+              <thead className="bg-theme-surface-subtle print:bg-slate-100 text-theme-text-primary print:text-slate-900">
                 <tr>
-                  <th className="border border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">নাম</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">প্রতিষ্ঠান ও ট্রেড</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">মোট ক্লাস</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">উপস্থিত</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">অনুপস্থিত</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center font-bold">উপস্থিতির শতকরা (%)</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">নাম</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">প্রতিষ্ঠান ও ট্রেড</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">মোট ক্লাস</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">উপস্থিত</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">অনুপস্থিত</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold">উপস্থিতির শতকরা (%)</th>
                 </tr>
               </thead>
               <tbody>
@@ -400,15 +400,15 @@ const Reports: React.FC = () => {
                   const total = traineeAtt.length;
                   const pct = total > 0 ? Math.round((present / total) * 100) : 0;
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="border border-slate-300 px-3 py-2 text-center">{idx + 1}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-mono font-bold">{t.registrationNumber}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-medium">{t.nameBn}</td>
-                      <td className="border border-slate-300 px-3 py-2">{getInstituteName(t.instituteId)} - {getTradeName(t.tradeId)}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center">{total}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center text-emerald-700 font-bold">{present}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center text-red-700">{total - present}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center font-bold text-slate-900">{pct}%</td>
+                    <tr key={t.id} className="hover:bg-theme-surface-hover print:hover:bg-transparent">
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{idx + 1}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-mono font-bold tabular-nums">{t.registrationNumber}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-medium">{t.nameBn}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2">{getInstituteName(t.instituteId)} - {getTradeName(t.tradeId)}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{total}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center text-theme-success print:text-emerald-700 font-bold tabular-nums">{present}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center text-theme-danger print:text-red-700 tabular-nums">{total - present}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold text-theme-text-primary print:text-slate-900 tabular-nums">{pct}%</td>
                     </tr>
                   );
                 })}
@@ -417,23 +417,23 @@ const Reports: React.FC = () => {
           )}
 
           {reportType === 'exam_results' && (
-            <table className="min-w-full border-collapse border border-slate-300 text-xs">
-              <thead className="bg-slate-100">
+            <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-300 text-xs">
+              <thead className="bg-theme-surface-subtle print:bg-slate-100 text-theme-text-primary print:text-slate-900">
                 <tr>
-                  <th className="border border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">শিক্ষার্থীর নাম</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">পরীক্ষার নাম</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">শতকরা (%)</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">গ্রেড</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">ফলাফল</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">শিক্ষার্থীর নাম</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">পরীক্ষার নাম</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">শতকরা (%)</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">গ্রেড</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">ফলাফল</th>
                 </tr>
               </thead>
               <tbody>
                 {marks.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="border border-slate-300 py-6 text-center text-slate-400">
+                    <td colSpan={8} className="border border-theme-border-strong print:border-slate-300 py-6 text-center text-theme-text-muted print:text-slate-400">
                       কোনো ফলাফল রেকর্ড পাওয়া যায়নি।
                     </td>
                   </tr>
@@ -442,15 +442,15 @@ const Reports: React.FC = () => {
                     const trainee = trainees.find(t => t.id === m.traineeId);
                     const exam = exams.find(e => e.id === m.examId);
                     return (
-                      <tr key={m.id} className="hover:bg-slate-50">
-                        <td className="border border-slate-300 px-3 py-2 text-center">{idx + 1}</td>
-                        <td className="border border-slate-300 px-3 py-2 font-mono font-bold">{trainee?.registrationNumber || '-'}</td>
-                        <td className="border border-slate-300 px-3 py-2 font-medium">{trainee?.nameBn || '-'}</td>
-                        <td className="border border-slate-300 px-3 py-2">{exam?.name || '-'}</td>
-                        <td className="border border-slate-300 px-3 py-2 text-center font-bold">{m.marksObtained}</td>
-                        <td className="border border-slate-300 px-3 py-2 text-center">{m.percentage}%</td>
-                        <td className="border border-slate-300 px-3 py-2 text-center font-bold text-purple-700">{m.grade}</td>
-                        <td className="border border-slate-300 px-3 py-2 text-center font-bold">
+                      <tr key={m.id} className="hover:bg-theme-surface-hover print:hover:bg-transparent">
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{idx + 1}</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-mono font-bold tabular-nums">{trainee?.registrationNumber || '-'}</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-medium">{trainee?.nameBn || '-'}</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2">{exam?.name || '-'}</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold tabular-nums">{m.marksObtained}</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{m.percentage}%</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold text-theme-accent print:text-purple-700">{m.grade}</td>
+                        <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold">
                           {m.result === 'Pass' ? 'পাস' : 'ফেল'}
                         </td>
                       </tr>
@@ -462,16 +462,16 @@ const Reports: React.FC = () => {
           )}
 
           {reportType === 'completion_certificates' && (
-            <table className="min-w-full border-collapse border border-slate-300 text-xs">
-              <thead className="bg-slate-100">
+            <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-300 text-xs">
+              <thead className="bg-theme-surface-subtle print:bg-slate-100 text-theme-text-primary print:text-slate-900">
                 <tr>
-                  <th className="border border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">নাম</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">প্রতিষ্ঠান ও ট্রেড</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">উপস্থিতি হার</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">পরীক্ষায় উত্তীর্ণ?</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">সার্টিফিকেট যোগ্যতা</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">নাম</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">প্রতিষ্ঠান ও ট্রেড</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">উপস্থিতি হার</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">পরীক্ষায় উত্তীর্ণ?</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">সার্টিফিকেট যোগ্যতা</th>
                 </tr>
               </thead>
               <tbody>
@@ -483,18 +483,18 @@ const Reports: React.FC = () => {
                   const passed = marks.some(m => m.traineeId === t.id && m.result === 'Pass');
                   const eligible = total > 0 && pct >= 75 && passed;
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="border border-slate-300 px-3 py-2 text-center">{idx + 1}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-mono font-bold">{t.registrationNumber}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-medium">{t.nameBn}</td>
-                      <td className="border border-slate-300 px-3 py-2">{getInstituteName(t.instituteId)} - {getTradeName(t.tradeId)}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center font-bold">{pct}%</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center font-bold">
+                    <tr key={t.id} className="hover:bg-theme-surface-hover print:hover:bg-transparent">
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{idx + 1}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-mono font-bold tabular-nums">{t.registrationNumber}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-medium">{t.nameBn}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2">{getInstituteName(t.instituteId)} - {getTradeName(t.tradeId)}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold tabular-nums">{pct}%</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold">
                         {passed ? 'হ্যাঁ (পাস)' : 'মুল্যায়ন চলমান'}
                       </td>
-                      <td className="border border-slate-300 px-3 py-2 text-center">
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">
                         <span className={`px-2 py-0.5 rounded-full font-bold ${
-                          eligible ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          eligible ? 'bg-theme-success-soft text-theme-success print:bg-emerald-100 print:text-emerald-800' : 'bg-theme-warning-soft text-theme-warning print:bg-amber-100 print:text-amber-800'
                         }`}>
                           {eligible ? 'সনদ যোগ্য (Eligible)' : 'অযোগ্য'}
                         </span>
@@ -510,13 +510,13 @@ const Reports: React.FC = () => {
         {/* Official Signatures for Prints */}
         <div className="grid grid-cols-3 gap-6 pt-16 text-center text-xs mt-8">
           <div>
-            <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">প্রতিবেদন প্রস্তুতকারী</div>
+            <div className="border-t border-theme-border-strong print:border-slate-400 pt-1 font-semibold text-theme-text-secondary print:text-slate-700">প্রতিবেদন প্রস্তুতকারী</div>
           </div>
           <div>
-            <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">উপজেলা/ফিল্ড কর্মকর্তা</div>
+            <div className="border-t border-theme-border-strong print:border-slate-400 pt-1 font-semibold text-theme-text-secondary print:text-slate-700">উপজেলা/ফিল্ড কর্মকর্তা</div>
           </div>
           <div>
-            <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">সহকারী পরিচালক / ডিবিএনএফই</div>
+            <div className="border-t border-theme-border-strong print:border-slate-400 pt-1 font-semibold text-theme-text-secondary print:text-slate-700">সহকারী পরিচালক / ডিবিএনএফই</div>
           </div>
         </div>
       </div>

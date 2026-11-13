@@ -1059,8 +1059,8 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-theme-elevated rounded-3xl shadow-2xl border border-theme-border w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {importSummary ? (
           /* ========================================================= */
@@ -1069,29 +1069,29 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
           /* ========================================================= */
           <div className="flex flex-col h-full max-h-[92vh] overflow-hidden">
             {/* Summary Header */}
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/70 via-white to-teal-50/70">
+            <div className="px-6 py-5 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
               <div className="flex items-center space-x-3">
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm ${
                   importSummary.failedCount > 0 
-                    ? 'bg-amber-600 text-white shadow-amber-600/30' 
-                    : 'bg-emerald-600 text-white shadow-emerald-600/30'
+                    ? 'bg-theme-warning text-white shadow-theme-warning/25' 
+                    : 'bg-theme-primary text-theme-primary-fg shadow-theme-primary/25'
                 }`}>
                   {importSummary.failedCount > 0 ? <AlertCircle size={22} /> : <CheckCircle2 size={22} />}
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <h2 className="text-lg font-bold text-slate-800">
+                    <h2 className="text-lg font-bold text-theme-text-primary">
                       বাল্ক আপলোড ফলাফল ও সারাংশ (Post-Import Summary)
                     </h2>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                       importSummary.failedCount === 0
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                        ? 'bg-theme-success-soft text-theme-success border-theme-success/30'
+                        : 'bg-theme-warning-soft text-theme-warning border-theme-warning/30'
                     }`}>
                       {importSummary.failedCount === 0 ? 'সবগুলো সফল' : 'আংশিক সফল'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-theme-text-secondary mt-0.5 tabular-nums">
                     মোট {toBn(importSummary.totalRows)} টি সারির মধ্যে সফলভাবে ডাটাবেজে সংরক্ষিত ও ব্যর্থ সারির ফলাফল
                   </p>
                 </div>
@@ -1100,7 +1100,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               <button
                 type="button"
                 onClick={handleCloseSummary}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                className="p-2 text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer"
                 title="বন্ধ করুন"
               >
                 <X size={20} />
@@ -1111,62 +1111,62 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               {/* 3 Metric Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
+                <div className="p-4 rounded-2xl bg-theme-surface-subtle border border-theme-border shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">মোট সারি (Total Rows)</span>
-                    <span className="w-8 h-8 rounded-xl bg-slate-200/60 text-slate-700 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-theme-text-secondary">মোট সারি (Total Rows)</span>
+                    <span className="w-8 h-8 rounded-xl bg-theme-surface text-theme-text-secondary border border-theme-border flex items-center justify-center">
                       <FileSpreadsheet size={16} />
                     </span>
                   </div>
-                  <div className="mt-2 text-2xl font-black text-slate-800 font-mono">
+                  <div className="mt-2 text-2xl font-black text-theme-text-primary font-mono tabular-nums">
                     {toBn(importSummary.totalRows)}
                   </div>
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  <span className="text-[11px] text-theme-text-muted mt-0.5 block">
                     আপলোডকৃত ফাইলের মোট শিক্ষার্থীর সারি
                   </span>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 shadow-2xs">
+                <div className="p-4 rounded-2xl bg-theme-success-soft/75 border border-theme-success/30 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-800">সফলভাবে সংরক্ষিত (Saved)</span>
-                    <span className="w-8 h-8 rounded-xl bg-emerald-200/80 text-emerald-800 flex items-center justify-center">
+                    <span className="text-xs font-bold text-theme-success">সফলভাবে সংরক্ষিত (Saved)</span>
+                    <span className="w-8 h-8 rounded-xl bg-theme-success-soft text-theme-success border border-theme-success/25 flex items-center justify-center">
                       <CheckCircle2 size={16} />
                     </span>
                   </div>
-                  <div className="mt-2 text-2xl font-black text-emerald-700 font-mono">
+                  <div className="mt-2 text-2xl font-black text-theme-success font-mono tabular-nums">
                     {toBn(importSummary.importedCount)}
                   </div>
-                  <span className="text-[11px] text-emerald-700/80 mt-0.5 block font-medium">
+                  <span className="text-[11px] text-theme-success/85 mt-0.5 block font-medium">
                     সক্রিয় শিক্ষার্থী হিসেবে ডাটাবেজে সংরক্ষিত হয়েছে
                   </span>
                 </div>
 
                 <div className={`p-4 rounded-2xl border shadow-2xs ${
                   importSummary.failedCount > 0 
-                    ? 'bg-rose-50/80 border-rose-200' 
-                    : 'bg-slate-50/60 border-slate-200'
+                    ? 'bg-theme-danger-soft/75 border-theme-danger/30' 
+                    : 'bg-theme-surface-subtle border-theme-border'
                 }`}>
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${
-                      importSummary.failedCount > 0 ? 'text-rose-800' : 'text-slate-500'
+                      importSummary.failedCount > 0 ? 'text-theme-danger' : 'text-theme-text-secondary'
                     }`}>
                       ব্যর্থ / বাতিল সারি (Failed)
                     </span>
-                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
                       importSummary.failedCount > 0 
-                        ? 'bg-rose-200 text-rose-800' 
-                        : 'bg-slate-200/60 text-slate-500'
+                        ? 'bg-theme-danger-soft text-theme-danger border-theme-danger/25' 
+                        : 'bg-theme-surface text-theme-text-muted border-theme-border'
                     }`}>
                       <XCircle size={16} />
                     </span>
                   </div>
-                  <div className={`mt-2 text-2xl font-black font-mono ${
-                    importSummary.failedCount > 0 ? 'text-rose-700' : 'text-slate-600'
+                  <div className={`mt-2 text-2xl font-black font-mono tabular-nums ${
+                    importSummary.failedCount > 0 ? 'text-theme-danger' : 'text-theme-text-secondary'
                   }`}>
                     {toBn(importSummary.failedCount)}
                   </div>
                   <span className={`text-[11px] mt-0.5 block ${
-                    importSummary.failedCount > 0 ? 'text-rose-700/80 font-medium' : 'text-slate-400'
+                    importSummary.failedCount > 0 ? 'text-theme-danger/85 font-medium' : 'text-theme-text-muted'
                   }`}>
                     {importSummary.failedCount > 0 
                       ? 'ভ্যালিডেশন শর্ত পূরণ না করায় ডাটাবেজে যুক্ত হয়নি' 
@@ -1177,14 +1177,14 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
               {/* Notice Banner if there are failed rows */}
               {importSummary.failedCount > 0 && (
-                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/90 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-3.5 rounded-2xl bg-theme-warning-soft/75 border border-theme-warning/30 text-theme-text-primary text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-start space-x-2.5">
-                    <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                    <AlertCircle size={18} className="text-theme-warning shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">
+                      <span className="font-bold block text-theme-warning tabular-nums">
                         {toBn(importSummary.failedCount)} টি সারিতে ত্রুটি থাকায় ডাটাবেজে সংরক্ষণ করা হয়নি:
                       </span>
-                      <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      <p className="text-[11px] text-theme-text-secondary mt-0.5 leading-relaxed">
                         নিচের তালিকা থেকে প্রতিটি সারির নির্দিষ্ট ত্রুটির বিবরণ দেখুন। প্রয়োজনে ত্রুটিযুক্ত সারির তালিকা ডাউনলোড করে স্প্রেডশিটে সংশোধন করে পুনরায় আপলোড করতে পারেন।
                       </p>
                     </div>
@@ -1194,9 +1194,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                     type="button"
                     disabled={downloadingExport}
                     onClick={handleDownloadFailedReport}
-                    className="px-3.5 py-2 bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-2 bg-theme-surface hover:bg-theme-surface-hover border border-theme-warning/40 text-theme-text-primary font-bold rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer disabled:opacity-50"
                   >
-                    <Download size={14} className="text-amber-700" />
+                    <Download size={14} className="text-theme-warning" />
                     <span>{downloadingExport ? 'সংরক্ষণ হচ্ছে...' : 'ব্যর্থ সারির রিপোর্ট (.csv)'}</span>
                   </button>
                 </div>
@@ -1205,28 +1205,28 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               {exportNotice && importSummary && (
                 <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center space-x-2 ${
                   exportNotice.type === 'success'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                    ? 'bg-theme-success-soft border-theme-success/30 text-theme-success'
+                    : 'bg-theme-danger-soft border-theme-danger/30 text-theme-danger'
                 }`}>
                   {exportNotice.type === 'success' ? (
-                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                    <CheckCircle2 size={15} className="text-theme-success shrink-0" />
                   ) : (
-                    <AlertCircle size={15} className="text-rose-600 shrink-0" />
+                    <AlertCircle size={15} className="text-theme-danger shrink-0" />
                   )}
                   <span>{exportNotice.text}</span>
                 </div>
               )}
 
               {/* Tabs: All / Failed / Successful */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1 border-b border-slate-100">
-                <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1 border-b border-theme-border">
+                <div className="flex items-center space-x-1 bg-theme-surface-subtle p-1 rounded-xl border border-theme-border">
                   <button
                     type="button"
                     onClick={() => setSummaryFilterTab('all')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer tabular-nums ${
                       summaryFilterTab === 'all'
-                        ? 'bg-white text-slate-900 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-theme-surface text-theme-text-primary shadow-2xs border border-theme-border'
+                        : 'text-theme-text-secondary hover:text-theme-text-primary'
                     }`}
                   >
                     সবগুলো ({toBn(importSummary.totalRows)})
@@ -1236,10 +1236,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSummaryFilterTab('failed')}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center space-x-1 cursor-pointer ${
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center space-x-1 cursor-pointer tabular-nums ${
                         summaryFilterTab === 'failed'
-                          ? 'bg-rose-600 text-white shadow-2xs'
-                          : 'text-rose-700 hover:bg-rose-50'
+                          ? 'bg-theme-danger text-white shadow-2xs'
+                          : 'text-theme-danger hover:bg-theme-danger-soft/60'
                       }`}
                     >
                       <XCircle size={13} />
@@ -1250,10 +1250,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setSummaryFilterTab('success')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center space-x-1 cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center space-x-1 cursor-pointer tabular-nums ${
                       summaryFilterTab === 'success'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'text-emerald-700 hover:bg-emerald-50'
+                        ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                        : 'text-theme-success hover:bg-theme-success-soft/60'
                     }`}
                   >
                     <CheckCircle2 size={13} />
@@ -1261,7 +1261,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                   </button>
                 </div>
 
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-theme-text-muted tabular-nums">
                   প্রদর্শিত হচ্ছে: {toBn(filteredSummaryRows.length)} টি সারি
                 </span>
               </div>
@@ -1273,54 +1273,54 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                     key={r.rowNumber}
                     className={`p-3.5 rounded-2xl border transition-all ${
                       !r.isValid
-                        ? 'bg-rose-50/40 border-rose-200 shadow-2xs'
-                        : 'bg-white border-slate-200/90 shadow-2xs'
+                        ? 'bg-theme-danger-soft/35 border-theme-danger/30 shadow-2xs'
+                        : 'bg-theme-surface border-theme-border shadow-2xs'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
                       {/* Row identifier & Details */}
                       <div className="flex items-start space-x-3">
-                        <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-xl shrink-0 ${
+                        <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-xl shrink-0 tabular-nums border ${
                           !r.isValid 
-                            ? 'bg-rose-100 text-rose-800 border border-rose-200' 
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            ? 'bg-theme-danger-soft text-theme-danger border-theme-danger/30' 
+                            : 'bg-theme-success-soft text-theme-success border-theme-success/30'
                         }`}>
                           সারি #{toBn(r.rowNumber)}
                         </span>
 
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-bold text-sm text-slate-900">
+                            <span className="font-bold text-sm text-theme-text-primary">
                               {r.nameBn || r.nameEn || '(নাম পাওয়া যায়নি)'}
                             </span>
                             {r.nameEn && r.nameEn !== r.nameBn && (
-                              <span className="text-xs text-slate-500 font-medium">({r.nameEn})</span>
+                              <span className="text-xs text-theme-text-secondary font-medium">({r.nameEn})</span>
                             )}
-                            <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                            <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-theme-surface-subtle text-theme-text-secondary border border-theme-border tabular-nums">
                               আইডি: {r.traineeId || 'N/A'}
                             </span>
                             {r.registrationNumber && (
-                              <span className="font-mono text-xs text-slate-500">
+                              <span className="font-mono text-xs text-theme-text-secondary tabular-nums">
                                 রেজি: {r.registrationNumber}
                               </span>
                             )}
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 pt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-theme-text-secondary pt-0.5">
                             <span className="flex items-center space-x-1">
-                              <Phone size={12} className="text-slate-400" />
-                              <span className="font-mono">{toBn(r.mobileNumber) || 'মোবাইল নেই'}</span>
+                              <Phone size={12} className="text-theme-text-muted" />
+                              <span className="font-mono tabular-nums">{toBn(r.mobileNumber) || 'মোবাইল নেই'}</span>
                             </span>
                             <span>•</span>
                             <span className="flex items-center space-x-1">
-                              <Layers size={12} className="text-slate-400" />
+                              <Layers size={12} className="text-theme-text-muted" />
                               <span>{r.resolvedBatchName}</span>
                             </span>
                             {r.permanentAddress && (
                               <>
                                 <span>•</span>
                                 <span className="flex items-center space-x-1 truncate max-w-[260px]">
-                                  <MapPin size={12} className="text-slate-400" />
+                                  <MapPin size={12} className="text-theme-text-muted" />
                                   <span className="truncate">{r.permanentAddress}</span>
                                 </span>
                               </>
@@ -1332,12 +1332,12 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                       {/* Status Badge */}
                       <div className="shrink-0 self-start sm:self-auto">
                         {r.isValid ? (
-                          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-theme-success-soft text-theme-success border border-theme-success/30">
                             <CheckCircle2 size={13} />
                             <span>ডাটাবেজে সংরক্ষিত</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-theme-danger-soft text-theme-danger border border-theme-danger/30">
                             <XCircle size={13} />
                             <span>ভ্যালিডেশন ব্যর্থ</span>
                           </span>
@@ -1347,15 +1347,15 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
                     {/* Specific Error Messages for Failed Rows */}
                     {!r.isValid && r.errors.length > 0 && (
-                      <div className="mt-3 p-3 rounded-xl bg-rose-100/70 border border-rose-200 text-rose-900 text-xs space-y-1.5">
-                        <span className="font-bold flex items-center space-x-1 text-rose-800 text-[11px] uppercase tracking-wide">
-                          <AlertCircle size={14} className="text-rose-600 shrink-0" />
+                      <div className="mt-3 p-3 rounded-xl bg-theme-danger-soft/75 border border-theme-danger/30 text-theme-text-primary text-xs space-y-1.5">
+                        <span className="font-bold flex items-center space-x-1 text-theme-danger text-[11px] uppercase tracking-wide tabular-nums">
+                          <AlertCircle size={14} className="text-theme-danger shrink-0" />
                           <span>ভ্যালিডেশন ব্যর্থ হওয়ার নির্দিষ্ট কারণসমূহ ({toBn(r.errors.length)} টি):</span>
                         </span>
                         <div className="space-y-1 pl-4">
                           {r.errors.map((err, idx) => (
-                            <div key={idx} className="font-semibold text-rose-900 leading-snug flex items-start space-x-1.5">
-                              <span className="text-rose-500 font-bold">•</span>
+                            <div key={idx} className="font-semibold text-theme-danger leading-snug flex items-start space-x-1.5">
+                              <span className="text-theme-danger font-bold">•</span>
                               <span>{err}</span>
                             </div>
                           ))}
@@ -1365,10 +1365,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
                     {/* Warnings Box if any */}
                     {r.isValid && r.warnings.length > 0 && (
-                      <div className="mt-2.5 p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] space-y-0.5">
+                      <div className="mt-2.5 p-2 rounded-xl bg-theme-warning-soft/75 border border-theme-warning/30 text-theme-warning text-[11px] space-y-0.5">
                         {r.warnings.map((warn, idx) => (
                           <div key={idx} className="flex items-center space-x-1">
-                            <Info size={11} className="text-amber-600 shrink-0" />
+                            <Info size={11} className="text-theme-warning shrink-0" />
                             <span>{warn}</span>
                           </div>
                         ))}
@@ -1380,13 +1380,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
             </div>
 
             {/* Summary Footer */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="text-xs text-slate-600">
-                <span className="font-semibold text-slate-800">
-                  আমদানি সম্পন্ন: <strong className="text-emerald-700">{toBn(importSummary.importedCount)} জন</strong> শিক্ষার্থী সফলভাবে ডাটাবেজে অন্তর্ভুক্ত হয়েছে।
+            <div className="px-6 py-4 bg-theme-surface-subtle border-t border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs text-theme-text-secondary tabular-nums">
+                <span className="font-semibold text-theme-text-primary">
+                  আমদানি সম্পন্ন: <strong className="text-theme-success">{toBn(importSummary.importedCount)} জন</strong> শিক্ষার্থী সফলভাবে ডাটাবেজে অন্তর্ভুক্ত হয়েছে।
                 </span>
                 {importSummary.failedCount > 0 && (
-                  <span className="text-rose-700 ml-1 font-medium">
+                  <span className="text-theme-danger ml-1 font-medium">
                     (বাদ পড়া {toBn(importSummary.failedCount)} টি সারি সংশোধনের প্রয়োজন)
                   </span>
                 )}
@@ -1398,9 +1398,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                     type="button"
                     disabled={downloadingExport}
                     onClick={handleDownloadFailedReport}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                    className="px-4 py-2 bg-theme-surface border border-theme-border-strong hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
                   >
-                    <Download size={14} className="text-rose-600" />
+                    <Download size={14} className="text-theme-danger" />
                     <span>{downloadingExport ? 'সংরক্ষণ হচ্ছে...' : 'ব্যর্থ সারির রিপোর্ট (.csv)'}</span>
                   </button>
                 )}
@@ -1408,7 +1408,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCloseSummary}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer"
+                  className="px-6 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm shadow-theme-primary/20 cursor-pointer"
                 >
                   <Check size={16} />
                   <span>ঠিক আছে, সম্পন্ন করুন</span>
@@ -1422,19 +1422,19 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
           /* ========================================================= */
           <div className="flex flex-col h-full max-h-[92vh] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/50 via-white to-teal-50/50">
+            <div className="px-6 py-5 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
               <div className="flex items-center space-x-3">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shadow-emerald-600/30">
+                <div className="w-11 h-11 rounded-2xl bg-theme-primary text-theme-primary-fg flex items-center justify-center shadow-sm shadow-theme-primary/25">
                   <FileSpreadsheet size={22} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                  <h2 className="text-lg font-bold text-theme-text-primary flex flex-wrap items-center gap-2">
                     <span>প্রশিক্ষণার্থী বাল্ক ইনপুট (Excel / CSV Bulk Import)</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border">
                       Data Consistency Assured
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-theme-text-secondary mt-0.5">
                     এক্সেল (.xlsx, .xls) অথবা সিএসভি (.csv) ফাইলের মাধ্যমে একযোগে একাধিক শিক্ষার্থীর তথ্য নির্ভুলভাবে আমদানি করুন
                   </p>
                 </div>
@@ -1442,7 +1442,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
               <button
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                className="p-2 text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer"
                 title="বন্ধ করুন"
               >
                 <X size={20} />
@@ -1453,15 +1453,15 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           
           {/* Top Instruction & Template Download Card */}
-          <div className="bg-slate-50/80 rounded-2xl p-4.5 border border-slate-200/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1 text-xs text-slate-600 flex-1">
-              <h3 className="font-bold text-slate-800 text-sm flex items-center space-x-1.5 text-emerald-900">
-                <Info size={16} className="text-emerald-600" />
+          <div className="bg-theme-surface-subtle rounded-2xl p-4.5 border border-theme-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1 text-xs text-theme-text-secondary flex-1">
+              <h3 className="font-bold text-sm flex items-center space-x-1.5 text-theme-text-primary">
+                <Info size={16} className="text-theme-primary" />
                 <span>সঠিক তথ্য কাঠামোর নিয়মাবলী (Data Structure Guidelines)</span>
               </h3>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
+              <p className="text-[11px] text-theme-text-secondary leading-relaxed">
                 ডাটাবেজের ধারাবাহিকতা রক্ষায় টেমপ্লেটের কলামের নাম ও ক্রম অক্ষুণ্ণ রাখুন। 
-                বাধ্যতামূলক ফিল্ড: <strong>নাম</strong>, <strong>১১ ডিজিটের মোবাইল নম্বর</strong> এবং <strong>স্থায়ী ঠিকানা</strong>।
+                বাধ্যতামূলক ফিল্ড: <strong className="text-theme-text-primary">নাম</strong>, <strong className="text-theme-text-primary">১১ ডিজিটের মোবাইল নম্বর</strong> এবং <strong className="text-theme-text-primary">স্থায়ী ঠিকানা</strong>।
                 আইডি খালি থাকলে স্বয়ংক্রিয়ভাবে সিকোয়েন্সিয়াল আইডি দেওয়া হবে।
               </p>
             </div>
@@ -1471,7 +1471,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 type="button"
                 disabled={downloadingExport}
                 onClick={() => handleDownloadTemplate('xlsx')}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-2 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                 title="Excel টেমপ্লেট ডাউনলোড"
               >
                 <Download size={14} />
@@ -1481,10 +1481,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 type="button"
                 disabled={downloadingExport}
                 onClick={() => handleDownloadTemplate('csv')}
-                className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-2 bg-theme-surface border border-theme-border-strong hover:bg-theme-surface-hover active:scale-95 text-theme-text-primary rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                 title="CSV টেমপ্লেট ডাউনলোড"
               >
-                <Download size={14} className="text-emerald-700" />
+                <Download size={14} className="text-theme-primary" />
                 <span>টেমপ্লেট (CSV)</span>
               </button>
             </div>
@@ -1493,13 +1493,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
           {exportNotice && !importSummary && (
             <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center space-x-2 ${
               exportNotice.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : 'bg-rose-50 border-rose-200 text-rose-900'
+                ? 'bg-theme-success-soft border-theme-success/30 text-theme-success'
+                : 'bg-theme-danger-soft border-theme-danger/30 text-theme-danger'
             }`}>
               {exportNotice.type === 'success' ? (
-                <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                <CheckCircle2 size={15} className="text-theme-success shrink-0" />
               ) : (
-                <AlertCircle size={15} className="text-rose-600 shrink-0" />
+                <AlertCircle size={15} className="text-theme-danger shrink-0" />
               )}
               <span>{exportNotice.text}</span>
             </div>
@@ -1508,13 +1508,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
           {/* Upload & Configuration Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Default Batch Selector */}
-            <div className="md:col-span-1 space-y-1.5 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div className="md:col-span-1 space-y-1.5 bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-2xs flex flex-col justify-between">
               <div>
-                <label className="text-xs font-bold text-slate-700 flex items-center space-x-1">
-                  <Layers size={14} className="text-emerald-600" />
+                <label className="text-xs font-bold text-theme-text-primary flex items-center space-x-1">
+                  <Layers size={14} className="text-theme-primary" />
                   <span>ডিফল্ট প্রশিক্ষণ ব্যাচ (Fallback Batch)</span>
                 </label>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-theme-text-muted mt-0.5">
                   স্প্রেডশিটের কোনো সারিতে ব্যাচ উল্লেখ না থাকলে বা অমিল থাকলে এই ব্যাচে ভর্তি হবে:
                 </p>
               </div>
@@ -1522,7 +1522,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               <select
                 value={defaultBatchId}
                 onChange={(e) => setDefaultBatchId(e.target.value)}
-                className="w-full mt-2 px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full mt-2 px-3 py-2 text-xs font-semibold bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-hidden"
               >
                 {batches.map(b => (
                   <option key={b.id} value={b.id}>
@@ -1540,10 +1540,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`md:col-span-2 border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center cursor-pointer transition text-center ${
                 dragOver 
-                  ? 'border-emerald-500 bg-emerald-50/60' 
+                  ? 'border-theme-primary bg-theme-primary-soft/50' 
                   : selectedFile 
-                  ? 'border-emerald-300 bg-emerald-50/20' 
-                  : 'border-slate-300 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
+                  ? 'border-theme-primary/60 bg-theme-primary-soft/25' 
+                  : 'border-theme-border-strong bg-theme-surface-subtle hover:bg-theme-surface-hover hover:border-theme-primary/50'
               }`}
             >
               <input 
@@ -1554,26 +1554,26 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 className="hidden" 
               />
               
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2 shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-theme-primary-soft text-theme-primary border border-theme-primary-border flex items-center justify-center mb-2 shadow-2xs">
                 <Upload size={22} className={parsing ? 'animate-bounce' : ''} />
               </div>
 
               {selectedFile ? (
                 <div>
-                  <div className="flex items-center justify-center space-x-1.5 text-slate-800 font-bold text-sm">
-                    <FileCheck size={16} className="text-emerald-600" />
+                  <div className="flex items-center justify-center space-x-1.5 text-theme-text-primary font-bold text-sm">
+                    <FileCheck size={16} className="text-theme-primary" />
                     <span>{selectedFile.name}</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-theme-text-secondary mt-0.5 tabular-nums">
                     ফাইলের সাইজ: {(selectedFile.size / 1024).toFixed(1)} KB • নতুন ফাইল দিতে ক্লিক করুন
                   </p>
                 </div>
               ) : (
                 <div>
-                  <span className="text-sm font-bold text-slate-700 block">
+                  <span className="text-sm font-bold text-theme-text-primary block">
                     এক্সেল বা সিএসভি ফাইল এখানে ড্র্যাগ করে ছাড়ুন অথবা ক্লিক করুন
                   </span>
-                  <span className="text-[11px] text-slate-400 mt-1 block">
+                  <span className="text-[11px] text-theme-text-muted mt-1 block">
                     সমর্থিত ফরম্যাট: .xlsx, .xls, .csv (সর্বোচ্চ ৫০০ সারি প্রতি ফাইলে)
                   </span>
                 </div>
@@ -1583,34 +1583,34 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start space-x-2.5 animate-in fade-in">
-              <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+            <div className="p-4 rounded-xl bg-theme-danger-soft border border-theme-danger/30 text-theme-danger text-xs flex items-start space-x-2.5 animate-in fade-in">
+              <AlertCircle size={18} className="text-theme-danger shrink-0 mt-0.5" />
               <div className="flex-1">
                 <span className="font-bold text-sm block">আমদানি সংক্রান্ত ত্রুটি:</span>
-                <p className="mt-0.5">{errorMessage}</p>
+                <p className="mt-0.5 text-theme-text-primary">{errorMessage}</p>
               </div>
             </div>
           )}
 
           {/* Validation & Preview Section (When rows are parsed) */}
           {parsedRows.length > 0 && (
-            <div className="space-y-3.5 pt-2 border-t border-slate-100">
+            <div className="space-y-3.5 pt-2 border-t border-theme-border">
               {/* Controls Bar: Stats, Filter Tabs, and View Toggle */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-theme-surface-subtle p-3 rounded-2xl border border-theme-border">
                 {/* Stats */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-                  <span className="text-slate-600 font-semibold">
-                    মোট সারি: <strong className="text-slate-800">{toBn(parsedRows.length)}</strong> টি
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs tabular-nums">
+                  <span className="text-theme-text-secondary font-semibold">
+                    মোট সারি: <strong className="text-theme-text-primary">{toBn(parsedRows.length)}</strong> টি
                   </span>
-                  <span className="text-slate-300 hidden sm:inline">•</span>
-                  <span className="text-emerald-700 font-bold flex items-center space-x-1">
+                  <span className="text-theme-border-strong hidden sm:inline">•</span>
+                  <span className="text-theme-success font-bold flex items-center space-x-1">
                     <CheckCircle2 size={13} />
                     <span>সঠিক: {toBn(validRows.length)} টি</span>
                   </span>
                   {invalidRows.length > 0 && (
                     <>
-                      <span className="text-slate-300 hidden sm:inline">•</span>
-                      <span className="text-rose-600 font-bold flex items-center space-x-1">
+                      <span className="text-theme-border-strong hidden sm:inline">•</span>
+                      <span className="text-theme-danger font-bold flex items-center space-x-1">
                         <XCircle size={13} />
                         <span>ত্রুটিযুক্ত: {toBn(invalidRows.length)} টি</span>
                       </span>
@@ -1621,12 +1621,12 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 {/* Filters and View Mode Controls */}
                 <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
                   {/* Status Filter Tabs */}
-                  <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+                  <div className="flex items-center space-x-1 bg-theme-surface p-1 rounded-xl border border-theme-border shadow-2xs">
                     <button
                       type="button"
                       onClick={() => setFilterTab('all')}
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                        filterTab === 'all' ? 'bg-slate-800 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer tabular-nums ${
+                        filterTab === 'all' ? 'bg-theme-text-primary text-theme-surface shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                       }`}
                     >
                       সবগুলো ({toBn(parsedRows.length)})
@@ -1634,8 +1634,8 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setFilterTab('valid')}
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                        filterTab === 'valid' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-emerald-700 hover:text-emerald-900'
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer tabular-nums ${
+                        filterTab === 'valid' ? 'bg-theme-primary text-theme-primary-fg shadow-2xs' : 'text-theme-success hover:bg-theme-success-soft/60'
                       }`}
                     >
                       সঠিক ({toBn(validRows.length)})
@@ -1644,8 +1644,8 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setFilterTab('invalid')}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                          filterTab === 'invalid' ? 'bg-rose-600 text-white shadow-2xs' : 'text-rose-700 hover:text-rose-900'
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer tabular-nums ${
+                          filterTab === 'invalid' ? 'bg-theme-danger text-white shadow-2xs' : 'text-theme-danger hover:bg-theme-danger-soft/60'
                         }`}
                       >
                         ত্রুটিযুক্ত ({toBn(invalidRows.length)})
@@ -1654,14 +1654,14 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                   </div>
 
                   {/* View Mode Switcher (Grid as Primary) */}
-                  <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+                  <div className="flex items-center space-x-1 bg-theme-surface p-1 rounded-xl border border-theme-border shadow-2xs">
                     <button
                       type="button"
                       onClick={() => setViewMode('grid')}
                       className={`px-3 py-1 text-xs font-bold rounded-lg transition flex items-center space-x-1.5 cursor-pointer ${
                         viewMode === 'grid'
-                          ? 'bg-emerald-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                          : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                       }`}
                       title="গ্রিড বা কার্ড ভিউ (প্রাথমিক ভিউ)"
                     >
@@ -1673,8 +1673,8 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                       onClick={() => setViewMode('table')}
                       className={`px-3 py-1 text-xs font-bold rounded-lg transition flex items-center space-x-1.5 cursor-pointer ${
                         viewMode === 'table'
-                          ? 'bg-emerald-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                          : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                       }`}
                       title="টেবিল ভিউ (সম্পূর্ণ অনুভূমিক স্ক্রোলসহ)"
                     >
@@ -1694,26 +1694,26 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                         key={r.rowNumber}
                         className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
                           !r.isValid
-                            ? 'bg-rose-50/30 border-rose-200 shadow-2xs hover:border-rose-300'
-                            : 'bg-white border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-emerald-300'
+                            ? 'bg-theme-danger-soft/30 border-theme-danger/30 shadow-2xs hover:border-theme-danger/50'
+                            : 'bg-theme-surface border-theme-border shadow-2xs hover:shadow-xs hover:border-theme-primary/50'
                         }`}
                       >
                         {/* Card Header: Row Number, ID, Reg No, Status */}
-                        <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                        <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-theme-border">
                           <div className="flex items-center space-x-2">
-                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700">
+                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-theme-surface-subtle text-theme-text-secondary border border-theme-border tabular-nums">
                               #{toBn(r.rowNumber)}
                             </span>
                             <div>
-                              <span className="font-mono font-bold text-xs text-slate-900 block">
+                              <span className="font-mono font-bold text-xs text-theme-text-primary block tabular-nums">
                                 {r.traineeId}
                               </span>
                               {r.registrationNumber ? (
-                                <span className="font-mono text-[10px] text-slate-500 block">
+                                <span className="font-mono text-[10px] text-theme-text-secondary block tabular-nums">
                                   রেজি: {r.registrationNumber}
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-slate-400 italic block">
+                                <span className="text-[10px] text-theme-text-muted italic block">
                                   রেজিঃ নম্বর নেই (ঐচ্ছিক)
                                 </span>
                               )}
@@ -1721,12 +1721,12 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                           </div>
 
                           {r.isValid ? (
-                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-theme-success-soft text-theme-success border border-theme-success/30 shrink-0">
                               <CheckCircle2 size={12} />
                               <span>আমদানিযোগ্য</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shrink-0">
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-theme-danger-soft text-theme-danger border border-theme-danger/30 shrink-0 tabular-nums">
                               <XCircle size={12} />
                               <span>ত্রুটিযুক্ত ({toBn(r.errors.length)})</span>
                             </span>
@@ -1736,38 +1736,38 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                         {/* Trainee Details */}
                         <div className="py-3 space-y-2.5 text-xs flex-1">
                           <div>
-                            <h4 className="font-bold text-slate-900 text-sm leading-snug">
+                            <h4 className="font-bold text-theme-text-primary text-sm leading-snug">
                               {r.nameBn}
                             </h4>
                             {r.nameEn && r.nameEn !== r.nameBn && (
-                              <p className="text-[11px] text-slate-500 font-medium">
+                              <p className="text-[11px] text-theme-text-secondary font-medium">
                                 {r.nameEn}
                               </p>
                             )}
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 text-[11px]">
-                            <div className="flex items-center space-x-1.5 text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
-                              <Phone size={12} className="text-emerald-600 shrink-0" />
-                              <span className="font-mono font-semibold truncate">{toBn(r.mobileNumber)}</span>
+                            <div className="flex items-center space-x-1.5 text-theme-text-primary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                              <Phone size={12} className="text-theme-primary shrink-0" />
+                              <span className="font-mono font-semibold truncate tabular-nums">{toBn(r.mobileNumber)}</span>
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
-                              <Layers size={12} className="text-teal-600 shrink-0" />
+                            <div className="flex items-center space-x-1.5 text-theme-text-primary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                              <Layers size={12} className="text-theme-accent shrink-0" />
                               <span className="font-semibold truncate" title={r.resolvedBatchName}>
                                 {r.resolvedBatchName}
                               </span>
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-slate-600 bg-slate-50/60 px-2.5 py-1.5 rounded-xl border border-slate-100">
-                              <Calendar size={12} className="text-slate-400 shrink-0" />
-                              <span className="truncate">
+                            <div className="flex items-center space-x-1.5 text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                              <Calendar size={12} className="text-theme-text-muted shrink-0" />
+                              <span className="truncate tabular-nums">
                                 {toBn(r.dateOfBirth)} ({r.gender === 'Female' ? 'নারী' : r.gender === 'Other' ? 'অন্যান্য' : 'পুরুষ'})
                               </span>
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-slate-600 bg-slate-50/60 px-2.5 py-1.5 rounded-xl border border-slate-100">
-                              <MapPin size={12} className="text-slate-400 shrink-0" />
+                            <div className="flex items-center space-x-1.5 text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                              <MapPin size={12} className="text-theme-text-muted shrink-0" />
                               <span className="truncate" title={r.permanentAddress}>
                                 {r.permanentAddress || 'ঠিকানা নেই'}
                               </span>
@@ -1776,7 +1776,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
                           {/* Parents and additional info summary */}
                           {(r.fatherNameBn || r.motherNameBn) && (
-                            <div className="text-[10px] text-slate-500 pt-0.5 truncate bg-slate-50/40 px-2 py-1 rounded-lg">
+                            <div className="text-[10px] text-theme-text-secondary pt-0.5 truncate bg-theme-surface-subtle px-2 py-1 rounded-lg border border-theme-border/60">
                               {r.fatherNameBn && <span>পিতা: {r.fatherNameBn}</span>}
                               {r.fatherNameBn && r.motherNameBn && <span className="mx-1">•</span>}
                               {r.motherNameBn && <span>মাতা: {r.motherNameBn}</span>}
@@ -1785,8 +1785,8 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
                           {/* Last class / Dropout summary if present */}
                           {(r.lastClassCompleted || r.previousSchoolName) && (
-                            <div className="text-[10px] text-slate-500 flex items-center space-x-1 truncate">
-                              <GraduationCap size={11} className="text-slate-400 shrink-0" />
+                            <div className="text-[10px] text-theme-text-secondary flex items-center space-x-1 truncate">
+                              <GraduationCap size={11} className="text-theme-text-muted shrink-0" />
                               <span className="truncate">
                                 {r.lastClassCompleted} {r.previousSchoolName ? `• ${r.previousSchoolName}` : ''}
                               </span>
@@ -1795,28 +1795,28 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                         </div>
 
                         {/* Status / Errors / Warnings Footer */}
-                        <div className="pt-2 border-t border-slate-100">
+                        <div className="pt-2 border-t border-theme-border">
                           {r.errors.length > 0 ? (
-                            <div className="bg-rose-100/70 border border-rose-200/80 rounded-xl p-2.5 space-y-1">
+                            <div className="bg-theme-danger-soft/75 border border-theme-danger/30 rounded-xl p-2.5 space-y-1">
                               {r.errors.map((err, idx) => (
-                                <div key={idx} className="text-[11px] font-semibold text-rose-800 flex items-start space-x-1.5">
-                                  <XCircle size={12} className="text-rose-600 shrink-0 mt-0.5" />
+                                <div key={idx} className="text-[11px] font-semibold text-theme-danger flex items-start space-x-1.5">
+                                  <XCircle size={12} className="text-theme-danger shrink-0 mt-0.5" />
                                   <span className="leading-tight">{err}</span>
                                 </div>
                               ))}
                             </div>
                           ) : r.warnings.length > 0 ? (
-                            <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-2 space-y-0.5">
+                            <div className="bg-theme-warning-soft/75 border border-theme-warning/30 rounded-xl p-2 space-y-0.5">
                               {r.warnings.map((warn, idx) => (
-                                <div key={idx} className="text-[10px] font-medium text-amber-800 flex items-start space-x-1">
-                                  <Info size={11} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div key={idx} className="text-[10px] font-medium text-theme-warning flex items-start space-x-1">
+                                  <Info size={11} className="text-theme-warning shrink-0 mt-0.5" />
                                   <span className="leading-tight">{warn}</span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="flex items-center space-x-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50/80 px-2.5 py-1.5 rounded-xl border border-emerald-100">
-                              <Check size={12} className="text-emerald-600 shrink-0" />
+                            <div className="flex items-center space-x-1.5 text-[11px] font-medium text-theme-success bg-theme-success-soft/75 px-2.5 py-1.5 rounded-xl border border-theme-success/25">
+                              <Check size={12} className="text-theme-success shrink-0" />
                               <span>সকল তথ্য সঠিক ও ডাটাবেজে যুক্ত করার উপযোগী</span>
                             </div>
                           )}
@@ -1827,10 +1827,10 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 </div>
               ) : (
                 /* View 2: HORIZONTALLY SCROLLABLE TABLE VIEW */
-                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="border border-theme-border rounded-2xl overflow-hidden shadow-2xs">
                   <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-                    <table className="min-w-[1300px] w-full divide-y divide-slate-100 text-xs">
-                      <thead className="bg-slate-100/95 sticky top-0 z-10 text-slate-700 text-left font-bold backdrop-blur-xs">
+                    <table className="min-w-[1300px] w-full divide-y divide-theme-border text-xs">
+                      <thead className="bg-theme-surface-subtle sticky top-0 z-10 text-theme-text-secondary text-left font-bold border-b border-theme-border">
                         <tr>
                           <th className="py-2.5 px-3 whitespace-nowrap">সারি</th>
                           <th className="py-2.5 px-3 whitespace-nowrap">স্ট্যাটাস</th>
@@ -1846,73 +1846,73 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                           <th className="py-2.5 px-3 whitespace-nowrap min-w-[240px]">যাচাই ফলাফল ও ত্রুটি</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
+                      <tbody className="divide-y divide-theme-border bg-theme-surface">
                         {displayedRows.map((r) => (
                           <tr
                             key={r.rowNumber}
-                            className={!r.isValid ? 'bg-rose-50/40 hover:bg-rose-50/70' : 'hover:bg-slate-50/60'}
+                            className={!r.isValid ? 'bg-theme-danger-soft/35 hover:bg-theme-danger-soft/55' : 'hover:bg-theme-surface-hover'}
                           >
-                            <td className="py-2.5 px-3 font-mono text-slate-500 whitespace-nowrap">
+                            <td className="py-2.5 px-3 font-mono text-theme-text-muted whitespace-nowrap tabular-nums">
                               #{toBn(r.rowNumber)}
                             </td>
                             <td className="py-2.5 px-3 whitespace-nowrap">
                               {r.isValid ? (
-                                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-theme-success-soft text-theme-success border border-theme-success/30">
                                   <CheckCircle2 size={11} />
                                   <span>সঠিক</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-theme-danger-soft text-theme-danger border border-theme-danger/30">
                                   <XCircle size={11} />
                                   <span>ত্রুটি</span>
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800 whitespace-nowrap">
+                            <td className="py-2.5 px-3 font-mono font-bold text-theme-text-primary whitespace-nowrap tabular-nums">
                               {r.traineeId}
                             </td>
-                            <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">
-                              {r.registrationNumber || <span className="text-slate-400 italic">ঐচ্ছিক/খালি</span>}
+                            <td className="py-2.5 px-3 font-mono text-theme-text-secondary whitespace-nowrap tabular-nums">
+                              {r.registrationNumber || <span className="text-theme-text-muted italic">ঐচ্ছিক/খালি</span>}
                             </td>
                             <td className="py-2.5 px-3">
-                              <strong className="text-slate-900 block">{r.nameBn}</strong>
+                              <strong className="text-theme-text-primary block">{r.nameBn}</strong>
                               {r.nameEn && r.nameEn !== r.nameBn && (
-                                <span className="text-[10px] text-slate-500 block">{r.nameEn}</span>
+                                <span className="text-[10px] text-theme-text-secondary block">{r.nameEn}</span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 font-mono font-semibold text-slate-700 whitespace-nowrap">
+                            <td className="py-2.5 px-3 font-mono font-semibold text-theme-text-primary whitespace-nowrap tabular-nums">
                               {toBn(r.mobileNumber)}
                             </td>
                             <td className="py-2.5 px-3">
-                              <span className="font-semibold text-slate-800 block" title={r.resolvedBatchName}>
+                              <span className="font-semibold text-theme-text-primary block" title={r.resolvedBatchName}>
                                 {r.resolvedBatchName}
                               </span>
                             </td>
-                            <td className="py-2.5 px-3 whitespace-nowrap text-slate-600">
+                            <td className="py-2.5 px-3 whitespace-nowrap text-theme-text-secondary tabular-nums">
                               <div>{toBn(r.dateOfBirth)}</div>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-theme-text-muted">
                                 {r.gender === 'Female' ? 'নারী' : r.gender === 'Other' ? 'অন্যান্য' : 'পুরুষ'}
                               </span>
                             </td>
-                            <td className="py-2.5 px-3 text-slate-600">
+                            <td className="py-2.5 px-3 text-theme-text-secondary">
                               {r.fatherNameBn && <div>পিতা: {r.fatherNameBn}</div>}
-                              {r.motherNameBn && <div className="text-[10px] text-slate-500">মাতা: {r.motherNameBn}</div>}
-                              {!r.fatherNameBn && !r.motherNameBn && <span className="text-slate-400 italic">-</span>}
+                              {r.motherNameBn && <div className="text-[10px] text-theme-text-muted">মাতা: {r.motherNameBn}</div>}
+                              {!r.fatherNameBn && !r.motherNameBn && <span className="text-theme-text-muted italic">-</span>}
                             </td>
-                            <td className="py-2.5 px-3 text-slate-600 max-w-[240px] truncate" title={r.permanentAddress}>
+                            <td className="py-2.5 px-3 text-theme-text-secondary max-w-[240px] truncate" title={r.permanentAddress}>
                               {r.permanentAddress}
                             </td>
-                            <td className="py-2.5 px-3 text-slate-600">
+                            <td className="py-2.5 px-3 text-theme-text-secondary">
                               <div>{r.lastClassCompleted}</div>
                               {r.yearOfDropout && (
-                                <span className="text-[10px] text-slate-400">ড্রপআউট: {toBn(r.yearOfDropout)}</span>
+                                <span className="text-[10px] text-theme-text-muted tabular-nums">ড্রপআউট: {toBn(r.yearOfDropout)}</span>
                               )}
                             </td>
                             <td className="py-2.5 px-3">
                               {r.errors.length > 0 ? (
                                 <div className="space-y-0.5">
                                   {r.errors.map((err, idx) => (
-                                    <span key={idx} className="block text-[10px] font-bold text-rose-700 leading-tight">
+                                    <span key={idx} className="block text-[10px] font-bold text-theme-danger leading-tight">
                                       • {err}
                                     </span>
                                   ))}
@@ -1920,13 +1920,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                               ) : r.warnings.length > 0 ? (
                                 <div className="space-y-0.5">
                                   {r.warnings.map((warn, idx) => (
-                                    <span key={idx} className="block text-[10px] font-medium text-amber-700 leading-tight">
+                                    <span key={idx} className="block text-[10px] font-medium text-theme-warning leading-tight">
                                       ℹ {warn}
                                     </span>
                                   ))}
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-emerald-700 font-semibold flex items-center space-x-1 whitespace-nowrap">
+                                <span className="text-[10px] text-theme-success font-semibold flex items-center space-x-1 whitespace-nowrap">
                                   <Check size={12} />
                                   <span>সঠিক ও অনুমোদিত</span>
                                 </span>
@@ -1944,13 +1944,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="text-xs text-slate-500">
+        <div className="px-6 py-4 bg-theme-surface-subtle border-t border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs text-theme-text-secondary tabular-nums">
             {validRows.length > 0 ? (
               <span>
-                আমদানির জন্য প্রস্তুত: <strong className="text-emerald-700 font-bold">{toBn(validRows.length)} জন</strong> শিক্ষার্থী।
+                আমদানির জন্য প্রস্তুত: <strong className="text-theme-success font-bold">{toBn(validRows.length)} জন</strong> শিক্ষার্থী।
                 {invalidRows.length > 0 && (
-                  <span className="text-amber-700 ml-1">
+                  <span className="text-theme-warning ml-1">
                     (ত্রুটিযুক্ত {toBn(invalidRows.length)} টি সারি স্বয়ংক্রিয়ভাবে বাদ দেওয়া হবে)
                   </span>
                 )}
@@ -1965,7 +1965,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={importing}
-              className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              className="px-4 py-2 border border-theme-border-strong bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-xs font-semibold transition cursor-pointer"
             >
               বাতিল
             </button>
@@ -1974,7 +1974,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
               type="button"
               onClick={handleConfirmImport}
               disabled={validRows.length === 0 || importing}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer"
+              className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover disabled:opacity-50 text-theme-primary-fg rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm shadow-theme-primary/20 cursor-pointer tabular-nums"
             >
               <CheckCircle2 size={16} className={importing ? 'animate-spin' : ''} />
               <span>

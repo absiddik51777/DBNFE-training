@@ -260,8 +260,8 @@ const Results: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
         <span>ফলাফল মডিউল লোড হচ্ছে...</span>
       </div>
     );
@@ -272,24 +272,24 @@ const Results: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">ফলাফল ও মার্কস এন্ট্রি (Results & Marks Entry)</h1>
-          <p className="text-sm text-slate-500 mt-0.5">পরীক্ষার প্রাপ্ত নম্বর ইনপুট করুন ও স্বয়ংক্রিয় গ্রেড ও রেজাল্ট শিট তৈরি করুন</p>
+          <h1 className="text-2xl font-bold text-theme-text-primary">ফলাফল ও মার্কস এন্ট্রি (Results & Marks Entry)</h1>
+          <p className="text-sm text-theme-text-secondary mt-0.5">পরীক্ষার প্রাপ্ত নম্বর ইনপুট করুন ও স্বয়ংক্রিয় গ্রেড ও রেজাল্ট শিট তৈরি করুন</p>
         </div>
 
-        <div className="flex items-center space-x-2.5">
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+        <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
+          <div className="inline-flex p-1 bg-theme-surface-subtle rounded-xl border border-theme-border">
             <button
               onClick={() => setActiveTab('entry')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                activeTab === 'entry' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === 'entry' ? 'bg-theme-elevated text-theme-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
               }`}
             >
               মার্কস এন্ট্রি (Entry)
             </button>
             <button
               onClick={() => setActiveTab('sheet')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                activeTab === 'sheet' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === 'sheet' ? 'bg-theme-elevated text-theme-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
               }`}
             >
               রেজাল্ট শিট (Print Sheet)
@@ -300,7 +300,7 @@ const Results: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center space-x-2 transition disabled:opacity-50"
+              className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center space-x-2 transition disabled:opacity-50 cursor-pointer"
             >
               <Save size={18} />
               <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}</span>
@@ -311,7 +311,7 @@ const Results: React.FC = () => {
             <button
               type="button"
               onClick={() => printCurrentDocument({ jobName: 'BNFE_Result_Sheet', landscape: true })}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition cursor-pointer"
+              className="px-4 py-2 bg-theme-elevated border border-theme-border-strong hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-xs transition cursor-pointer"
             >
               <Printer size={16} />
               <span>প্রিন্ট করুন</span>
@@ -321,30 +321,30 @@ const Results: React.FC = () => {
       </div>
 
       {saveSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2.5 print:hidden">
-          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2.5 print:hidden">
+          <CheckCircle2 size={18} className="text-theme-success shrink-0" />
           <span>সকল শিক্ষার্থীর পরীক্ষার নম্বর সফলভাবে সংরক্ষিত হয়েছে!</span>
         </div>
       )}
 
       {saveError && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-center space-x-2.5 print:hidden">
-          <AlertCircle size={18} className="text-red-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-sm flex items-center space-x-2.5 print:hidden">
+          <AlertCircle size={18} className="text-theme-danger shrink-0" />
           <span>{saveError}</span>
         </div>
       )}
 
       {/* Selectors Bar */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
+      <div className="bg-theme-surface p-5 rounded-2xl border border-theme-border shadow-xs print:hidden">
         <div className={`grid ${userProfile?.role === 'Trainer' ? 'grid-cols-1 max-w-sm' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} gap-4`}>
           {userProfile?.role !== 'Trainer' && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রতিষ্ঠান *</label>
                 <select 
                   value={selectedInstitute} 
                   onChange={e => setSelectedInstitute(e.target.value)} 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl text-sm focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none"
                 >
                   <option value="">প্রতিষ্ঠান নির্বাচন করুন</option>
                   {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -352,11 +352,11 @@ const Results: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ট্রেড *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ট্রেড *</label>
                 <select 
                   value={selectedTrade} 
                   onChange={e => setSelectedTrade(e.target.value)} 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl text-sm focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none"
                 >
                   <option value="">ট্রেড নির্বাচন করুন</option>
                   {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -364,7 +364,7 @@ const Results: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
                   ব্যাচ *
                 </label>
                 <select 
@@ -374,7 +374,7 @@ const Results: React.FC = () => {
                     const matchingExams = exams.filter(ex => ex.batchId === e.target.value);
                     if (matchingExams.length > 0) setSelectedExam(matchingExams[0].id);
                   }} 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl text-sm focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none"
                 >
                   <option value="">ব্যাচ নির্বাচন করুন</option>
                   {batches
@@ -386,11 +386,11 @@ const Results: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">পরীক্ষা *</label>
+            <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পরীক্ষা *</label>
             <select 
               value={selectedExam} 
               onChange={e => setSelectedExam(e.target.value)} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl text-sm focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none"
             >
               <option value="">পরীক্ষা নির্বাচন করুন</option>
               {exams
@@ -404,70 +404,70 @@ const Results: React.FC = () => {
       {/* Summary Stats Cards */}
       {currentExam && trainees.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-            <span className="text-[11px] font-semibold text-slate-500">মোট পরীক্ষার্থী</span>
-            <h4 className="text-xl font-bold text-slate-800 mt-0.5">{totalCandidates} জন</h4>
+          <div className="bg-theme-surface p-4 rounded-xl border border-theme-border shadow-2xs">
+            <span className="text-[11px] font-semibold text-theme-text-secondary">মোট পরীক্ষার্থী</span>
+            <h4 className="text-xl font-bold text-theme-text-primary mt-0.5 tabular-nums">{totalCandidates} জন</h4>
           </div>
-          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-            <span className="text-[11px] font-semibold text-emerald-700">উত্তীর্ণ (Passed)</span>
-            <h4 className="text-xl font-bold text-emerald-700 mt-0.5">{passedCandidates} জন</h4>
+          <div className="bg-theme-success-soft p-4 rounded-xl border border-theme-success-border">
+            <span className="text-[11px] font-semibold text-theme-success">উত্তীর্ণ (Passed)</span>
+            <h4 className="text-xl font-bold text-theme-success mt-0.5 tabular-nums">{passedCandidates} জন</h4>
           </div>
-          <div className="bg-red-50 p-4 rounded-xl border border-red-100">
-            <span className="text-[11px] font-semibold text-red-700">অনুত্তীর্ণ (Failed)</span>
-            <h4 className="text-xl font-bold text-red-700 mt-0.5">{failedCandidates} জন</h4>
+          <div className="bg-theme-danger-soft p-4 rounded-xl border border-theme-danger-border">
+            <span className="text-[11px] font-semibold text-theme-danger">অনুত্তীর্ণ (Failed)</span>
+            <h4 className="text-xl font-bold text-theme-danger mt-0.5 tabular-nums">{failedCandidates} জন</h4>
           </div>
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-            <span className="text-[11px] font-semibold text-blue-700">পাসের হার (Pass Rate)</span>
-            <h4 className="text-xl font-bold text-blue-700 mt-0.5">{passRate}%</h4>
+          <div className="bg-theme-info-soft p-4 rounded-xl border border-theme-info-border">
+            <span className="text-[11px] font-semibold text-theme-info">পাসের হার (Pass Rate)</span>
+            <h4 className="text-xl font-bold text-theme-info mt-0.5 tabular-nums">{passRate}%</h4>
           </div>
         </div>
       )}
 
       {/* Main Content Area */}
       {fetchingTrainees ? (
-        <div className="py-12 text-center text-slate-500 bg-white rounded-2xl border border-slate-200">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+        <div className="py-12 text-center text-theme-text-secondary bg-theme-surface rounded-2xl border border-theme-border">
+          <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
           <span className="text-sm">শিক্ষার্থী ও ফলাফল তথ্য লোড হচ্ছে...</span>
         </div>
       ) : trainees.length > 0 && currentExam ? (
         activeTab === 'entry' ? (
           /* Marks Entry Table */
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700">
+          <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
+            <div className="p-4 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between">
+              <span className="text-xs font-bold text-theme-text-primary tabular-nums">
                 পরীক্ষা: {currentExam.name} • বিষয়: {currentExam.subject} • মোট নম্বর: {currentExam.totalMarks} • পাস নম্বর: {currentExam.passMarks}
               </span>
-              <span className="text-xs text-slate-500 hidden sm:inline">
+              <span className="text-xs text-theme-text-secondary hidden sm:inline">
                 নম্বর লিখলে গ্রেড ও ফলাফল স্বয়ংক্রিয়ভাবে হিসাব হবে
               </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
+              <table className="min-w-full divide-y divide-theme-border">
+                <thead className="bg-theme-surface-subtle">
                   <tr>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase w-12">ক্রমিক</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">রেজিস্ট্রেশন</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">নাম</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase w-36">প্রাপ্ত নম্বর</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase w-24">শতকরা (%)</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase w-20">গ্রেড</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase w-28">ফলাফল</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-theme-text-secondary uppercase w-12">ক্রমিক</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-theme-text-secondary uppercase">রেজিস্ট্রেশন</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-theme-text-secondary uppercase">নাম</th>
+                    <th className="px-5 py-3 text-center text-xs font-semibold text-theme-text-secondary uppercase w-36">প্রাপ্ত নম্বর</th>
+                    <th className="px-5 py-3 text-center text-xs font-semibold text-theme-text-secondary uppercase w-24">শতকরা (%)</th>
+                    <th className="px-5 py-3 text-center text-xs font-semibold text-theme-text-secondary uppercase w-20">গ্রেড</th>
+                    <th className="px-5 py-3 text-center text-xs font-semibold text-theme-text-secondary uppercase w-28">ফলাফল</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
+                <tbody className="bg-theme-surface divide-y divide-theme-border">
                   {trainees.map((t, index) => {
                     const record = marksData[t.id];
                     return (
-                      <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-5 py-3 whitespace-nowrap text-xs font-medium text-slate-400">
+                      <tr key={t.id} className="hover:bg-theme-surface-hover transition-colors">
+                        <td className="px-5 py-3 whitespace-nowrap text-xs font-medium text-theme-text-muted tabular-nums">
                           {index + 1}
                         </td>
-                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs font-bold text-slate-800">
+                        <td className="px-5 py-3 whitespace-nowrap font-mono tabular-nums text-xs font-bold text-theme-text-primary">
                           {t.registrationNumber}
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-slate-800">{t.nameBn || t.nameEn}</div>
+                          <div className="text-sm font-semibold text-theme-text-primary">{t.nameBn || t.nameEn}</div>
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap text-center">
                           <input
@@ -477,21 +477,21 @@ const Results: React.FC = () => {
                             value={record?.marksObtained || ''}
                             onChange={(e) => handleMarkChange(t.id, e.target.value)}
                             placeholder="0"
-                            className="w-24 px-3 py-1.5 border border-slate-300 rounded-xl text-center font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            className="w-24 px-3 py-1.5 bg-theme-surface border border-theme-border-strong text-theme-text-primary rounded-xl text-center font-bold text-sm tabular-nums focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none"
                           />
                         </td>
-                        <td className="px-5 py-3 whitespace-nowrap text-center text-xs font-medium text-slate-600">
+                        <td className="px-5 py-3 whitespace-nowrap text-center text-xs font-medium text-theme-text-secondary tabular-nums">
                           {record?.percentage || 0}%
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap text-center">
-                          <span className="font-bold text-sm text-purple-700">
+                          <span className="font-bold text-sm text-theme-accent">
                             {record?.grade || '-'}
                           </span>
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap text-center">
                           <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                            record?.result === 'Pass' ? 'bg-emerald-100 text-emerald-800' :
-                            record?.result === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'
+                            record?.result === 'Pass' ? 'bg-theme-success-soft text-theme-success border border-theme-success-border' :
+                            record?.result === 'Fail' ? 'bg-theme-danger-soft text-theme-danger border border-theme-danger-border' : 'bg-theme-surface-subtle text-theme-text-secondary border border-theme-border'
                           }`}>
                             {record?.result === 'Pass' ? 'পাস' : record?.result === 'Fail' ? 'ফেল' : 'অনুপস্থিত'}
                           </span>
@@ -504,11 +504,11 @@ const Results: React.FC = () => {
             </div>
 
             {canEnterMarks && (
-              <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <div className="p-4 bg-theme-surface-subtle border-t border-theme-border flex justify-end">
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center space-x-2 transition disabled:opacity-50"
+                  className="px-6 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center space-x-2 transition disabled:opacity-50 cursor-pointer"
                 >
                   <Save size={18} />
                   <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'ফলাফল সংরক্ষণ করুন'}</span>
@@ -518,70 +518,70 @@ const Results: React.FC = () => {
           </div>
         ) : (
           /* Printable Result Sheet View */
-          <div className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200/80 shadow-xs print:border-none print:shadow-none print:p-0">
+          <div className="bg-theme-surface text-theme-text-primary p-8 sm:p-12 rounded-2xl border border-theme-border shadow-xs print:bg-white print:text-slate-900 print:border-none print:shadow-none print:p-0">
             {/* Official Header */}
-            <div className="text-center border-b-2 border-slate-800 pb-5 mb-6">
-              <h2 className="text-xl font-bold text-slate-900 tracking-wide">
+            <div className="text-center border-b-2 border-theme-border-strong print:border-slate-800 pb-5 mb-6">
+              <h2 className="text-xl font-bold text-theme-text-primary print:text-slate-900 tracking-wide">
                 গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
               </h2>
-              <h3 className="text-lg font-bold text-slate-800 mt-0.5">
+              <h3 className="text-lg font-bold text-theme-text-primary print:text-slate-800 mt-0.5">
                 উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)
               </h3>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-theme-text-secondary print:text-slate-600">
                 প্রাথমিক ও গণশিক্ষা মন্ত্রণালয়
               </p>
-              <div className="mt-3 inline-block px-4 py-1 bg-slate-100 rounded-md font-bold text-sm text-slate-800">
+              <div className="mt-3 inline-block px-4 py-1 bg-theme-surface-subtle print:bg-slate-100 rounded-md font-bold text-sm text-theme-text-primary print:text-slate-800">
                 পরীক্ষার ফলাফল বিবরণী (Official Tabulation Sheet)
               </div>
             </div>
 
             {/* Exam Meta Info */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs mb-6 bg-theme-surface-subtle print:bg-slate-50 p-4 rounded-xl border border-theme-border print:border-slate-200">
               <div>
-                <span className="text-slate-500 block">প্রতিষ্ঠান:</span>
-                <span className="font-bold text-slate-800 text-sm">{currentInstitute?.name || '-'}</span>
+                <span className="text-theme-text-secondary print:text-slate-500 block">প্রতিষ্ঠান:</span>
+                <span className="font-bold text-theme-text-primary print:text-slate-800 text-sm">{currentInstitute?.name || '-'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">ট্রেড:</span>
-                <span className="font-bold text-slate-800 text-sm">{currentTrade?.name || '-'}</span>
+                <span className="text-theme-text-secondary print:text-slate-500 block">ট্রেড:</span>
+                <span className="font-bold text-theme-text-primary print:text-slate-800 text-sm">{currentTrade?.name || '-'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">ব্যাচ:</span>
-                <span className="font-bold text-slate-800 text-sm">{currentBatch?.name || '-'}</span>
+                <span className="text-theme-text-secondary print:text-slate-500 block">ব্যাচ:</span>
+                <span className="font-bold text-theme-text-primary print:text-slate-800 text-sm">{currentBatch?.name || '-'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">পরীক্ষার নাম ও তারিখ:</span>
-                <span className="font-bold text-slate-800 text-sm">{currentExam.name} ({format(currentExam.date, 'dd/MM/yyyy')})</span>
+                <span className="text-theme-text-secondary print:text-slate-500 block">পরীক্ষার নাম ও তারিখ:</span>
+                <span className="font-bold text-theme-text-primary print:text-slate-800 text-sm tabular-nums">{currentExam.name} ({format(currentExam.date, 'dd/MM/yyyy')})</span>
               </div>
             </div>
 
             {/* Print Table */}
-            <table className="min-w-full border-collapse border border-slate-300 text-xs">
-              <thead className="bg-slate-100">
+            <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-300 text-xs">
+              <thead className="bg-theme-surface-subtle print:bg-slate-100">
                 <tr>
-                  <th className="border border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন নং</th>
-                  <th className="border border-slate-300 px-3 py-2 text-left">প্রশিক্ষণার্থীর নাম</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">মোট নম্বর</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">শতকরা (%)</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">গ্রেড</th>
-                  <th className="border border-slate-300 px-3 py-2 text-center">ফলাফল</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center w-12">ক্রঃ</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">রেজিস্ট্রেশন নং</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-left">প্রশিক্ষণার্থীর নাম</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">মোট নম্বর</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">প্রাপ্ত নম্বর</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">শতকরা (%)</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">গ্রেড</th>
+                  <th className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center">ফলাফল</th>
                 </tr>
               </thead>
               <tbody>
                 {trainees.map((t, idx) => {
                   const r = marksData[t.id];
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="border border-slate-300 px-3 py-2 text-center">{idx + 1}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-mono font-bold">{t.registrationNumber}</td>
-                      <td className="border border-slate-300 px-3 py-2 font-semibold">{t.nameBn || t.nameEn}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center">{currentExam.totalMarks}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center font-bold">{r?.marksObtained || 0}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center">{r?.percentage || 0}%</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center font-bold">{r?.grade || '-'}</td>
-                      <td className="border border-slate-300 px-3 py-2 text-center font-bold">
+                    <tr key={t.id} className="hover:bg-theme-surface-hover print:hover:bg-transparent">
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{idx + 1}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-mono tabular-nums font-bold">{t.registrationNumber}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 font-semibold">{t.nameBn || t.nameEn}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{currentExam.totalMarks}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold tabular-nums">{r?.marksObtained || 0}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center tabular-nums">{r?.percentage || 0}%</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold">{r?.grade || '-'}</td>
+                      <td className="border border-theme-border-strong print:border-slate-300 px-3 py-2 text-center font-bold">
                         {r?.result === 'Pass' ? 'পাস' : r?.result === 'Fail' ? 'ফেল' : 'অনুপস্থিত'}
                       </td>
                     </tr>
@@ -593,23 +593,23 @@ const Results: React.FC = () => {
             {/* Official Signatures */}
             <div className="grid grid-cols-3 gap-6 pt-16 text-center text-xs mt-8">
               <div>
-                <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">প্রশিক্ষকের স্বাক্ষর</div>
+                <div className="border-t border-theme-border-strong print:border-slate-400 pt-1 font-semibold text-theme-text-secondary print:text-slate-700">প্রশিক্ষকের স্বাক্ষর</div>
               </div>
               <div>
-                <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">FMA স্বাক্ষর ও সীল</div>
+                <div className="border-t border-theme-border-strong print:border-slate-400 pt-1 font-semibold text-theme-text-secondary print:text-slate-700">FMA স্বাক্ষর ও সীল</div>
               </div>
               <div>
-                <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">কোর্স পরিচালকের স্বাক্ষর ও সীল</div>
+                <div className="border-t border-theme-border-strong print:border-slate-400 pt-1 font-semibold text-theme-text-secondary print:text-slate-700">কোর্স পরিচালকের স্বাক্ষর ও সীল</div>
               </div>
             </div>
           </div>
         )
       ) : selectedBatch ? (
-        <div className="py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+        <div className="py-12 text-center text-theme-text-muted bg-theme-surface rounded-2xl border border-theme-border">
           এই ব্যাচে কোনো সক্রিয় প্রশিক্ষণার্থী অথবা পরীক্ষা পাওয়া যায়নি।
         </div>
       ) : (
-        <div className="py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+        <div className="py-12 text-center text-theme-text-muted bg-theme-surface rounded-2xl border border-theme-border">
           অনুগ্রহ করে ব্যাচ ও পরীক্ষা নির্বাচন করুন।
         </div>
       )}

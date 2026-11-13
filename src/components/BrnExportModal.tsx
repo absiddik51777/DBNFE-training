@@ -277,19 +277,19 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
         <div 
           ref={modalRef}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6"
+          className="bg-theme-elevated rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl border border-theme-border space-y-5 sm:space-y-6"
         >
           {/* Header */}
-        <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-start justify-between border-b border-theme-border pb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-11 h-11 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 flex items-center justify-center font-bold shadow-xs">
               <Download size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-base sm:text-lg text-slate-800">
+              <h3 className="font-bold text-base sm:text-lg text-theme-text-primary">
                 জন্ম নিবন্ধন ডেটা এক্সপোর্ট (Export BRN Data)
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-theme-text-secondary">
                 বৈধ (Valid), অবৈধ (Invalid) ও অপেক্ষমাণ (Pending) শিক্ষার্থীদের তালিকা ডাউনলোড করুন
               </p>
             </div>
@@ -297,7 +297,7 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+            className="text-theme-text-muted hover:text-theme-text-primary p-1.5 rounded-xl hover:bg-theme-surface-hover transition cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -305,7 +305,7 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
 
         {/* Step 1: Select Trainee Category / Scope */}
         <div className="space-y-2.5">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <label className="block text-xs font-bold text-theme-text-secondary uppercase tracking-wider">
             ১. কোন ক্যাটাগরি এক্সপোর্ট করতে চান? (Select Scope)
           </label>
 
@@ -316,20 +316,20 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedScope('pending')}
               className={`p-3 rounded-2xl border text-left flex items-center justify-between transition cursor-pointer ${
                 selectedScope === 'pending'
-                  ? 'border-amber-500 bg-amber-50/80 ring-2 ring-amber-300'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
+                  ? 'border-theme-warning bg-theme-warning-soft ring-2 ring-theme-warning/25'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover'
               }`}
             >
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-theme-warning-soft text-theme-warning border border-theme-warning-border flex items-center justify-center shrink-0">
                   <Clock size={16} />
                 </div>
                 <div>
-                  <span className="font-bold text-xs text-slate-800 block">অপেক্ষমাণ (Pending)</span>
-                  <span className="text-[10px] text-amber-700 font-semibold">যাচাই বাকি রয়েছে</span>
+                  <span className="font-bold text-xs text-theme-text-primary block">অপেক্ষমাণ (Pending)</span>
+                  <span className="text-[10px] text-theme-warning font-semibold">যাচাই বাকি রয়েছে</span>
                 </div>
               </div>
-              <span className="font-mono font-bold text-xs bg-white px-2 py-0.5 rounded-md border border-slate-200 text-amber-800">
+              <span className="font-mono tabular-nums font-bold text-xs bg-theme-surface-subtle px-2 py-0.5 rounded-md border border-theme-border text-theme-warning">
                 {toBn(pendingTrainees.length)} জন
               </span>
             </button>
@@ -340,20 +340,20 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedScope('verified')}
               className={`p-3 rounded-2xl border text-left flex items-center justify-between transition cursor-pointer ${
                 selectedScope === 'verified'
-                  ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-300'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
+                  ? 'border-theme-success bg-theme-success-soft ring-2 ring-theme-success/25'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover'
               }`}
             >
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-theme-success-soft text-theme-success border border-theme-success-border flex items-center justify-center shrink-0">
                   <CheckCircle2 size={16} />
                 </div>
                 <div>
-                  <span className="font-bold text-xs text-slate-800 block">বৈধ / যাচাইকৃত (Valid)</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold">BDRIS অনলাইন সঠিক</span>
+                  <span className="font-bold text-xs text-theme-text-primary block">বৈধ / যাচাইকৃত (Valid)</span>
+                  <span className="text-[10px] text-theme-success font-semibold">BDRIS অনলাইন সঠিক</span>
                 </div>
               </div>
-              <span className="font-mono font-bold text-xs bg-white px-2 py-0.5 rounded-md border border-slate-200 text-emerald-800">
+              <span className="font-mono tabular-nums font-bold text-xs bg-theme-surface-subtle px-2 py-0.5 rounded-md border border-theme-border text-theme-success">
                 {toBn(verifiedTrainees.length)} জন
               </span>
             </button>
@@ -364,20 +364,20 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedScope('invalid')}
               className={`p-3 rounded-2xl border text-left flex items-center justify-between transition cursor-pointer ${
                 selectedScope === 'invalid'
-                  ? 'border-rose-500 bg-rose-50/80 ring-2 ring-rose-300'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
+                  ? 'border-theme-danger bg-theme-danger-soft ring-2 ring-theme-danger/25'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover'
               }`}
             >
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-theme-danger-soft text-theme-danger border border-theme-danger-border flex items-center justify-center shrink-0">
                   <XCircle size={16} />
                 </div>
                 <div>
-                  <span className="font-bold text-xs text-slate-800 block">অবৈধ / অমিল (Invalid)</span>
-                  <span className="text-[10px] text-rose-700 font-semibold">বাতিল বা সার্ভারে অমিল</span>
+                  <span className="font-bold text-xs text-theme-text-primary block">অবৈধ / অমিল (Invalid)</span>
+                  <span className="text-[10px] text-theme-danger font-semibold">বাতিল বা সার্ভারে অমিল</span>
                 </div>
               </div>
-              <span className="font-mono font-bold text-xs bg-white px-2 py-0.5 rounded-md border border-slate-200 text-rose-800">
+              <span className="font-mono tabular-nums font-bold text-xs bg-theme-surface-subtle px-2 py-0.5 rounded-md border border-theme-border text-theme-danger">
                 {toBn(invalidTrainees.length)} জন
               </span>
             </button>
@@ -388,20 +388,20 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedScope('all')}
               className={`p-3 rounded-2xl border text-left flex items-center justify-between transition cursor-pointer ${
                 selectedScope === 'all'
-                  ? 'border-purple-500 bg-purple-50/80 ring-2 ring-purple-300'
-                  : 'border-slate-200 bg-white hover:bg-slate-50'
+                  ? 'border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/25'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover'
               }`}
             >
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0">
                   <Users size={16} />
                 </div>
                 <div>
-                  <span className="font-bold text-xs text-slate-800 block">সকল শিক্ষার্থী (All)</span>
-                  <span className="text-[10px] text-purple-700 font-semibold">সম্পূর্ণ ডাটাবেজ</span>
+                  <span className="font-bold text-xs text-theme-text-primary block">সকল শিক্ষার্থী (All)</span>
+                  <span className="text-[10px] text-purple-600 dark:text-purple-300 font-semibold">সম্পূর্ণ ডাটাবেজ</span>
                 </div>
               </div>
-              <span className="font-mono font-bold text-xs bg-white px-2 py-0.5 rounded-md border border-slate-200 text-purple-800">
+              <span className="font-mono tabular-nums font-bold text-xs bg-theme-surface-subtle px-2 py-0.5 rounded-md border border-theme-border text-purple-600 dark:text-purple-300">
                 {toBn(allTrainees.length)} জন
               </span>
             </button>
@@ -414,22 +414,22 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedScope('filtered')}
               className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer text-xs ${
                 selectedScope === 'filtered'
-                  ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-300 text-blue-900 font-bold'
-                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 text-slate-700 font-medium'
+                  ? 'border-theme-info bg-theme-info-soft ring-2 ring-theme-info/25 text-theme-info font-bold'
+                  : 'border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary font-medium'
               }`}
             >
               <div className="flex items-center space-x-2">
-                <Filter size={14} className="text-blue-600" />
-                <span>বর্তমান ফিল্টারকৃত তালিকা ({toBn(filteredTrainees.length)} জন)</span>
+                <Filter size={14} className="text-theme-info" />
+                <span className="tabular-nums">বর্তমান ফিল্টারকৃত তালিকা ({toBn(filteredTrainees.length)} জন)</span>
               </div>
-              <span className="text-[11px] text-slate-500">{activeFilterSummary || 'নির্দিষ্ট ফিল্টার'}</span>
+              <span className="text-[11px] text-theme-text-secondary">{activeFilterSummary || 'নির্দিষ্ট ফিল্টার'}</span>
             </button>
           )}
         </div>
 
         {/* Step 2: Select Format (Excel, CSV, PDF) */}
         <div className="space-y-2.5">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <label className="block text-xs font-bold text-theme-text-secondary uppercase tracking-wider">
             ২. এক্সপোর্ট ফরম্যাট নির্বাচন করুন (Select Format)
           </label>
 
@@ -440,17 +440,17 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedFormat('excel')}
               className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center space-y-1.5 transition cursor-pointer ${
                 selectedFormat === 'excel'
-                  ? 'border-emerald-600 bg-emerald-50/90 ring-2 ring-emerald-400 text-emerald-950 font-bold shadow-xs'
-                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  ? 'border-theme-success bg-theme-success-soft ring-2 ring-theme-success/30 text-theme-success font-bold shadow-xs'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary'
               }`}
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                selectedFormat === 'excel' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700'
+                selectedFormat === 'excel' ? 'bg-theme-success text-theme-success-fg' : 'bg-theme-success-soft text-theme-success'
               }`}>
                 <FileSpreadsheet size={20} />
               </div>
               <span className="text-xs font-bold block">Excel (.xlsx)</span>
-              <span className="text-[10px] text-slate-400 block">মাইক্রোসফট স্প্রেডশিট</span>
+              <span className="text-[10px] text-theme-text-muted block">মাইক্রোসফট স্প্রেডশিট</span>
             </button>
 
             {/* CSV (.csv) */}
@@ -459,17 +459,17 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedFormat('csv')}
               className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center space-y-1.5 transition cursor-pointer ${
                 selectedFormat === 'csv'
-                  ? 'border-blue-600 bg-blue-50/90 ring-2 ring-blue-400 text-blue-950 font-bold shadow-xs'
-                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  ? 'border-theme-info bg-theme-info-soft ring-2 ring-theme-info/30 text-theme-info font-bold shadow-xs'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary'
               }`}
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                selectedFormat === 'csv' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'
+                selectedFormat === 'csv' ? 'bg-theme-info text-theme-info-fg' : 'bg-theme-info-soft text-theme-info'
               }`}>
                 <FileText size={20} />
               </div>
               <span className="text-xs font-bold block">CSV (.csv)</span>
-              <span className="text-[10px] text-slate-400 block">UTF-8 BOM এনকোডেড</span>
+              <span className="text-[10px] text-theme-text-muted block">UTF-8 BOM এনকোডেড</span>
             </button>
 
             {/* PDF (.pdf) */}
@@ -478,28 +478,28 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               onClick={() => setSelectedFormat('pdf')}
               className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center space-y-1.5 transition cursor-pointer ${
                 selectedFormat === 'pdf'
-                  ? 'border-purple-600 bg-purple-50/90 ring-2 ring-purple-400 text-purple-950 font-bold shadow-xs'
-                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  ? 'border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/30 text-purple-600 dark:text-purple-300 font-bold shadow-xs'
+                  : 'border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary'
               }`}
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                selectedFormat === 'pdf' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'
+                selectedFormat === 'pdf' ? 'bg-purple-600 text-white' : 'bg-purple-500/15 text-purple-600 dark:text-purple-300'
               }`}>
                 <Printer size={20} />
               </div>
               <span className="text-xs font-bold block">PDF / Print</span>
-              <span className="text-[10px] text-slate-400 block">অফিসিয়াল BNFE সিলযুক্ত</span>
+              <span className="text-[10px] text-theme-text-muted block">অফিসিয়াল BNFE সিলযুক্ত</span>
             </button>
           </div>
         </div>
 
         {/* Export Preview Notice */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs flex items-center justify-between text-slate-600">
+        <div className="p-3 bg-theme-surface-subtle rounded-2xl border border-theme-border text-xs flex items-center justify-between text-theme-text-secondary">
           <div>
-            <span>নির্বাচিত ক্যাটাগরি: <strong className="text-slate-800">{getScopeLabel(selectedScope)}</strong></span>
-            <div className="text-[11px] text-slate-400 mt-0.5">১৭ ডিজিটের UBRN, জন্ম তারিখ, প্রতিষ্ঠান ও যাচাই মন্তব্য অন্তর্ভুক্ত থাকবে</div>
+            <span>নির্বাচিত ক্যাটাগরি: <strong className="text-theme-text-primary">{getScopeLabel(selectedScope)}</strong></span>
+            <div className="text-[11px] text-theme-text-muted mt-0.5">১৭ ডিজিটের UBRN, জন্ম তারিখ, প্রতিষ্ঠান ও যাচাই মন্তব্য অন্তর্ভুক্ত থাকবে</div>
           </div>
-          <span className="text-sm font-extrabold text-purple-800 bg-purple-100 px-3 py-1 rounded-xl shrink-0">
+          <span className="text-sm font-extrabold text-purple-600 dark:text-purple-300 bg-purple-500/15 border border-purple-500/30 px-3 py-1 rounded-xl shrink-0 tabular-nums">
             {toBn(targetList.length)} জন
           </span>
         </div>
@@ -508,25 +508,25 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
         {exportStatus && (
           <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center space-x-2 ${
             exportStatus.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : 'bg-rose-50 border-rose-200 text-rose-900'
+              ? 'bg-theme-success-soft border-theme-success-border text-theme-success'
+              : 'bg-theme-danger-soft border-theme-danger-border text-theme-danger'
           }`}>
             {exportStatus.type === 'success' ? (
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <CheckCircle2 size={16} className="text-theme-success shrink-0" />
             ) : (
-              <XCircle size={16} className="text-rose-600 shrink-0" />
+              <XCircle size={16} className="text-theme-danger shrink-0" />
             )}
             <span>{exportStatus.message}</span>
           </div>
         )}
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-3">
+        <div className="flex items-center justify-between pt-3 border-t border-theme-border gap-3">
           <button
             type="button"
             disabled={isExporting}
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer disabled:opacity-40"
+            className="px-4 py-2 text-xs font-bold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer disabled:opacity-40"
           >
             বাতিল (Cancel)
           </button>
@@ -536,7 +536,7 @@ export const BrnExportModal: React.FC<BrnExportModalProps> = ({
               type="button"
               disabled={isExporting || targetList.length === 0}
               onClick={() => handleExport(selectedFormat)}
-              className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center space-x-2 shadow-sm hover:shadow transition disabled:opacity-40 cursor-pointer active:scale-95"
+              className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center space-x-2 shadow-sm hover:shadow transition disabled:opacity-40 cursor-pointer active:scale-95 tabular-nums"
             >
               <Download size={15} />
               <span>

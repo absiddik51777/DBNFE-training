@@ -1,12 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { 
-  AlertTriangle, 
-  Trash2, 
-  Info, 
-  CheckCircle2, 
-  HelpCircle, 
-  X, 
-  Check 
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import {
+  AlertTriangle,
+  Trash2,
+  Info,
+  CheckCircle2,
+  X,
+  Check,
 } from 'lucide-react';
 
 export interface ConfirmOptions {
@@ -118,7 +117,6 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // Keyboard shortcut listener for Esc and Enter
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!dialogState?.isOpen) return;
@@ -132,43 +130,46 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [dialogState]);
 
-  // Determine icon & colors based on variant
   const getVariantStyles = () => {
     if (!dialogState) return {};
     switch (dialogState.variant) {
       case 'danger':
         return {
-          icon: <Trash2 size={26} className="text-rose-600" />,
-          ringColor: 'bg-rose-100 ring-8 ring-rose-50 text-rose-600',
-          confirmBtn: 'bg-rose-600 hover:bg-rose-700 active:scale-95 text-white shadow-md shadow-rose-600/30',
+          icon: <Trash2 size={25} className="text-theme-danger" />,
+          ringColor: 'bg-theme-danger-soft border border-theme-danger-border text-theme-danger',
+          confirmBtn:
+            'bg-theme-danger hover:opacity-90 active:scale-95 text-theme-danger-fg shadow-xs',
           badgeText: 'সতর্কতা / ডিলিট অপারেশন',
-          badgeClass: 'bg-rose-100 text-rose-800 border-rose-200'
+          badgeClass: 'bg-theme-danger-soft text-theme-danger border-theme-danger-border',
         };
       case 'warning':
         return {
-          icon: <AlertTriangle size={26} className="text-amber-600" />,
-          ringColor: 'bg-amber-100 ring-8 ring-amber-50 text-amber-600',
-          confirmBtn: 'bg-amber-600 hover:bg-amber-700 active:scale-95 text-white shadow-md shadow-amber-600/30',
+          icon: <AlertTriangle size={25} className="text-theme-warning" />,
+          ringColor: 'bg-theme-warning-soft border border-theme-warning-border text-theme-warning',
+          confirmBtn:
+            'bg-theme-warning hover:opacity-90 active:scale-95 text-theme-warning-fg shadow-xs',
           badgeText: 'সতর্কতামূলক নির্দেশনা',
-          badgeClass: 'bg-amber-100 text-amber-800 border-amber-200'
+          badgeClass: 'bg-theme-warning-soft text-theme-warning border-theme-warning-border',
         };
       case 'success':
         return {
-          icon: <CheckCircle2 size={26} className="text-emerald-600" />,
-          ringColor: 'bg-emerald-100 ring-8 ring-emerald-50 text-emerald-600',
-          confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-md shadow-emerald-600/30',
+          icon: <CheckCircle2 size={25} className="text-theme-success" />,
+          ringColor: 'bg-theme-success-soft border border-theme-success-border text-theme-success',
+          confirmBtn:
+            'bg-theme-success hover:opacity-90 active:scale-95 text-theme-success-fg shadow-xs',
           badgeText: 'সফলতা',
-          badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+          badgeClass: 'bg-theme-success-soft text-theme-success border-theme-success-border',
         };
       case 'info':
       case 'primary':
       default:
         return {
-          icon: <Info size={26} className="text-teal-600" />,
-          ringColor: 'bg-teal-100 ring-8 ring-teal-50 text-teal-600',
-          confirmBtn: 'bg-teal-600 hover:bg-teal-700 active:scale-95 text-white shadow-md shadow-teal-600/30',
+          icon: <Info size={25} className="text-theme-primary" />,
+          ringColor: 'bg-theme-primary-soft border border-theme-primary-border text-theme-primary',
+          confirmBtn:
+            'bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg shadow-xs',
           badgeText: 'জরুরি তথ্য',
-          badgeClass: 'bg-teal-100 text-teal-800 border-teal-200'
+          badgeClass: 'bg-theme-primary-soft text-theme-primary-soft-fg border-theme-primary-border',
         };
     }
   };
@@ -179,86 +180,84 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     <ConfirmationContext.Provider value={{ confirm, showAlert }}>
       {children}
 
-      {/* Confirmation Modal */}
       {dialogState?.isOpen && (
-        <div 
-          className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+        <div
+          className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden bg-slate-950/65 backdrop-blur-xs overscroll-contain animate-in fade-in duration-150"
           onClick={handleClose}
         >
           <div className="min-h-full w-full flex items-start sm:items-center justify-center p-3 sm:p-4 pt-6 sm:py-6 pb-16">
-            <div 
-              className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            <div
+              className="bg-theme-elevated rounded-3xl shadow-2xl border border-theme-border w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
             >
-            {/* Top Close Button & Visual Accent */}
-            <div className="relative pt-6 px-6 pb-2 text-center">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="absolute right-4 top-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
-                title="বন্ধ করুন"
-              >
-                <X size={18} />
-              </button>
-
-              {/* Icon Container */}
-              <div className="flex justify-center mb-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform hover:scale-105 ${vStyles.ringColor}`}>
-                  {vStyles.icon}
-                </div>
-              </div>
-
-              {/* Title & Badge */}
-              <div className="space-y-1">
-                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${vStyles.badgeClass}`}>
-                  {vStyles.badgeText}
-                </span>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {dialogState.title}
-                </h3>
-              </div>
-            </div>
-
-            {/* Message Body */}
-            <div className="px-6 py-3 text-center space-y-3">
-              <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-line font-medium">
-                {dialogState.message}
-              </div>
-
-              {dialogState.detail && (
-                <div className="text-left text-xs p-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 leading-relaxed">
-                  {dialogState.detail}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="p-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-center space-x-3">
-              {!dialogState.isAlert && (
+              <div className="relative pt-6 px-6 pb-2 text-center">
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex-1 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                  className="absolute right-4 top-4 p-2 text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer"
+                  title="বন্ধ করুন"
                 >
-                  {dialogState.cancelText}
+                  <X size={18} />
                 </button>
-              )}
 
-              <button
-                type="button"
-                autoFocus
-                onClick={handleConfirm}
-                className={`flex-1 px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${vStyles.confirmBtn}`}
-              >
-                <Check size={16} />
-                <span>{dialogState.confirmText}</span>
-              </button>
+                <div className="flex justify-center mb-4">
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center ${vStyles.ringColor}`}
+                  >
+                    {vStyles.icon}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span
+                    className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${vStyles.badgeClass}`}
+                  >
+                    {vStyles.badgeText}
+                  </span>
+                  <h3 className="text-lg font-bold text-theme-text-primary">
+                    {dialogState.title}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="px-6 py-3 text-center space-y-3">
+                <div className="text-sm text-theme-text-secondary leading-relaxed whitespace-pre-line font-medium">
+                  {dialogState.message}
+                </div>
+
+                {dialogState.detail && (
+                  <div className="text-left text-xs p-3 rounded-2xl bg-theme-surface-subtle border border-theme-border text-theme-text-secondary leading-relaxed">
+                    {dialogState.detail}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 bg-theme-surface-subtle border-t border-theme-border flex items-center justify-center space-x-3">
+                {!dialogState.isAlert && (
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="flex-1 px-4 py-2.5 bg-theme-surface border border-theme-border hover:bg-theme-surface-hover active:scale-95 text-theme-text-primary rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    {dialogState.cancelText}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={handleConfirm}
+                  className={`flex-1 px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${vStyles.confirmBtn}`}
+                >
+                  <Check size={16} />
+                  <span>{dialogState.confirmText}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
     </ConfirmationContext.Provider>
   );

@@ -50,6 +50,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
@@ -67,13 +68,12 @@ import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
 
-const COLORS = ['#059669', '#2563eb', '#d97706', '#db2777', '#7c3aed', '#0891b2', '#ea580c'];
-
 type DashboardTab = 'attendance' | 'activity';
 
 const Dashboard: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission, isCourseDirector } = usePermissions();
+  const { chartPalette } = useTheme();
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -827,40 +827,40 @@ const Dashboard: React.FC = () => {
   // Reusable Dropout Risk Monitoring Paginated Table
   const renderDropoutRiskTable = (isPrimary: boolean = false) => {
     return (
-      <div className={`bg-white rounded-2xl border shadow-xs overflow-hidden print:hidden space-y-0 ${
-        isPrimary ? 'border-rose-300 ring-2 ring-rose-500/15' : 'border-rose-200/90'
+      <div className={`bg-theme-surface rounded-2xl border shadow-xs overflow-hidden print:hidden space-y-0 transition-colors ${
+        isPrimary ? 'border-theme-danger-border ring-2 ring-theme-danger/15' : 'border-theme-border'
       }`}>
         {/* Header bar */}
-        <div className={`p-5 sm:p-6 border-b border-rose-100 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-          isPrimary 
-            ? 'bg-gradient-to-r from-rose-100/90 via-rose-50/50 to-amber-50/60' 
-            : 'bg-gradient-to-r from-rose-50/80 via-white to-amber-50/40'
+        <div className={`p-5 sm:p-6 border-b border-theme-border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+          isPrimary
+            ? 'bg-theme-danger-soft'
+            : 'bg-theme-surface-subtle'
         }`}>
           <div className="flex items-start sm:items-center space-x-3.5">
-            <div className={`w-11 h-11 rounded-xl text-white flex items-center justify-center font-bold shadow-xs shrink-0 ${
-              isPrimary ? 'bg-rose-600 ring-4 ring-rose-200' : 'bg-rose-600'
+            <div className={`w-11 h-11 rounded-xl bg-theme-danger text-theme-danger-fg flex items-center justify-center font-bold shadow-xs shrink-0 ${
+              isPrimary ? 'ring-4 ring-theme-danger/20' : ''
             }`}>
               <UserX size={22} />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                  {isPrimary 
-                    ? 'ঝরে পড়ার ঝুঁকিপূর্ণ শিক্ষার্থী পর্যবেক্ষণ • প্রাইমারি ড্যাশবোর্ড' 
+                <h2 className="text-base sm:text-lg font-black text-theme-text-primary tracking-tight">
+                  {isPrimary
+                    ? 'ঝরে পড়ার ঝুঁকিপূর্ণ শিক্ষার্থী পর্যবেক্ষণ • প্রাইমারি ড্যাশবোর্ড'
                     : 'ঝরে পড়ার ঝুঁকিপূর্ণ শিক্ষার্থী পর্যবেক্ষণ'}
                 </h2>
                 {isPrimary ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-600 text-white shadow-2xs">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black bg-theme-danger text-theme-danger-fg shadow-2xs">
                     ব্যাচের প্রধান অগ্রাধিকার
                   </span>
                 ) : (
-                  <span className="text-xs text-slate-500 font-normal hidden sm:inline">(Dropout Risk Trainees)</span>
+                  <span className="text-xs text-theme-text-secondary font-normal hidden sm:inline">(Dropout Risk Trainees)</span>
                 )}
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-theme-danger-soft text-theme-danger border border-theme-danger-border tabular-nums">
                   {toBn(filteredDropoutList.length)} জন
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 {isPrimary
                   ? `${activeTrainerBatch?.name || 'নির্ধারিত ব্যাচের'} যেসকল শিক্ষার্থীর উপস্থিতি ৭৫% এর নিচে অথবা ৩ দিনের বেশি অনুপস্থিত রয়েছে, তাদের তাৎক্ষণিক কাউন্সেলিং ও যোগাযোগ নিশ্চিত করুন।`
                   : 'উপস্থিতির হার ৭৫% এর নিচে থাকা অথবা ড্রপআউট ঝুঁকিতে থাকা শিক্ষার্থীদের তালিকা ও জরুরি যোগাযোগ ব্যবস্থা'}
@@ -873,16 +873,16 @@ const Dashboard: React.FC = () => {
               type="button"
               onClick={exportDropoutRiskCSV}
               disabled={filteredDropoutList.length === 0 || exportingCsv}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 active:scale-95 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-200 shadow-2xs disabled:opacity-50 cursor-pointer"
+              className="px-3.5 py-2 bg-theme-surface hover:bg-theme-surface-hover active:scale-95 text-theme-text-primary rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-theme-border shadow-2xs disabled:opacity-50 cursor-pointer"
               title="ঝুঁকিপূর্ণ শিক্ষার্থীদের তালিকা সিএসভি ফাইলে ডাউনলোড করুন"
             >
-              <Download size={14} className="text-rose-600" />
+              <Download size={14} className="text-theme-danger" />
               <span>{exportingCsv ? 'সংরক্ষণ হচ্ছে...' : 'ঝুঁকি তালিকা এক্সপোর্ট'}</span>
             </button>
           </div>
           {exportToast && (
-            <div className={`fixed bottom-20 right-5 lg:bottom-5 z-50 px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-bold ${
-              exportToast.type === 'success' ? 'bg-emerald-800 text-white' : 'bg-rose-800 text-white'
+            <div className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-5 lg:bottom-5 z-50 px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-bold ${
+              exportToast.type === 'success' ? 'bg-theme-success text-theme-success-fg' : 'bg-theme-danger text-theme-danger-fg'
             }`}>
               <CheckCircle2 size={16} className="shrink-0" />
               <span>{exportToast.message}</span>
@@ -891,81 +891,81 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Quick summary status tags */}
-        <div className="px-5 py-3 bg-slate-50/60 border-b border-slate-100 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-          <span className="text-slate-500 font-medium">ঝুঁকির ধরন:</span>
+        <div className="px-5 py-3 bg-theme-surface-subtle border-b border-theme-border flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+          <span className="text-theme-text-secondary font-medium">ঝুঁকির ধরন:</span>
           <button
             onClick={() => setDropoutRiskFilter('all')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition tabular-nums cursor-pointer ${
               dropoutRiskFilter === 'all'
-                ? 'bg-slate-800 text-white shadow-2xs'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                ? 'bg-theme-text-primary text-theme-bg shadow-2xs'
+                : 'bg-theme-surface text-theme-text-secondary border border-theme-border hover:bg-theme-surface-hover'
             }`}
           >
             সকল ({toBn(dropoutRiskCounts.total)})
           </button>
           <button
             onClick={() => setDropoutRiskFilter('critical')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 tabular-nums cursor-pointer ${
               dropoutRiskFilter === 'critical'
-                ? 'bg-rose-600 text-white shadow-2xs'
-                : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                ? 'bg-theme-danger text-theme-danger-fg shadow-2xs'
+                : 'bg-theme-danger-soft text-theme-danger border border-theme-danger-border hover:opacity-90'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
             <span>উচ্চ ঝুঁকি &lt; ৫০% ({toBn(dropoutRiskCounts.critical)})</span>
           </button>
           <button
             onClick={() => setDropoutRiskFilter('moderate')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 tabular-nums cursor-pointer ${
               dropoutRiskFilter === 'moderate'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
+                : 'bg-theme-warning-soft text-theme-warning border border-theme-warning-border hover:opacity-90'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
             <span>মাঝারি ঝুঁকি ৫০-৬৪% ({toBn(dropoutRiskCounts.moderate)})</span>
           </button>
           <button
             onClick={() => setDropoutRiskFilter('warning')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 tabular-nums cursor-pointer ${
               dropoutRiskFilter === 'warning'
-                ? 'bg-yellow-600 text-white shadow-2xs'
-                : 'bg-yellow-50 text-yellow-900 border border-yellow-200 hover:bg-yellow-100'
+                ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
+                : 'bg-theme-warning-soft text-theme-warning border border-theme-warning-border hover:opacity-90'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
             <span>সতর্কতা ৬৫-৭৪% ({toBn(dropoutRiskCounts.warning)})</span>
           </button>
           {dropoutRiskCounts.dropped > 0 && (
             <button
               onClick={() => setDropoutRiskFilter('dropped')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 tabular-nums cursor-pointer ${
                 dropoutRiskFilter === 'dropped'
-                  ? 'bg-slate-700 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                  ? 'bg-theme-text-secondary text-theme-surface shadow-2xs'
+                  : 'bg-theme-surface text-theme-text-secondary border border-theme-border-strong hover:bg-theme-surface-hover'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
               <span>ড্রপআউট ({toBn(dropoutRiskCounts.dropped)})</span>
             </button>
           )}
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
+        <div className="p-4 sm:p-5 border-b border-theme-border flex flex-col md:flex-row md:items-center justify-between gap-3 bg-theme-surface">
           <div className="flex-1 relative max-w-md">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-text-muted" />
             <input
               type="text"
               value={dropoutSearch}
               onChange={e => setDropoutSearch(e.target.value)}
               placeholder="শিক্ষার্থীর নাম, আইডি, মোবাইল বা অভিভাবক খুঁজুন..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+              className="w-full pl-9 pr-4 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none focus:ring-2 focus:ring-theme-danger/25 focus:border-theme-danger"
             />
             {dropoutSearch && (
               <button
                 onClick={() => setDropoutSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-theme-text-muted hover:text-theme-text-primary font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -976,11 +976,11 @@ const Dashboard: React.FC = () => {
             {/* Show batch filter dropdown only for non-trainer general view */}
             {!isTrainerView && (
               <div className="flex items-center space-x-1.5">
-                <span className="text-xs text-slate-500">ব্যাচ:</span>
+                <span className="text-xs text-theme-text-secondary">ব্যাচ:</span>
                 <select
                   value={dropoutBatchFilter}
                   onChange={e => setDropoutBatchFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="px-3 py-1.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs text-theme-text-primary focus:outline-none focus:ring-1 focus:ring-theme-primary"
                 >
                   <option value="all">সকল ব্যাচ</option>
                   {batches.map(b => (
@@ -992,11 +992,11 @@ const Dashboard: React.FC = () => {
 
             {/* Rows per page */}
             <div className="flex items-center space-x-1.5">
-              <span className="text-xs text-slate-500">প্রতি পৃষ্ঠায়:</span>
+              <span className="text-xs text-theme-text-secondary">প্রতি পৃষ্ঠায়:</span>
               <select
                 value={dropoutPageSize}
                 onChange={e => setDropoutPageSize(Number(e.target.value))}
-                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                className="px-2.5 py-1.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs text-theme-text-primary focus:outline-none focus:ring-1 focus:ring-theme-primary tabular-nums"
               >
                 <option value={5}>৫</option>
                 <option value={10}>১০</option>
@@ -1011,15 +1011,15 @@ const Dashboard: React.FC = () => {
         <div className="overflow-x-auto">
           {paginatedDropoutList.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-theme-success-soft text-theme-success border border-theme-success-border rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 size={24} />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">
-                {dropoutSearch || dropoutRiskFilter !== 'all' 
-                  ? 'কোনো ঝুঁকিপূর্ণ শিক্ষার্থী পাওয়া যায়নি' 
+              <h3 className="text-sm font-bold text-theme-text-primary">
+                {dropoutSearch || dropoutRiskFilter !== 'all'
+                  ? 'কোনো ঝুঁকিপূর্ণ শিক্ষার্থী পাওয়া যায়নি'
                   : 'চমৎকার! বর্তমানে কোনো শিক্ষার্থী ঝরে পড়ার ঝুঁকিতে নেই'}
               </h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <p className="text-xs text-theme-text-secondary mt-1 max-w-sm mx-auto">
                 {dropoutSearch || dropoutRiskFilter !== 'all'
                   ? 'আপনার সার্চ ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী নেই।'
                   : isPrimary
@@ -1030,7 +1030,7 @@ const Dashboard: React.FC = () => {
           ) : (
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-[11px] uppercase tracking-wider font-bold">
+                <tr className="bg-theme-surface-subtle border-b border-theme-border text-theme-text-secondary text-[11px] uppercase tracking-wider font-bold">
                   <th className="py-3 px-4 text-center w-12">#</th>
                   <th className="py-3 px-4">প্রশিক্ষণার্থী</th>
                   {!isTrainerView && <th className="py-3 px-4">ব্যাচ ও কেন্দ্র</th>}
@@ -1041,22 +1041,22 @@ const Dashboard: React.FC = () => {
                   <th className="py-3 px-4 text-right">পদক্ষেপ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-theme-border">
                 {paginatedDropoutList.map((item, idx) => {
                   const globalIndex = (currentDropoutPage - 1) * dropoutPageSize + idx + 1;
                   return (
                     <tr
                       key={item.id}
-                      className={`hover:bg-slate-50/80 transition ${
+                      className={`hover:bg-theme-surface-hover transition ${
                         item.riskLevel === 'dropped'
-                          ? 'bg-slate-50/40'
+                          ? 'bg-theme-surface-subtle/60'
                           : item.riskLevel === 'critical'
-                          ? 'bg-rose-50/25'
+                          ? 'bg-theme-danger-soft/40'
                           : ''
                       }`}
                     >
                       {/* # Index */}
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-400">
+                      <td className="py-3.5 px-4 text-center font-bold text-theme-text-muted tabular-nums">
                         {toBn(globalIndex)}
                       </td>
 
@@ -1067,21 +1067,21 @@ const Dashboard: React.FC = () => {
                             <img
                               src={item.photoUrl}
                               alt={item.nameBn}
-                              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                              className="w-9 h-9 rounded-full object-cover border border-theme-border shrink-0"
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200">
+                            <div className="w-9 h-9 rounded-full bg-theme-surface-subtle text-theme-text-secondary flex items-center justify-center font-bold text-xs shrink-0 border border-theme-border">
                               {item.nameBn ? item.nameBn.charAt(0) : 'শি'}
                             </div>
                           )}
                           <div className="overflow-hidden">
-                            <p className="font-bold text-slate-900 truncate">{item.nameBn || item.nameEn}</p>
+                            <p className="font-bold text-theme-text-primary truncate">{item.nameBn || item.nameEn}</p>
                             <div className="flex items-center space-x-1 mt-0.5">
-                              <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded">
+                              <span className="font-mono text-[10px] text-theme-text-secondary bg-theme-surface-subtle border border-theme-border px-1.5 py-0.2 rounded tabular-nums">
                                 {item.registrationNumber}
                               </span>
-                              <span className="text-[10px] text-slate-400">•</span>
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[10px] text-theme-text-muted">•</span>
+                              <span className="text-[10px] text-theme-text-secondary">
                                 {item.gender === 'Female' ? 'নারী' : item.gender === 'Male' ? 'পুরুষ' : 'অন্যান্য'}
                               </span>
                             </div>
@@ -1092,9 +1092,9 @@ const Dashboard: React.FC = () => {
                       {/* Batch & Institute (Shown only in general overview) */}
                       {!isTrainerView && (
                         <td className="py-3.5 px-4">
-                          <p className="font-semibold text-slate-800 leading-tight">{item.batchName}</p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">{item.tradeName}</p>
-                          <p className="text-[10px] text-emerald-700 font-medium truncate">{item.instituteName}</p>
+                          <p className="font-semibold text-theme-text-primary leading-tight">{item.batchName}</p>
+                          <p className="text-[11px] text-theme-text-secondary mt-0.5 truncate">{item.tradeName}</p>
+                          <p className="text-[10px] text-theme-primary font-medium truncate">{item.instituteName}</p>
                         </td>
                       )}
 
@@ -1102,15 +1102,15 @@ const Dashboard: React.FC = () => {
                       <td className="py-3.5 px-4">
                         <div className="space-y-1">
                           {item.fatherNameBn && (
-                            <p className="text-[11px] text-slate-600">
-                              পিতা: <span className="font-medium text-slate-800">{item.fatherNameBn}</span>
+                            <p className="text-[11px] text-theme-text-secondary">
+                              পিতা: <span className="font-medium text-theme-text-primary">{item.fatherNameBn}</span>
                             </p>
                           )}
                           {item.mobileNumber ? (
                             <div className="flex items-center space-x-1.5">
                               <a
                                 href={`tel:${item.mobileNumber}`}
-                                className="inline-flex items-center space-x-1 text-emerald-700 hover:text-emerald-800 font-mono font-bold bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded text-[11px] border border-emerald-200 transition"
+                                className="inline-flex items-center space-x-1 text-theme-primary-soft-fg bg-theme-primary-soft hover:opacity-90 font-mono font-bold px-2 py-0.5 rounded text-[11px] border border-theme-primary-border transition tabular-nums"
                                 title="সরাসরি কল করুন"
                               >
                                 <Phone size={11} />
@@ -1118,44 +1118,44 @@ const Dashboard: React.FC = () => {
                               </a>
                             </div>
                           ) : (
-                            <span className="text-slate-400 text-[11px]">মোবাইল নেই</span>
+                            <span className="text-theme-text-muted text-[11px]">মোবাইল নেই</span>
                           )}
                         </div>
                       </td>
 
                       {/* Attendance Breakdown */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-center tabular-nums">
                         <div className="inline-flex items-center gap-1.5 text-center">
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200" title="উপস্থিত">
+                          <span className="px-1.5 py-0.5 rounded bg-theme-success-soft text-theme-success font-bold text-[11px] border border-theme-success-border" title="উপস্থিত">
                             {toBn(item.present)} উ
                           </span>
-                          <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[11px] border border-rose-200" title="অনুপস্থিত">
+                          <span className="px-1.5 py-0.5 rounded bg-theme-danger-soft text-theme-danger font-bold text-[11px] border border-theme-danger-border" title="অনুপস্থিত">
                             {toBn(item.absent)} অ
                           </span>
                           {item.leave > 0 && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[11px] border border-amber-200" title="ছুটি">
+                            <span className="px-1.5 py-0.5 rounded bg-theme-warning-soft text-theme-warning font-bold text-[11px] border border-theme-warning-border" title="ছুটি">
                               {toBn(item.leave)} ছু
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">মোট ক্লাস: {toBn(item.totalRecorded)} দিন</p>
+                        <p className="text-[10px] text-theme-text-muted mt-1">মোট ক্লাস: {toBn(item.totalRecorded)} দিন</p>
                       </td>
 
                       {/* Attendance Rate */}
-                      <td className="py-3.5 px-4 min-w-[130px]">
+                      <td className="py-3.5 px-4 min-w-[130px] tabular-nums">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs font-bold">
-                            <span className={item.rate < 50 ? 'text-rose-700' : item.rate < 75 ? 'text-amber-700' : 'text-emerald-700'}>
+                            <span className={item.rate < 50 ? 'text-theme-danger' : item.rate < 75 ? 'text-theme-warning' : 'text-theme-success'}>
                               {toBn(item.rate)}%
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-theme-text-muted">
                               (লক্ষ্যমাত্রা ৭৫%)
                             </span>
                           </div>
-                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className="w-full bg-theme-surface-subtle h-2 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-300 ${
-                                item.rate < 50 ? 'bg-rose-600' : item.rate < 65 ? 'bg-amber-500' : 'bg-yellow-500'
+                                item.rate < 50 ? 'bg-theme-danger' : 'bg-theme-warning'
                               }`}
                               style={{ width: `${Math.min(100, item.rate)}%` }}
                             />
@@ -1166,19 +1166,19 @@ const Dashboard: React.FC = () => {
                       {/* Risk Level Badge */}
                       <td className="py-3.5 px-4 text-center">
                         {item.riskLevel === 'dropped' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-surface-subtle text-theme-text-secondary border border-theme-border-strong">
                             ড্রপআউট
                           </span>
                         ) : item.riskLevel === 'critical' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-danger-soft text-theme-danger border border-theme-danger-border">
                             উচ্চ ঝুঁকি
                           </span>
                         ) : item.riskLevel === 'moderate' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-warning-soft text-theme-warning border border-theme-warning-border">
                             মাঝারি ঝুঁকি
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-900 border border-yellow-300">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-warning-soft text-theme-warning border border-theme-warning-border">
                             সতর্কতা
                           </span>
                         )}
@@ -1190,7 +1190,7 @@ const Dashboard: React.FC = () => {
                           {item.mobileNumber && (
                             <a
                               href={`tel:${item.mobileNumber}`}
-                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition"
+                              className="p-1.5 rounded-lg bg-theme-primary-soft text-theme-primary-soft-fg hover:opacity-90 border border-theme-primary-border transition"
                               title="অভিভাবক/শিক্ষার্থীকে কল দিন"
                             >
                               <Phone size={13} />
@@ -1198,7 +1198,7 @@ const Dashboard: React.FC = () => {
                           )}
                           <Link
                             to="/trainees"
-                            className="p-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 transition flex items-center space-x-1 text-xs font-semibold"
+                            className="p-1.5 rounded-lg bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary border border-theme-border transition flex items-center space-x-1 text-xs font-semibold"
                             title="প্রশিক্ষণার্থী বিস্তারিত দেখুন"
                           >
                             <ExternalLink size={13} />
@@ -1215,12 +1215,12 @@ const Dashboard: React.FC = () => {
 
         {/* Pagination Bar */}
         {filteredDropoutList.length > 0 && (
-          <div className="p-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="p-4 border-t border-theme-border bg-theme-surface-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-theme-text-secondary tabular-nums">
             <div>
               <span>মোট </span>
-              <strong className="text-slate-900 font-bold">{toBn(filteredDropoutList.length)}</strong>
+              <strong className="text-theme-text-primary font-bold">{toBn(filteredDropoutList.length)}</strong>
               <span> জন শিক্ষার্থীর মধ্যে </span>
-              <strong className="text-slate-900 font-bold">
+              <strong className="text-theme-text-primary font-bold">
                 {toBn((currentDropoutPage - 1) * dropoutPageSize + 1)} - {toBn(Math.min(currentDropoutPage * dropoutPageSize, filteredDropoutList.length))}
               </strong>
               <span> দেখানো হচ্ছে (পৃষ্ঠা {toBn(currentDropoutPage)}/{toBn(totalDropoutPages)})</span>
@@ -1232,7 +1232,7 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={() => setDropoutPage(p => Math.max(1, p - 1))}
                   disabled={currentDropoutPage === 1}
-                  className="shrink-0 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  className="shrink-0 p-1.5 rounded-lg bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                   title="পূর্ববর্তী পৃষ্ঠা"
                 >
                   <ChevronLeft size={16} />
@@ -1247,14 +1247,14 @@ const Dashboard: React.FC = () => {
                     return (
                       <React.Fragment key={page}>
                         {showEllipsisBefore && (
-                          <span className="shrink-0 px-1 text-slate-400">...</span>
+                          <span className="shrink-0 px-1 text-theme-text-muted">...</span>
                         )}
                         <button
                           onClick={() => setDropoutPage(page)}
-                          className={`shrink-0 min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition ${
+                          className={`shrink-0 min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition cursor-pointer ${
                             currentDropoutPage === page
-                              ? 'bg-rose-600 text-white shadow-xs'
-                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                              ? 'bg-theme-danger text-theme-danger-fg shadow-xs'
+                              : 'bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover'
                           }`}
                         >
                           {toBn(page)}
@@ -1266,7 +1266,7 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={() => setDropoutPage(p => Math.min(totalDropoutPages, p + 1))}
                   disabled={currentDropoutPage === totalDropoutPages}
-                  className="shrink-0 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  className="shrink-0 p-1.5 rounded-lg bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                   title="পরবর্তী পৃষ্ঠা"
                 >
                   <ChevronRight size={16} />
@@ -1281,10 +1281,10 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[55vh] text-slate-500">
-        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-sm font-semibold text-slate-700">ড্যাশবোর্ড তথ্য লোড হচ্ছে...</p>
-        <span className="text-xs text-slate-400 mt-1">সর্বশেষ তথ্য আপডেট হচ্ছে...</span>
+      <div className="flex flex-col items-center justify-center min-h-[55vh] text-theme-text-secondary">
+        <div className="w-12 h-12 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-sm font-semibold text-theme-text-primary">ড্যাশবোর্ড তথ্য লোড হচ্ছে...</p>
+        <span className="text-xs text-theme-text-muted mt-1">সর্বশেষ তথ্য আপডেট হচ্ছে...</span>
       </div>
     );
   }
@@ -1310,27 +1310,27 @@ const Dashboard: React.FC = () => {
       {/* 3. ACTIONABLE EXCEPTIONS & OPERATIONAL ALERTS            */}
       {/* ======================================================== */}
       {actionableAlerts.length > 0 && !alertsDismissed && (
-        <div className="bg-white rounded-2xl border border-amber-200 shadow-xs overflow-hidden print:hidden">
-          <div className="bg-amber-500/10 px-5 py-3 border-b border-amber-200/80 flex items-center justify-between">
+        <div className="bg-theme-surface rounded-2xl border border-theme-warning-border shadow-xs overflow-hidden print:hidden transition-colors">
+          <div className="bg-theme-warning-soft px-5 py-3 border-b border-theme-warning-border flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
+              <div className="w-7 h-7 rounded-lg bg-theme-warning text-theme-warning-fg flex items-center justify-center font-bold text-xs">
                 <AlertTriangle size={16} />
               </div>
               <div>
-                <h2 className="text-xs sm:text-sm font-bold text-amber-950 flex items-center space-x-1.5">
+                <h2 className="text-xs sm:text-sm font-bold text-theme-text-primary flex items-center space-x-1.5">
                   <span>জরুরি করণীয় ও সতর্কতা</span>
-                  <span className="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded-full text-[10px] font-extrabold">
+                  <span className="px-1.5 py-0.2 bg-theme-warning text-theme-warning-fg rounded-full text-[10px] font-extrabold tabular-nums">
                     {toBn(actionableAlerts.length)}
                   </span>
                 </h2>
-                <p className="text-[11px] text-amber-800">
+                <p className="text-[11px] text-theme-text-secondary">
                   নিচের বিষয়গুলোতে তাৎক্ষণিক প্রশাসনিক ও একাডেমিক পদক্ষেপ গ্রহণ করা প্রয়োজন:
                 </p>
               </div>
             </div>
             <button
               onClick={() => setAlertsDismissed(true)}
-              className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-2 py-1 rounded-md"
+              className="text-xs font-semibold text-theme-text-secondary hover:text-theme-text-primary px-2 py-1 rounded-md cursor-pointer"
               title="সাময়িক বন্ধ রাখুন"
             >
               লুকান
@@ -1339,24 +1339,21 @@ const Dashboard: React.FC = () => {
 
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {actionableAlerts.map(alert => (
-              <div 
+              <div
                 key={alert.id}
                 className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-2.5 ${
                   alert.type === 'danger'
-                    ? 'bg-red-50/70 border-red-200 text-red-950'
+                    ? 'bg-theme-danger-soft border-theme-danger-border text-theme-text-primary'
                     : alert.type === 'warning'
-                    ? 'bg-amber-50/70 border-amber-200 text-amber-950'
-                    : 'bg-blue-50/70 border-blue-200 text-blue-950'
+                    ? 'bg-theme-warning-soft border-theme-warning-border text-theme-text-primary'
+                    : 'bg-theme-info-soft border-theme-info-border text-theme-text-primary'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between text-xs font-bold mb-1">
                     <span className="truncate">{alert.title}</span>
-                    <span className={`w-2 h-2 rounded-full ${
-                      alert.type === 'danger' ? 'bg-red-500' : alert.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
-                    }`}></span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
+                  <p className="text-[11px] text-theme-text-secondary leading-relaxed line-clamp-2">
                     {alert.desc}
                   </p>
                 </div>
@@ -1365,10 +1362,10 @@ const Dashboard: React.FC = () => {
                   to={alert.linkUrl}
                   className={`text-xs font-bold inline-flex items-center space-x-1 pt-1.5 border-t ${
                     alert.type === 'danger'
-                      ? 'text-red-700 hover:text-red-800 border-red-200'
+                      ? 'text-theme-danger hover:opacity-85 border-theme-danger-border'
                       : alert.type === 'warning'
-                      ? 'text-amber-800 hover:text-amber-900 border-amber-200'
-                      : 'text-blue-700 hover:text-blue-800 border-blue-200'
+                      ? 'text-theme-warning hover:opacity-85 border-theme-warning-border'
+                      : 'text-theme-info hover:opacity-85 border-theme-info-border'
                   }`}
                 >
                   <span>{alert.linkText}</span>
@@ -1387,217 +1384,221 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
           <div>
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+              <div className="p-1.5 rounded-lg bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border">
                 <BarChart3 size={18} />
               </div>
-              <h2 className="text-base font-bold text-slate-800">
+              <h2 className="text-base font-bold text-theme-text-primary">
                 কার্যক্রম সারসংক্ষেপ ও অগ্রগতি সূচক
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-theme-text-secondary mt-0.5">
               সক্রিয় প্রশিক্ষণার্থী, চলমান ব্যাচ ও দৈনিক-মাসিক উপস্থিতির সার্বিক পরিসংখ্যান
             </p>
           </div>
           <div className="flex items-center space-x-2 self-start sm:self-auto">
-            <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs flex items-center space-x-1.5">
-              <Calendar size={13} className="text-emerald-600" />
-              <span>চলতি মাস: <strong className="text-slate-900 font-bold">{stats.currentMonthName}</strong></span>
+            <span className="text-xs font-semibold text-theme-text-secondary bg-theme-surface border border-theme-border px-3 py-1.5 rounded-xl shadow-2xs flex items-center space-x-1.5">
+              <Calendar size={13} className="text-theme-primary" />
+              <span>চলতি মাস: <strong className="text-theme-text-primary font-bold">{stats.currentMonthName}</strong></span>
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 tabular-nums">
           {/* Card 1: Total Active Trainees */}
-          <Link 
-            to="/trainees" 
-            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-emerald-500 hover:shadow-md transition group flex flex-col justify-between"
+          <Link
+            to="/trainees"
+            className="bg-theme-surface p-4 sm:p-5 rounded-2xl border border-theme-border shadow-xs hover:border-theme-primary hover:shadow-md transition group flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">মোট সক্রিয় প্রশিক্ষণার্থী</span>
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition shadow-2xs">
+                <span className="text-xs font-bold text-theme-text-secondary uppercase tracking-wider">মোট সক্রিয় প্রশিক্ষণার্থী</span>
+                <div className="w-10 h-10 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center group-hover:bg-theme-primary group-hover:text-theme-primary-fg transition shadow-2xs">
                   <Users size={20} />
                 </div>
               </div>
               <div className="mt-2.5">
                 <div className="flex items-baseline space-x-2">
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-theme-text-primary tracking-tight">
                     {toBn(stats.activeTrainees)}
                   </h3>
-                  <span className="text-sm font-bold text-slate-500">জন সক্রিয়</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 ml-auto">
+                  <span className="text-sm font-bold text-theme-text-secondary">জন সক্রিয়</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border ml-auto">
                     {toBn(stats.activePercentage)}%
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
-                  <div 
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                <div className="w-full bg-theme-surface-subtle h-1.5 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="bg-theme-primary h-full rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(100, stats.activePercentage)}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
-              <div className="flex items-center justify-between text-slate-600">
+            <div className="mt-3.5 pt-3 border-t border-theme-border text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-theme-text-secondary">
                 <span>সর্বমোট নিবন্ধিত:</span>
-                <strong className="text-slate-800 font-bold">{toBn(stats.totalTrainees)} জন</strong>
+                <strong className="text-theme-text-primary font-bold">{toBn(stats.totalTrainees)} জন</strong>
               </div>
-              <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                <span>সম্পন্ন: <strong className="text-emerald-700">{toBn(stats.completedTrainees)}</strong> জন</span>
+              <div className="flex items-center justify-between text-theme-text-secondary text-[10px]">
+                <span>সম্পন্ন: <strong className="text-theme-success">{toBn(stats.completedTrainees)}</strong> জন</span>
                 <span>•</span>
-                <span>ড্রপআউট: <strong className="text-amber-700">{toBn(stats.droppedTrainees)}</strong> জন</span>
+                <span>ড্রপআউট: <strong className="text-theme-warning">{toBn(stats.droppedTrainees)}</strong> জন</span>
               </div>
             </div>
           </Link>
 
           {/* Card 2: Ongoing Batches */}
-          <Link 
-            to="/batches" 
-            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-blue-500 hover:shadow-md transition group flex flex-col justify-between"
+          <Link
+            to="/batches"
+            className="bg-theme-surface p-4 sm:p-5 rounded-2xl border border-theme-border shadow-xs hover:border-theme-info hover:shadow-md transition group flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">চলমান ব্যাচসমূহ</span>
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition shadow-2xs">
+                <span className="text-xs font-bold text-theme-text-secondary uppercase tracking-wider">চলমান ব্যাচসমূহ</span>
+                <div className="w-10 h-10 rounded-xl bg-theme-info-soft text-theme-info flex items-center justify-center group-hover:bg-theme-info group-hover:text-theme-info-fg transition shadow-2xs">
                   <Layers size={20} />
                 </div>
               </div>
               <div className="mt-2.5">
                 <div className="flex items-baseline space-x-2">
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-theme-text-primary tracking-tight">
                     {toBn(stats.ongoingBatchesCount)}
                   </h3>
-                  <span className="text-sm font-bold text-slate-500">টি ব্যাচ</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 ml-auto">
+                  <span className="text-sm font-bold text-theme-text-secondary">টি ব্যাচ</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-theme-info-soft text-theme-info border border-theme-info-border ml-auto">
                     সক্রিয় ক্লাস
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
-                  <div 
-                    className="bg-blue-500 h-full rounded-full transition-all duration-500" 
+                <div className="w-full bg-theme-surface-subtle h-1.5 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="bg-theme-info h-full rounded-full transition-all duration-500"
                     style={{ width: `${stats.totalBatches > 0 ? Math.round((stats.ongoingBatchesCount / stats.totalBatches) * 100) : 0}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
-              <div className="flex items-center justify-between text-slate-600">
+            <div className="mt-3.5 pt-3 border-t border-theme-border text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-theme-text-secondary">
                 <span>সর্বমোট ব্যাচ:</span>
-                <strong className="text-slate-800 font-bold">{toBn(stats.totalBatches)} টি</strong>
+                <strong className="text-theme-text-primary font-bold">{toBn(stats.totalBatches)} টি</strong>
               </div>
-              <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                <span>আসন্ন: <strong className="text-blue-700">{toBn(stats.upcomingBatchesCount)}</strong> টি</span>
+              <div className="flex items-center justify-between text-theme-text-secondary text-[10px]">
+                <span>আসন্ন: <strong className="text-theme-info">{toBn(stats.upcomingBatchesCount)}</strong> টি</span>
                 <span>•</span>
-                <span>সমাপ্ত: <strong className="text-slate-600">{toBn(stats.completedBatchesCount)}</strong> টি</span>
+                <span>সমাপ্ত: <strong className="text-theme-text-primary">{toBn(stats.completedBatchesCount)}</strong> টি</span>
               </div>
             </div>
           </Link>
 
           {/* Card 3: Attendance Percentages for Current Month */}
-          <Link 
-            to="/attendance" 
-            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-purple-500 hover:shadow-md transition group flex flex-col justify-between"
+          <Link
+            to="/attendance"
+            className="bg-theme-surface p-4 sm:p-5 rounded-2xl border border-theme-border shadow-xs hover:border-theme-accent hover:shadow-md transition group flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">চলতি মাসের উপস্থিতি হার</span>
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition shadow-2xs">
+                <span className="text-xs font-bold text-theme-text-secondary uppercase tracking-wider">চলতি মাসের উপস্থিতি হার</span>
+                <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center group-hover:bg-theme-accent group-hover:text-theme-accent-fg transition shadow-2xs">
                   <CalendarCheck size={20} />
                 </div>
               </div>
               <div className="mt-2.5">
                 <div className="flex items-baseline space-x-2">
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-theme-text-primary tracking-tight">
                     {toBn(stats.currentMonthAttendanceRate)}%
                   </h3>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto ${
-                    stats.currentMonthAttendanceRate >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto border ${
+                    stats.currentMonthAttendanceRate >= 75
+                      ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                      : 'bg-theme-warning-soft text-theme-warning border-theme-warning-border'
                   }`}>
                     {stats.currentMonthAttendanceRate >= 75 ? 'সন্তোষজনক' : 'মনোযোগ আবশ্যক'}
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
-                  <div 
+                <div className="w-full bg-theme-surface-subtle h-1.5 rounded-full overflow-hidden mt-2">
+                  <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      stats.currentMonthAttendanceRate >= 75 ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`} 
+                      stats.currentMonthAttendanceRate >= 75 ? 'bg-theme-success' : 'bg-theme-warning'
+                    }`}
                     style={{ width: `${Math.min(100, stats.currentMonthAttendanceRate)}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
-              <div className="flex items-center justify-between text-slate-600">
+            <div className="mt-3.5 pt-3 border-t border-theme-border text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-theme-text-secondary">
                 <span className="flex items-center space-x-1">
                   <span>উপস্থিত:</span>
-                  <strong className="text-emerald-700 font-bold">{toBn(stats.currentMonthPresent)}</strong>
+                  <strong className="text-theme-success font-bold">{toBn(stats.currentMonthPresent)}</strong>
                 </span>
-                <span className="text-slate-300">•</span>
+                <span className="text-theme-text-muted">•</span>
                 <span className="flex items-center space-x-1">
                   <span>অনুপস্থিত:</span>
-                  <strong className="text-rose-600 font-bold">{toBn(stats.currentMonthAbsent)}</strong>
+                  <strong className="text-theme-danger font-bold">{toBn(stats.currentMonthAbsent)}</strong>
                 </span>
-                <span className="text-slate-300">•</span>
+                <span className="text-theme-text-muted">•</span>
                 <span className="flex items-center space-x-1">
                   <span>ছুটি:</span>
-                  <strong className="text-amber-700 font-bold">{toBn(stats.currentMonthLeave)}</strong>
+                  <strong className="text-theme-warning font-bold">{toBn(stats.currentMonthLeave)}</strong>
                 </span>
               </div>
-              <div className="flex items-center justify-between text-slate-500 text-[10px] pt-0.5">
-                <span>মাসিক মোট রেকর্ড: <strong className="text-slate-700">{toBn(stats.currentMonthRecordsTotal)} টি</strong></span>
+              <div className="flex items-center justify-between text-theme-text-secondary text-[10px] pt-0.5">
+                <span>মাসিক মোট রেকর্ড: <strong className="text-theme-text-primary">{toBn(stats.currentMonthRecordsTotal)} টি</strong></span>
                 <span>({toBn(stats.currentMonthUniqueDays)} দিন ক্লাস)</span>
               </div>
             </div>
           </Link>
 
           {/* Card 4: Today's Live Attendance */}
-          <Link 
-            to="/attendance" 
-            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-500 hover:shadow-md transition group flex flex-col justify-between"
+          <Link
+            to="/attendance"
+            className="bg-theme-surface p-4 sm:p-5 rounded-2xl border border-theme-border shadow-xs hover:border-theme-primary hover:shadow-md transition group flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">আজকের উপস্থিতি হার</span>
-                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition shadow-2xs">
+                <span className="text-xs font-bold text-theme-text-secondary uppercase tracking-wider">আজকের উপস্থিতি হার</span>
+                <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center group-hover:bg-theme-accent group-hover:text-theme-accent-fg transition shadow-2xs">
                   <TrendingUp size={20} />
                 </div>
               </div>
               <div className="mt-2.5">
                 <div className="flex items-baseline space-x-2">
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-theme-text-primary tracking-tight">
                     {toBn(stats.todayAttendanceRate)}%
                   </h3>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto ${
-                    stats.todayAttendanceRate >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto border ${
+                    stats.todayAttendanceRate >= 75
+                      ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                      : 'bg-theme-warning-soft text-theme-warning border-theme-warning-border'
                   }`}>
                     {stats.todayAttendanceRate >= 75 ? 'সন্তোষজনক' : 'মনোযোগ প্রয়োজন'}
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
-                  <div 
-                    className="bg-teal-500 h-full rounded-full transition-all duration-500" 
+                <div className="w-full bg-theme-surface-subtle h-1.5 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="bg-theme-accent h-full rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(100, stats.todayAttendanceRate)}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="mt-3.5 pt-3 border-t border-slate-100 text-[11px] space-y-1">
-              <div className="flex items-center justify-between text-slate-600">
+            <div className="mt-3.5 pt-3 border-t border-theme-border text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-theme-text-secondary">
                 <span>আজকের উপস্থিতি:</span>
-                <strong className="text-emerald-700 font-bold">{toBn(stats.todayPresent)} জন</strong>
+                <strong className="text-theme-success font-bold">{toBn(stats.todayPresent)} জন</strong>
               </div>
-              <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                <span>অনুপস্থিত: <strong className="text-rose-600">{toBn(stats.todayAbsent)}</strong> জন</span>
+              <div className="flex items-center justify-between text-theme-text-secondary text-[10px]">
+                <span>অনুপস্থিত: <strong className="text-theme-danger">{toBn(stats.todayAbsent)}</strong> জন</span>
                 <span>•</span>
-                <span>আজকের মোট এন্ট্রি: <strong className="text-slate-700">{toBn(stats.todayRecordedTotal)}</strong> জন</span>
+                <span>আজকের মোট এন্ট্রি: <strong className="text-theme-text-primary">{toBn(stats.todayRecordedTotal)}</strong> জন</span>
               </div>
             </div>
           </Link>
@@ -1607,32 +1608,31 @@ const Dashboard: React.FC = () => {
       {/* ======================================================== */}
       {/* 5. TABBED NAVIGATION (ELIMINATES VERTICAL SCROLL FATIGUE)  */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-1.5 flex items-center justify-between flex-wrap gap-2 print:hidden">
+      <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs p-1.5 flex items-center justify-between flex-wrap gap-2 print:hidden transition-colors">
         <div className="flex items-center space-x-1.5">
           <button
             onClick={() => setActiveTab('attendance')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center space-x-2 cursor-pointer ${
               activeTab === 'attendance'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
+                : 'text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
             }`}
           >
             <CalendarCheck size={16} />
             <span>ব্যাচ ও হাজিরা ট্র্যাকার</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              activeTab === 'attendance' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold tabular-nums ${
+              activeTab === 'attendance' ? 'bg-theme-primary-fg/20 text-theme-primary-fg' : 'bg-theme-surface-subtle text-theme-text-secondary border border-theme-border'
             }`}>
               {toBn(batchAttendanceStats.length)}
             </span>
           </button>
 
-
           <button
             onClick={() => setActiveTab('activity')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center space-x-2 cursor-pointer ${
               activeTab === 'activity'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
+                : 'text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
             }`}
           >
             <Clock size={16} />
@@ -1642,19 +1642,19 @@ const Dashboard: React.FC = () => {
 
         {/* Date Selector for Attendance in Header */}
         {activeTab === 'attendance' && (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-            <Calendar size={14} className="text-slate-500" />
-            <span className="font-semibold text-slate-600">তারিখ:</span>
+          <div className="flex items-center space-x-2 px-3 py-1 bg-theme-surface-subtle rounded-xl border border-theme-border text-xs">
+            <Calendar size={14} className="text-theme-text-secondary" />
+            <span className="font-semibold text-theme-text-secondary">তারিখ:</span>
             <input
               type="date"
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
-              className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
+              className="bg-transparent font-bold text-theme-text-primary focus:outline-none cursor-pointer tabular-nums"
             />
             {selectedDate !== todayIso && (
               <button
                 onClick={() => setSelectedDate(todayIso)}
-                className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded hover:bg-emerald-200 transition"
+                className="px-2 py-0.5 bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border text-[11px] font-bold rounded hover:opacity-90 transition cursor-pointer"
               >
                 আজ
               </button>
@@ -1669,48 +1669,48 @@ const Dashboard: React.FC = () => {
       {activeTab === 'attendance' && (
         <div className="space-y-5">
           {/* Filters & Daily Summary Strip */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="bg-theme-surface p-5 rounded-2xl border border-theme-border shadow-xs space-y-4 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-theme-border">
               <div>
-                <h2 className="text-base font-bold text-slate-800 flex items-center space-x-2">
+                <h2 className="text-base font-bold text-theme-text-primary flex items-center space-x-2">
                   <span>ব্যাচ অনুসারে উপস্থিতি ও সময়কাল অগ্রগতি</span>
-                  <span className="text-xs font-semibold text-slate-500">
+                  <span className="text-xs font-semibold text-theme-text-secondary">
                     ({safeFormatDate(selectedDate, 'dd MMMM yyyy')})
                   </span>
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   প্রতিটি ব্যাচের বর্তমান ভর্তি, উপস্থিতির হার এবং কোর্স সম্পন্ন হওয়ার সময়রেখা
                 </p>
               </div>
 
               {/* Quick Filter Buttons */}
-              <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+              <div className="flex items-center space-x-1.5 flex-wrap gap-1 tabular-nums">
                 <button
                   onClick={() => setBatchFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     batchFilter === 'all'
-                      ? 'bg-slate-800 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-theme-text-primary text-theme-bg'
+                      : 'bg-theme-surface-subtle text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
                   }`}
                 >
                   সকল ব্যাচ ({toBn(batchAttendanceStats.length)})
                 </button>
                 <button
                   onClick={() => setBatchFilter('pending')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     batchFilter === 'pending'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                      ? 'bg-theme-warning text-theme-warning-fg'
+                      : 'bg-theme-warning-soft text-theme-warning border border-theme-warning-border hover:opacity-90'
                   }`}
                 >
                   হাজিরা বাকি ({toBn(batchAttendanceStats.filter(b => !b.isRecorded).length)})
                 </button>
                 <button
                   onClick={() => setBatchFilter('low_attendance')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     batchFilter === 'low_attendance'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-red-50 text-red-800 border border-red-200 hover:bg-red-100'
+                      ? 'bg-theme-danger text-theme-danger-fg'
+                      : 'bg-theme-danger-soft text-theme-danger border border-theme-danger-border hover:opacity-90'
                   }`}
                 >
                   উপস্থিতি &lt; ৭৫% ({toBn(batchAttendanceStats.filter(b => b.cumulativeRate < 75 && b.recordedCount > 0).length)})
@@ -1718,10 +1718,10 @@ const Dashboard: React.FC = () => {
                 {isTrainer && (
                   <button
                     onClick={() => setBatchFilter('my_batch')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       batchFilter === 'my_batch'
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                        ? 'bg-theme-primary text-theme-primary-fg'
+                        : 'bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border hover:opacity-90'
                     }`}
                   >
                     আমার ব্যাচ
@@ -1731,71 +1731,71 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Selected Date Metric Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 font-semibold block">নির্বাচিত তারিখে উপস্থিত</span>
-                <span className="text-xl font-black text-emerald-600 mt-0.5 block">{toBn(selectedDateSummary.totalPres)} জন</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tabular-nums">
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-[11px] text-theme-text-secondary font-semibold block">নির্বাচিত তারিখে উপস্থিত</span>
+                <span className="text-xl font-black text-theme-success mt-0.5 block">{toBn(selectedDateSummary.totalPres)} জন</span>
               </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 font-semibold block">নির্বাচিত তারিখে অনুপস্থিত</span>
-                <span className="text-xl font-black text-red-600 mt-0.5 block">{toBn(selectedDateSummary.totalAbs)} জন</span>
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-[11px] text-theme-text-secondary font-semibold block">নির্বাচিত তারিখে অনুপস্থিত</span>
+                <span className="text-xl font-black text-theme-danger mt-0.5 block">{toBn(selectedDateSummary.totalAbs)} জন</span>
               </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 font-semibold block">অনুমোদিত ছুটি</span>
-                <span className="text-xl font-black text-amber-600 mt-0.5 block">{toBn(selectedDateSummary.totalLev)} জন</span>
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-[11px] text-theme-text-secondary font-semibold block">অনুমোদিত ছুটি</span>
+                <span className="text-xl font-black text-theme-warning mt-0.5 block">{toBn(selectedDateSummary.totalLev)} জন</span>
               </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 font-semibold block">তারিখভিত্তিক গড় হার</span>
-                <span className="text-xl font-black text-purple-600 mt-0.5 block">{toBn(selectedDateSummary.overallRate)}%</span>
+              <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                <span className="text-[11px] text-theme-text-secondary font-semibold block">তারিখভিত্তিক গড় হার</span>
+                <span className="text-xl font-black text-theme-accent mt-0.5 block">{toBn(selectedDateSummary.overallRate)}%</span>
               </div>
             </div>
 
             {/* Batch Cards Grid */}
             {filteredBatches.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
-                <Layers size={32} className="mx-auto text-slate-300 mb-2" />
-                <p className="font-bold text-slate-700">নির্বাচিত ফিল্টারে কোনো ব্যাচ পাওয়া যায়নি</p>
-                <p className="mt-0.5">ফিল্টার পরিবর্তন করে "সকল ব্যাচ" নির্বাচন করুন।</p>
+              <div className="py-12 text-center text-theme-text-muted text-xs border border-dashed border-theme-border rounded-xl">
+                <Layers size={32} className="mx-auto text-theme-text-muted mb-2" />
+                <p className="font-bold text-theme-text-primary">নির্বাচিত ফিল্টারে কোনো ব্যাচ পাওয়া যায়নি</p>
+                <p className="mt-0.5">ফিল্টার পরিবর্তন করে &quot;সকল ব্যাচ&quot; নির্বাচন করুন।</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 tabular-nums">
                 {filteredBatches.map(item => (
                   <div
                     key={item.batchId}
-                    className={`bg-white rounded-2xl border p-4.5 hover:shadow-md transition flex flex-col justify-between space-y-3.5 relative overflow-hidden ${
-                      item.isMyBatch ? 'border-emerald-400 ring-2 ring-emerald-500/10' : 'border-slate-200/90'
+                    className={`bg-theme-surface rounded-2xl border p-4.5 hover:shadow-md transition flex flex-col justify-between space-y-3.5 relative overflow-hidden ${
+                      item.isMyBatch ? 'border-theme-primary ring-2 ring-theme-primary/15' : 'border-theme-border'
                     }`}
                   >
                     {item.isMyBatch && (
-                      <span className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
+                      <span className="absolute top-0 right-0 bg-theme-primary text-theme-primary-fg text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
                         আমার ব্যাচ
                       </span>
                     )}
 
                     <div>
                       <div className="flex items-start justify-between gap-2 pr-14">
-                        <h3 className="font-bold text-slate-800 text-sm leading-snug">
+                        <h3 className="font-bold text-theme-text-primary text-sm leading-snug">
                           {item.batchName}
                         </h3>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                        {item.tradeName} • <span className="text-slate-700 font-medium">{item.instituteName}</span>
+                      <p className="text-[11px] text-theme-text-secondary mt-0.5 truncate">
+                        {item.tradeName} • <span className="text-theme-text-primary font-medium">{item.instituteName}</span>
                       </p>
                     </div>
 
                     {/* Attendance Figures for Selected Date */}
-                    <div className="grid grid-cols-3 gap-2 py-2 px-2.5 bg-slate-50/90 rounded-xl text-center text-xs border border-slate-100">
+                    <div className="grid grid-cols-3 gap-2 py-2 px-2.5 bg-theme-surface-subtle rounded-xl text-center text-xs border border-theme-border">
                       <div>
-                        <span className="text-[10px] text-slate-500 block">উপস্থিত</span>
-                        <strong className="text-emerald-700 text-sm font-extrabold block">{toBn(item.present)}</strong>
+                        <span className="text-[10px] text-theme-text-secondary block">উপস্থিত</span>
+                        <strong className="text-theme-success text-sm font-extrabold block">{toBn(item.present)}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 block">অনুপস্থিত</span>
-                        <strong className="text-red-600 text-sm font-extrabold block">{toBn(item.absent)}</strong>
+                        <span className="text-[10px] text-theme-text-secondary block">অনুপস্থিত</span>
+                        <strong className="text-theme-danger text-sm font-extrabold block">{toBn(item.absent)}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 block">মোট ভর্তি</span>
-                        <strong className="text-slate-800 text-sm font-extrabold block">
+                        <span className="text-[10px] text-theme-text-secondary block">মোট ভর্তি</span>
+                        <strong className="text-theme-text-primary text-sm font-extrabold block">
                           {toBn(item.totalEnrolled)} / {toBn(item.capacity)}
                         </strong>
                       </div>
@@ -1804,76 +1804,76 @@ const Dashboard: React.FC = () => {
                     {/* Attendance Status Bar & Cumulative Badge */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500 font-medium">আজকের হার:</span>
+                        <span className="text-theme-text-secondary font-medium">আজকের হার:</span>
                         {item.isRecorded ? (
-                          <span className={`font-bold ${item.rate >= 75 ? 'text-emerald-700' : 'text-red-600'}`}>
+                          <span className={`font-bold ${item.rate >= 75 ? 'text-theme-success' : 'text-theme-danger'}`}>
                             {toBn(item.rate)}% উপস্থিত
                           </span>
                         ) : (
-                          <span className="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.2 rounded text-[10px]">
+                          <span className="text-theme-warning font-bold bg-theme-warning-soft border border-theme-warning-border px-1.5 py-0.2 rounded text-[10px]">
                             এন্ট্রি বাকি
                           </span>
                         )}
                       </div>
 
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                      <div className="w-full bg-theme-surface-subtle h-2 rounded-full overflow-hidden flex">
                         {item.recordedCount > 0 ? (
                           <>
-                            <div 
-                              style={{ width: `${(item.present / item.recordedCount) * 100}%` }} 
-                              className="bg-emerald-500 h-full"
+                            <div
+                              style={{ width: `${(item.present / item.recordedCount) * 100}%` }}
+                              className="bg-theme-success h-full"
                               title={`উপস্থিত: ${item.present} জন`}
                             />
-                            <div 
-                              style={{ width: `${(item.absent / item.recordedCount) * 100}%` }} 
-                              className="bg-red-500 h-full"
+                            <div
+                              style={{ width: `${(item.absent / item.recordedCount) * 100}%` }}
+                              className="bg-theme-danger h-full"
                               title={`অনুপস্থিত: ${item.absent} জন`}
                             />
-                            <div 
-                              style={{ width: `${(item.leave / item.recordedCount) * 100}%` }} 
-                              className="bg-amber-400 h-full"
+                            <div
+                              style={{ width: `${(item.leave / item.recordedCount) * 100}%` }}
+                              className="bg-theme-warning h-full"
                               title={`ছুটি: ${item.leave} জন`}
                             />
                           </>
                         ) : (
-                          <div className="w-full bg-slate-200 h-full" />
+                          <div className="w-full bg-theme-border h-full" />
                         )}
                       </div>
 
                       {/* Course Timeline Progress */}
-                      <div className="pt-2 border-t border-slate-100 space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-slate-500">
+                      <div className="pt-2 border-t border-theme-border space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-theme-text-secondary">
                           <span>কোর্স অগ্রগতি:</span>
-                          <span className="font-semibold text-slate-700">
+                          <span className="font-semibold text-theme-text-primary">
                             {toBn(item.elapsedDays)} / {toBn(item.totalDurationDays)} দিন ({toBn(item.timelinePercent)}%)
                           </span>
                         </div>
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                          <div 
-                            style={{ width: `${item.timelinePercent}%` }} 
-                            className="bg-blue-600 h-full rounded-full"
+                        <div className="w-full bg-theme-surface-subtle h-1.5 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${item.timelinePercent}%` }}
+                            className="bg-theme-info h-full rounded-full"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Quick Link Footer */}
-                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="pt-2.5 border-t border-theme-border flex items-center justify-between text-xs">
                       {canTakeAttendance ? (
                         <Link
                           to="/attendance"
-                          className="text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1"
+                          className="text-theme-primary hover:opacity-80 font-bold flex items-center space-x-1"
                         >
                           <span>{item.isRecorded ? 'হাজিরা সংশোধন' : 'হাজিরা এন্ট্রি'}</span>
                           <ChevronRight size={13} />
                         </Link>
                       ) : (
-                        <span className="text-slate-400 text-[11px]">হাজিরা এন্ট্রি সংরক্ষিত</span>
+                        <span className="text-theme-text-muted text-[11px]">হাজিরা এন্ট্রি সংরক্ষিত</span>
                       )}
 
                       <Link
                         to="/attendance-sheet"
-                        className="text-slate-500 hover:text-slate-800 font-medium text-[11px] flex items-center space-x-0.5"
+                        className="text-theme-text-secondary hover:text-theme-text-primary font-medium text-[11px] flex items-center space-x-0.5"
                       >
                         <CalendarDays size={12} className="mr-0.5" />
                         <span>রেজিস্টার শিট</span>
@@ -1887,13 +1887,13 @@ const Dashboard: React.FC = () => {
 
           {/* Comparative Bar Chart */}
           {batchChartData.length > 0 && (
-            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+            <div className="bg-theme-surface p-5 sm:p-6 rounded-2xl border border-theme-border shadow-xs transition-colors">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-theme-border">
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">
+                  <h3 className="font-bold text-theme-text-primary text-sm uppercase tracking-wider">
                     ব্যাচভিত্তিক উপস্থিত ও অনুপস্থিত তুলনা গ্রাফ ({safeFormatDate(selectedDate, 'dd MMM yyyy')})
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-theme-text-secondary mt-0.5">
                     প্রতিটি ব্যাচের বাস্তব উপস্থিতি ও অনুপস্থিতির তুলনামূলক চিত্র
                   </p>
                 </div>
@@ -1901,16 +1901,22 @@ const Dashboard: React.FC = () => {
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={batchChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} angle={-15} textAnchor="end" />
-                    <YAxis tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartPalette.grid} />
+                    <XAxis dataKey="name" tick={{ fill: chartPalette.textSecondary, fontSize: 11 }} angle={-15} textAnchor="end" />
+                    <YAxis tick={{ fill: chartPalette.textSecondary, fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartPalette.surface,
+                        borderRadius: '12px',
+                        border: `1px solid ${chartPalette.border}`,
+                        color: chartPalette.textPrimary,
+                        fontSize: '12px',
+                      }}
                     />
-                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-                    <Bar dataKey="উপস্থিত" fill="#059669" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="অনুপস্থিত" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="ছুটি" fill="#d97706" radius={[4, 4, 0, 0]} />
+                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10, color: chartPalette.textSecondary }} />
+                    <Bar dataKey="উপস্থিত" fill={chartPalette.primary} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="অনুপস্থিত" fill={chartPalette.danger} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="ছুটি" fill={chartPalette.warning} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1919,22 +1925,20 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-
-
       {/* ======================================================== */}
       {/* 8. TAB CONTENT 3: ACTIVITIES & STANDARD WORKFLOW         */}
       {/* ======================================================== */}
       {activeTab === 'activity' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Audit Logs */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="lg:col-span-2 bg-theme-surface p-6 rounded-2xl border border-theme-border shadow-xs space-y-4 transition-colors">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border">
               <div>
-                <h3 className="font-bold text-slate-800 text-base">সাম্প্রতিক সিস্টেম অডিট লগ (Activity Logs)</h3>
-                <p className="text-xs text-slate-500 mt-0.5">ব্যবহারকারীদের সাম্প্রতিক পরিবর্তন ও কার্যক্রমের ইতিহাস</p>
+                <h3 className="font-bold text-theme-text-primary text-base">সাম্প্রতিক সিস্টেম অডিট লগ (Activity Logs)</h3>
+                <p className="text-xs text-theme-text-secondary mt-0.5">ব্যবহারকারীদের সাম্প্রতিক পরিবর্তন ও কার্যক্রমের ইতিহাস</p>
               </div>
               {isCourseDirector && (
-                <Link to="/settings" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center space-x-1">
+                <Link to="/settings" className="text-xs font-semibold text-theme-primary hover:opacity-80 flex items-center space-x-1">
                   <span>সকল লগ</span>
                   <ArrowUpRight size={14} />
                 </Link>
@@ -1942,23 +1946,23 @@ const Dashboard: React.FC = () => {
             </div>
 
             {recentActivities.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+              <div className="py-12 text-center text-theme-text-muted text-xs border border-dashed border-theme-border rounded-xl">
                 এখনো কোনো সাম্প্রতিক কার্যক্রম রেকর্ড করা হয়নি।
               </div>
             ) : (
               <div className="space-y-2.5">
                 {recentActivities.map(log => (
-                  <div key={log.id} className="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100/70 transition border border-slate-100 text-xs">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                  <div key={log.id} className="flex items-start space-x-3 p-3 rounded-xl bg-theme-surface-subtle hover:bg-theme-surface-hover transition border border-theme-border text-xs">
+                    <div className="w-8 h-8 rounded-lg bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border flex items-center justify-center shrink-0 mt-0.5">
                       <Clock size={15} />
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      <p className="font-bold text-slate-800 truncate">{log.action}</p>
-                      <p className="text-slate-500 text-[11px] mt-0.5">
-                        সম্পাদনকারী: <span className="font-semibold text-slate-700">{log.userName}</span> • মডিউল: <span className="text-emerald-700 font-medium">{log.module}</span>
+                      <p className="font-bold text-theme-text-primary truncate">{log.action}</p>
+                      <p className="text-theme-text-secondary text-[11px] mt-0.5">
+                        সম্পাদনকারী: <span className="font-semibold text-theme-text-primary">{log.userName}</span> • মডিউল: <span className="text-theme-primary font-medium">{log.module}</span>
                       </p>
                     </div>
-                    <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                    <span className="text-[10px] text-theme-text-muted shrink-0 font-medium tabular-nums">
                       {safeFormatDate(log.timestamp, 'dd MMM, hh:mm a')}
                     </span>
                   </div>
@@ -1968,43 +1972,43 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Workflow Guide */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
+          <div className="bg-theme-surface p-6 rounded-2xl border border-theme-border shadow-xs flex flex-col justify-between space-y-4 transition-colors">
             <div>
-              <div className="pb-3 border-b border-slate-100 mb-3">
-                <h3 className="font-bold text-slate-800 text-base">প্রশাসনিক কার্যপদ্ধতি নির্দেশিকা</h3>
-                <p className="text-xs text-slate-500 mt-0.5">BNFE বৃত্তিমূলক প্রশিক্ষণ পরিচালনার ধাপসমূহ:</p>
+              <div className="pb-3 border-b border-theme-border mb-3">
+                <h3 className="font-bold text-theme-text-primary text-base">প্রশাসনিক কার্যপদ্ধতি নির্দেশিকা</h3>
+                <p className="text-xs text-theme-text-secondary mt-0.5">BNFE বৃত্তিমূলক প্রশিক্ষণ পরিচালনার ধাপসমূহ:</p>
               </div>
 
-              <ol className="space-y-3 text-xs text-slate-600">
+              <ol className="space-y-3 text-xs text-theme-text-secondary">
                 <li className="flex items-start space-x-2.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[11px]">১</span>
-                  <span><strong>প্রতিষ্ঠান ও ট্রেড বরাদ্দ:</strong> কেন্দ্র নির্বাচন এবং ট্রেড কোড ও আসন ধারণক্ষমতা নির্ধারণ।</span>
+                  <span className="w-5 h-5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-bold flex items-center justify-center shrink-0 text-[11px] tabular-nums">১</span>
+                  <span><strong className="text-theme-text-primary">প্রতিষ্ঠান ও ট্রেড বরাদ্দ:</strong> কেন্দ্র নির্বাচন এবং ট্রেড কোড ও আসন ধারণক্ষমতা নির্ধারণ।</span>
                 </li>
                 <li className="flex items-start space-x-2.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[11px]">২</span>
-                  <span><strong>ঝরে পড়া শিক্ষার্থী ভর্তি:</strong> জন্ম নিবন্ধন নম্বর যাচাই করে ব্যাচে শিক্ষার্থী অন্তর্ভুক্তিকরণ।</span>
+                  <span className="w-5 h-5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-bold flex items-center justify-center shrink-0 text-[11px] tabular-nums">২</span>
+                  <span><strong className="text-theme-text-primary">ঝরে পড়া শিক্ষার্থী ভর্তি:</strong> জন্ম নিবন্ধন নম্বর যাচাই করে ব্যাচে শিক্ষার্থী অন্তর্ভুক্তিকরণ।</span>
                 </li>
                 <li className="flex items-start space-x-2.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[11px]">৩</span>
-                  <span><strong>দৈনিক উপস্থিতি সংরক্ষণ:</strong> নিয়মিত ক্লাসে উপস্থিতি ও ছুটির রেকর্ড নিশ্চিতকরণ।</span>
+                  <span className="w-5 h-5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-bold flex items-center justify-center shrink-0 text-[11px] tabular-nums">৩</span>
+                  <span><strong className="text-theme-text-primary">দৈনিক উপস্থিতি সংরক্ষণ:</strong> নিয়মিত ক্লাসে উপস্থিতি ও ছুটির রেকর্ড নিশ্চিতকরণ।</span>
                 </li>
                 <li className="flex items-start space-x-2.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[11px]">৪</span>
-                  <span><strong>পরীক্ষা ও মূল্যায়ন:</strong> ব্যবহারিক ও তাত্ত্বিক পরীক্ষার নম্বর ইনপুট ও পাস মার্ক পর্যালোচনা।</span>
+                  <span className="w-5 h-5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-bold flex items-center justify-center shrink-0 text-[11px] tabular-nums">৪</span>
+                  <span><strong className="text-theme-text-primary">পরীক্ষা ও মূল্যায়ন:</strong> ব্যবহারিক ও তাত্ত্বিক পরীক্ষার নম্বর ইনপুট ও পাস মার্ক পর্যালোচনা।</span>
                 </li>
                 <li className="flex items-start space-x-2.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[11px]">৫</span>
-                  <span><strong>সনদপত্র মুদ্রণ ও রিপোর্ট:</strong> নূন্যতম ৭৫% হাজিরা ও কৃতকার্য শিক্ষার্থীদের সনদ প্রদান।</span>
+                  <span className="w-5 h-5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-bold flex items-center justify-center shrink-0 text-[11px] tabular-nums">৫</span>
+                  <span><strong className="text-theme-text-primary">সনদপত্র মুদ্রণ ও রিপোর্ট:</strong> নূন্যতম ৭৫% হাজিরা ও কৃতকার্য শিক্ষার্থীদের সনদ প্রদান।</span>
                 </li>
               </ol>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
-              <div className="flex items-center space-x-1.5 text-slate-700 font-semibold">
-                <Phone size={13} className="text-emerald-600" />
+            <div className="pt-3 border-t border-theme-border text-[11px] text-theme-text-secondary space-y-1">
+              <div className="flex items-center space-x-1.5 text-theme-text-primary font-semibold">
+                <Phone size={13} className="text-theme-primary" />
                 <span>সহায়তা: উপানুষ্ঠানিক শিক্ষা ব্যুরো, ময়মনসিংহ</span>
               </div>
-              <p className="text-[10px] text-slate-400">অফিসিয়াল কারিগরি প্রশিক্ষণ তথ্য ও সমন্বয় সেল</p>
+              <p className="text-[10px] text-theme-text-muted">অফিসিয়াল কারিগরি প্রশিক্ষণ তথ্য ও সমন্বয় সেল</p>
             </div>
           </div>
         </div>
@@ -2018,7 +2022,7 @@ const Dashboard: React.FC = () => {
       {/* ======================================================== */}
       {/* 10. PRINT-ONLY EXECUTIVE BRIEFING FORMAT (OFFICIAL A4)    */}
       {/* ======================================================== */}
-      <div className="hidden print:block pt-6 border-t-2 border-slate-800 text-black text-xs space-y-4">
+      <div className="hidden print:block print:bg-white print:text-black pt-6 border-t-2 border-slate-800 text-black text-xs space-y-4">
         <div className="text-center pb-3 border-b border-slate-300">
           <h2 className="text-base font-bold uppercase">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</h2>
           <h3 className="text-sm font-semibold">উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE), ময়মনসিংহ জেলা কার্যালয়</h3>

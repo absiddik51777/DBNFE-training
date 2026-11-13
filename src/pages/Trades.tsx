@@ -681,7 +681,7 @@ const Trades: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6 pb-12">
-        <div className="h-8 w-64 bg-slate-200/80 rounded animate-pulse" />
+        <div className="h-8 w-64 bg-theme-surface-subtle rounded animate-pulse" />
         <TableSkeleton rows={6} cols={5} />
       </div>
     );
@@ -694,15 +694,15 @@ const Trades: React.FC = () => {
       {/* ======================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-700 mb-1">
+          <div className="flex items-center space-x-2 text-xs font-semibold text-theme-primary mb-1">
             <span>উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</span>
             <span>•</span>
             <span>বৃত্তিমূলক কোর্স পরিচালনা</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-theme-text-primary tracking-tight">
             বৃত্তিমূলক ট্রেড (Vocational Trades)
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-theme-text-secondary mt-0.5">
             ঝরে পড়া কিশোর-কিশোরীদের দক্ষতা বৃদ্ধির জন্য অনুমোদিত কারিগরি ট্রেড তালিকা ও মেয়াদ
           </p>
         </div>
@@ -711,17 +711,17 @@ const Trades: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition flex items-center space-x-1 shadow-2xs"
+            className="p-2.5 bg-theme-surface border border-theme-border text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl text-xs font-semibold transition flex items-center space-x-1 shadow-2xs cursor-pointer"
             title="তথ্য রিফ্রেশ করুন"
           >
-            <RefreshCw size={15} className={refreshing ? 'animate-spin text-emerald-600' : ''} />
+            <RefreshCw size={15} className={refreshing ? 'animate-spin text-theme-primary' : ''} />
             <span className="hidden sm:inline">রিফ্রেশ</span>
           </button>
 
           {canCreate && (
             <button
               onClick={() => handleOpenModal()}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-sm font-bold transition flex items-center space-x-1.5 shadow-sm shadow-emerald-700/20"
+              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-sm font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
             >
               <Plus size={18} />
               <span>নতুন ট্রেড যুক্ত করুন</span>
@@ -732,8 +732,8 @@ const Trades: React.FC = () => {
 
       {/* Success Notification Alert */}
       {actionSuccessMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2.5 animate-fadeIn">
-          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2.5 animate-fadeIn">
+          <CheckCircle2 size={18} className="shrink-0" />
           <span className="font-medium">{actionSuccessMessage}</span>
         </div>
       )}
@@ -742,17 +742,17 @@ const Trades: React.FC = () => {
       {/* 2. DUPLICATE CODE ALERT BANNER (IF DETECTED IN DATABASE) */}
       {/* ======================================================== */}
       {duplicateTradesCount > 0 && (
-        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-theme-warning-soft border border-theme-warning-border rounded-2xl p-4.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-9 h-9 rounded-xl bg-theme-warning text-theme-warning-fg flex items-center justify-center shrink-0 mt-0.5">
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-amber-950">
-                ডুপ্লিকেট ট্রেড কোড সতর্কতা ({toBn(duplicateTradesCount)}টি রেকর্ড)
+              <h3 className="text-sm font-bold text-theme-text-primary">
+                ডুপ্লিকেট ট্রেড কোড সতর্কতা (<span className="tabular-nums">{toBn(duplicateTradesCount)}</span>টি রেকর্ড)
               </h3>
-              <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                ডাটাবেজে <strong>{Array.from(duplicateCodesMap).join(', ')}</strong> কোডটি একাধিক ট্রেডে বিদ্যমান রয়েছে। প্রাতিষ্ঠানিক রেফারেন্সের অখণ্ডতা বজায় রাখতে রেকর্ডগুলো স্বয়ংক্রিয়ভাবে পরিবর্তন করা হয়নি।
+              <p className="text-xs text-theme-text-secondary mt-0.5 leading-relaxed">
+                ডাটাবেজে <strong className="text-theme-warning">{Array.from(duplicateCodesMap).join(', ')}</strong> কোডটি একাধিক ট্রেডে বিদ্যমান রয়েছে। প্রাতিষ্ঠানিক রেফারেন্সের অখণ্ডতা বজায় রাখতে রেকর্ডগুলো স্বয়ংক্রিয়ভাবে পরিবর্তন করা হয়নি।
               </p>
             </div>
           </div>
@@ -761,7 +761,7 @@ const Trades: React.FC = () => {
               setStatusFilter('duplicates');
               setCurrentPage(1);
             }}
-            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shrink-0 self-start sm:self-auto"
+            className="px-3.5 py-1.5 bg-theme-warning hover:opacity-90 text-theme-warning-fg rounded-xl text-xs font-bold transition shrink-0 self-start sm:self-auto cursor-pointer"
           >
             ডুপ্লিকেটগুলো ফিল্টার করুন
           </button>
@@ -772,43 +772,43 @@ const Trades: React.FC = () => {
       {/* 3. SUMMARY KPI METRIC CARDS                              */}
       {/* ======================================================== */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center font-bold shrink-0">
             <Wrench size={20} />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">মোট ট্রেড</span>
-            <h4 className="text-2xl font-black text-slate-800">{toBn(stats.total)}</h4>
+            <span className="text-[11px] font-semibold text-theme-text-secondary uppercase tracking-wider block">মোট ট্রেড</span>
+            <h4 className="text-2xl font-black text-theme-text-primary tabular-nums">{toBn(stats.total)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-theme-success-soft text-theme-success flex items-center justify-center font-bold shrink-0">
             <CheckCircle2 size={20} />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">সক্রিয় ট্রেড</span>
-            <h4 className="text-2xl font-black text-emerald-700">{toBn(stats.active)}</h4>
+            <span className="text-[11px] font-semibold text-theme-text-secondary uppercase tracking-wider block">সক্রিয় ট্রেড</span>
+            <h4 className="text-2xl font-black text-theme-success tabular-nums">{toBn(stats.active)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-theme-surface-subtle text-theme-text-secondary flex items-center justify-center font-bold shrink-0">
             <Clock size={20} />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">নিষ্ক্রিয় ট্রেড</span>
-            <h4 className="text-2xl font-black text-slate-600">{toBn(stats.inactive)}</h4>
+            <span className="text-[11px] font-semibold text-theme-text-secondary uppercase tracking-wider block">নিষ্ক্রিয় ট্রেড</span>
+            <h4 className="text-2xl font-black text-theme-text-secondary tabular-nums">{toBn(stats.inactive)}</h4>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+        <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-theme-accent-soft text-theme-accent flex items-center justify-center font-bold shrink-0">
             <Layers size={20} />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">সংযুক্ত ব্যাচ</span>
-            <h4 className="text-2xl font-black text-purple-700">{toBn(stats.totalBatchesWithTrade)}</h4>
+            <span className="text-[11px] font-semibold text-theme-text-secondary uppercase tracking-wider block">সংযুক্ত ব্যাচ</span>
+            <h4 className="text-2xl font-black text-theme-accent tabular-nums">{toBn(stats.totalBatchesWithTrade)}</h4>
           </div>
         </div>
       </div>
@@ -830,11 +830,11 @@ const Trades: React.FC = () => {
         renderFilterContent={(close) => (
           <div className="space-y-3.5 text-xs">
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">অবস্থা (Status):</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">অবস্থা (Status):</label>
               <select
                 value={statusFilter}
                 onChange={e => { setStatusFilter(e.target.value as any); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
               >
                 <option value="all">সকল অবস্থা ({toBn(trades.length)}টি)</option>
                 <option value="Active">সক্রিয় ট্রেড ({toBn(stats.active)}টি)</option>
@@ -846,11 +846,11 @@ const Trades: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">কোর্সের মেয়াদ:</label>
+              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">কোর্সের মেয়াদ:</label>
               <select
                 value={durationFilter}
                 onChange={e => { setDurationFilter(e.target.value); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary"
               >
                 <option value="all">সকল মেয়াদ</option>
                 {DURATION_PRESETS.map(d => (
@@ -859,18 +859,18 @@ const Trades: React.FC = () => {
               </select>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-2 border-t border-theme-border flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => { handleClearFilters(); close(); }}
-                className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                className="text-xs text-theme-danger hover:opacity-80 font-semibold cursor-pointer"
               >
                 ফিল্টার রিসেট
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+                className="px-3 py-1.5 bg-theme-primary text-theme-primary-fg rounded-lg text-xs font-bold hover:bg-theme-primary-hover transition cursor-pointer"
               >
                 প্রয়োগ করুন
               </button>
@@ -882,12 +882,12 @@ const Trades: React.FC = () => {
         onResetColumns={resetColumns}
         extraActions={
           <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 px-2.5 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
+            <div className="flex items-center space-x-1 px-2.5 h-9 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs">
+              <ArrowUpDown size={13} className="text-theme-text-muted shrink-0" />
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent font-medium text-theme-text-primary focus:outline-none cursor-pointer pr-1"
                 title="সাজানোর ক্রম"
               >
                 <option value="code_asc">ট্রেড কোড</option>
@@ -897,12 +897,12 @@ const Trades: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+            <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
                 className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  viewMode === 'table' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="টেবিল ভিউ"
               >
@@ -912,7 +912,7 @@ const Trades: React.FC = () => {
                 type="button"
                 onClick={() => setViewMode('cards')}
                 className={`h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  viewMode === 'cards' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="কার্ড ভিউ"
               >
@@ -927,10 +927,10 @@ const Trades: React.FC = () => {
       {/* 5. TRADES LIST (TABLE OR RESPONSIVE CARDS)               */}
       {/* ======================================================== */}
       {processedTrades.length === 0 ? (
-        <div className="py-16 text-center text-slate-400 text-xs bg-white border border-dashed border-slate-200 rounded-2xl space-y-2">
-          <Wrench size={36} className="mx-auto text-slate-300" />
-          <p className="font-bold text-slate-700 text-sm">কোনো ট্রেড পাওয়া যায়নি</p>
-          <p className="text-slate-500">
+        <div className="py-16 text-center text-theme-text-muted text-xs bg-theme-surface border border-dashed border-theme-border rounded-2xl space-y-2">
+          <Wrench size={36} className="mx-auto text-theme-text-muted" />
+          <p className="font-bold text-theme-text-primary text-sm">কোনো ট্রেড পাওয়া যায়নি</p>
+          <p className="text-theme-text-secondary">
             {searchTerm || statusFilter !== 'all' || durationFilter !== 'all'
               ? 'আপনার ফিল্টারের সাথে মিলে এমন কোনো ট্রেড নেই।'
               : 'সিস্টেমে এখনো কোনো ট্রেড অন্তর্ভুক্ত করা হয়নি।'}
@@ -938,7 +938,7 @@ const Trades: React.FC = () => {
           {canCreate && (
             <button
               onClick={() => handleOpenModal()}
-              className="mt-2 inline-flex items-center space-x-1 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition"
+              className="mt-2 inline-flex items-center space-x-1 px-4 py-2 bg-theme-primary text-theme-primary-fg text-xs font-bold rounded-xl hover:bg-theme-primary-hover transition cursor-pointer"
             >
               <Plus size={15} />
               <span>নতুন ট্রেড যুক্ত করুন</span>
@@ -946,10 +946,10 @@ const Trades: React.FC = () => {
           )}
         </div>
       ) : viewMode === 'table' ? (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left">
-              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-theme-border text-left">
+              <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                 <tr>
                   {isColVisible('code') && <th className="px-4 py-3.5">ট্রেড কোড</th>}
                   {isColVisible('name') && <th className="px-4 py-3.5">ট্রেডের নাম ও বিবরণ</th>}
@@ -959,27 +959,27 @@ const Trades: React.FC = () => {
                   {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-100 text-xs">
+              <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
                 {groupBy !== 'none' && groupedTrades ? (
                   groupedTrades.map(grp => {
                     const isCollapsed = collapsedGroups.has(grp.key);
                     return (
                       <React.Fragment key={grp.key}>
-                        <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                        <tr className="bg-theme-surface-subtle hover:bg-theme-surface-hover border-y border-theme-border font-bold transition">
                           <td colSpan={columns.filter(c => c.visible).length} className="px-4 py-2.5">
                             <div className="flex items-center justify-between">
                               <button
                                 type="button"
                                 onClick={() => toggleGroupCollapse(grp.key)}
-                                className="flex items-center space-x-2 text-slate-800 hover:text-emerald-700 cursor-pointer"
+                                className="flex items-center space-x-2 text-theme-text-primary hover:text-theme-primary cursor-pointer"
                               >
                                 {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                 <span className="text-xs sm:text-sm font-bold">{grp.title}</span>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-theme-warning-soft text-theme-warning border border-theme-warning-border tabular-nums">
                                   {toBn(grp.items.length)}টি ট্রেড
                                 </span>
                               </button>
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-[11px] text-theme-text-muted tabular-nums">
                                 মোটের {toBn(Math.round((grp.items.length / (processedTrades.length || 1)) * 100))}%
                               </span>
                             </div>
@@ -991,15 +991,15 @@ const Trades: React.FC = () => {
                           const isDuplicateCode = duplicateCodesMap.has(cleanCode);
 
                           return (
-                            <tr key={trade.id} className="hover:bg-slate-50/80 transition">
+                            <tr key={trade.id} className="hover:bg-theme-surface-hover transition">
                               {isColVisible('code') && (
                                 <td className="px-4 py-3.5 whitespace-nowrap">
                                   <div className="flex items-center space-x-1.5">
-                                    <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                                    <span className="font-mono font-bold text-xs bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border tabular-nums">
                                       {trade.code}
                                     </span>
                                     {isDuplicateCode && (
-                                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300">
+                                      <span className="bg-theme-warning-soft text-theme-warning text-[10px] font-bold px-1.5 py-0.5 rounded border border-theme-warning-border">
                                         ডুপ্লিকেট
                                       </span>
                                     )}
@@ -1008,29 +1008,29 @@ const Trades: React.FC = () => {
                               )}
                               {isColVisible('name') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="font-bold text-slate-800 text-xs">{trade.name || trade.nameEn}</div>
+                                  <div className="font-bold text-theme-text-primary text-xs">{trade.name || trade.nameEn}</div>
                                 </td>
                               )}
                               {isColVisible('duration') && (
-                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-700">
+                                <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary">
                                   <div className="flex items-center space-x-1">
-                                    <Clock size={13} className="text-emerald-600" />
+                                    <Clock size={13} className="text-theme-primary" />
                                     <span>{trade.duration}</span>
                                   </div>
                                 </td>
                               )}
                               {isColVisible('stats') && (
-                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
-                                  <div>ব্যাচ: <strong className="text-purple-700">{toBn(usage.batchCount)}</strong>টি</div>
-                                  <div className="text-[11px] text-slate-400">শিক্ষার্থী: {toBn(usage.traineeCount)} জন</div>
+                                <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary tabular-nums">
+                                  <div>ব্যাচ: <strong className="text-theme-accent">{toBn(usage.batchCount)}</strong>টি</div>
+                                  <div className="text-[11px] text-theme-text-muted">শিক্ষার্থী: {toBn(usage.traineeCount)} জন</div>
                                 </td>
                               )}
                               {isColVisible('status') && (
                                 <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                  <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
-                                    trade.status === 'Active' 
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
+                                    trade.status === 'Active'
+                                      ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                                      : 'bg-theme-surface-subtle text-theme-text-secondary border-theme-border'
                                   }`}>
                                     {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                                   </span>
@@ -1042,7 +1042,7 @@ const Trades: React.FC = () => {
                                     {canEdit && (
                                       <button
                                         onClick={() => handleOpenModal(trade)}
-                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                        className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                         title="সম্পাদনা"
                                       >
                                         <Edit2 size={14} />
@@ -1051,7 +1051,7 @@ const Trades: React.FC = () => {
                                     {canDelete && (
                                       <button
                                         onClick={() => handleDeleteRequest(trade)}
-                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                        className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                                         title="মুছুন বা নিষ্ক্রিয় করুন"
                                       >
                                         <Trash2 size={14} />
@@ -1073,15 +1073,15 @@ const Trades: React.FC = () => {
                     const isDuplicateCode = duplicateCodesMap.has(cleanCode);
 
                     return (
-                      <tr key={trade.id} className="hover:bg-slate-50/80 transition">
+                      <tr key={trade.id} className="hover:bg-theme-surface-hover transition">
                         {isColVisible('code') && (
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <div className="flex items-center space-x-1.5">
-                              <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                              <span className="font-mono font-bold text-xs bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border tabular-nums">
                                 {trade.code}
                               </span>
                               {isDuplicateCode && (
-                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300">
+                                <span className="bg-theme-warning-soft text-theme-warning text-[10px] font-bold px-1.5 py-0.5 rounded border border-theme-warning-border">
                                   ডুপ্লিকেট
                                 </span>
                               )}
@@ -1090,29 +1090,29 @@ const Trades: React.FC = () => {
                         )}
                         {isColVisible('name') && (
                           <td className="px-4 py-3.5">
-                            <div className="font-bold text-slate-800 text-xs">{trade.name || trade.nameEn}</div>
+                            <div className="font-bold text-theme-text-primary text-xs">{trade.name || trade.nameEn}</div>
                           </td>
                         )}
                         {isColVisible('duration') && (
-                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-700">
+                          <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary">
                             <div className="flex items-center space-x-1">
-                              <Clock size={13} className="text-emerald-600" />
+                              <Clock size={13} className="text-theme-primary" />
                               <span>{trade.duration}</span>
                             </div>
                           </td>
                         )}
                         {isColVisible('stats') && (
-                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
-                            <div>ব্যাচ: <strong className="text-purple-700">{toBn(usage.batchCount)}</strong>টি</div>
-                            <div className="text-[11px] text-slate-400">শিক্ষার্থী: {toBn(usage.traineeCount)} জন</div>
+                          <td className="px-4 py-3.5 whitespace-nowrap text-theme-text-secondary tabular-nums">
+                            <div>ব্যাচ: <strong className="text-theme-accent">{toBn(usage.batchCount)}</strong>টি</div>
+                            <div className="text-[11px] text-theme-text-muted">শিক্ষার্থী: {toBn(usage.traineeCount)} জন</div>
                           </td>
                         )}
                         {isColVisible('status') && (
                           <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                            <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
-                              trade.status === 'Active' 
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
+                              trade.status === 'Active'
+                                ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                                : 'bg-theme-surface-subtle text-theme-text-secondary border-theme-border'
                             }`}>
                               {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                             </span>
@@ -1124,7 +1124,7 @@ const Trades: React.FC = () => {
                               {canEdit && (
                                 <button
                                   onClick={() => handleOpenModal(trade)}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                                   title="সম্পাদনা"
                                 >
                                   <Edit2 size={14} />
@@ -1133,7 +1133,7 @@ const Trades: React.FC = () => {
                               {canDelete && (
                                 <button
                                   onClick={() => handleDeleteRequest(trade)}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                                   title="মুছুন বা নিষ্ক্রিয় করুন"
                                 >
                                   <Trash2 size={14} />
@@ -1156,20 +1156,20 @@ const Trades: React.FC = () => {
             {groupedTrades.map(grp => {
               const isCollapsed = collapsedGroups.has(grp.key);
               return (
-                <div key={grp.key} className="bg-slate-50/70 rounded-2xl border border-slate-200 p-4 space-y-4">
+                <div key={grp.key} className="bg-theme-surface-subtle rounded-2xl border border-theme-border p-4 space-y-4">
                   <button
                     type="button"
                     onClick={() => toggleGroupCollapse(grp.key)}
-                    className="w-full flex items-center justify-between text-left hover:text-emerald-700 transition cursor-pointer"
+                    className="w-full flex items-center justify-between text-left hover:text-theme-primary transition cursor-pointer"
                   >
                     <div className="flex items-center space-x-2.5">
                       {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
-                      <span className="font-bold text-slate-800 text-sm sm:text-base">{grp.title}</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      <span className="font-bold text-theme-text-primary text-sm sm:text-base">{grp.title}</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-theme-warning-soft text-theme-warning border border-theme-warning-border tabular-nums">
                         {toBn(grp.items.length)}টি ট্রেড
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-theme-text-muted tabular-nums">
                       মোটের {toBn(Math.round((grp.items.length / (processedTrades.length || 1)) * 100))}%
                     </span>
                   </button>
@@ -1181,14 +1181,14 @@ const Trades: React.FC = () => {
                         const isDuplicateCode = duplicateCodesMap.has(cleanCode);
 
                         return (
-                          <div 
-                            key={trade.id} 
-                            className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
-                              isDuplicateCode ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
+                          <div
+                            key={trade.id}
+                            className={`bg-theme-surface rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
+                              isDuplicateCode ? 'border-theme-warning-border ring-2 ring-theme-warning/20' : 'border-theme-border'
                             }`}
                           >
                             {isDuplicateCode && (
-                              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
+                              <div className="absolute top-0 right-0 bg-theme-warning text-theme-warning-fg text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
                                 <AlertTriangle size={10} />
                                 <span>ডুপ্লিকেট কোড</span>
                               </div>
@@ -1196,15 +1196,15 @@ const Trades: React.FC = () => {
 
                             <div className="space-y-3">
                               <div className="flex items-start justify-between">
-                                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-2xs">
+                                <div className="w-11 h-11 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center font-bold shadow-2xs">
                                   <Wrench size={22} />
                                 </div>
 
                                 <div className="flex items-center space-x-1.5 pt-0.5 pr-2">
-                                  <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
-                                    trade.status === 'Active' 
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${
+                                    trade.status === 'Active'
+                                      ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                                      : 'bg-theme-surface-subtle text-theme-text-secondary border-theme-border'
                                   }`}>
                                     {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                                   </span>
@@ -1212,50 +1212,50 @@ const Trades: React.FC = () => {
                               </div>
 
                               <div>
-                                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                                <h3 className="font-bold text-theme-text-primary text-base leading-snug">
                                   {trade.name}
                                 </h3>
                                 {trade.nameEn && (
-                                  <p className="text-xs text-slate-400 italic font-sans mt-0.5">
+                                  <p className="text-xs text-theme-text-muted italic font-sans mt-0.5">
                                     {trade.nameEn}
                                   </p>
                                 )}
                                 <div className="flex items-center space-x-2 mt-1.5">
-                                  <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                                  <span className="text-xs font-mono font-bold bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border tabular-nums">
                                     কোড: {trade.code}
                                   </span>
                                   {trade.updatedAt && (
-                                    <span className="text-[10px] text-slate-400">
+                                    <span className="text-[10px] text-theme-text-muted tabular-nums">
                                       আপডেট: {safeFormatDate(trade.updatedAt, 'dd/MM/yy')}
                                     </span>
                                   )}
                                 </div>
                               </div>
 
-                              <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 min-h-[32px]">
+                              <p className="text-xs text-theme-text-secondary leading-relaxed line-clamp-2 min-h-[32px]">
                                 {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
                               </p>
 
-                              <div className="flex items-center space-x-1.5 text-xs text-slate-600 py-1.5 px-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                <Clock size={14} className="text-emerald-600 shrink-0" />
-                                <span>কোর্সের মেয়াদ: <strong>{trade.duration}</strong></span>
+                              <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary py-1.5 px-2.5 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                                <Clock size={14} className="text-theme-primary shrink-0" />
+                                <span>কোর্সের মেয়াদ: <strong className="text-theme-text-primary">{trade.duration}</strong></span>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
-                                <div className="flex items-center space-x-1.5 p-1.5 bg-purple-50/70 border border-purple-100 rounded-lg">
-                                  <Layers size={13} className="text-purple-600" />
-                                  <span>সংযুক্ত ব্যাচ: <strong className="text-purple-900">{toBn(usage.batchCount)}</strong></span>
+                              <div className="grid grid-cols-2 gap-2 text-[11px] text-theme-text-secondary pt-1 tabular-nums">
+                                <div className="flex items-center space-x-1.5 p-1.5 bg-theme-accent-soft border border-theme-accent-border rounded-lg">
+                                  <Layers size={13} className="text-theme-accent" />
+                                  <span>সংযুক্ত ব্যাচ: <strong className="text-theme-text-primary">{toBn(usage.batchCount)}</strong></span>
                                 </div>
-                                <div className="flex items-center space-x-1.5 p-1.5 bg-blue-50/70 border border-blue-100 rounded-lg">
-                                  <Users size={13} className="text-blue-600" />
-                                  <span>শিক্ষার্থী: <strong className="text-blue-900">{toBn(usage.traineeCount)}</strong></span>
+                                <div className="flex items-center space-x-1.5 p-1.5 bg-theme-info-soft border border-theme-info-border rounded-lg">
+                                  <Users size={13} className="text-theme-info" />
+                                  <span>শিক্ষার্থী: <strong className="text-theme-text-primary">{toBn(usage.traineeCount)}</strong></span>
                                 </div>
                               </div>
                             </div>
 
                             {(canEdit || canDelete) && (
-                              <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 mt-4 text-xs">
-                                <span className="text-[10px] text-slate-400 font-medium">
+                              <div className="flex items-center justify-between pt-3.5 border-t border-theme-border mt-4 text-xs">
+                                <span className="text-[10px] text-theme-text-muted font-medium tabular-nums">
                                   আইডি: {trade.id}
                                 </span>
 
@@ -1263,7 +1263,7 @@ const Trades: React.FC = () => {
                                   {canEdit && (
                                     <button
                                       onClick={() => handleOpenModal(trade)}
-                                      className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                                      className="px-2.5 py-1 text-theme-info bg-theme-info-soft hover:opacity-85 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
                                       title="ট্রেড তথ্য সম্পাদনা করুন"
                                     >
                                       <Edit2 size={13} />
@@ -1274,7 +1274,7 @@ const Trades: React.FC = () => {
                                   {canDelete && (
                                     <button
                                       onClick={() => handleDeleteRequest(trade)}
-                                      className="px-2.5 py-1 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                                      className="px-2.5 py-1 text-theme-danger bg-theme-danger-soft hover:opacity-85 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
                                       title={usage.batchCount > 0 ? "সংযুক্ত রেফারেন্স থাকায় নিষ্ক্রিয়করণ প্রযোজ্য" : "ট্রেড মুছে ফেলুন"}
                                     >
                                       <Trash2 size={13} />
@@ -1301,14 +1301,14 @@ const Trades: React.FC = () => {
               const isDuplicateCode = duplicateCodesMap.has(cleanCode);
 
               return (
-                <div 
-                  key={trade.id} 
-                  className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
-                    isDuplicateCode ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
+                <div
+                  key={trade.id}
+                  className={`bg-theme-surface rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition hover:shadow-md relative overflow-hidden ${
+                    isDuplicateCode ? 'border-theme-warning-border ring-2 ring-theme-warning/20' : 'border-theme-border'
                   }`}
                 >
                   {isDuplicateCode && (
-                    <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
+                    <div className="absolute top-0 right-0 bg-theme-warning text-theme-warning-fg text-[9px] font-bold px-2.5 py-0.5 rounded-bl-lg flex items-center space-x-1 shadow-2xs">
                       <AlertTriangle size={10} />
                       <span>ডুপ্লিকেট কোড</span>
                     </div>
@@ -1316,15 +1316,15 @@ const Trades: React.FC = () => {
 
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
-                      <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-2xs">
+                      <div className="w-11 h-11 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center font-bold shadow-2xs">
                         <Wrench size={22} />
                       </div>
 
                       <div className="flex items-center space-x-1.5 pt-0.5 pr-2">
-                        <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
-                          trade.status === 'Active' 
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${
+                          trade.status === 'Active'
+                            ? 'bg-theme-success-soft text-theme-success border-theme-success-border'
+                            : 'bg-theme-surface-subtle text-theme-text-secondary border-theme-border'
                         }`}>
                           {trade.status === 'Active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                         </span>
@@ -1332,50 +1332,50 @@ const Trades: React.FC = () => {
                     </div>
 
                     <div>
-                      <h3 className="font-bold text-slate-800 text-base leading-snug">
+                      <h3 className="font-bold text-theme-text-primary text-base leading-snug">
                         {trade.name}
                       </h3>
                       {trade.nameEn && (
-                        <p className="text-xs text-slate-400 italic font-sans mt-0.5">
+                        <p className="text-xs text-theme-text-muted italic font-sans mt-0.5">
                           {trade.nameEn}
                         </p>
                       )}
                       <div className="flex items-center space-x-2 mt-1.5">
-                        <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                        <span className="text-xs font-mono font-bold bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border tabular-nums">
                           কোড: {trade.code}
                         </span>
                         {trade.updatedAt && (
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-theme-text-muted tabular-nums">
                             আপডেট: {safeFormatDate(trade.updatedAt, 'dd/MM/yy')}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 min-h-[32px]">
+                    <p className="text-xs text-theme-text-secondary leading-relaxed line-clamp-2 min-h-[32px]">
                       {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
                     </p>
 
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-600 py-1.5 px-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                      <Clock size={14} className="text-emerald-600 shrink-0" />
-                      <span>কোর্সের মেয়াদ: <strong>{trade.duration}</strong></span>
+                    <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary py-1.5 px-2.5 bg-theme-surface-subtle rounded-xl border border-theme-border">
+                      <Clock size={14} className="text-theme-primary shrink-0" />
+                      <span>কোর্সের মেয়াদ: <strong className="text-theme-text-primary">{trade.duration}</strong></span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
-                      <div className="flex items-center space-x-1.5 p-1.5 bg-purple-50/70 border border-purple-100 rounded-lg">
-                        <Layers size={13} className="text-purple-600" />
-                        <span>সংযুক্ত ব্যাচ: <strong className="text-purple-900">{toBn(usage.batchCount)}</strong></span>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-theme-text-secondary pt-1 tabular-nums">
+                      <div className="flex items-center space-x-1.5 p-1.5 bg-theme-accent-soft border border-theme-accent-border rounded-lg">
+                        <Layers size={13} className="text-theme-accent" />
+                        <span>সংযুক্ত ব্যাচ: <strong className="text-theme-text-primary">{toBn(usage.batchCount)}</strong></span>
                       </div>
-                      <div className="flex items-center space-x-1.5 p-1.5 bg-blue-50/70 border border-blue-100 rounded-lg">
-                        <Users size={13} className="text-blue-600" />
-                        <span>শিক্ষার্থী: <strong className="text-blue-900">{toBn(usage.traineeCount)}</strong></span>
+                      <div className="flex items-center space-x-1.5 p-1.5 bg-theme-info-soft border border-theme-info-border rounded-lg">
+                        <Users size={13} className="text-theme-info" />
+                        <span>শিক্ষার্থী: <strong className="text-theme-text-primary">{toBn(usage.traineeCount)}</strong></span>
                       </div>
                     </div>
                   </div>
 
                   {(canEdit || canDelete) && (
-                    <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 mt-4 text-xs">
-                      <span className="text-[10px] text-slate-400 font-medium">
+                    <div className="flex items-center justify-between pt-3.5 border-t border-theme-border mt-4 text-xs">
+                      <span className="text-[10px] text-theme-text-muted font-medium tabular-nums">
                         আইডি: {trade.id}
                       </span>
 
@@ -1383,7 +1383,7 @@ const Trades: React.FC = () => {
                         {canEdit && (
                           <button
                             onClick={() => handleOpenModal(trade)}
-                            className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                            className="px-2.5 py-1 text-theme-info bg-theme-info-soft hover:opacity-85 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
                             title="ট্রেড তথ্য সম্পাদনা করুন"
                           >
                             <Edit2 size={13} />
@@ -1394,7 +1394,7 @@ const Trades: React.FC = () => {
                         {canDelete && (
                           <button
                             onClick={() => handleDeleteRequest(trade)}
-                            className="px-2.5 py-1 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
+                            className="px-2.5 py-1 text-theme-danger bg-theme-danger-soft hover:opacity-85 rounded-lg font-semibold transition flex items-center space-x-1 cursor-pointer"
                             title={usage.batchCount > 0 ? "সংযুক্ত রেফারেন্স থাকায় নিষ্ক্রিয়করণ প্রযোজ্য" : "ট্রেড মুছে ফেলুন"}
                           >
                             <Trash2 size={13} />
@@ -1415,8 +1415,8 @@ const Trades: React.FC = () => {
       {/* 6. PAGINATION CONTROLS                                    */}
       {/* ======================================================== */}
       {totalPages > 1 && (
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
-          <span className="text-slate-500 font-medium">
+        <div className="bg-theme-surface p-3.5 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs tabular-nums">
+          <span className="text-theme-text-secondary font-medium">
             মোট {toBn(processedTrades.length)}টি ট্রেডের মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, processedTrades.length))} প্রদর্শিত হচ্ছে
           </span>
 
@@ -1425,7 +1425,7 @@ const Trades: React.FC = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                className="shrink-0 p-2 border border-theme-border rounded-xl hover:bg-theme-surface-hover text-theme-text-primary disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                 title="পূর্ববর্তী পৃষ্ঠা"
               >
                 <ChevronLeft size={16} />
@@ -1437,10 +1437,10 @@ const Trades: React.FC = () => {
                   <button
                     key={p}
                     onClick={() => handlePageChange(p)}
-                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition ${
+                    className={`shrink-0 w-8 h-8 rounded-xl font-bold transition cursor-pointer ${
                       currentPage === p
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                        ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                        : 'border border-theme-border hover:bg-theme-surface-hover text-theme-text-primary'
                     }`}
                   >
                     {toBn(p)}
@@ -1451,7 +1451,7 @@ const Trades: React.FC = () => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                className="shrink-0 p-2 border border-theme-border rounded-xl hover:bg-theme-surface-hover text-theme-text-primary disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
                 title="পরবর্তী পৃষ্ঠা"
               >
                 <ChevronRight size={16} />
@@ -1465,40 +1465,40 @@ const Trades: React.FC = () => {
       {/* 7. SAFE DELETE / DEACTIVATION MODAL                       */}
       {/* ======================================================== */}
       {safeDeleteModalTrade && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-theme-border space-y-4 text-theme-text-primary">
             <div className="flex items-start space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-theme-danger-soft text-theme-danger flex items-center justify-center shrink-0">
                 <ShieldAlert size={28} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-theme-text-primary">
                   ট্রেড অপসারণ ও রেফারেন্স সতর্কতা (Trade Reference Alert)
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   এই ট্রেডের সাথে সম্পর্কিত রেকর্ড বিদ্যমান। আপনি নিরাপদে নিষ্ক্রিয় করতে পারেন অথবা স্থায়ীভাবে ডিলিট করতে পারেন।
                 </p>
               </div>
-              <button 
-                onClick={() => setSafeDeleteModalTrade(null)} 
-                className="text-slate-400 hover:text-slate-600 p-1"
+              <button
+                onClick={() => setSafeDeleteModalTrade(null)}
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl text-xs space-y-2 text-amber-950">
+            <div className="p-4 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs space-y-2 text-theme-text-primary">
               <p className="font-bold">
                 "{safeDeleteModalTrade.trade.name} ({safeDeleteModalTrade.trade.code})" ট্রেডটির সাথে নিম্নলিখিত তথ্য যুক্ত রয়েছে:
               </p>
-              <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                <li>সংযুক্ত ব্যাচ: <strong>{toBn(safeDeleteModalTrade.batchCount)} টি</strong></li>
-                <li>নিবন্ধিত শিক্ষার্থী: <strong>{toBn(safeDeleteModalTrade.traineeCount)} জন</strong></li>
+              <ul className="list-disc pl-5 space-y-1 text-theme-text-secondary tabular-nums">
+                <li>সংযুক্ত ব্যাচ: <strong className="text-theme-text-primary">{toBn(safeDeleteModalTrade.batchCount)} টি</strong></li>
+                <li>নিবন্ধিত শিক্ষার্থী: <strong className="text-theme-text-primary">{toBn(safeDeleteModalTrade.traineeCount)} জন</strong></li>
                 {safeDeleteModalTrade.examCount > 0 && (
-                  <li>পরীক্ষা ও মূল্যায়ন: <strong>{toBn(safeDeleteModalTrade.examCount)} টি</strong></li>
+                  <li>পরীক্ষা ও মূল্যায়ন: <strong className="text-theme-text-primary">{toBn(safeDeleteModalTrade.examCount)} টি</strong></li>
                 )}
               </ul>
-              <p className="text-[11px] text-amber-900 pt-1 border-t border-amber-200/80">
+              <p className="text-[11px] text-theme-warning pt-1 border-t border-theme-warning-border">
                 ⚠️ স্থায়ীভাবে ডিলিট করলে সংশ্লিষ্ট ব্যাচসমূহ থেকে এই ট্রেডের লিংক বাতিল হয়ে যাবে।
               </p>
             </div>
@@ -1507,14 +1507,14 @@ const Trades: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSafeDeleteModalTrade(null)}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="px-4 py-2 border border-theme-border rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
               >
                 বাতিল
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDeactivate}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                className="px-4 py-2 bg-theme-warning hover:opacity-90 text-theme-warning-fg rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 নিরাপদে নিষ্ক্রিয় করুন (Deactivate)
               </button>
@@ -1524,8 +1524,8 @@ const Trades: React.FC = () => {
                 disabled={!isDeletionAllowed}
                 className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 ${
                   !isDeletionAllowed
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
+                    ? 'bg-theme-surface-subtle text-theme-text-muted cursor-not-allowed'
+                    : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer'
                 }`}
                 title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে 🔒' : 'ট্রেডটি স্থায়ীভাবে মুছে ফেলুন'}
               >
@@ -1541,18 +1541,18 @@ const Trades: React.FC = () => {
       {/* 8. CREATE / EDIT TRADE MODAL                              */}
       {/* ======================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-theme-border space-y-4 max-h-[90vh] overflow-y-auto text-theme-text-primary">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">
+                <h2 className="text-lg font-bold text-theme-text-primary">
                   {editingTrade ? 'ট্রেডের তথ্য সম্পাদনা (Edit Trade)' : 'নতুন বৃত্তিমূলক ট্রেড নিবন্ধন (New Trade)'}
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   BNFE কারিগরি শিক্ষা মানদণ্ড অনুযায়ী কোর্স বিবরণ পূরণ করুন
                 </p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -1560,7 +1560,7 @@ const Trades: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Bengali Trade Name */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   ট্রেডের নাম (বাংলা) *
                 </label>
                 <input
@@ -1572,12 +1572,12 @@ const Trades: React.FC = () => {
                     setFormData({ ...formData, name: e.target.value });
                     if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
                   }}
-                  className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition ${
-                    formErrors.name ? 'border-red-400 bg-red-50/40' : 'border-slate-300'
+                  className={`w-full px-3.5 py-2.5 bg-theme-surface border rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none transition ${
+                    formErrors.name ? 'border-theme-danger bg-theme-danger-soft/30' : 'border-theme-border-strong'
                   }`}
                 />
                 {formErrors.name && (
-                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center space-x-1">
+                  <p className="text-[11px] text-theme-danger font-semibold mt-1 flex items-center space-x-1">
                     <AlertCircle size={12} />
                     <span>{formErrors.name}</span>
                   </p>
@@ -1586,7 +1586,7 @@ const Trades: React.FC = () => {
 
               {/* English Trade Name */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   ট্রেডের নাম (ইংরেজি - ঐচ্ছিক)
                 </label>
                 <input
@@ -1594,21 +1594,21 @@ const Trades: React.FC = () => {
                   placeholder="e.g. Computer Office Application & Graphics"
                   value={formData.nameEn}
                   onChange={e => setFormData({ ...formData, nameEn: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-sans focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
+                  className="w-full px-3.5 py-2.5 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary font-sans focus:ring-2 focus:ring-theme-primary focus:outline-none transition"
                 />
               </div>
 
               {/* Trade Code */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-bold text-theme-text-secondary">
                     ইউনিক ট্রেড কোড *
                   </label>
                   {!editingTrade && (
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, code: generateSafeNextTradeCode(trades) })}
-                      className="text-[11px] text-emerald-700 font-bold hover:underline flex items-center space-x-0.5"
+                      className="text-[11px] text-theme-primary font-bold hover:underline flex items-center space-x-0.5 cursor-pointer"
                     >
                       <Sparkles size={11} />
                       <span>পরবর্তী কোড অটো-জেনারেট</span>
@@ -1624,17 +1624,17 @@ const Trades: React.FC = () => {
                     setFormData({ ...formData, code: e.target.value });
                     if (formErrors.code) setFormErrors({ ...formErrors, code: '' });
                   }}
-                  className={`w-full px-3.5 py-2.5 border font-mono font-bold rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none uppercase transition ${
-                    formErrors.code ? 'border-red-400 bg-red-50/40 text-red-900' : 'border-slate-300'
+                  className={`w-full px-3.5 py-2.5 bg-theme-surface border font-mono font-bold rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none uppercase transition ${
+                    formErrors.code ? 'border-theme-danger bg-theme-danger-soft/30 text-theme-danger' : 'border-theme-border-strong'
                   }`}
                 />
                 {formErrors.code ? (
-                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center space-x-1">
+                  <p className="text-[11px] text-theme-danger font-semibold mt-1 flex items-center space-x-1">
                     <AlertCircle size={12} />
                     <span>{formErrors.code}</span>
                   </p>
                 ) : (
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-theme-text-muted mt-1">
                     ট্রেড কোডটি ডাটাবেজে সম্পূর্ণ ইউনিক হতে হবে।
                   </p>
                 )}
@@ -1642,13 +1642,13 @@ const Trades: React.FC = () => {
 
               {/* Training Duration */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   কোর্সের মেয়াদ ও প্রশিক্ষণ ঘণ্টা *
                 </label>
                 <select
                   value={formData.duration}
                   onChange={e => setFormData({ ...formData, duration: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none cursor-pointer"
                 >
                   {DURATION_PRESETS.map(preset => (
                     <option key={preset} value={preset}>{preset}</option>
@@ -1662,7 +1662,7 @@ const Trades: React.FC = () => {
                       placeholder="কাস্টম মেয়াদ লিখুন (যেমন: ২ মাস (১২০ ঘণ্টা))"
                       value={formData.customDuration}
                       onChange={e => setFormData({ ...formData, customDuration: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-xs text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none"
                     />
                   </div>
                 )}
@@ -1670,7 +1670,7 @@ const Trades: React.FC = () => {
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   ট্রেডের বিবরণ ও বিষয়বস্তু (ঐচ্ছিক)
                 </label>
                 <textarea
@@ -1678,41 +1678,41 @@ const Trades: React.FC = () => {
                   placeholder="কোর্সের মূল কারিকুলাম, ব্যবহারিক বিষয়াদি এবং প্রশিক্ষণ লক্ষ্যের সংক্ষিপ্ত বিবরণ..."
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none leading-relaxed"
+                  className="w-full px-3.5 py-2 bg-theme-surface border border-theme-border-strong rounded-xl text-xs sm:text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none leading-relaxed"
                 />
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-theme-text-secondary mb-1">
                   ট্রেড স্ট্যাটাস *
                 </label>
                 <select
                   value={formData.status}
                   onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-theme-surface border border-theme-border-strong rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none cursor-pointer"
                 >
                   <option value="Active">সক্রিয় (Active - নতুন ব্যাচে বরাদ্দযোগ্য)</option>
                   <option value="Inactive">নিষ্ক্রিয় (Inactive - নতুন ব্যাচে বরাদ্দ স্থগিত)</option>
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-[10px] text-theme-text-muted mt-1">
                   নিষ্ক্রিয় ট্রেডগুলো বিদ্যমান রেকর্ডে সংরক্ষিত থাকবে কিন্তু নতুন ব্যাচে নির্বাচন করা যাবে না।
                 </p>
               </div>
 
               {/* Modal Buttons */}
-              <div className="flex items-center justify-end space-x-2.5 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end space-x-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                  className="px-4 py-2.5 border border-theme-border rounded-xl text-xs sm:text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50"
+                  className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'সংরক্ষণ হচ্ছে...' : editingTrade ? 'আপডেট সংরক্ষণ করুন' : 'ট্রেড তৈরি করুন'}
                 </button>

@@ -632,8 +632,8 @@ const UsersPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
         <span>ব্যবহারকারী তালিকা লোড হচ্ছে...</span>
       </div>
     );
@@ -644,8 +644,8 @@ const UsersPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">ব্যবহারকারী ও প্রশিক্ষক ব্যবস্থাপনা (User Management)</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-theme-text-primary">ব্যবহারকারী ও প্রশিক্ষক ব্যবস্থাপনা (User Management)</h1>
+          <p className="text-sm text-theme-text-secondary mt-0.5">
             প্রশিক্ষকদের প্রতিষ্ঠান ও ব্যাচ সংযুক্ত করুন এবং পদবী ও পারমিশন নিয়ন্ত্রণ করুন
           </p>
         </div>
@@ -654,17 +654,17 @@ const UsersPage: React.FC = () => {
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-sm font-semibold flex items-center space-x-2 transition shadow-xs disabled:opacity-60 cursor-pointer"
+            className="px-3.5 py-2.5 bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary border border-theme-border-strong rounded-xl text-sm font-semibold flex items-center space-x-2 transition shadow-xs disabled:opacity-60 cursor-pointer"
             title="ক্লাউড সার্ভার থেকে ব্যবহারকারী তালিকা সরাসরি সিঙ্ক করুন"
           >
-            <RefreshCw size={16} className={`${refreshing ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+            <RefreshCw size={16} className={`${refreshing ? 'animate-spin text-theme-primary' : 'text-theme-text-secondary'}`} />
             <span>{refreshing ? 'সিঙ্ক হচ্ছে...' : 'রিফ্রেশ (Sync)'}</span>
           </button>
 
           {isCourseDirector && (
             <Link
               to="/roles"
-              className="px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-sm font-semibold flex items-center space-x-2 transition"
+              className="px-4 py-2.5 bg-theme-accent-soft hover:opacity-90 text-theme-accent border border-theme-accent-border rounded-xl text-sm font-semibold flex items-center space-x-2 transition"
             >
               <Shield size={18} />
               <span>রোল ও পারমিশন টেবিল (Roles Table)</span>
@@ -686,7 +686,7 @@ const UsersPage: React.FC = () => {
                 });
                 setIsAddModalOpen(true);
               }}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-2 transition"
+              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center justify-center space-x-2 transition cursor-pointer"
             >
               <UserPlus size={18} />
               <span>নতুন প্রশিক্ষক / ব্যবহারকারী যোগ করুন</span>
@@ -696,13 +696,13 @@ const UsersPage: React.FC = () => {
       </div>
 
       {/* Status Tabs Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-theme-border pb-3">
         <button
           onClick={() => setStatusFilter('All')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer tabular-nums ${
             statusFilter === 'All'
-              ? 'bg-slate-800 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
+              : 'bg-theme-surface text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
           }`}
         >
           সকল ব্যবহারকারী ({users.length})
@@ -710,17 +710,17 @@ const UsersPage: React.FC = () => {
 
         <button
           onClick={() => setStatusFilter('Pending Approval')}
-          className={`relative px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition ${
+          className={`relative px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer tabular-nums ${
             statusFilter === 'Pending Approval'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+              ? 'bg-theme-warning text-theme-warning-fg shadow-xs'
+              : 'bg-theme-warning-soft text-theme-warning hover:opacity-90 border border-theme-warning-border'
           }`}
         >
           <Clock size={14} />
           <span>অনুমোদনের অপেক্ষায়</span>
           {pendingCount > 0 && (
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              statusFilter === 'Pending Approval' ? 'bg-white text-amber-800' : 'bg-amber-600 text-white'
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold tabular-nums ${
+              statusFilter === 'Pending Approval' ? 'bg-theme-surface text-theme-warning' : 'bg-theme-warning text-theme-warning-fg'
             }`}>
               {pendingCount}
             </span>
@@ -729,10 +729,10 @@ const UsersPage: React.FC = () => {
 
         <button
           onClick={() => setStatusFilter('Active')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer tabular-nums ${
             statusFilter === 'Active'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-theme-success text-theme-success-fg shadow-xs'
+              : 'bg-theme-surface text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
           }`}
         >
           সক্রিয় ({users.filter(u => u.status === 'Active').length})
@@ -740,10 +740,10 @@ const UsersPage: React.FC = () => {
 
         <button
           onClick={() => setStatusFilter('Inactive')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer tabular-nums ${
             statusFilter === 'Inactive'
-              ? 'bg-red-600 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-theme-danger text-theme-danger-fg shadow-xs'
+              : 'bg-theme-surface text-theme-text-secondary hover:bg-theme-surface-hover border border-theme-border'
           }`}
         >
           নিষ্ক্রিয় ({users.filter(u => u.status === 'Inactive').length})
@@ -751,24 +751,24 @@ const UsersPage: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-72">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="নাম, ইমেইল বা ফোন নম্বর দিয়ে খুঁজুন..."
-            className="w-full pl-9 pr-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="w-full pl-9 pr-3.5 py-2 bg-theme-surface-subtle text-theme-text-primary placeholder:text-theme-text-muted border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
           />
-          <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+          <Search className="absolute left-3 top-2.5 text-theme-text-muted" size={16} />
         </div>
 
         <div className="flex items-center space-x-2 w-full sm:w-auto">
-          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">পদবী ফিল্টার:</span>
+          <span className="text-xs font-semibold text-theme-text-secondary whitespace-nowrap">পদবী ফিল্টার:</span>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none w-full sm:w-auto"
+            className="px-3 py-2 border border-theme-border-strong rounded-xl text-sm bg-theme-surface-subtle text-theme-text-primary focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none w-full sm:w-auto cursor-pointer tabular-nums"
           >
             <option value="All">সকল পদবী ({users.length})</option>
             {roles.map(r => (
@@ -781,24 +781,24 @@ const UsersPage: React.FC = () => {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-theme-border">
+            <thead className="bg-theme-surface-subtle">
               <tr>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">নাম ও ইমেইল</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">মোবাইল নম্বর</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">পদবী (Role)</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">সংযুক্ত প্রতিষ্ঠান</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">নির্ধারিত ব্যাচ (Batch)</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">অবস্থা</th>
-                <th className="px-6 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">অ্যাকশন</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">নাম ও ইমেইল</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">মোবাইল নম্বর</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">পদবী (Role)</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">সংযুক্ত প্রতিষ্ঠান</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">নির্ধারিত ব্যাচ (Batch)</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">অবস্থা</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-theme-text-secondary uppercase tracking-wider">অ্যাকশন</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-100">
+            <tbody className="bg-theme-surface divide-y divide-theme-border">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="px-6 py-12 text-center text-theme-text-muted text-xs">
                     কোনো ব্যবহারকারী পাওয়া যায়নি।
                   </td>
                 </tr>
@@ -807,67 +807,67 @@ const UsersPage: React.FC = () => {
                   const batchInfo = getBatchInfo(u.batchId);
                   const isPending = u.status === 'Pending Approval';
                   return (
-                    <tr key={u.id} className={`hover:bg-slate-50/70 transition-colors ${isPending ? 'bg-amber-50/40' : ''}`}>
+                    <tr key={u.id} className={`hover:bg-theme-surface-hover transition-colors ${isPending ? 'bg-theme-warning-soft/30' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-slate-800 flex items-center space-x-1.5">
+                        <div className="text-sm font-bold text-theme-text-primary flex items-center space-x-1.5">
                           <span>{u.name}</span>
                           {isPending && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500 text-white font-semibold">নতুন</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-theme-warning text-theme-warning-fg font-semibold">নতুন</span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-500 font-mono">{u.email}</div>
+                        <div className="text-xs text-theme-text-secondary font-mono">{u.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 font-mono">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-theme-text-secondary font-mono tabular-nums">
                         {u.phone || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                          u.role === 'Course Director' ? 'bg-purple-100 text-purple-800' :
-                          u.role === 'FMA' ? 'bg-blue-100 text-blue-800' : 
-                          u.role === 'Pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                          u.trainerType === 'Literacy Trainer' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'
+                        <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${
+                          u.role === 'Course Director' ? 'bg-theme-accent-soft text-theme-accent border-theme-accent-border' :
+                          u.role === 'FMA' ? 'bg-theme-info-soft text-theme-info border-theme-info-border' : 
+                          u.role === 'Pending' ? 'bg-theme-warning-soft text-theme-warning border-theme-warning-border' :
+                          u.trainerType === 'Literacy Trainer' ? 'bg-theme-info-soft text-theme-info border-theme-info-border' : 'bg-theme-primary-soft text-theme-primary-soft-fg border-theme-primary-border'
                         }`}>
                           {u.role === 'Trainer' 
                             ? (u.trainerType === 'Literacy Trainer' ? 'লিটারেসি প্রশিক্ষক (Literacy)' : 'স্কিল প্রশিক্ষক (Skill)')
                             : u.role === 'Course Director' ? 'কোর্স পরিচালক' : u.role === 'Pending' ? 'অপেক্ষমাণ' : 'FMA'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-theme-text-secondary">
                         {u.role === 'Trainer' ? (
-                          <div className="flex items-center space-x-1.5 font-medium text-slate-700">
-                            <Building2 size={14} className="text-emerald-600 shrink-0" />
+                          <div className="flex items-center space-x-1.5 font-medium text-theme-text-primary">
+                            <Building2 size={14} className="text-theme-primary shrink-0" />
                             <span>{getInstituteName(u.instituteId)}</span>
                           </div>
                         ) : (
-                          <span className="text-slate-400">সকল প্রতিষ্ঠান</span>
+                          <span className="text-theme-text-muted">সকল প্রতিষ্ঠান</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs">
                         {u.role === 'Trainer' ? (
                           batchInfo ? (
-                            <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
-                              <Layers size={13} className="text-emerald-600 shrink-0" />
+                            <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-theme-primary-soft border border-theme-primary-border text-theme-primary-soft-fg font-semibold">
+                              <Layers size={13} className="text-theme-primary shrink-0" />
                               <span>{batchInfo.batchName}</span>
                               {batchInfo.tradeName && (
-                                <span className="text-[11px] font-normal text-emerald-600">({batchInfo.tradeName})</span>
+                                <span className="text-[11px] font-normal text-theme-primary">({batchInfo.tradeName})</span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            <span className="text-theme-warning font-medium bg-theme-warning-soft px-2 py-0.5 rounded border border-theme-warning-border">
                               ব্যাচ অনির্ধারিত
                             </span>
                           )
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-theme-text-muted">-</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
                           u.status === 'Active' 
-                            ? 'bg-emerald-100 text-emerald-700' 
+                            ? 'bg-theme-success-soft text-theme-success border-theme-success-border' 
                             : u.status === 'Pending Approval'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300 font-bold'
-                            : 'bg-red-100 text-red-700'
+                            ? 'bg-theme-warning-soft text-theme-warning border-theme-warning-border font-bold'
+                            : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
                         }`}>
                           {u.status === 'Active' ? 'সক্রিয়' : u.status === 'Pending Approval' ? 'অনুমোদনের অপেক্ষায়' : 'নিষ্ক্রিয়'}
                         </span>
@@ -878,7 +878,7 @@ const UsersPage: React.FC = () => {
                             <>
                               <button
                                 onClick={() => handleQuickApprove(u)}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
                                 title="অ্যাকাউন্ট অনুমোদন ও সক্রিয় করুন"
                               >
                                 <UserCheck size={14} />
@@ -886,7 +886,7 @@ const UsersPage: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => handleQuickReject(u)}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-semibold transition"
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border rounded-lg text-xs font-semibold transition cursor-pointer"
                                 title="আবেদন বাতিল করুন"
                               >
                                 <UserX size={14} />
@@ -900,7 +900,7 @@ const UsersPage: React.FC = () => {
                             u.status === 'Active' ? (
                               <button
                                 onClick={() => handleToggleStatus(u)}
-                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                                 title="অ্যাকাউন্ট নিষ্ক্রিয় করুন (Deactivate)"
                               >
                                 <UserX size={16} />
@@ -908,7 +908,7 @@ const UsersPage: React.FC = () => {
                             ) : (
                               <button
                                 onClick={() => handleToggleStatus(u)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                className="p-1.5 text-theme-success hover:bg-theme-success-soft rounded-lg transition cursor-pointer"
                                 title="অ্যাকাউন্ট সক্রিয় করুন (Activate)"
                               >
                                 <UserCheck size={16} />
@@ -920,7 +920,7 @@ const UsersPage: React.FC = () => {
                           {isCourseDirector && u.email && (
                             <button
                               onClick={() => handleSendPasswordReset(u)}
-                              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                              className="p-1.5 text-theme-warning hover:bg-theme-warning-soft rounded-lg transition cursor-pointer"
                               title={`পাসওয়ার্ড রিসেট লিঙ্ক পাঠান (${u.email})`}
                             >
                               <KeyRound size={16} />
@@ -929,7 +929,7 @@ const UsersPage: React.FC = () => {
 
                           <button
                             onClick={() => handleEditClick(u)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
                             title="পদবী, প্রতিষ্ঠান বা ব্যাচ সম্পাদনা"
                           >
                             <Edit2 size={16} />
@@ -938,7 +938,7 @@ const UsersPage: React.FC = () => {
                           {isCourseDirector && u.id !== userProfile?.id && u.email?.toLowerCase() !== userProfile?.email?.toLowerCase() && (
                             <button
                               onClick={() => handleDeleteUser(u)}
-                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                              className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition cursor-pointer"
                               title="ব্যবহারকারী মুছে ফেলুন (Delete User)"
                             >
                               <Trash2 size={16} />
@@ -957,65 +957,65 @@ const UsersPage: React.FC = () => {
 
       {/* Edit User Modal */}
       {isEditModalOpen && editingUser && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">ব্যবহারকারী ও ব্যাচ সম্পাদন</h2>
-                <p className="text-xs text-slate-500">প্রশিক্ষকের প্রতিষ্ঠান ও নির্ধারিত ব্যাচ আপডেট করুন</p>
+                <h2 className="text-lg font-bold text-theme-text-primary">ব্যবহারকারী ও ব্যাচ সম্পাদন</h2>
+                <p className="text-xs text-theme-text-secondary">প্রশিক্ষকের প্রতিষ্ঠান ও নির্ধারিত ব্যাচ আপডেট করুন</p>
               </div>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsEditModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             {editingUser?.id === userProfile?.id && (
-              <div className="p-3 mb-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center space-x-2">
-                <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+              <div className="p-3 mb-3 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs text-theme-warning flex items-center space-x-2">
+                <AlertTriangle size={16} className="shrink-0 text-theme-warning" />
                 <span>নিরাপত্তা নীতি: আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।</span>
               </div>
             )}
 
             <form onSubmit={handleUpdate} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">নাম *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">নাম *</label>
                 <input
                   type="text"
                   required
                   value={editFormData.name}
                   onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ইমেইল (Read-only)</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ইমেইল (Read-only)</label>
                 <input
                   type="email"
                   readOnly
                   value={editFormData.email}
-                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono text-slate-600"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-sm font-mono text-theme-text-secondary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">মোবাইল নম্বর *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">মোবাইল নম্বর *</label>
                 <input
                   type="tel"
                   required
                   value={editFormData.phone}
                   onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">পদবী (Role)</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পদবী (Role)</label>
                 <select
                   value={editFormData.role}
                   onChange={e => setEditFormData({ ...editFormData, role: e.target.value as UserRole })}
                   disabled={!isCourseDirector || editingUser?.id === userProfile?.id}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none disabled:bg-theme-surface-subtle disabled:text-theme-text-muted cursor-pointer"
                 >
                   {roles.map(r => (
                     <option key={r.id} value={r.name}>
@@ -1026,23 +1026,23 @@ const UsersPage: React.FC = () => {
               </div>
 
               {editFormData.role === 'Trainer' && (
-                <div className="space-y-3 p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
-                  <div className="text-xs font-bold text-emerald-800 flex items-center space-x-1.5">
+                <div className="space-y-3 p-3.5 bg-theme-primary-soft/60 rounded-xl border border-theme-primary-border">
+                  <div className="text-xs font-bold text-theme-primary-soft-fg flex items-center space-x-1.5">
                     <Building2 size={15} />
                     <span>প্রশিক্ষকের ধরন ও ব্যাচ অ্যাসাইনমেন্ট</span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">প্রশিক্ষকের ধরন (Trainer Type) *</label>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রশিক্ষকের ধরন (Trainer Type) *</label>
                     <select
                       value={editFormData.trainerType}
                       onChange={e => setEditFormData({ ...editFormData, trainerType: e.target.value as TrainerType })}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm font-semibold focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="Skill Trainer">স্কিল ট্রেইনার (Skill Trainer - বৃত্তিমূলক ট্রেড)</option>
                       <option value="Literacy Trainer">লিটারেসি ট্রেইনার (Literacy Trainer - সাক্ষরতা ও জীবন দক্ষতা)</option>
                     </select>
-                    <p className="text-[11px] text-slate-500 mt-1">
+                    <p className="text-[11px] text-theme-text-secondary mt-1">
                       {editFormData.trainerType === 'Skill Trainer' 
                         ? '✓ এই প্রশিক্ষক বৃত্তিমূলক ট্রেডের স্কিল মডিউল পরিচালনা করবেন।' 
                         : '✓ এই প্রশিক্ষক সাক্ষরতা ও জীবন দক্ষতা মডিউল পরিচালনা করবেন।'}
@@ -1050,7 +1050,7 @@ const UsersPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">সংযুক্ত প্রতিষ্ঠান *</label>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">সংযুক্ত প্রতিষ্ঠান *</label>
                     <select
                       value={editFormData.instituteId}
                       onChange={e => {
@@ -1058,10 +1058,10 @@ const UsersPage: React.FC = () => {
                         setEditFormData({ 
                           ...editFormData, 
                           instituteId: newInstId,
-                          batchId: '' // reset batch when institute changes
+                          batchId: ''
                         });
                       }}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="">কোনোটিই নয় (Unassigned)</option>
                       {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -1069,11 +1069,11 @@ const UsersPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">নির্ধারিত ব্যাচ (Assigned Batch) *</label>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">নির্ধারিত ব্যাচ (Assigned Batch) *</label>
                     <select
                       value={editFormData.batchId}
                       onChange={e => setEditFormData({ ...editFormData, batchId: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="">ব্যাচ নির্বাচন করুন (কোনোটিই নয় / Unassigned)</option>
                       {batches
@@ -1087,7 +1087,7 @@ const UsersPage: React.FC = () => {
                           );
                         })}
                     </select>
-                    <p className="text-[11px] text-emerald-700/90 mt-1 font-medium">
+                    <p className="text-[11px] text-theme-primary mt-1 font-medium">
                       ✓ উপস্থিতি (Attendance) মডিউলে এই প্রশিক্ষক সরাসরি এই ব্যাচের প্রশিক্ষণার্থীদের তালিকা দেখতে পাবেন।
                     </p>
                   </div>
@@ -1095,12 +1095,12 @@ const UsersPage: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">অ্যাকাউন্ট স্ট্যাটাস</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">অ্যাকাউন্ট স্ট্যাটাস</label>
                 <select
                   value={editFormData.status}
                   onChange={e => setEditFormData({ ...editFormData, status: e.target.value as any })}
                   disabled={!isCourseDirector || editingUser?.id === userProfile?.id}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none disabled:bg-theme-surface-subtle disabled:text-theme-text-muted cursor-pointer"
                 >
                   <option value="Active">সক্রিয় (Active)</option>
                   <option value="Pending Approval">অনুমোদনের অপেক্ষায় (Pending Approval)</option>
@@ -1108,17 +1108,17 @@ const UsersPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-slate-100">
+              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-xs"
+                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs cursor-pointer"
                 >
                   আপডেট সংরক্ষণ করুন
                 </button>
@@ -1130,61 +1130,61 @@ const UsersPage: React.FC = () => {
 
       {/* Add New User Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">নতুন ব্যবহারকারী / প্রশিক্ষক নিবন্ধন</h2>
-                <p className="text-xs text-slate-500">প্রশিক্ষক হিসেবে প্রতিষ্ঠান ও ব্যাচে নিবন্ধন করুন</p>
+                <h2 className="text-lg font-bold text-theme-text-primary">নতুন ব্যবহারকারী / প্রশিক্ষক নিবন্ধন</h2>
+                <p className="text-xs text-theme-text-secondary">প্রশিক্ষক হিসেবে প্রতিষ্ঠান ও ব্যাচে নিবন্ধন করুন</p>
               </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleCreateNewUser} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">পূর্ণ নাম *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পূর্ণ নাম *</label>
                 <input
                   type="text"
                   required
                   placeholder="যেমন: মোঃ কামরুল হাসান"
                   value={addFormData.name}
                   onChange={e => setAddFormData({ ...addFormData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ইমেইল ঠিকানা *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">ইমেইল ঠিকানা *</label>
                 <input
                   type="email"
                   required
                   placeholder="trainer@bnfe.gov.bd"
                   value={addFormData.email}
                   onChange={e => setAddFormData({ ...addFormData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">মোবাইল নম্বর *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">মোবাইল নম্বর *</label>
                 <input
                   type="tel"
                   required
                   placeholder="017xxxxxxxx"
                   value={addFormData.phone}
                   onChange={e => setAddFormData({ ...addFormData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none tabular-nums"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">পদবী (Role) *</label>
+                <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পদবী (Role) *</label>
                 <select
                   value={addFormData.role}
                   onChange={e => setAddFormData({ ...addFormData, role: e.target.value as UserRole })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                 >
                   {isCourseDirector ? (
                     roles.map(r => (
@@ -1203,23 +1203,23 @@ const UsersPage: React.FC = () => {
               </div>
 
               {addFormData.role === 'Trainer' && (
-                <div className="space-y-3 p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
-                  <div className="text-xs font-bold text-emerald-800 flex items-center space-x-1.5">
+                <div className="space-y-3 p-3.5 bg-theme-primary-soft/60 rounded-xl border border-theme-primary-border">
+                  <div className="text-xs font-bold text-theme-primary-soft-fg flex items-center space-x-1.5">
                     <Building2 size={15} />
                     <span>প্রশিক্ষকের ধরন ও ব্যাচ নির্বাচন</span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">প্রশিক্ষকের ধরন (Trainer Type) *</label>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রশিক্ষকের ধরন (Trainer Type) *</label>
                     <select
                       value={addFormData.trainerType}
                       onChange={e => setAddFormData({ ...addFormData, trainerType: e.target.value as TrainerType })}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm font-semibold focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="Skill Trainer">স্কিল ট্রেইনার (Skill Trainer - বৃত্তিমূলক ট্রেড)</option>
                       <option value="Literacy Trainer">লিটারেসি ট্রেইনার (Literacy Trainer - সাক্ষরতা ও জীবন দক্ষতা)</option>
                     </select>
-                    <p className="text-[11px] text-slate-500 mt-1">
+                    <p className="text-[11px] text-theme-text-secondary mt-1">
                       {addFormData.trainerType === 'Skill Trainer' 
                         ? '✓ এই প্রশিক্ষক বৃত্তিমূলক ট্রেডের স্কিল মডিউল পরিচালনা করবেন।' 
                         : '✓ এই প্রশিক্ষক সাক্ষরতা ও জীবন দক্ষতা মডিউল পরিচালনা করবেন।'}
@@ -1227,7 +1227,7 @@ const UsersPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">প্রতিষ্ঠান *</label>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রতিষ্ঠান *</label>
                     <select
                       value={addFormData.instituteId}
                       onChange={e => {
@@ -1238,7 +1238,7 @@ const UsersPage: React.FC = () => {
                           batchId: ''
                         });
                       }}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="">প্রতিষ্ঠান নির্বাচন করুন</option>
                       {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -1246,11 +1246,11 @@ const UsersPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">নির্ধারিত ব্যাচ (Assigned Batch) *</label>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">নির্ধারিত ব্যাচ (Assigned Batch) *</label>
                     <select
                       value={addFormData.batchId}
                       onChange={e => setAddFormData({ ...addFormData, batchId: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-border-strong rounded-xl text-sm focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none cursor-pointer"
                     >
                       <option value="">ব্যাচ নির্বাচন করুন</option>
                       {batches
@@ -1264,24 +1264,24 @@ const UsersPage: React.FC = () => {
                           );
                         })}
                     </select>
-                    <p className="text-[11px] text-emerald-700/90 mt-1 font-medium">
+                    <p className="text-[11px] text-theme-primary mt-1 font-medium">
                       ✓ উপস্থিতি মডিউলে এই প্রশিক্ষক সরাসরি এই ব্যাচের প্রশিক্ষণার্থীদের তালিকা দেখতে পাবেন।
                     </p>
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-slate-100">
+              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-xs"
+                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs cursor-pointer"
                 >
                   নিবন্ধন সম্পন্ন করুন
                 </button>

@@ -218,28 +218,28 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-theme-bg text-theme-text-primary flex flex-col justify-center items-center p-4 selection:bg-theme-primary selection:text-theme-primary-fg">
       {/* Header Banner */}
       <div className="w-full max-w-md text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-2xl shadow-lg mb-3 shadow-emerald-600/20">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-theme-primary text-theme-primary-fg rounded-2xl shadow-md mb-3">
           <Building2 size={32} />
         </div>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+        <h1 className="text-2xl font-bold text-theme-text-primary tracking-tight">
           উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)
         </h1>
-        <p className="text-sm font-medium text-slate-600 mt-1">
+        <p className="text-sm font-medium text-theme-text-secondary mt-1">
           ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ ব্যবস্থাপনা
         </p>
       </div>
 
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200 overflow-hidden">
+      <div className="w-full max-w-md bg-theme-surface rounded-2xl shadow-xl border border-theme-border overflow-hidden">
         {/* Top 1-Click Google Sign-In */}
         <div className="p-5 pb-0">
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || loading}
-            className="w-full py-3 px-4 bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-700 font-bold rounded-xl border border-slate-300 shadow-xs flex items-center justify-center space-x-3 transition disabled:opacity-60 cursor-pointer"
+            className="w-full py-3 px-4 bg-theme-elevated hover:bg-theme-surface-hover active:scale-[0.99] text-theme-text-primary font-bold rounded-xl border border-theme-border shadow-2xs flex items-center justify-center space-x-3 transition disabled:opacity-60 cursor-pointer"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -252,22 +252,22 @@ const Login: React.FC = () => {
             </span>
           </button>
 
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink mx-3 text-[11px] text-slate-400 font-semibold uppercase">অথবা ইমেইল / পাসওয়ার্ড</span>
-            <div className="flex-grow border-t border-slate-200"></div>
+          <div className="relative flex py-2.5 items-center">
+            <div className="flex-grow border-t border-theme-border"></div>
+            <span className="flex-shrink mx-3 text-[11px] text-theme-text-muted font-semibold uppercase">অথবা ইমেইল / পাসওয়ার্ড</span>
+            <div className="flex-grow border-t border-theme-border"></div>
           </div>
         </div>
 
         {/* Switcher Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50/70 p-1.5 mx-5 rounded-xl">
+        <div className="flex bg-theme-surface-subtle border border-theme-border p-1 mx-5 rounded-xl">
           <button
             type="button"
             onClick={() => { setIsRegister(false); setError(''); }}
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               !isRegister
-                ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-theme-surface text-theme-primary shadow-xs border border-theme-border'
+                : 'text-theme-text-secondary hover:text-theme-text-primary'
             }`}
           >
             লগইন (Sign In)
@@ -277,20 +277,20 @@ const Login: React.FC = () => {
             onClick={() => { setIsRegister(true); setError(''); }}
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center space-x-1 ${
               isRegister
-                ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-theme-surface text-theme-primary shadow-xs border border-theme-border'
+                : 'text-theme-text-secondary hover:text-theme-text-primary'
             }`}
           >
             <span>নতুন নিবন্ধন</span>
             {!allowPublicRegistration && (
-              <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 text-[10px] rounded font-bold">বন্ধ</span>
+              <span className="px-1.5 py-0.2 bg-theme-danger-soft text-theme-danger text-[10px] rounded font-bold">বন্ধ</span>
             )}
           </button>
         </div>
 
         <div className="p-5 sm:p-6 pt-4">
           {error && (() => {
-            const isOperationNotAllowed = 
+            const isOperationNotAllowed =
               error.toLowerCase().includes('operation-not-allowed') ||
               error.includes('auth/operation-not-allowed') ||
               error.includes('সক্রিয় (Enabled) করা নেই') ||
@@ -298,17 +298,19 @@ const Login: React.FC = () => {
 
             return (
               <div className={`mb-4 p-3.5 rounded-xl border text-xs sm:text-sm ${
-                isOperationNotAllowed ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-red-50 border-red-200 text-red-700'
+                isOperationNotAllowed
+                  ? 'bg-theme-warning-soft border-theme-warning-border text-theme-warning'
+                  : 'bg-theme-danger-soft border-theme-danger-border text-theme-danger'
               }`}>
                 <div className="flex items-start space-x-2.5">
-                  <AlertCircle size={18} className={`shrink-0 mt-0.5 ${isOperationNotAllowed ? 'text-amber-600' : 'text-red-600'}`} />
+                  <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-semibold">{error}</p>
                     {isOperationNotAllowed && (
-                      <div className="mt-2.5 pt-2.5 border-t border-amber-200 text-[11px] text-amber-800 space-y-2">
-                        <p className="font-bold text-amber-950">🛠️ সমাধান নির্দেশিকা (Firebase Console Setup):</p>
-                        <ol className="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed">
-                          <li>নিচের লিঙ্কে ক্লিক করে Firebase কনসোলে যান (Project: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">feisty-utility-6mn89</code>)</li>
+                      <div className="mt-2.5 pt-2.5 border-t border-theme-warning-border text-[11px] text-theme-text-secondary space-y-2">
+                        <p className="font-bold text-theme-text-primary">সমাধান নির্দেশিকা (Firebase Console Setup):</p>
+                        <ol className="list-decimal list-inside space-y-1 leading-relaxed">
+                          <li>নিচের লিঙ্কে ক্লিক করে Firebase কনসোলে যান (Project: <code className="bg-theme-surface px-1 py-0.5 rounded font-mono">feisty-utility-6mn89</code>)</li>
                           <li><strong>Authentication &gt; Sign-in method</strong>-এ যান</li>
                           <li><strong>Email/Password</strong> অথবা <strong>Google</strong> প্রোভাইডার নির্বাচন করে <strong>Enable</strong> চালু করুন এবং <strong>Save</strong> করুন।</li>
                         </ol>
@@ -317,7 +319,7 @@ const Login: React.FC = () => {
                             href="https://console.firebase.google.com/project/feisty-utility-6mn89/authentication/providers"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition shadow-xs"
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-theme-warning text-theme-warning-fg rounded-lg font-semibold text-xs transition"
                           >
                             <span>Firebase Authentication কনসোল খুলুন</span>
                             <ArrowRight size={13} />
@@ -332,17 +334,16 @@ const Login: React.FC = () => {
           })()}
 
           {successMsg && (
-            <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-2.5 text-emerald-800 text-xs sm:text-sm">
-              <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-600" />
+            <div className="mb-4 p-3.5 rounded-xl bg-theme-success-soft border border-theme-success-border flex items-start space-x-2.5 text-theme-success text-xs sm:text-sm">
+              <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {!isRegister ? (
-            /* Login Form */
             <form onSubmit={handleLogin} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-theme-text-secondary mb-1">
                   ইমেইল বা মোবাইল নম্বর (Email or Phone)
                 </label>
                 <div className="relative">
@@ -352,15 +353,15 @@ const Login: React.FC = () => {
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
                     placeholder="e.g. director@bnfe.gov.bd বা 017xxxxxxxx"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs sm:text-sm transition"
+                    className="w-full pl-9 pr-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30 focus:border-theme-primary text-xs sm:text-sm transition"
                   />
-                  <Mail className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                  <Mail className="absolute left-3 top-2.5 text-theme-text-muted" size={16} />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-theme-text-secondary">
                     পাসওয়ার্ড (Password)
                   </label>
                   <button
@@ -371,7 +372,7 @@ const Login: React.FC = () => {
                       setForgotError('');
                       setForgotMsg('');
                     }}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold hover:underline cursor-pointer"
+                    className="text-[11px] text-theme-primary font-bold hover:underline cursor-pointer"
                   >
                     পাসওয়ার্ড ভুলে গেছেন?
                   </button>
@@ -383,16 +384,16 @@ const Login: React.FC = () => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs sm:text-sm transition"
+                    className="w-full pl-9 pr-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30 focus:border-theme-primary text-xs sm:text-sm transition"
                   />
-                  <Lock className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                  <Lock className="absolute left-3 top-2.5 text-theme-text-muted" size={16} />
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading || googleLoading}
-                className="w-full mt-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs shadow-emerald-600/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:opacity-50 flex items-center justify-center space-x-2 text-xs sm:text-sm cursor-pointer"
+                className="w-full mt-1 py-2.5 px-4 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg font-semibold rounded-xl shadow-xs focus:outline-none focus:ring-2 focus:ring-theme-primary transition-all disabled:opacity-50 flex items-center justify-center space-x-2 text-xs sm:text-sm cursor-pointer"
               >
                 {loading ? (
                   <span>যাচাই হচ্ছে...</span>
@@ -405,21 +406,20 @@ const Login: React.FC = () => {
               </button>
             </form>
           ) : (
-            /* Registration Form */
             <form onSubmit={handleRegister} className="space-y-3">
               {!allowPublicRegistration && (
-                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs space-y-1">
+                <div className="p-3 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-theme-warning text-xs space-y-1">
                   <div className="flex items-center space-x-1.5 font-bold">
-                    <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                    <AlertCircle size={15} className="shrink-0" />
                     <span>উন্মুক্ত নিবন্ধন বর্তমানে বন্ধ রয়েছে</span>
                   </div>
-                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                  <p className="text-[11px] text-theme-text-secondary leading-relaxed">
                     কোর্স পরিচালক কর্তৃক সাধারণ ব্যবহারকারীদের নতুন নিবন্ধন সাময়িকভাবে বন্ধ রাখা হয়েছে। আপনার অ্যাকাউন্টের জন্য সরাসরি কোর্স পরিচালকের সাথে যোগাযোগ করুন।
                   </p>
                 </div>
               )}
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-theme-text-secondary mb-0.5">
                   পূর্ণ নাম (Full Name) *
                 </label>
                 <div className="relative">
@@ -429,14 +429,14 @@ const Login: React.FC = () => {
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     placeholder="আপনার পূর্ণ নাম লিখুন"
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs"
+                    className="w-full pl-9 pr-3 py-1.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                   />
-                  <UserIcon className="absolute left-3 top-2 text-slate-400" size={15} />
+                  <UserIcon className="absolute left-3 top-2 text-theme-text-muted" size={15} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-theme-text-secondary mb-0.5">
                   ইমেইল (Email) *
                 </label>
                 <div className="relative">
@@ -446,14 +446,14 @@ const Login: React.FC = () => {
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     placeholder="name@bnfe.gov.bd"
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs"
+                    className="w-full pl-9 pr-3 py-1.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                   />
-                  <Mail className="absolute left-3 top-2 text-slate-400" size={15} />
+                  <Mail className="absolute left-3 top-2 text-theme-text-muted" size={15} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-theme-text-secondary mb-0.5">
                   মোবাইল নম্বর (Phone Number) *
                 </label>
                 <div className="relative">
@@ -463,14 +463,14 @@ const Login: React.FC = () => {
                     value={regPhone}
                     onChange={(e) => setRegPhone(e.target.value)}
                     placeholder="01712-345678"
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs"
+                    className="w-full pl-9 pr-3 py-1.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                   />
-                  <Phone className="absolute left-3 top-2 text-slate-400" size={15} />
+                  <Phone className="absolute left-3 top-2 text-theme-text-muted" size={15} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-theme-text-secondary mb-0.5">
                   পাসওয়ার্ড (Password) *
                 </label>
                 <div className="relative">
@@ -480,34 +480,34 @@ const Login: React.FC = () => {
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     placeholder="কমপক্ষে ৬ অক্ষর"
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs"
+                    className="w-full pl-9 pr-3 py-1.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                   />
-                  <Lock className="absolute left-3 top-2 text-slate-400" size={15} />
+                  <Lock className="absolute left-3 top-2 text-theme-text-muted" size={15} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-0.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-theme-text-secondary mb-0.5">
                   আবেদনকৃত দায়িত্ব (Requested Designation) *
                 </label>
                 <select
                   value={regRole}
                   onChange={(e) => setRegRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-xs"
+                  className="w-full px-3 py-1.5 bg-theme-elevated border border-theme-border rounded-xl text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                 >
                   <option value="Trainer">প্রশিক্ষক (Trainer - হাজিরা ও মূল্যায়ন)</option>
                   <option value="FMA">ফিল্ড মনিটরিং অফিসার (FMA)</option>
                   <option value="Staff">সাধারণ কর্মকর্তা (Field Staff)</option>
                 </select>
-                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200/70 p-2 rounded-lg mt-1.5 leading-relaxed">
+                <p className="text-[10px] text-theme-text-secondary bg-theme-warning-soft border border-theme-warning-border p-2 rounded-lg mt-1.5 leading-relaxed">
                   নিরাপত্তা নির্দেশিকা: নতুন নিবন্ধিত সকল অ্যাকাউন্ট প্রাথমিক অবস্থায় 'Pending Approval' থাকবে এবং কোর্স পরিচালক কর্তৃক যাচাই ও চূড়ান্ত ভূমিকা বরাদ্দ সাপেক্ষে পোর্টাল সক্রিয় হবে।
                 </p>
               </div>
 
               {regRole === 'Trainer' && (
-                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 space-y-2">
+                <div className="p-3 bg-theme-primary-soft/50 rounded-xl border border-theme-primary-border space-y-2">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">
+                    <label className="block text-[11px] font-semibold text-theme-text-secondary mb-0.5">
                       প্রশিক্ষণ কেন্দ্র (Training Center) *
                     </label>
                     <select
@@ -522,7 +522,7 @@ const Login: React.FC = () => {
                           setRegBatchId('');
                         }
                       }}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+                      className="w-full px-2.5 py-1.5 bg-theme-elevated border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                     >
                       {institutes.map(i => (
                         <option key={i.id} value={i.id}>{i.name}</option>
@@ -531,13 +531,13 @@ const Login: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">
+                    <label className="block text-[11px] font-semibold text-theme-text-secondary mb-0.5">
                       নির্ধারিত ব্যাচ (Assigned Batch) *
                     </label>
                     <select
                       value={regBatchId}
                       onChange={(e) => setRegBatchId(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+                      className="w-full px-2.5 py-1.5 bg-theme-elevated border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
                     >
                       {batches
                         .filter(b => !regInstituteId || b.instituteId === regInstituteId)
@@ -557,7 +557,7 @@ const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || googleLoading || !allowPublicRegistration}
-                className="w-full mt-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs shadow-emerald-600/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center justify-center space-x-2 cursor-pointer"
+                className="w-full mt-1 py-2.5 px-4 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg font-semibold rounded-xl shadow-xs focus:outline-none focus:ring-2 focus:ring-theme-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center justify-center space-x-2 cursor-pointer"
               >
                 {loading ? (
                   <span>নিবন্ধন তৈরি হচ্ছে...</span>
@@ -575,22 +575,22 @@ const Login: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-5 text-center text-xs text-slate-500">
+      <div className="mt-5 text-center text-xs text-theme-text-muted">
         বাংলাদেশ উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE) • প্রাথমিক ও গণশিক্ষা মন্ত্রণালয়
       </div>
 
       {/* Forgot Password Modal */}
       {isForgotModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-theme-elevated rounded-2xl shadow-2xl border border-theme-border max-w-md w-full overflow-hidden">
+            <div className="px-5 py-4 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center">
                   <KeyRound size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm">পাসওয়ার্ড রিসেট (Reset Password)</h3>
-                  <p className="text-[11px] text-slate-500">আপনার ইমেইলে রিসেট লিঙ্ক পাঠানো হবে</p>
+                  <h3 className="font-bold text-theme-text-primary text-sm">পাসওয়ার্ড রিসেট (Reset Password)</h3>
+                  <p className="text-[11px] text-theme-text-secondary">আপনার ইমেইলে রিসেট লিঙ্ক পাঠানো হবে</p>
                 </div>
               </div>
               <button
@@ -600,7 +600,7 @@ const Login: React.FC = () => {
                   setForgotError('');
                   setForgotMsg('');
                 }}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+                className="text-theme-text-muted hover:text-theme-text-primary p-1.5 rounded-lg hover:bg-theme-surface-hover transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -608,21 +608,21 @@ const Login: React.FC = () => {
 
             <form onSubmit={handlePasswordResetSubmit} className="p-5 space-y-4">
               {forgotMsg && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-start space-x-2">
-                  <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600" />
+                <div className="p-3 bg-theme-success-soft border border-theme-success-border rounded-xl text-theme-success text-xs flex items-start space-x-2">
+                  <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
                   <span className="leading-relaxed">{forgotMsg}</span>
                 </div>
               )}
 
               {forgotError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-start space-x-2">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                <div className="p-3 bg-theme-danger-soft border border-theme-danger-border rounded-xl text-theme-danger text-xs flex items-start space-x-2">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
                   <span className="leading-relaxed">{forgotError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-theme-text-primary mb-1">
                   রেজিস্টার্ড ইমেইল এড্রেস (Registered Email) *
                 </label>
                 <div className="relative">
@@ -632,27 +632,27 @@ const Login: React.FC = () => {
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     placeholder="example@gmail.com"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full pl-9 pr-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary text-xs focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/30"
                   />
-                  <Mail className="absolute left-3 top-2.5 text-slate-400" size={15} />
+                  <Mail className="absolute left-3 top-2.5 text-theme-text-muted" size={15} />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[11px] text-theme-text-secondary mt-1">
                   আপনার অ্যাকাউন্টের সাথে যুক্ত জিমেইল বা প্রাতিষ্ঠানিক ইমেইল লিখুন।
                 </p>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-theme-border">
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-theme-text-secondary hover:bg-theme-surface-hover transition-colors cursor-pointer"
                 >
                   বাতিল (Cancel)
                 </button>
                 <button
                   type="submit"
                   disabled={forgotLoading}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center space-x-1.5 shadow-xs"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-primary-fg bg-theme-primary hover:bg-theme-primary-hover disabled:opacity-50 transition-colors flex items-center space-x-1.5 shadow-xs cursor-pointer"
                 >
                   {forgotLoading ? (
                     <span>পাঠানো হচ্ছে...</span>

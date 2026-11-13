@@ -235,38 +235,38 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150 my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+      <div className="bg-theme-elevated border border-theme-border rounded-3xl max-w-4xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150 my-auto max-h-[92vh] flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-start justify-between border-b border-theme-border pb-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <Layers size={13} className="text-emerald-600" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border">
+              <Layers size={13} className="text-theme-primary" />
               <span>ব্যাচ: {batchName}</span>
             </div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-lg sm:text-xl font-black text-theme-text-primary tracking-tight">
               {typeLabelBn} বাল্ক ইনপুট (Bulk Module Import)
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-theme-text-secondary">
               CSV ফাইল আপলোড বা সরাসরি টেক্সট পেস্ট করে একসাথে একাধিক স্বতন্ত্র মডিউল যুক্ত করুন।
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            className="p-1.5 rounded-xl text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover transition"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Demo Template Bar (MANDATORY REQUIREMENT) */}
-        <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="p-4 rounded-2xl bg-theme-warning-soft/70 border border-theme-warning/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="space-y-0.5">
-            <div className="font-bold text-amber-950 flex items-center gap-1.5 text-sm">
-              <Sparkles size={16} className="text-amber-600" />
+            <div className="font-bold text-theme-warning-fg flex items-center gap-1.5 text-sm">
+              <Sparkles size={16} className="text-theme-warning" />
               <span>বাল্ক ইনপুটের নমুনা ডেমো ফাইল (Official Demo Template)</span>
             </div>
-            <p className="text-amber-800 text-[11px]">
+            <p className="text-theme-warning-fg/90 text-[11px]">
               ভুল এড়াতে নিচের ডেমো ফাইলটি ডাউনলোড করে এক্সেল বা নোটে এডিট করে আপলোড করুন।
             </p>
           </div>
@@ -286,7 +286,7 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
                 });
                 setDownloadingDemo(false);
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-theme-warning hover:opacity-90 text-white font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
               title="ডেমো CSV ফাইল ডাউনলোড করুন"
             >
               <Download size={14} />
@@ -296,10 +296,10 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
             <button
               type="button"
               onClick={handleCopyDemo}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 font-semibold transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-theme-surface hover:bg-theme-surface-hover text-theme-warning-fg border border-theme-warning/40 font-semibold transition cursor-pointer"
               title="নমুনা টেক্সট কপি করুন"
             >
-              {copiedDemo ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+              {copiedDemo ? <Check size={14} className="text-theme-success" /> : <Copy size={14} />}
               <span>{copiedDemo ? 'কপি হয়েছে' : 'টেক্সট কপি'}</span>
             </button>
           </div>
@@ -308,26 +308,26 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
         {demoDownloadNotice && (
           <div className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
             demoDownloadNotice.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : 'bg-rose-50 border-rose-200 text-rose-900'
+              ? 'bg-theme-success-soft border-theme-success/30 text-theme-success-fg'
+              : 'bg-theme-danger-soft border-theme-danger/30 text-theme-danger-fg'
           }`}>
             {demoDownloadNotice.type === 'success' ? (
-              <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+              <CheckCircle2 size={14} className="text-theme-success shrink-0" />
             ) : (
-              <AlertCircle size={14} className="text-rose-600 shrink-0" />
+              <AlertCircle size={14} className="text-theme-danger shrink-0" />
             )}
             <span>{demoDownloadNotice.text}</span>
           </div>
         )}
 
         {/* Tab Selection (Upload vs Paste) */}
-        <div className="flex items-center space-x-2 border-b border-slate-200">
+        <div className="flex items-center space-x-2 border-b border-theme-border">
           <button
             onClick={() => setActiveTab('upload')}
             className={`pb-2.5 px-4 text-xs font-bold transition border-b-2 flex items-center gap-1.5 ${
               activeTab === 'upload'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-theme-primary text-theme-primary'
+                : 'border-transparent text-theme-text-secondary hover:text-theme-text-primary'
             }`}
           >
             <Upload size={14} />
@@ -337,8 +337,8 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
             onClick={() => setActiveTab('paste')}
             className={`pb-2.5 px-4 text-xs font-bold transition border-b-2 flex items-center gap-1.5 ${
               activeTab === 'paste'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-theme-primary text-theme-primary'
+                : 'border-transparent text-theme-text-secondary hover:text-theme-text-primary'
             }`}
           >
             <FileText size={14} />
@@ -349,24 +349,24 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
         {/* Input Methods */}
         <div className="space-y-4">
           {activeTab === 'upload' ? (
-            <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center bg-slate-50/50 transition">
-              <Upload size={32} className="mx-auto text-slate-400 mb-2" />
-              <p className="text-xs font-bold text-slate-700">
+            <div className="border-2 border-dashed border-theme-border-strong hover:border-theme-primary rounded-2xl p-6 text-center bg-theme-surface-subtle transition">
+              <Upload size={32} className="mx-auto text-theme-text-muted mb-2" />
+              <p className="text-xs font-bold text-theme-text-primary">
                 কম্পিউটার থেকে CSV ফাইল নির্বাচন করুন
               </p>
-              <p className="text-[11px] text-slate-400 mt-1 mb-3">
+              <p className="text-[11px] text-theme-text-muted mt-1 mb-3">
                 UTF-8 এনকোডেড .csv বা .txt ফাইল সমর্থন করে
               </p>
               <input
                 type="file"
                 accept=".csv,.txt"
                 onChange={handleFileUpload}
-                className="text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 file:cursor-pointer"
+                className="text-xs text-theme-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-theme-primary file:text-theme-primary-fg hover:file:bg-theme-primary-hover file:cursor-pointer"
               />
             </div>
           ) : (
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
+              <label className="block text-xs font-bold text-theme-text-primary">
                 CSV অথবা ট্যাব সেপারেটেড টেক্সট পেস্ট করুন:
               </label>
               <textarea
@@ -374,7 +374,7 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
                 value={pastedText}
                 onChange={(e) => handlePasteChange(e.target.value)}
                 placeholder={demoContent}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="w-full bg-theme-surface-subtle border border-theme-border rounded-2xl p-3 text-xs font-mono text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
               />
             </div>
           )}
@@ -382,8 +382,8 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
 
         {/* Parse Feedback & Preview */}
         {parseErrors.length > 0 && (
-          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
-            <div className="font-bold flex items-center gap-1.5 text-rose-900">
+          <div className="p-3.5 rounded-xl bg-theme-danger-soft border border-theme-danger/30 text-theme-danger-fg text-xs space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-theme-danger-fg">
               <AlertCircle size={15} />
               <span>ত্রুটি শনাক্ত হয়েছে:</span>
             </div>
@@ -397,52 +397,52 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
 
         {parsedRows.length > 0 && (
           <div className="space-y-2 flex-1 min-h-0 flex flex-col">
-            <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={16} className="text-emerald-600" />
+            <div className="flex items-center justify-between text-xs font-bold text-theme-primary-soft-fg">
+              <span className="flex items-center gap-1.5 tabular-nums">
+                <CheckCircle2 size={16} className="text-theme-primary" />
                 <span>সফলভাবে {toBn(parsedRows.length)}টি মডিউল রো পার্স করা হয়েছে (প্রিভিউ):</span>
               </span>
-              <span className="text-slate-500 font-normal">
+              <span className="text-theme-text-secondary font-normal">
                 প্রথম ৫টি রো প্রদর্শিত হচ্ছে
               </span>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-36 overflow-y-auto text-xs">
+            <div className="overflow-x-auto border border-theme-border rounded-xl max-h-36 overflow-y-auto text-xs">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0">
+                <thead className="bg-theme-surface-subtle text-theme-text-primary font-bold sticky top-0 border-b border-theme-border">
                   <tr>
-                    <th className="p-2 border-b">দিন</th>
-                    <th className="p-2 border-b">মডিউল</th>
-                    <th className="p-2 border-b">কাজ নং</th>
-                    <th className="p-2 border-b">পঠিত বিষয় / টপিক</th>
+                    <th className="p-2 border-b border-theme-border">দিন</th>
+                    <th className="p-2 border-b border-theme-border">মডিউল</th>
+                    <th className="p-2 border-b border-theme-border">কাজ নং</th>
+                    <th className="p-2 border-b border-theme-border">পঠিত বিষয় / টপিক</th>
                     {isSkill ? (
                       <>
-                        <th className="p-2 border-b text-center">তাত্ত্বিক</th>
-                        <th className="p-2 border-b text-center">ব্যবহারিক</th>
+                        <th className="p-2 border-b border-theme-border text-center">তাত্ত্বিক</th>
+                        <th className="p-2 border-b border-theme-border text-center">ব্যবহারিক</th>
                       </>
                     ) : (
                       <>
-                        <th className="p-2 border-b text-center">সময়</th>
-                        <th className="p-2 border-b text-center">বিভাগ</th>
+                        <th className="p-2 border-b border-theme-border text-center">সময়</th>
+                        <th className="p-2 border-b border-theme-border text-center">বিভাগ</th>
                       </>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
+                <tbody className="divide-y divide-theme-border text-theme-text-primary bg-theme-surface">
                   {parsedRows.slice(0, 5).map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="p-2 font-bold">{toBn(row.dayNumber)}</td>
+                    <tr key={idx} className="hover:bg-theme-surface-hover">
+                      <td className="p-2 font-bold tabular-nums">{toBn(row.dayNumber)}</td>
                       <td className="p-2 truncate max-w-xs">{row.moduleName}</td>
-                      <td className="p-2 font-semibold text-emerald-700">{row.taskNo}</td>
+                      <td className="p-2 font-semibold text-theme-primary tabular-nums">{row.taskNo}</td>
                       <td className="p-2 truncate max-w-xs">{row.topic}</td>
                       {isSkill ? (
                         <>
-                          <td className="p-2 text-center">{toBn(row.theoryMinutes)}মি</td>
-                          <td className="p-2 text-center">{toBn(row.practicalMinutes)}মি</td>
+                          <td className="p-2 text-center tabular-nums">{toBn(row.theoryMinutes)}মি</td>
+                          <td className="p-2 text-center tabular-nums">{toBn(row.practicalMinutes)}মি</td>
                         </>
                       ) : (
                         <>
-                          <td className="p-2 text-center">{row.startTime} - {row.endTime}</td>
+                          <td className="p-2 text-center tabular-nums">{row.startTime} - {row.endTime}</td>
                           <td className="p-2 text-center">{row.category}</td>
                         </>
                       )}
@@ -453,13 +453,13 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
             </div>
 
             {/* Replacement Option */}
-            <div className="pt-2 flex items-center space-x-2 text-xs text-slate-700">
+            <div className="pt-2 flex items-center space-x-2 text-xs text-theme-text-primary">
               <input
                 type="checkbox"
                 id="replaceExisting"
                 checked={replaceExisting}
                 onChange={(e) => setReplaceExisting(e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                className="rounded border-theme-border-strong text-theme-primary focus:ring-theme-primary"
               />
               <label htmlFor="replaceExisting" className="font-semibold cursor-pointer">
                 এই ব্যাচের পূর্বের সকল {typeLabelBn} মুছে দিয়ে নতুন করে প্রতিস্থাপন করুন (Replace all)
@@ -469,11 +469,11 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
         )}
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100 shrink-0">
+        <div className="flex items-center justify-between pt-4 border-t border-theme-border shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover transition"
           >
             বাতিল
           </button>
@@ -482,7 +482,7 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
             type="button"
             disabled={parsedRows.length === 0 || loading}
             onClick={handleExecuteImport}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 tabular-nums"
           >
             {loading ? (
               <span>সংরক্ষণ হচ্ছে...</span>

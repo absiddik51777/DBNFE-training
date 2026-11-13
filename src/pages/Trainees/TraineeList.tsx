@@ -65,13 +65,13 @@ export function getDocumentType(val?: string | null): 'BRN' | 'NID' | 'OTHER' {
 }
 
 const BATCH_BADGE_COLORS = [
-  'bg-blue-50 text-blue-700 border-blue-200/60',
-  'bg-amber-50 text-amber-700 border-amber-200/60',
-  'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-  'bg-teal-50 text-teal-700 border-teal-200/60',
-  'bg-purple-50 text-purple-700 border-purple-200/60',
-  'bg-indigo-50 text-indigo-700 border-indigo-200/60',
-  'bg-rose-50 text-rose-700 border-rose-200/60',
+  'bg-theme-info-soft text-theme-info border-theme-info-border',
+  'bg-theme-warning-soft text-theme-warning border-theme-warning-border',
+  'bg-theme-primary-soft text-theme-primary-soft-fg border-theme-primary-border',
+  'bg-theme-accent-soft text-theme-accent border-theme-accent-border',
+  'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30',
+  'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30',
+  'bg-theme-danger-soft text-theme-danger border-theme-danger-border',
 ];
 
 const TraineeList: React.FC = () => {
@@ -1072,15 +1072,15 @@ const TraineeList: React.FC = () => {
   const renderStatusBadge = (status?: TraineeStatus) => {
     switch (status) {
       case 'Active':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">সক্রিয়</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-success-soft text-theme-success border border-theme-success-border">সক্রিয়</span>;
       case 'Completed':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-200">কোর্স সম্পন্ন</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-info-soft text-theme-info border border-theme-info-border">কোর্স সম্পন্ন</span>;
       case 'Dropped Out':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-300">ঝরে পড়া</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-warning-soft text-theme-warning border border-theme-warning-border">ঝরে পড়া</span>;
       case 'Archived':
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-800 border border-slate-300 flex items-center space-x-1"><Archive size={11} className="inline mr-1" /><span>আর্কাইভকৃত</span></span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-surface-subtle text-theme-text-secondary border border-theme-border-strong inline-flex items-center space-x-1"><Archive size={11} className="inline mr-1" /><span>আর্কাইভকৃত</span></span>;
       default:
-        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">সক্রিয়</span>;
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-theme-success-soft text-theme-success border border-theme-success-border">সক্রিয়</span>;
     }
   };
 
@@ -1089,11 +1089,11 @@ const TraineeList: React.FC = () => {
       <div className="space-y-6 pb-16">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
-            <div className="h-4 w-48 bg-slate-200/80 rounded animate-pulse mb-2" />
-            <div className="h-8 w-72 bg-slate-200/80 rounded-lg animate-pulse" />
+            <div className="h-4 w-48 bg-theme-surface-subtle rounded animate-pulse mb-2" />
+            <div className="h-8 w-72 bg-theme-surface-subtle rounded-lg animate-pulse" />
           </div>
         </div>
-        <div className="h-12 w-full bg-slate-100 rounded-2xl animate-pulse mb-2" />
+        <div className="h-12 w-full bg-theme-surface-subtle rounded-2xl animate-pulse mb-2" />
         <TableSkeleton rows={8} cols={8} />
       </div>
     );
@@ -1106,15 +1106,15 @@ const TraineeList: React.FC = () => {
       {/* ======================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-700 mb-1">
+          <div className="flex items-center space-x-2 text-xs font-semibold text-theme-primary mb-1">
             <span>উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</span>
             <span>•</span>
             <span>ঝরে পড়া কিশোর-কিশোরী নিবন্ধন</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-theme-text-primary tracking-tight">
             প্রশিক্ষণার্থী তালিকা (Trainee List)
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-theme-text-secondary mt-0.5">
             কারিগরি দক্ষতা উন্নয়ন কোর্সে ভর্তিকৃত শিক্ষার্থীদের সার্বিক তথ্য ও নিবন্ধন রেজিস্টার
           </p>
         </div>
@@ -1123,10 +1123,10 @@ const TraineeList: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition flex items-center space-x-1 shadow-2xs"
+            className="p-2.5 bg-theme-surface border border-theme-border text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl text-xs font-semibold transition flex items-center space-x-1 shadow-2xs"
             title="তথ্য রিফ্রেশ করুন"
           >
-            <RefreshCw size={15} className={refreshing ? 'animate-spin text-emerald-600' : ''} />
+            <RefreshCw size={15} className={refreshing ? 'animate-spin text-theme-primary' : ''} />
             <span className="hidden sm:inline">রিফ্রেশ</span>
           </button>
 
@@ -1136,25 +1136,25 @@ const TraineeList: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                className="px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-2 shadow-2xs transition cursor-pointer"
+                className="px-3.5 py-2.5 bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover hover:border-theme-border-strong rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-2 shadow-2xs transition cursor-pointer"
                 title="তথ্য এক্সপোর্ট করুন (Export Data)"
               >
-                <Download size={15} className="text-emerald-700" />
+                <Download size={15} className="text-theme-primary" />
                 <span>এক্সপোর্ট (Export)</span>
                 {selectedIds.size > 0 && (
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                  <span className="bg-theme-primary-soft text-theme-primary-soft-fg text-[10px] px-1.5 py-0.2 rounded-full font-bold tabular-nums">
                     {toBn(selectedIds.size)}
                   </span>
                 )}
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-theme-text-muted transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isExportMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50 text-xs animate-fadeIn">
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1.5 flex items-center justify-between">
+                <div className="absolute right-0 mt-1.5 w-72 bg-theme-elevated rounded-2xl border border-theme-border shadow-xl p-2 z-50 text-xs animate-fadeIn">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-theme-text-muted uppercase tracking-wider border-b border-theme-border mb-1.5 flex items-center justify-between">
                     <span>এক্সপোর্ট ফরম্যাট নির্বাচন করুন</span>
                     {selectedIds.size > 0 && (
-                      <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[9.5px]">
+                      <span className="text-theme-primary-soft-fg font-bold bg-theme-primary-soft px-1.5 py-0.5 rounded text-[9.5px] tabular-nums">
                         নির্বাচিত {toBn(selectedIds.size)} জন
                       </span>
                     )}
@@ -1168,17 +1168,17 @@ const TraineeList: React.FC = () => {
                       setIsExportMenuOpen(false);
                       handleExportData('pdf');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-rose-50 text-slate-700 hover:text-rose-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mb-1 border border-transparent hover:border-rose-100 group disabled:opacity-50"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-theme-danger-soft text-theme-text-primary flex items-center space-x-2.5 transition cursor-pointer font-medium mb-1 border border-transparent hover:border-theme-danger-border group disabled:opacity-50"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-theme-danger-soft text-theme-danger flex items-center justify-center shrink-0 group-hover:bg-theme-danger group-hover:text-theme-danger-fg transition-colors">
                       <FileText size={17} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-800 group-hover:text-rose-900">পিডিএফ (.pdf) ফাইল</span>
-                        <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 rounded font-bold">সরাসরি ডাউনলোড</span>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-theme-text-primary group-hover:text-theme-danger">পিডিএফ (.pdf) ফাইল</span>
+                        <span className="text-[9px] bg-theme-danger-soft text-theme-danger border border-theme-danger-border px-1.5 py-0.2 rounded font-bold shrink-0">সরাসরি ডাউনলোড</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 truncate">টেবিল অনুযায়ী পূর্ণাঙ্গ তালিকা ও APK বান্ধব</div>
+                      <div className="text-[10px] text-theme-text-secondary truncate">টেবিল অনুযায়ী পূর্ণাঙ্গ তালিকা ও APK বান্ধব</div>
                     </div>
                   </button>
 
@@ -1190,14 +1190,14 @@ const TraineeList: React.FC = () => {
                       setIsExportMenuOpen(false);
                       handleExportData('excel');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 flex items-center space-x-2.5 transition cursor-pointer font-medium disabled:opacity-50"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-theme-success-soft text-theme-text-primary flex items-center space-x-2.5 transition cursor-pointer font-medium disabled:opacity-50"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-theme-success-soft text-theme-success flex items-center justify-center shrink-0">
                       <FileSpreadsheet size={16} />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-800">মাইক্রোসফট এক্সেল (.xlsx)</div>
-                      <div className="text-[10px] text-slate-500">টেক্সট ফরম্যাট সহ স্প্রেডশিট</div>
+                      <div className="font-bold text-theme-text-primary">মাইক্রোসফট এক্সেল (.xlsx)</div>
+                      <div className="text-[10px] text-theme-text-secondary">টেক্সট ফরম্যাট সহ স্প্রেডশিট</div>
                     </div>
                   </button>
 
@@ -1209,14 +1209,14 @@ const TraineeList: React.FC = () => {
                       setIsExportMenuOpen(false);
                       handleExportData('csv');
                     }}
-                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-teal-50 text-slate-700 hover:text-teal-800 flex items-center space-x-2.5 transition cursor-pointer font-medium mt-1 disabled:opacity-50"
+                    className="w-full px-3 py-2 text-left rounded-xl hover:bg-theme-accent-soft text-theme-text-primary flex items-center space-x-2.5 transition cursor-pointer font-medium mt-1 disabled:opacity-50"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-theme-accent-soft text-theme-accent flex items-center justify-center shrink-0">
                       <Download size={16} />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-800">সিএসভি (.csv) ফাইল</div>
-                      <div className="text-[10px] text-slate-500">বাংলা ইউনিকোড UTF-8 ফরম্যাট</div>
+                      <div className="font-bold text-theme-text-primary">সিএসভি (.csv) ফাইল</div>
+                      <div className="text-[10px] text-theme-text-secondary">বাংলা ইউনিকোড UTF-8 ফরম্যাট</div>
                     </div>
                   </button>
                 </div>
@@ -1227,10 +1227,10 @@ const TraineeList: React.FC = () => {
           {canCreate && (
             <button
               onClick={() => setBulkImportOpen(true)}
-              className="px-3.5 py-2.5 bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-2xs transition cursor-pointer"
+              className="px-3.5 py-2.5 bg-theme-accent-soft border border-theme-accent-border text-theme-accent hover:opacity-90 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-2xs transition cursor-pointer"
               title="এক্সেল অথবা সিএসভি ফাইলের মাধ্যমে একযোগে একাধিক শিক্ষার্থী নিবন্ধন করুন"
             >
-              <Upload size={16} className="text-teal-700" />
+              <Upload size={16} className="text-theme-accent" />
               <span>বাল্ক ইনপুট (Excel/CSV)</span>
             </button>
           )}
@@ -1238,7 +1238,7 @@ const TraineeList: React.FC = () => {
           {canCreate && (
             <Link
               to="/trainees/add"
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-sm shadow-emerald-700/20 transition"
+              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 shadow-sm transition"
             >
               <Plus size={18} />
               <span>নতুন শিক্ষার্থী ভর্তি</span>
@@ -1249,8 +1249,8 @@ const TraineeList: React.FC = () => {
 
       {/* Success Notification Alert */}
       {actionSuccessMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2.5 animate-fadeIn">
-          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2.5 animate-fadeIn">
+          <CheckCircle2 size={18} className="text-theme-success shrink-0" />
           <span className="font-medium">{actionSuccessMessage}</span>
         </div>
       )}
@@ -1274,7 +1274,7 @@ const TraineeList: React.FC = () => {
             {!isTrainer && (
               <>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">প্রশিক্ষণ প্রতিষ্ঠান:</label>
+                  <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রশিক্ষণ প্রতিষ্ঠান:</label>
                   <select
                     value={filterInstitute}
                     onChange={(e) => { 
@@ -1282,7 +1282,7 @@ const TraineeList: React.FC = () => {
                       setFilterBatch(''); 
                       setCurrentPage(1); 
                     }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
                   >
                     <option value="">সকল প্রতিষ্ঠান ({toBn(institutes.length)}টি)</option>
                     {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -1290,7 +1290,7 @@ const TraineeList: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">বৃত্তিমূলক ট্রেড:</label>
+                  <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">বৃত্তিমূলক ট্রেড:</label>
                   <select
                     value={filterTrade}
                     onChange={(e) => { 
@@ -1298,7 +1298,7 @@ const TraineeList: React.FC = () => {
                       setFilterBatch(''); 
                       setCurrentPage(1); 
                     }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
                   >
                     <option value="">সকল ট্রেড ({toBn(trades.length)}টি)</option>
                     {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1306,11 +1306,11 @@ const TraineeList: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">প্রশিক্ষণ ব্যাচ:</label>
+                  <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রশিক্ষণ ব্যাচ:</label>
                   <select
                     value={filterBatch}
                     onChange={(e) => { setFilterBatch(e.target.value); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
                   >
                     <option value="">সকল ব্যাচ ({toBn(availableBatchOptions.length)}টি)</option>
                     {availableBatchOptions.map(b => <option key={b.id} value={b.id}>{b.name} ({b.batchCode || b.id})</option>)}
@@ -1321,11 +1321,11 @@ const TraineeList: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">লিঙ্গ:</label>
+                <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">লিঙ্গ:</label>
                 <select
                   value={filterGender}
                   onChange={(e) => { setFilterGender(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
                 >
                   <option value="">সকল লিঙ্গ</option>
                   <option value="Male">পুরুষ (Male)</option>
@@ -1335,11 +1335,11 @@ const TraineeList: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">স্ট্যাটাস:</label>
+                <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">স্ট্যাটাস:</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-theme-text-primary font-medium focus:bg-theme-surface focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
                 >
                   <option value="">সকল অবস্থা</option>
                   <option value="Active">সক্রিয় (Active)</option>
@@ -1350,10 +1350,10 @@ const TraineeList: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Document Type Segmented Control (Matching User Screenshot 2) */}
-            <div className="pt-2.5 border-t border-slate-100">
+            {/* 2. Document Type Segmented Control */}
+            <div className="pt-2.5 border-t border-theme-border">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-slate-800">
+                <label className="text-xs font-bold text-theme-text-primary">
                   Document Type (পরিচয়পত্রের ধরন)
                 </label>
                 <button
@@ -1365,8 +1365,8 @@ const TraineeList: React.FC = () => {
                   }}
                   className={`text-[11px] font-bold transition cursor-pointer ${
                     filterIncludeNid && filterIncludeBrn
-                      ? 'text-emerald-700 hover:underline'
-                      : 'text-slate-500 hover:text-emerald-600 hover:underline'
+                      ? 'text-theme-primary hover:underline'
+                      : 'text-theme-text-secondary hover:text-theme-primary hover:underline'
                   }`}
                   title="উভয় ডকুমেন্ট ফিল্টার একসাথে চালু করুন"
                 >
@@ -1375,8 +1375,8 @@ const TraineeList: React.FC = () => {
               </div>
 
               {/* Segmented Dual Card Container */}
-              <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex items-stretch gap-1.5">
-                {/* BRN Card (Matching Screenshot 2 Mint Green) */}
+              <div className="bg-theme-surface-subtle p-1.5 rounded-2xl border border-theme-border flex items-stretch gap-1.5">
+                {/* BRN Card */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1392,31 +1392,31 @@ const TraineeList: React.FC = () => {
                   }}
                   className={`flex-1 py-3 px-3 rounded-xl transition cursor-pointer text-center relative flex flex-col items-center justify-center ${
                     filterIncludeBrn
-                      ? 'bg-[#A7F3D0] text-emerald-950 border border-emerald-300 shadow-2xs ring-1 ring-emerald-500/20'
-                      : 'bg-transparent text-slate-500 hover:bg-white/60 hover:text-slate-800'
+                      ? 'bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border shadow-2xs ring-1 ring-theme-primary/20'
+                      : 'bg-transparent text-theme-text-secondary hover:bg-theme-surface hover:text-theme-text-primary'
                   }`}
                 >
-                  <div className="font-extrabold text-base sm:text-lg tracking-wide flex items-center justify-center space-x-1.5 text-emerald-950">
+                  <div className="font-extrabold text-base sm:text-lg tracking-wide flex items-center justify-center space-x-1.5">
                     <span>BRN</span>
-                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
-                      filterIncludeBrn ? 'bg-emerald-300/80 text-emerald-950' : 'bg-slate-200 text-slate-600'
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full tabular-nums ${
+                      filterIncludeBrn ? 'bg-theme-primary/20 text-theme-primary-soft-fg' : 'bg-theme-surface text-theme-text-secondary border border-theme-border'
                     }`}>
                       {toBn(docCounts.brn)}
                     </span>
                   </div>
                   <div className={`text-xs font-semibold mt-0.5 ${
-                    filterIncludeBrn ? 'text-emerald-900' : 'text-slate-600'
+                    filterIncludeBrn ? 'text-theme-primary-soft-fg' : 'text-theme-text-secondary'
                   }`}>
                     Birth Registration
                   </div>
                   <div className={`text-[10px] mt-0.5 ${
-                    filterIncludeBrn ? 'text-emerald-800/80' : 'text-slate-400'
+                    filterIncludeBrn ? 'text-theme-primary-soft-fg/80' : 'text-theme-text-muted'
                   }`}>
                     (১৭ ডিজিট)
                   </div>
                 </button>
 
-                {/* NID Card (Coordinated with website brand) */}
+                {/* NID Card */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1432,25 +1432,25 @@ const TraineeList: React.FC = () => {
                   }}
                   className={`flex-1 py-3 px-3 rounded-xl transition cursor-pointer text-center relative flex flex-col items-center justify-center ${
                     filterIncludeNid
-                      ? 'bg-teal-100/90 text-teal-950 border border-teal-300 shadow-2xs ring-1 ring-teal-500/20'
-                      : 'bg-transparent text-slate-500 hover:bg-white/60 hover:text-slate-800'
+                      ? 'bg-theme-accent-soft text-theme-accent border border-theme-accent-border shadow-2xs ring-1 ring-theme-accent/20'
+                      : 'bg-transparent text-theme-text-secondary hover:bg-theme-surface hover:text-theme-text-primary'
                   }`}
                 >
-                  <div className="font-extrabold text-base sm:text-lg tracking-wide flex items-center justify-center space-x-1.5 text-slate-800">
-                    <span className={filterIncludeNid ? 'text-teal-950' : 'text-slate-700'}>NID</span>
-                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
-                      filterIncludeNid ? 'bg-teal-200/90 text-teal-950' : 'bg-slate-200 text-slate-600'
+                  <div className="font-extrabold text-base sm:text-lg tracking-wide flex items-center justify-center space-x-1.5">
+                    <span>NID</span>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full tabular-nums ${
+                      filterIncludeNid ? 'bg-theme-accent/20 text-theme-accent' : 'bg-theme-surface text-theme-text-secondary border border-theme-border'
                     }`}>
                       {toBn(docCounts.nid)}
                     </span>
                   </div>
                   <div className={`text-xs font-semibold mt-0.5 ${
-                    filterIncludeNid ? 'text-teal-900' : 'text-slate-600'
+                    filterIncludeNid ? 'text-theme-accent' : 'text-theme-text-secondary'
                   }`}>
                     National ID
                   </div>
                   <div className={`text-[10px] mt-0.5 ${
-                    filterIncludeNid ? 'text-teal-800/80' : 'text-slate-400'
+                    filterIncludeNid ? 'text-theme-accent/80' : 'text-theme-text-muted'
                   }`}>
                     (১০ বা ১৩ ডিজিট)
                   </div>
@@ -1464,12 +1464,12 @@ const TraineeList: React.FC = () => {
         onResetColumns={resetColumns}
         extraActions={
           <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 px-2.5 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
+            <div className="flex items-center space-x-1 px-2.5 h-9 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs">
+              <ArrowUpDown size={13} className="text-theme-text-muted shrink-0" />
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent font-medium text-theme-text-primary focus:outline-hidden cursor-pointer pr-1"
                 title="সাজানোর ক্রম"
               >
                 <option value="id_asc">আইডি (ছোট-বড়)</option>
@@ -1479,11 +1479,11 @@ const TraineeList: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 h-9">
+            <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9">
               <button
                 onClick={() => setViewMode('table')}
                 className={`h-7 px-2 rounded-lg text-xs font-semibold transition ${
-                  viewMode === 'table' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  viewMode === 'table' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="টেবিল ভিউ"
               >
@@ -1492,7 +1492,7 @@ const TraineeList: React.FC = () => {
               <button
                 onClick={() => setViewMode('cards')}
                 className={`h-7 px-2 rounded-lg text-xs font-semibold transition ${
-                  viewMode === 'cards' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                  viewMode === 'cards' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
                 }`}
                 title="কার্ড ভিউ"
               >
@@ -1504,10 +1504,10 @@ const TraineeList: React.FC = () => {
       />
 
       {/* ======================================================== */}
-      {/* 3.5 BATCH TABS FILTER BAR (MATCHING USER SCREENSHOT 1)   */}
+      {/* 3.5 BATCH TABS FILTER BAR                                */}
       {/* ======================================================== */}
       {availableBatchOptions.length > 0 && (
-        <div className="bg-white/95 backdrop-blur-xs rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 flex items-center overflow-x-auto no-scrollbar scroll-smooth gap-1 sm:gap-1.5">
+        <div className="bg-theme-surface/95 backdrop-blur-xs rounded-2xl border border-theme-border shadow-2xs p-1.5 flex items-center overflow-x-auto no-scrollbar scroll-smooth gap-1 sm:gap-1.5">
           {/* 'All' Tab with total count */}
           <button
             type="button"
@@ -1517,15 +1517,15 @@ const TraineeList: React.FC = () => {
             }}
             className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-2 shrink-0 transition cursor-pointer ${
               !filterBatch
-                ? 'bg-white shadow-xs border border-slate-200/90 text-emerald-800 font-bold ring-2 ring-emerald-500/10'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                ? 'bg-theme-surface shadow-xs border border-theme-primary text-theme-primary font-bold ring-2 ring-theme-primary/15'
+                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
             }`}
           >
             <span>All</span>
-            <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition ${
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border tabular-nums transition ${
               !filterBatch
-                ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                : 'bg-slate-100 text-slate-600 border-slate-200'
+                ? 'bg-theme-primary-soft text-theme-primary-soft-fg border-theme-primary-border'
+                : 'bg-theme-surface-subtle text-theme-text-secondary border-theme-border'
             }`}>
               {toBn(batchTabsData.totalCount)}
             </span>
@@ -1546,15 +1546,15 @@ const TraineeList: React.FC = () => {
                 }}
                 className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-2 shrink-0 transition cursor-pointer ${
                   isSelected
-                    ? 'bg-white shadow-xs border border-emerald-400 text-emerald-950 font-bold ring-2 ring-emerald-500/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-theme-surface shadow-xs border border-theme-primary text-theme-primary font-bold ring-2 ring-theme-primary/20'
+                    : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                 }`}
                 title={batch.name}
               >
                 <span className="truncate max-w-[170px] sm:max-w-[220px]">{batch.name}</span>
-                <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition ${
+                <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border tabular-nums transition ${
                   isSelected
-                    ? 'bg-emerald-500 text-white border-emerald-600 shadow-2xs'
+                    ? 'bg-theme-primary text-theme-primary-fg border-theme-primary shadow-2xs'
                     : badgeColor
                 }`}>
                   {toBn(batch.count)}
@@ -1569,18 +1569,18 @@ const TraineeList: React.FC = () => {
       {/* 4. BULK SELECTION ACTION BAR (WHEN ROWS ARE SELECTED)     */}
       {/* ======================================================== */}
       {selectedIds.size > 0 && (
-        <div className="bg-emerald-900 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+        <div className="bg-emerald-900 dark:bg-emerald-950 border border-emerald-700/60 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
           <div className="flex items-center space-x-3 text-xs">
-            <span className="w-7 h-7 rounded-lg bg-emerald-700 flex items-center justify-center font-bold">
+            <span className="w-7 h-7 rounded-lg bg-emerald-700 flex items-center justify-center font-bold tabular-nums">
               {toBn(selectedIds.size)}
             </span>
-            <span>
+            <span className="tabular-nums">
               জন শিক্ষার্থী নির্বাচিত হয়েছে (মোট {toBn(filteredTrainees.length)} জনের মধ্যে)
             </span>
             {selectedIds.size < filteredTrainees.length && (
               <button
                 onClick={handleSelectAllFiltered}
-                className="underline text-emerald-200 hover:text-white font-bold"
+                className="underline text-emerald-200 hover:text-white font-bold tabular-nums"
               >
                 ফিল্টারকৃত সকল {toBn(filteredTrainees.length)} জন নির্বাচন করুন
               </button>
@@ -1642,10 +1642,10 @@ const TraineeList: React.FC = () => {
       {/* 5. TRAINEES DATA TABLE (DESKTOP / DEFAULT VIEW)          */}
       {/* ======================================================== */}
       {filteredTrainees.length === 0 ? (
-        <div className="bg-white p-16 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl space-y-2">
-          <Users size={40} className="mx-auto text-slate-300" />
-          <p className="font-bold text-slate-700 text-sm">কোনো প্রশিক্ষণার্থী পাওয়া যায়নি</p>
-          <p className="text-slate-500 max-w-md mx-auto">
+        <div className="bg-theme-surface p-16 text-center text-theme-text-muted text-xs border border-dashed border-theme-border-strong rounded-2xl space-y-2">
+          <Users size={40} className="mx-auto text-theme-text-muted" />
+          <p className="font-bold text-theme-text-primary text-sm">কোনো প্রশিক্ষণার্থী পাওয়া যায়নি</p>
+          <p className="text-theme-text-secondary max-w-md mx-auto">
             {!filterIncludeNid && !filterIncludeBrn
               ? 'NID এবং জন্ম নিবন্ধন ফিল্টারের উভয়টিই বন্ধ রয়েছে। প্রশিক্ষণার্থীদের তালিকা দেখতে অনুগ্রহ করে NID বা BRN অন করুন।'
               : activeFiltersCount > 0 
@@ -1659,14 +1659,14 @@ const TraineeList: React.FC = () => {
                 setFilterIncludeNid(true);
                 setFilterIncludeBrn(true);
               }}
-              className="mt-2 inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition cursor-pointer"
+              className="mt-2 inline-flex items-center space-x-1.5 px-4 py-2 bg-theme-info text-theme-info-fg text-xs font-bold rounded-xl hover:opacity-90 transition cursor-pointer"
             >
               <span>NID ও BRN উভয় ফিল্টার চালু করুন (ডিফল্ট)</span>
             </button>
           ) : canCreate ? (
             <Link
               to="/trainees/add"
-              className="mt-2 inline-flex items-center space-x-1 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition"
+              className="mt-2 inline-flex items-center space-x-1 px-4 py-2 bg-theme-primary text-theme-primary-fg text-xs font-bold rounded-xl hover:bg-theme-primary-hover transition"
             >
               <Plus size={15} />
               <span>নতুন শিক্ষার্থী ভর্তি করুন</span>
@@ -1674,20 +1674,20 @@ const TraineeList: React.FC = () => {
           ) : null}
         </div>
       ) : viewMode === 'table' ? (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left">
-              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+            <table className="min-w-full divide-y divide-theme-border text-left">
+              <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3.5 w-10 text-center">
                     <button
                       type="button"
                       onClick={handleSelectAllOnPage}
-                      className="text-slate-500 hover:text-slate-800"
+                      className="text-theme-text-secondary hover:text-theme-text-primary"
                       title="এই পৃষ্ঠার সব নির্বাচন করুন"
                     >
                       {paginatedList.length > 0 && paginatedList.every(t => selectedIds.has(t.id)) ? (
-                        <CheckSquare size={17} className="text-emerald-600" />
+                        <CheckSquare size={17} className="text-theme-primary" />
                       ) : (
                         <Square size={17} />
                       )}
@@ -1705,7 +1705,7 @@ const TraineeList: React.FC = () => {
                   {isColVisible('actions') && <th className="px-4 py-3.5 text-right">অ্যাকশন</th>}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-100 text-xs">
+              <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
                 {groupBy !== 'none' && groupedTrainees ? (
                   groupedTrainees.map(grp => {
                     const isCollapsed = collapsedGroups.has(grp.key);
@@ -1713,26 +1713,26 @@ const TraineeList: React.FC = () => {
                     return (
                       <React.Fragment key={grp.key}>
                         {/* Group Header Row */}
-                        <tr className="bg-slate-100/80 hover:bg-slate-100 border-y border-slate-200 font-bold transition">
+                        <tr className="bg-theme-surface-subtle hover:bg-theme-surface-hover border-y border-theme-border font-bold transition">
                           <td colSpan={1 + columns.filter(c => c.visible).length} className="px-4 py-2.5">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <button
                                   type="button"
                                   onClick={() => toggleGroupCollapse(grp.key)}
-                                  className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded transition cursor-pointer"
+                                  className="p-1 text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface rounded transition cursor-pointer"
                                 >
                                   {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                 </button>
-                                <span className="text-xs sm:text-sm text-slate-800 font-bold">
+                                <span className="text-xs sm:text-sm text-theme-text-primary font-bold">
                                   {grp.title}
                                 </span>
                                 {grp.subtitle && (
-                                  <span className="text-xs font-normal text-slate-500 hidden sm:inline">
+                                  <span className="text-xs font-normal text-theme-text-secondary hidden sm:inline">
                                     • {grp.subtitle}
                                   </span>
                                 )}
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border tabular-nums">
                                   {toBn(grp.items.length)} জন
                                 </span>
                               </div>
@@ -1749,11 +1749,11 @@ const TraineeList: React.FC = () => {
                                     }
                                     setSelectedIds(next);
                                   }}
-                                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+                                  className="text-[11px] font-semibold text-theme-primary hover:underline cursor-pointer"
                                 >
                                   {allGroupSelected ? 'গ্রুপ আনসিলেক্ট' : 'গ্রুপের সব সিলেক্ট'}
                                 </button>
-                                <span className="text-[11px] text-slate-400">
+                                <span className="text-[11px] text-theme-text-muted tabular-nums">
                                   মোটের {toBn(Math.round((grp.items.length / (filteredTrainees.length || 1)) * 100))}%
                                 </span>
                               </div>
@@ -1767,16 +1767,16 @@ const TraineeList: React.FC = () => {
                           return (
                             <tr 
                               key={t.id} 
-                              className={`hover:bg-slate-50/80 transition-colors ${isChecked ? 'bg-emerald-50/40' : ''}`}
+                              className={`hover:bg-theme-surface-hover transition-colors ${isChecked ? 'bg-theme-primary-soft/25' : ''}`}
                             >
                               <td className="px-4 py-3.5 text-center">
                                 <button
                                   type="button"
                                   onClick={() => handleToggleSelectRow(t.id)}
-                                  className="text-slate-400 hover:text-slate-700"
+                                  className="text-theme-text-muted hover:text-theme-text-primary"
                                 >
                                   {isChecked ? (
-                                    <CheckSquare size={16} className="text-emerald-600" />
+                                    <CheckSquare size={16} className="text-theme-primary" />
                                   ) : (
                                     <Square size={16} />
                                   )}
@@ -1786,14 +1786,14 @@ const TraineeList: React.FC = () => {
                               {/* 1. ID, Reg & Status */}
                               {isColVisible('id_reg_status') && (
                                 <td className="px-4 py-3.5 whitespace-nowrap">
-                                  <span className="font-mono font-bold text-slate-800 block text-xs">
+                                  <span className="font-mono tabular-nums font-bold text-theme-text-primary block text-xs">
                                     {t.traineeId || 'N/A'}
                                   </span>
-                                  <span className="text-[11px] font-mono block mt-0.5">
+                                  <span className="text-[11px] font-mono tabular-nums block mt-0.5">
                                     {t.registrationNumber ? (
-                                      <span className="text-slate-500">রেজিঃ {t.registrationNumber}</span>
+                                      <span className="text-theme-text-secondary">রেজিঃ {t.registrationNumber}</span>
                                     ) : (
-                                      <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
+                                      <span className="text-theme-warning bg-theme-warning-soft px-1.5 py-0.5 rounded border border-theme-warning-border text-[10px]">
                                         রেজিঃ অপেক্ষমাণ
                                       </span>
                                     )}
@@ -1809,19 +1809,19 @@ const TraineeList: React.FC = () => {
                                 <td className="px-4 py-3.5">
                                   <Link
                                     to={`/trainees/${t.id}`}
-                                    className="group block hover:text-emerald-700 transition"
+                                    className="group block hover:text-theme-primary transition"
                                     title="প্রশিক্ষণার্থীর প্রোফাইল দেখুন"
                                   >
-                                    <div className="font-bold text-slate-800 text-xs leading-snug group-hover:text-emerald-700 flex items-center space-x-1">
+                                    <div className="font-bold text-theme-text-primary text-xs leading-snug group-hover:text-theme-primary flex items-center space-x-1">
                                       <span>{t.nameBn || t.nameEn}</span>
-                                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-emerald-600 transition shrink-0" />
+                                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-theme-primary transition shrink-0" />
                                     </div>
                                   </Link>
-                                  <div className="flex items-center space-x-1 text-[11px] font-mono text-slate-600 mt-1">
-                                    <Phone size={11} className="text-slate-400 shrink-0" />
+                                  <div className="flex items-center space-x-1 text-[11px] font-mono tabular-nums text-theme-text-secondary mt-1">
+                                    <Phone size={11} className="text-theme-text-muted shrink-0" />
                                     <span>{t.mobileNumber || '-'}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">
+                                  <div className="text-[10px] text-theme-text-muted mt-0.5">
                                     পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
                                   </div>
                                 </td>
@@ -1830,14 +1830,14 @@ const TraineeList: React.FC = () => {
                               {/* 3. Batch, Institute & Trade */}
                               {isColVisible('batch_info') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="font-semibold text-slate-800 truncate max-w-[170px]" title={getInstituteName(t.instituteId)}>
+                                  <div className="font-semibold text-theme-text-primary truncate max-w-[170px]" title={getInstituteName(t.instituteId)}>
                                     {getInstituteName(t.instituteId)}
                                   </div>
-                                  <div className="text-[11px] text-emerald-700 font-medium truncate max-w-[170px] mt-0.5" title={getTradeName(t.tradeId)}>
+                                  <div className="text-[11px] text-theme-primary font-medium truncate max-w-[170px] mt-0.5" title={getTradeName(t.tradeId)}>
                                     {getTradeName(t.tradeId)}
                                   </div>
                                   <div className="mt-1">
-                                    <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 font-semibold text-[11px] inline-block">
+                                    <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-semibold text-[11px] inline-block">
                                       {getBatchName(t.batchId)}
                                     </span>
                                   </div>
@@ -1847,20 +1847,20 @@ const TraineeList: React.FC = () => {
                               {/* 4. ID Document & Age */}
                               {isColVisible('id_doc_info') && (
                                 <td className="px-4 py-3.5 text-xs whitespace-nowrap">
-                                  <div className="font-mono font-bold text-slate-800 text-xs tracking-wider select-all mb-1">
+                                  <div className="font-mono tabular-nums font-bold text-theme-text-primary text-xs tracking-wider select-all mb-1">
                                     {t.nidOrBirthRegistration ? (
                                       t.nidOrBirthRegistration
                                     ) : (
-                                      <span className="text-[10px] text-slate-400 font-normal italic font-sans">
+                                      <span className="text-[10px] text-theme-text-muted font-normal italic font-sans">
                                         আইডি নেই
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[11px] text-slate-600">
+                                  <div className="text-[11px] text-theme-text-secondary tabular-nums">
                                     জন্ম: <span className="font-mono font-medium">{formatDobToDDMMYYYY(t.dateOfBirth)}</span>
                                   </div>
-                                  <div className="text-[10.5px] text-slate-500 mt-0.5">
-                                    বয়স: <span className="font-bold text-slate-700">{calculateAgeAtBatchStart(t)}</span>
+                                  <div className="text-[10.5px] text-theme-text-muted mt-0.5 tabular-nums">
+                                    বয়স: <span className="font-bold text-theme-text-primary">{calculateAgeAtBatchStart(t)}</span>
                                   </div>
                                 </td>
                               )}
@@ -1868,7 +1868,7 @@ const TraineeList: React.FC = () => {
                               {/* 5. Present Address */}
                               {isColVisible('present_address') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="text-xs text-slate-700 max-w-[180px] break-words line-clamp-2" title={t.presentAddress || t.address || '-'}>
+                                  <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.presentAddress || t.address || '-'}>
                                     {t.presentAddress || t.address || '-'}
                                   </div>
                                 </td>
@@ -1876,24 +1876,24 @@ const TraineeList: React.FC = () => {
 
                               {/* 6. Previous Education & Dropout Info */}
                               {isColVisible('prev_education') && (
-                                <td className="px-4 py-3.5 text-xs text-slate-600">
+                                <td className="px-4 py-3.5 text-xs text-theme-text-secondary">
                                   <div>
-                                    <span className="font-semibold text-slate-800">
+                                    <span className="font-semibold text-theme-text-primary">
                                       {t.lastClassCompleted || '-'}
                                     </span>
                                     {t.yearOfDropout && (
-                                      <span className="text-[11px] text-amber-700 ml-1">
+                                      <span className="text-[11px] text-theme-warning ml-1 tabular-nums">
                                         (ঝরে পড়ার বছর: {toBn(t.yearOfDropout)})
                                       </span>
                                     )}
                                   </div>
                                   {t.previousSchoolName && (
-                                    <div className="text-[11px] text-slate-500 truncate max-w-[160px] mt-0.5" title={t.previousSchoolName}>
+                                    <div className="text-[11px] text-theme-text-secondary truncate max-w-[160px] mt-0.5" title={t.previousSchoolName}>
                                       বিদ্যালয়: {t.previousSchoolName}
                                     </div>
                                   )}
                                   {t.reasonForDropout && (
-                                    <div className="text-[10.5px] text-slate-400 italic truncate max-w-[160px] mt-0.5" title={t.reasonForDropout}>
+                                    <div className="text-[10.5px] text-theme-text-muted italic truncate max-w-[160px] mt-0.5" title={t.reasonForDropout}>
                                       কারণ: {t.reasonForDropout}
                                     </div>
                                   )}
@@ -1902,8 +1902,8 @@ const TraineeList: React.FC = () => {
 
                               {/* 7. Guardian Info (Hideable, default hidden) */}
                               {isColVisible('guardian_info') && (
-                                <td className="px-4 py-3.5 text-xs text-slate-600">
-                                  <div className="font-medium text-slate-800">
+                                <td className="px-4 py-3.5 text-xs text-theme-text-secondary">
+                                  <div className="font-medium text-theme-text-primary">
                                     মাতা: {t.motherNameBn || t.motherNameEn || '-'}
                                   </div>
                                 </td>
@@ -1912,7 +1912,7 @@ const TraineeList: React.FC = () => {
                               {/* 8. Permanent Address (Hideable, default hidden) */}
                               {isColVisible('permanent_address') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="text-xs text-slate-600 max-w-[180px] break-words line-clamp-2" title={t.permanentAddress || t.address || '-'}>
+                                  <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.permanentAddress || t.address || '-'}>
                                     {t.permanentAddress || t.address || '-'}
                                   </div>
                                 </td>
@@ -1920,7 +1920,7 @@ const TraineeList: React.FC = () => {
 
                               {/* 9. Attendance & Marks (Hideable, default hidden) */}
                               {isColVisible('attendance_marks') && (
-                                <td className="px-4 py-3.5 text-xs text-slate-500">
+                                <td className="px-4 py-3.5 text-xs text-theme-text-muted">
                                   <span>-</span>
                                 </td>
                               )}
@@ -1932,7 +1932,7 @@ const TraineeList: React.FC = () => {
                                     {canViewDetails && (
                                       <Link
                                         to={`/trainees/${t.id}`}
-                                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                        className="p-1.5 text-theme-primary hover:bg-theme-primary-soft rounded-lg transition"
                                         title="প্রোফাইল দেখুন"
                                       >
                                         <Eye size={16} />
@@ -1942,7 +1942,7 @@ const TraineeList: React.FC = () => {
                                       <Link
                                         to={getEditUrl(t.id)}
                                         onClick={handleEditClick}
-                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition"
                                         title="তথ্য সম্পাদনা"
                                       >
                                         <Edit2 size={16} />
@@ -1951,7 +1951,7 @@ const TraineeList: React.FC = () => {
                                     {(t.status === 'Archived' || t.isArchived) && canEdit && (
                                       <button
                                         onClick={() => handleRestoreTrainee(t)}
-                                        className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                                        className="p-1.5 text-theme-accent hover:bg-theme-accent-soft rounded-lg transition"
                                         title="সক্রিয় তালিকায় পুনরুদ্ধার করুন (Restore)"
                                       >
                                         <ArchiveRestore size={16} />
@@ -1960,7 +1960,7 @@ const TraineeList: React.FC = () => {
                                     {canDelete && (
                                       <button
                                         onClick={() => handleDeleteRequest(t)}
-                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition"
                                         title={!isDeletionAllowed ? 'আর্কাইভে পাঠান (ডিলিট বন্ধ থাকায়)' : 'মুছে ফেলুন বা সংরক্ষণাগারে পাঠান'}
                                       >
                                         <Trash2 size={16} />
@@ -1981,17 +1981,17 @@ const TraineeList: React.FC = () => {
                     return (
                       <tr 
                         key={t.id} 
-                        className={`hover:bg-slate-50/80 transition-colors ${isChecked ? 'bg-emerald-50/40' : ''}`}
+                        className={`hover:bg-theme-surface-hover transition-colors ${isChecked ? 'bg-theme-primary-soft/25' : ''}`}
                       >
                         {/* Checkbox */}
                         <td className="px-4 py-3.5 text-center">
                           <button
                             type="button"
                             onClick={() => handleToggleSelectRow(t.id)}
-                            className="text-slate-400 hover:text-slate-700"
+                            className="text-theme-text-muted hover:text-theme-text-primary"
                           >
                             {isChecked ? (
-                              <CheckSquare size={16} className="text-emerald-600" />
+                              <CheckSquare size={16} className="text-theme-primary" />
                             ) : (
                               <Square size={16} />
                             )}
@@ -2001,14 +2001,14 @@ const TraineeList: React.FC = () => {
                         {/* 1. ID, Reg & Status */}
                         {isColVisible('id_reg_status') && (
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className="font-mono font-bold text-slate-800 block text-xs">
+                            <span className="font-mono tabular-nums font-bold text-theme-text-primary block text-xs">
                               {t.traineeId || 'N/A'}
                             </span>
-                            <span className="text-[11px] font-mono block mt-0.5">
+                            <span className="text-[11px] font-mono tabular-nums block mt-0.5">
                               {t.registrationNumber ? (
-                                <span className="text-slate-500">রেজিঃ {t.registrationNumber}</span>
+                                <span className="text-theme-text-secondary">রেজিঃ {t.registrationNumber}</span>
                               ) : (
-                                <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
+                                <span className="text-theme-warning bg-theme-warning-soft px-1.5 py-0.5 rounded border border-theme-warning-border text-[10px]">
                                   রেজিঃ অপেক্ষমাণ
                                 </span>
                               )}
@@ -2024,19 +2024,19 @@ const TraineeList: React.FC = () => {
                           <td className="px-4 py-3.5">
                             <Link
                               to={`/trainees/${t.id}`}
-                              className="group block hover:text-emerald-700 transition"
+                              className="group block hover:text-theme-primary transition"
                               title="প্রশিক্ষণার্থীর প্রোফাইল দেখুন"
                             >
-                              <div className="font-bold text-slate-800 text-xs leading-snug group-hover:text-emerald-700 flex items-center space-x-1">
+                              <div className="font-bold text-theme-text-primary text-xs leading-snug group-hover:text-theme-primary flex items-center space-x-1">
                                 <span>{t.nameBn || t.nameEn}</span>
-                                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-emerald-600 transition shrink-0" />
+                                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-theme-primary transition shrink-0" />
                               </div>
                             </Link>
-                            <div className="flex items-center space-x-1 text-[11px] font-mono text-slate-600 mt-1">
-                              <Phone size={11} className="text-slate-400 shrink-0" />
+                            <div className="flex items-center space-x-1 text-[11px] font-mono tabular-nums text-theme-text-secondary mt-1">
+                              <Phone size={11} className="text-theme-text-muted shrink-0" />
                               <span>{t.mobileNumber || '-'}</span>
                             </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
+                            <div className="text-[10px] text-theme-text-muted mt-0.5">
                               পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
                             </div>
                           </td>
@@ -2045,14 +2045,14 @@ const TraineeList: React.FC = () => {
                         {/* 3. Batch, Institute & Trade */}
                         {isColVisible('batch_info') && (
                           <td className="px-4 py-3.5">
-                            <div className="font-semibold text-slate-800 truncate max-w-[170px]" title={getInstituteName(t.instituteId)}>
+                            <div className="font-semibold text-theme-text-primary truncate max-w-[170px]" title={getInstituteName(t.instituteId)}>
                               {getInstituteName(t.instituteId)}
                             </div>
-                            <div className="text-[11px] text-emerald-700 font-medium truncate max-w-[170px] mt-0.5" title={getTradeName(t.tradeId)}>
+                            <div className="text-[11px] text-theme-primary font-medium truncate max-w-[170px] mt-0.5" title={getTradeName(t.tradeId)}>
                               {getTradeName(t.tradeId)}
                             </div>
                             <div className="mt-1">
-                              <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 font-semibold text-[11px] inline-block">
+                              <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-semibold text-[11px] inline-block">
                                 {getBatchName(t.batchId)}
                               </span>
                             </div>
@@ -2062,20 +2062,20 @@ const TraineeList: React.FC = () => {
                         {/* 4. ID Document & Age */}
                         {isColVisible('id_doc_info') && (
                           <td className="px-4 py-3.5 text-xs whitespace-nowrap">
-                            <div className="font-mono font-bold text-slate-800 text-xs tracking-wider select-all mb-1">
+                            <div className="font-mono tabular-nums font-bold text-theme-text-primary text-xs tracking-wider select-all mb-1">
                               {t.nidOrBirthRegistration ? (
                                 t.nidOrBirthRegistration
                               ) : (
-                                <span className="text-[10px] text-slate-400 font-normal italic font-sans">
+                                <span className="text-[10px] text-theme-text-muted font-normal italic font-sans">
                                   আইডি নেই
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-600">
+                            <div className="text-[11px] text-theme-text-secondary tabular-nums">
                               জন্ম: <span className="font-mono font-medium">{formatDobToDDMMYYYY(t.dateOfBirth)}</span>
                             </div>
-                            <div className="text-[10.5px] text-slate-500 mt-0.5">
-                              বয়স: <span className="font-bold text-slate-700">{calculateAgeAtBatchStart(t)}</span>
+                            <div className="text-[10.5px] text-theme-text-muted mt-0.5 tabular-nums">
+                              বয়স: <span className="font-bold text-theme-text-primary">{calculateAgeAtBatchStart(t)}</span>
                             </div>
                           </td>
                         )}
@@ -2083,7 +2083,7 @@ const TraineeList: React.FC = () => {
                         {/* 5. Present Address */}
                         {isColVisible('present_address') && (
                           <td className="px-4 py-3.5">
-                            <div className="text-xs text-slate-700 max-w-[180px] break-words line-clamp-2" title={t.presentAddress || t.address || '-'}>
+                            <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.presentAddress || t.address || '-'}>
                               {t.presentAddress || t.address || '-'}
                             </div>
                           </td>
@@ -2091,24 +2091,24 @@ const TraineeList: React.FC = () => {
 
                         {/* 6. Previous Education & Dropout Info */}
                         {isColVisible('prev_education') && (
-                          <td className="px-4 py-3.5 text-xs text-slate-600">
+                          <td className="px-4 py-3.5 text-xs text-theme-text-secondary">
                             <div>
-                              <span className="font-semibold text-slate-800">
+                              <span className="font-semibold text-theme-text-primary">
                                 {t.lastClassCompleted || '-'}
                               </span>
                               {t.yearOfDropout && (
-                                <span className="text-[11px] text-amber-700 ml-1">
+                                <span className="text-[11px] text-theme-warning ml-1 tabular-nums">
                                   (ঝরে পড়ার বছর: {toBn(t.yearOfDropout)})
                                 </span>
                               )}
                             </div>
                             {t.previousSchoolName && (
-                              <div className="text-[11px] text-slate-500 truncate max-w-[160px] mt-0.5" title={t.previousSchoolName}>
+                              <div className="text-[11px] text-theme-text-secondary truncate max-w-[160px] mt-0.5" title={t.previousSchoolName}>
                                 বিদ্যালয়: {t.previousSchoolName}
                               </div>
                             )}
                             {t.reasonForDropout && (
-                              <div className="text-[10.5px] text-slate-400 italic truncate max-w-[160px] mt-0.5" title={t.reasonForDropout}>
+                              <div className="text-[10.5px] text-theme-text-muted italic truncate max-w-[160px] mt-0.5" title={t.reasonForDropout}>
                                 কারণ: {t.reasonForDropout}
                               </div>
                             )}
@@ -2117,8 +2117,8 @@ const TraineeList: React.FC = () => {
 
                         {/* 7. Guardian Info (Hideable, default hidden) */}
                         {isColVisible('guardian_info') && (
-                          <td className="px-4 py-3.5 text-xs text-slate-600">
-                            <div className="font-medium text-slate-800">
+                          <td className="px-4 py-3.5 text-xs text-theme-text-secondary">
+                            <div className="font-medium text-theme-text-primary">
                               মাতা: {t.motherNameBn || t.motherNameEn || '-'}
                             </div>
                           </td>
@@ -2127,7 +2127,7 @@ const TraineeList: React.FC = () => {
                         {/* 8. Permanent Address (Hideable, default hidden) */}
                         {isColVisible('permanent_address') && (
                           <td className="px-4 py-3.5">
-                            <div className="text-xs text-slate-600 max-w-[180px] break-words line-clamp-2" title={t.permanentAddress || t.address || '-'}>
+                            <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.permanentAddress || t.address || '-'}>
                               {t.permanentAddress || t.address || '-'}
                             </div>
                           </td>
@@ -2135,7 +2135,7 @@ const TraineeList: React.FC = () => {
 
                         {/* 9. Attendance & Marks (Hideable, default hidden) */}
                         {isColVisible('attendance_marks') && (
-                          <td className="px-4 py-3.5 text-xs text-slate-500">
+                          <td className="px-4 py-3.5 text-xs text-theme-text-muted">
                             <span>-</span>
                           </td>
                         )}
@@ -2147,7 +2147,7 @@ const TraineeList: React.FC = () => {
                               {canViewDetails && (
                                 <Link
                                   to={`/trainees/${t.id}`}
-                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                  className="p-1.5 text-theme-primary hover:bg-theme-primary-soft rounded-lg transition"
                                   title="প্রোফাইল দেখুন"
                                 >
                                   <Eye size={16} />
@@ -2157,7 +2157,7 @@ const TraineeList: React.FC = () => {
                                 <Link
                                   to={getEditUrl(t.id)}
                                   onClick={handleEditClick}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition"
                                   title="তথ্য সম্পাদনা"
                                 >
                                   <Edit2 size={16} />
@@ -2166,7 +2166,7 @@ const TraineeList: React.FC = () => {
                               {(t.status === 'Archived' || t.isArchived) && canEdit && (
                                 <button
                                   onClick={() => handleRestoreTrainee(t)}
-                                  className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                                  className="p-1.5 text-theme-accent hover:bg-theme-accent-soft rounded-lg transition"
                                   title="সক্রিয় তালিকায় পুনরুদ্ধার করুন (Restore)"
                                 >
                                   <ArchiveRestore size={16} />
@@ -2175,7 +2175,7 @@ const TraineeList: React.FC = () => {
                               {canDelete && (
                                 <button
                                   onClick={() => handleDeleteRequest(t)}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition"
                                   title={!isDeletionAllowed ? 'আর্কাইভে পাঠান (ডিলিট বন্ধ থাকায়)' : 'মুছে ফেলুন বা সংরক্ষণাগারে পাঠান'}
                                 >
                                   <Trash2 size={16} />
@@ -2202,15 +2202,15 @@ const TraineeList: React.FC = () => {
               const isCollapsed = collapsedGroups.has(grp.key);
               return (
                 <div key={grp.key} className="space-y-3">
-                  <div className="bg-slate-100 p-3 rounded-2xl flex items-center justify-between border border-slate-200">
+                  <div className="bg-theme-surface-subtle p-3 rounded-2xl flex items-center justify-between border border-theme-border">
                     <button
                       type="button"
                       onClick={() => toggleGroupCollapse(grp.key)}
-                      className="flex items-center space-x-2 text-slate-800 font-bold"
+                      className="flex items-center space-x-2 text-theme-text-primary font-bold"
                     >
                       {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                       <span className="text-sm">{grp.title}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border tabular-nums">
                         {toBn(grp.items.length)} জন
                       </span>
                     </button>
@@ -2222,8 +2222,8 @@ const TraineeList: React.FC = () => {
                         return (
                           <div 
                             key={t.id}
-                            className={`bg-white rounded-2xl border p-4.5 shadow-xs flex flex-col justify-between space-y-3 transition hover:shadow-md ${
-                              isChecked ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-slate-200/90'
+                            className={`bg-theme-surface rounded-2xl border p-4.5 shadow-xs flex flex-col justify-between space-y-3 transition hover:shadow-md ${
+                              isChecked ? 'border-theme-primary ring-2 ring-theme-primary/20 bg-theme-primary-soft/15' : 'border-theme-border'
                             }`}
                           >
                             <div className="space-y-2.5">
@@ -2232,16 +2232,16 @@ const TraineeList: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => handleToggleSelectRow(t.id)}
-                                    className="text-slate-400 hover:text-slate-700"
+                                    className="text-theme-text-muted hover:text-theme-text-primary"
                                   >
                                     {isChecked ? (
-                                      <CheckSquare size={16} className="text-emerald-600" />
+                                      <CheckSquare size={16} className="text-theme-primary" />
                                     ) : (
                                       <Square size={16} />
                                     )}
                                   </button>
                                   {isColVisible('id_reg_status') && (
-                                    <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                                    <span className="font-mono tabular-nums font-bold text-xs bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border">
                                       {t.traineeId || 'N/A'}
                                     </span>
                                   )}
@@ -2253,31 +2253,31 @@ const TraineeList: React.FC = () => {
                                 <div>
                                   <Link
                                     to={`/trainees/${t.id}`}
-                                    className="group block hover:text-emerald-700 transition"
+                                    className="group block hover:text-theme-primary transition"
                                     title="প্রশিক্ষণার্থীর প্রোফাইল দেখুন"
                                   >
-                                    <h3 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-emerald-700 flex items-center space-x-1">
+                                    <h3 className="font-bold text-theme-text-primary text-sm leading-snug group-hover:text-theme-primary flex items-center space-x-1">
                                       <span>{t.nameBn || t.nameEn}</span>
-                                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-emerald-600 transition shrink-0" />
+                                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-theme-primary transition shrink-0" />
                                     </h3>
                                     {t.nameEn && t.nameBn && (
-                                      <p className="text-[11px] text-slate-400 italic">{t.nameEn}</p>
+                                      <p className="text-[11px] text-theme-text-muted italic">{t.nameEn}</p>
                                     )}
                                   </Link>
-                                  <div className="flex items-center space-x-1 text-[11px] font-mono text-slate-600 mt-1">
-                                    <Phone size={11} className="text-slate-400 shrink-0" />
+                                  <div className="flex items-center space-x-1 text-[11px] font-mono tabular-nums text-theme-text-secondary mt-1">
+                                    <Phone size={11} className="text-theme-text-muted shrink-0" />
                                     <span>{t.mobileNumber || '-'}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5">
+                                  <div className="text-[10px] text-theme-text-muted mt-0.5">
                                     পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
                                   </div>
                                   {isColVisible('id_reg_status') && (
-                                    <span className="text-[11px] text-slate-500 block mt-1">
+                                    <span className="text-[11px] text-theme-text-secondary block mt-1">
                                       রেজিস্ট্রেশন:{' '}
                                       {t.registrationNumber ? (
-                                        <strong className="font-mono text-slate-700">{t.registrationNumber}</strong>
+                                        <strong className="font-mono tabular-nums text-theme-text-primary">{t.registrationNumber}</strong>
                                       ) : (
-                                        <span className="text-amber-700 font-normal italic text-[10px] bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                                        <span className="text-theme-warning font-normal italic text-[10px] bg-theme-warning-soft px-1 py-0.2 rounded border border-theme-warning-border">
                                           অপেক্ষমাণ
                                         </span>
                                       )}
@@ -2287,69 +2287,69 @@ const TraineeList: React.FC = () => {
                               )}
 
                               {isColVisible('batch_info') && (
-                                <div className="space-y-1 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                                <div className="space-y-1 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
                                   <div className="flex items-center space-x-1.5 truncate">
-                                    <Layers size={13} className="text-purple-600 shrink-0" />
-                                    <span className="truncate font-semibold text-purple-900">{getBatchName(t.batchId)}</span>
+                                    <Layers size={13} className="text-purple-500 dark:text-purple-400 shrink-0" />
+                                    <span className="truncate font-semibold text-purple-600 dark:text-purple-300">{getBatchName(t.batchId)}</span>
                                   </div>
                                   <div className="flex items-center space-x-1.5 truncate">
-                                    <Wrench size={13} className="text-emerald-600 shrink-0" />
+                                    <Wrench size={13} className="text-theme-primary shrink-0" />
                                     <span className="truncate">{getTradeName(t.tradeId)}</span>
                                   </div>
                                   <div className="flex items-center space-x-1.5 truncate">
-                                    <Building2 size={13} className="text-slate-400 shrink-0" />
+                                    <Building2 size={13} className="text-theme-text-muted shrink-0" />
                                     <span className="truncate">{getInstituteName(t.instituteId)}</span>
                                   </div>
                                 </div>
                               )}
 
                               {isColVisible('id_doc_info') && (
-                                <div className="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
-                                  <div className="font-mono font-bold text-slate-800 text-xs tracking-wider select-all break-all">
+                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border space-y-1">
+                                  <div className="font-mono tabular-nums font-bold text-theme-text-primary text-xs tracking-wider select-all break-all">
                                     {t.nidOrBirthRegistration ? (
                                       t.nidOrBirthRegistration
                                     ) : (
-                                      <span className="text-[10px] text-slate-400 font-normal italic font-sans">
+                                      <span className="text-[10px] text-theme-text-muted font-normal italic font-sans">
                                         আইডি নেই
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                                    <span>জন্ম: <strong className="font-mono text-slate-700">{formatDobToDDMMYYYY(t.dateOfBirth)}</strong></span>
-                                    <span>বয়স: <strong className="text-slate-700">{calculateAgeAtBatchStart(t)}</strong></span>
+                                  <div className="text-[11px] text-theme-text-secondary flex items-center justify-between tabular-nums">
+                                    <span>জন্ম: <strong className="font-mono text-theme-text-primary">{formatDobToDDMMYYYY(t.dateOfBirth)}</strong></span>
+                                    <span>বয়স: <strong className="text-theme-text-primary">{calculateAgeAtBatchStart(t)}</strong></span>
                                   </div>
                                 </div>
                               )}
 
                               {isColVisible('present_address') && (
-                                <div className="text-xs text-slate-600 pt-2 border-t border-slate-100">
-                                  <span className="text-[10px] text-slate-400 block">বর্তমান ঠিকানা:</span>
-                                  <span className="text-slate-700 line-clamp-2">{t.presentAddress || t.address || '-'}</span>
+                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                                  <span className="text-[10px] text-theme-text-muted block">বর্তমান ঠিকানা:</span>
+                                  <span className="text-theme-text-primary line-clamp-2">{t.presentAddress || t.address || '-'}</span>
                                 </div>
                               )}
 
                               {isColVisible('prev_education') && (
-                                <div className="text-xs text-slate-600 pt-2 border-t border-slate-100">
-                                  <span className="text-[10px] text-slate-400 block">পূর্ববর্তী শিক্ষা:</span>
-                                  <span className="font-medium text-slate-700">{t.lastClassCompleted || '-'}</span>
+                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                                  <span className="text-[10px] text-theme-text-muted block">পূর্ববর্তী শিক্ষা:</span>
+                                  <span className="font-medium text-theme-text-primary">{t.lastClassCompleted || '-'}</span>
                                   {t.yearOfDropout && (
-                                    <span className="text-[11px] text-amber-700 ml-1">
+                                    <span className="text-[11px] text-theme-warning ml-1 tabular-nums">
                                       (ঝরে পড়ার বছর: {toBn(t.yearOfDropout)})
                                     </span>
                                   )}
                                   {t.previousSchoolName && (
-                                    <div className="text-[11px] text-slate-500 truncate mt-0.5">{t.previousSchoolName}</div>
+                                    <div className="text-[11px] text-theme-text-secondary truncate mt-0.5">{t.previousSchoolName}</div>
                                   )}
                                 </div>
                               )}
                             </div>
 
                             {isColVisible('actions') && (
-                              <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                              <div className="pt-2.5 border-t border-theme-border flex items-center justify-between text-xs">
                                 {canViewDetails && (
                                   <Link
                                     to={`/trainees/${t.id}`}
-                                    className="text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1"
+                                    className="text-theme-primary hover:underline font-bold flex items-center space-x-1"
                                   >
                                     <Eye size={13} />
                                     <span>প্রোফাইল</span>
@@ -2361,7 +2361,7 @@ const TraineeList: React.FC = () => {
                                     <Link
                                       to={getEditUrl(t.id)}
                                       onClick={handleEditClick}
-                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition"
                                       title="সম্পাদনা"
                                     >
                                       <Edit2 size={15} />
@@ -2370,7 +2370,7 @@ const TraineeList: React.FC = () => {
                                   {(t.status === 'Archived' || t.isArchived) && canEdit && (
                                     <button
                                       onClick={() => handleRestoreTrainee(t)}
-                                      className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                                      className="p-1.5 text-theme-accent hover:bg-theme-accent-soft rounded-lg transition"
                                       title="সক্রিয় তালিকায় ফিরিয়ে আনুন (Restore)"
                                     >
                                       <ArchiveRestore size={15} />
@@ -2379,7 +2379,7 @@ const TraineeList: React.FC = () => {
                                   {canDelete && (
                                     <button
                                       onClick={() => handleDeleteRequest(t)}
-                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                      className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition"
                                       title={!isDeletionAllowed ? 'আর্কাইভে পাঠান (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                                     >
                                       <Trash2 size={15} />
@@ -2403,8 +2403,8 @@ const TraineeList: React.FC = () => {
                 return (
                   <div 
                     key={t.id}
-                    className={`bg-white rounded-2xl border p-4.5 shadow-xs flex flex-col justify-between space-y-3 transition hover:shadow-md ${
-                      isChecked ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-slate-200/90'
+                    className={`bg-theme-surface rounded-2xl border p-4.5 shadow-xs flex flex-col justify-between space-y-3 transition hover:shadow-md ${
+                      isChecked ? 'border-theme-primary ring-2 ring-theme-primary/20 bg-theme-primary-soft/15' : 'border-theme-border'
                     }`}
                   >
                     <div className="space-y-2.5">
@@ -2413,16 +2413,16 @@ const TraineeList: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleSelectRow(t.id)}
-                            className="text-slate-400 hover:text-slate-700"
+                            className="text-theme-text-muted hover:text-theme-text-primary"
                           >
                             {isChecked ? (
-                              <CheckSquare size={16} className="text-emerald-600" />
+                              <CheckSquare size={16} className="text-theme-primary" />
                             ) : (
                               <Square size={16} />
                             )}
                           </button>
                           {isColVisible('id_reg_status') && (
-                            <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200">
+                            <span className="font-mono tabular-nums font-bold text-xs bg-theme-surface-subtle text-theme-text-primary px-2 py-0.5 rounded-md border border-theme-border">
                               {t.traineeId || 'N/A'}
                             </span>
                           )}
@@ -2434,31 +2434,31 @@ const TraineeList: React.FC = () => {
                         <div>
                           <Link
                             to={`/trainees/${t.id}`}
-                            className="group block hover:text-emerald-700 transition"
+                            className="group block hover:text-theme-primary transition"
                             title="প্রশিক্ষণার্থীর প্রোফাইল দেখুন"
                           >
-                            <h3 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-emerald-700 flex items-center space-x-1">
+                            <h3 className="font-bold text-theme-text-primary text-sm leading-snug group-hover:text-theme-primary flex items-center space-x-1">
                               <span>{t.nameBn || t.nameEn}</span>
-                              <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-emerald-600 transition shrink-0" />
+                              <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-theme-primary transition shrink-0" />
                             </h3>
                             {t.nameEn && t.nameBn && (
-                              <p className="text-[11px] text-slate-400 italic">{t.nameEn}</p>
+                              <p className="text-[11px] text-theme-text-muted italic">{t.nameEn}</p>
                             )}
                           </Link>
-                          <div className="flex items-center space-x-1 text-[11px] font-mono text-slate-600 mt-1">
-                            <Phone size={11} className="text-slate-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-[11px] font-mono tabular-nums text-theme-text-secondary mt-1">
+                            <Phone size={11} className="text-theme-text-muted shrink-0" />
                             <span>{t.mobileNumber || '-'}</span>
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
+                          <div className="text-[10px] text-theme-text-muted mt-0.5">
                             পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
                           </div>
                           {isColVisible('id_reg_status') && (
-                            <span className="text-[11px] text-slate-500 block mt-1">
+                            <span className="text-[11px] text-theme-text-secondary block mt-1">
                               রেজিস্ট্রেশন:{' '}
                               {t.registrationNumber ? (
-                                <strong className="font-mono text-slate-700">{t.registrationNumber}</strong>
+                                <strong className="font-mono tabular-nums text-theme-text-primary">{t.registrationNumber}</strong>
                               ) : (
-                                <span className="text-amber-700 font-normal italic text-[10px] bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                                <span className="text-theme-warning font-normal italic text-[10px] bg-theme-warning-soft px-1 py-0.2 rounded border border-theme-warning-border">
                                   অপেক্ষমাণ
                                 </span>
                               )}
@@ -2468,69 +2468,69 @@ const TraineeList: React.FC = () => {
                       )}
 
                       {isColVisible('batch_info') && (
-                        <div className="space-y-1 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                        <div className="space-y-1 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
                           <div className="flex items-center space-x-1.5 truncate">
-                            <Layers size={13} className="text-purple-600 shrink-0" />
-                            <span className="truncate font-semibold text-purple-900">{getBatchName(t.batchId)}</span>
+                            <Layers size={13} className="text-purple-500 dark:text-purple-400 shrink-0" />
+                            <span className="truncate font-semibold text-purple-600 dark:text-purple-300">{getBatchName(t.batchId)}</span>
                           </div>
                           <div className="flex items-center space-x-1.5 truncate">
-                            <Wrench size={13} className="text-emerald-600 shrink-0" />
+                            <Wrench size={13} className="text-theme-primary shrink-0" />
                             <span className="truncate">{getTradeName(t.tradeId)}</span>
                           </div>
                           <div className="flex items-center space-x-1.5 truncate">
-                            <Building2 size={13} className="text-slate-400 shrink-0" />
+                            <Building2 size={13} className="text-theme-text-muted shrink-0" />
                             <span className="truncate">{getInstituteName(t.instituteId)}</span>
                           </div>
                         </div>
                       )}
 
                       {isColVisible('id_doc_info') && (
-                        <div className="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
-                          <div className="font-mono font-bold text-slate-800 text-xs tracking-wider select-all break-all">
+                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border space-y-1">
+                          <div className="font-mono tabular-nums font-bold text-theme-text-primary text-xs tracking-wider select-all break-all">
                             {t.nidOrBirthRegistration ? (
                               t.nidOrBirthRegistration
                             ) : (
-                              <span className="text-[10px] text-slate-400 font-normal italic font-sans">
+                              <span className="text-[10px] text-theme-text-muted font-normal italic font-sans">
                                 আইডি নেই
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                            <span>জন্ম: <strong className="font-mono text-slate-700">{formatDobToDDMMYYYY(t.dateOfBirth)}</strong></span>
-                            <span>বয়স: <strong className="text-slate-700">{calculateAgeAtBatchStart(t)}</strong></span>
+                          <div className="text-[11px] text-theme-text-secondary flex items-center justify-between tabular-nums">
+                            <span>জন্ম: <strong className="font-mono text-theme-text-primary">{formatDobToDDMMYYYY(t.dateOfBirth)}</strong></span>
+                            <span>বয়স: <strong className="text-theme-text-primary">{calculateAgeAtBatchStart(t)}</strong></span>
                           </div>
                         </div>
                       )}
 
                       {isColVisible('present_address') && (
-                        <div className="text-xs text-slate-600 pt-2 border-t border-slate-100">
-                          <span className="text-[10px] text-slate-400 block">বর্তমান ঠিকানা:</span>
-                          <span className="text-slate-700 line-clamp-2">{t.presentAddress || t.address || '-'}</span>
+                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                          <span className="text-[10px] text-theme-text-muted block">বর্তমান ঠিকানা:</span>
+                          <span className="text-theme-text-primary line-clamp-2">{t.presentAddress || t.address || '-'}</span>
                         </div>
                       )}
 
                       {isColVisible('prev_education') && (
-                        <div className="text-xs text-slate-600 pt-2 border-t border-slate-100">
-                          <span className="text-[10px] text-slate-400 block">পূর্ববর্তী শিক্ষা:</span>
-                          <span className="font-medium text-slate-700">{t.lastClassCompleted || '-'}</span>
+                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                          <span className="text-[10px] text-theme-text-muted block">পূর্ববর্তী শিক্ষা:</span>
+                          <span className="font-medium text-theme-text-primary">{t.lastClassCompleted || '-'}</span>
                           {t.yearOfDropout && (
-                            <span className="text-[11px] text-amber-700 ml-1">
+                            <span className="text-[11px] text-theme-warning ml-1 tabular-nums">
                               (ঝরে পড়ার বছর: {toBn(t.yearOfDropout)})
                             </span>
                           )}
                           {t.previousSchoolName && (
-                            <div className="text-[11px] text-slate-500 truncate mt-0.5">{t.previousSchoolName}</div>
+                            <div className="text-[11px] text-theme-text-secondary truncate mt-0.5">{t.previousSchoolName}</div>
                           )}
                         </div>
                       )}
                     </div>
 
                     {isColVisible('actions') && (
-                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <div className="pt-2.5 border-t border-theme-border flex items-center justify-between text-xs">
                         {canViewDetails && (
                           <Link
                             to={`/trainees/${t.id}`}
-                            className="text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1"
+                            className="text-theme-primary hover:underline font-bold flex items-center space-x-1"
                           >
                             <Eye size={13} />
                             <span>প্রোফাইল</span>
@@ -2542,7 +2542,7 @@ const TraineeList: React.FC = () => {
                             <Link
                               to={getEditUrl(t.id)}
                               onClick={handleEditClick}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                              className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition"
                               title="সম্পাদনা"
                             >
                               <Edit2 size={15} />
@@ -2551,7 +2551,7 @@ const TraineeList: React.FC = () => {
                           {(t.status === 'Archived' || t.isArchived) && canEdit && (
                             <button
                               onClick={() => handleRestoreTrainee(t)}
-                              className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                              className="p-1.5 text-theme-accent hover:bg-theme-accent-soft rounded-lg transition"
                               title="সক্রিয় তালিকায় ফিরিয়ে আনুন (Restore)"
                             >
                               <ArchiveRestore size={15} />
@@ -2560,7 +2560,7 @@ const TraineeList: React.FC = () => {
                           {canDelete && (
                             <button
                               onClick={() => handleDeleteRequest(t)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                              className="p-1.5 text-theme-danger hover:bg-theme-danger-soft rounded-lg transition"
                               title={!isDeletionAllowed ? 'আর্কাইভে পাঠান (ডিলিট বন্ধ থাকায়)' : 'মুছুন বা সংরক্ষণাগারে পাঠান'}
                             >
                               <Trash2 size={15} />
@@ -2579,22 +2579,22 @@ const TraineeList: React.FC = () => {
 
       {/* Pagination or Grouping summary */}
       {groupBy !== 'none' && groupedTrainees ? (
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
-          <span className="text-slate-600 font-medium">
-            গ্রুপ অনুযায়ী মোটের <strong className="text-emerald-700">{toBn(filteredTrainees.length)} জন</strong> শিক্ষার্থী {toBn(groupedTrainees.length)}টি গ্রুপে প্রদর্শিত হচ্ছে
+        <div className="bg-theme-surface p-3.5 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
+          <span className="text-theme-text-secondary font-medium tabular-nums">
+            গ্রুপ অনুযায়ী মোটের <strong className="text-theme-primary">{toBn(filteredTrainees.length)} জন</strong> শিক্ষার্থী {toBn(groupedTrainees.length)}টি গ্রুপে প্রদর্শিত হচ্ছে
           </span>
           <button
             type="button"
             onClick={() => setGroupBy('none')}
-            className="text-xs text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
+            className="text-xs text-theme-primary font-bold hover:underline cursor-pointer"
           >
             গ্রুপ ছাড়া সাধারণ ভিউতে ফিরুন (Show Flat Table)
           </button>
         </div>
       ) : (
         totalPages > 1 && (
-          <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
-            <span className="text-slate-500 font-medium">
+          <div className="bg-theme-surface p-3.5 rounded-2xl border border-theme-border shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs">
+            <span className="text-theme-text-secondary font-medium tabular-nums">
               মোট {toBn(filteredTrainees.length)} জন শিক্ষার্থীর মধ্যে {toBn((currentPage - 1) * ITEMS_PER_PAGE + 1)} থেকে {toBn(Math.min(currentPage * ITEMS_PER_PAGE, filteredTrainees.length))} প্রদর্শিত হচ্ছে
             </span>
 
@@ -2603,7 +2603,7 @@ const TraineeList: React.FC = () => {
                 <button
                   onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
-                  className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                  className="shrink-0 p-2 border border-theme-border rounded-xl text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-40 disabled:hover:bg-transparent transition"
                   title="পূর্ববর্তী পৃষ্ঠা"
                 >
                   <ChevronLeft size={16} />
@@ -2615,10 +2615,10 @@ const TraineeList: React.FC = () => {
                     <button
                       key={p}
                       onClick={() => handlePageChange(p)}
-                      className={`shrink-0 w-8 h-8 rounded-xl font-bold transition ${
+                      className={`shrink-0 w-8 h-8 rounded-xl font-bold tabular-nums transition ${
                         currentPage === p
-                          ? 'bg-emerald-600 text-white shadow-2xs'
-                          : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                          ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                          : 'border border-theme-border hover:bg-theme-surface-hover text-theme-text-primary'
                       }`}
                     >
                       {toBn(p)}
@@ -2629,7 +2629,7 @@ const TraineeList: React.FC = () => {
                 <button
                   onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
-                  className="shrink-0 p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                  className="shrink-0 p-2 border border-theme-border rounded-xl text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-40 disabled:hover:bg-transparent transition"
                   title="পরবর্তী পৃষ্ঠা"
                 >
                   <ChevronRight size={16} />
@@ -2646,62 +2646,62 @@ const TraineeList: React.FC = () => {
       {/* ======================================================== */}
       {safeDeleteModalTrainee && (
         <div 
-          className="fixed inset-0 overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-xs z-50 overscroll-contain animate-fadeIn"
+          className="fixed inset-0 overflow-y-auto overflow-x-hidden bg-slate-950/60 backdrop-blur-xs z-50 overscroll-contain animate-fadeIn"
           onClick={() => setSafeDeleteModalTrainee(null)}
         >
           <div className="min-h-full w-full flex items-start sm:items-center justify-center p-3 sm:p-4 pt-6 sm:py-6 pb-16">
             <div 
-              className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-200 space-y-4"
+              className="bg-theme-elevated rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-theme-border space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
             <div className="flex items-start space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-theme-warning-soft text-theme-warning border border-theme-warning-border flex items-center justify-center shrink-0">
                 <ShieldAlert size={28} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-theme-text-primary">
                   শিক্ষার্থীর রেকর্ড স্থায়ীভাবে মুছে ফেলা নিষিদ্ধ
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   ঐতিহাসিক হাজিরা ও সরকারি পরীক্ষার ফলাফল সংরক্ষণ নীতি
                 </p>
               </div>
               <button 
                 onClick={() => setSafeDeleteModalTrainee(null)} 
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-theme-text-muted hover:text-theme-text-primary p-1"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl text-xs space-y-2 text-amber-950">
+            <div className="p-4 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs space-y-2 text-theme-text-primary">
               <p className="font-bold">
                 "{safeDeleteModalTrainee.trainee.nameBn || safeDeleteModalTrainee.trainee.nameEn} ({safeDeleteModalTrainee.trainee.traineeId})" শিক্ষার্থীর সাথে নিম্নলিখিত তথ্য সংরক্ষিত রয়েছে:
               </p>
-              <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                <li>সংরক্ষিত ক্লাসের হাজিরা: <strong>{toBn(safeDeleteModalTrainee.attendanceCount)} টি</strong></li>
-                <li>মূল্যায়ন ও পরীক্ষার নম্বর: <strong>{toBn(safeDeleteModalTrainee.marksCount)} টি</strong></li>
+              <ul className="list-disc pl-5 space-y-1 text-theme-text-secondary tabular-nums">
+                <li>সংরক্ষিত ক্লাসের হাজিরা: <strong className="text-theme-text-primary">{toBn(safeDeleteModalTrainee.attendanceCount)} টি</strong></li>
+                <li>মূল্যায়ন ও পরীক্ষার নম্বর: <strong className="text-theme-text-primary">{toBn(safeDeleteModalTrainee.marksCount)} টি</strong></li>
               </ul>
-              <p className="text-[11px] text-amber-900 pt-1 border-t border-amber-200/80">
+              <p className="text-[11px] text-theme-warning pt-1 border-t border-theme-warning-border">
                 ⚠️ এই রেকর্ড মুছে ফেললে ব্যাচের সামগ্রিক উপস্থিতি খাতা ও মূল্যায়ন রেজিস্টারের অখণ্ডতা নষ্ট হবে।
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-              <span className="font-bold text-slate-800 block">মুছে ফেলার বিকল্প নির্বাচন করুন (Fallback Options):</span>
+            <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border text-xs space-y-2">
+              <span className="font-bold text-theme-text-primary block">মুছে ফেলার বিকল্প নির্বাচন করুন (Fallback Options):</span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleUpdateStatusSafe('Archived')}
-                  className="p-2.5 bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition flex items-center justify-center space-x-1.5"
+                  className="p-2.5 bg-theme-surface border border-theme-border-strong hover:bg-theme-surface-hover text-theme-text-primary rounded-xl font-bold transition flex items-center justify-center space-x-1.5"
                 >
-                  <Archive size={15} className="text-slate-600" />
+                  <Archive size={15} className="text-theme-text-secondary" />
                   <span>আর্কাইভ করুন (Archive)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleUpdateStatusSafe('Dropped Out')}
-                  className="p-2.5 bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 rounded-xl font-bold transition flex items-center justify-center space-x-1"
+                  className="p-2.5 bg-theme-warning-soft border border-theme-warning-border hover:opacity-90 text-theme-warning rounded-xl font-bold transition flex items-center justify-center space-x-1"
                 >
                   <UserX size={15} />
                   <span>ঝরে পড়া (Dropout)</span>
@@ -2709,7 +2709,7 @@ const TraineeList: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleUpdateStatusSafe('Completed')}
-                  className="p-2.5 bg-blue-50 border border-blue-300 hover:bg-blue-100 text-blue-900 rounded-xl font-bold transition flex items-center justify-center space-x-1"
+                  className="p-2.5 bg-theme-info-soft border border-theme-info-border hover:opacity-90 text-theme-info rounded-xl font-bold transition flex items-center justify-center space-x-1"
                 >
                   <Award size={15} />
                   <span>কোর্স সম্পন্ন</span>
@@ -2721,7 +2721,7 @@ const TraineeList: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSafeDeleteModalTrainee(null)}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="px-4 py-2 border border-theme-border rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover"
               >
                 ফিরে যান
               </button>
@@ -2733,39 +2733,37 @@ const TraineeList: React.FC = () => {
 
       {/* PDF Export Progress Loading Overlay */}
       {isPdfExporting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto shadow-inner">
-              <RefreshCw size={28} className="animate-spin text-emerald-700" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-theme-elevated rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-theme-border text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-theme-primary-soft text-theme-primary border border-theme-primary-border flex items-center justify-center mx-auto shadow-inner">
+              <RefreshCw size={28} className="animate-spin text-theme-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">পিডিএফ ফাইল প্রস্তুত হচ্ছে...</h3>
-              <p className="text-xs text-slate-600 mt-1 font-medium min-h-[18px]">
+              <h3 className="font-bold text-theme-text-primary text-base">পিডিএফ ফাইল প্রস্তুত হচ্ছে...</h3>
+              <p className="text-xs text-theme-text-secondary mt-1 font-medium min-h-[18px]">
                 {pdfExportProgress || 'অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন'}
               </p>
             </div>
             
-            {/* Functional Animated Progress Bar */}
+            {/* Functional Progress Bar */}
             <div className="space-y-1.5 text-left">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 px-0.5">
-                <span className="text-[11px] text-slate-500 font-medium">
+              <div className="flex justify-between items-center text-xs font-semibold text-theme-text-secondary px-0.5 tabular-nums">
+                <span className="text-[11px] text-theme-text-secondary font-medium">
                   {pdfCurrentPage > 0 ? `পৃষ্ঠা: ${toBn(pdfCurrentPage)} / ${toBn(pdfTotalPages)}` : 'প্রসেসিং...'}
                 </span>
-                <span className="text-emerald-700 font-bold font-mono text-xs">
+                <span className="text-theme-primary font-bold font-mono text-xs">
                   {toBn(pdfExportPercent)}%
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/80 p-0.5 shadow-inner">
+              <div className="w-full bg-theme-surface-subtle rounded-full h-3 overflow-hidden border border-theme-border p-0.5 shadow-inner">
                 <div 
-                  className="bg-emerald-600 h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+                  className="bg-theme-primary h-full rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${Math.max(5, Math.min(100, pdfExportPercent))}%` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse"></div>
-                </div>
+                />
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400">টেবিলের সকল কলাম ও মার্জিন নির্ভুলভাবে প্রস্তুত হচ্ছে</p>
+            <p className="text-[11px] text-theme-text-muted">টেবিলের সকল কলাম ও মার্জিন নির্ভুলভাবে প্রস্তুত হচ্ছে</p>
           </div>
         </div>
       )}

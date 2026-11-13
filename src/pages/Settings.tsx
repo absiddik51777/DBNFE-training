@@ -35,6 +35,7 @@ import {
 import { ActivityLog, Institute, Trade, Batch, Trainee, AttendanceRecord, Exam, ExamMark } from '../types';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
+import { ThemeSettingsSection } from '../components/settings/ThemeSettingsSection';
 
 const Settings: React.FC = () => {
   const { userProfile } = useAuth();
@@ -332,59 +333,66 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl pb-20">
+    <div className="space-y-6 max-w-5xl pb-20">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">সিস্টেম সেটিংস ও ডাটা নিয়ন্ত্রণ (Settings & Data Control)</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          সিস্টেমের প্রয়োজনীয় কনফিগারেশন, ডাটা ডিলিট পারমিশন ও ফ্যাক্টরি রিসেট পরিচালনা করুন
+        <h1 className="text-xl sm:text-2xl font-bold text-theme-text-primary">
+          সিস্টেম সেটিংস ও ডাটা নিয়ন্ত্রণ (Settings &amp; Data Control)
+        </h1>
+        <p className="text-xs sm:text-sm text-theme-text-secondary mt-0.5">
+          অ্যাপিয়ারেন্স থিম, প্রয়োজনীয় কনফিগারেশন, ডাটা ডিলিট পারমিশন ও ফ্যাক্টরি রিসেট পরিচালনা করুন
         </p>
       </div>
 
       {statusMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2.5 shadow-xs animate-in fade-in">
-          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2.5 shadow-xs animate-in fade-in">
+          <CheckCircle2 size={18} className="shrink-0" />
           <span className="font-medium">{statusMessage}</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-center space-x-2.5 shadow-xs">
-          <AlertOctagon size={18} className="text-red-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-sm flex items-center space-x-2.5 shadow-xs">
+          <AlertOctagon size={18} className="shrink-0" />
           <span className="font-medium">{errorMessage}</span>
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* 1. DATA DELETION PERMISSION SWITCH (SEETINGS CONTROL)   */}
+      {/* 0. APPEARANCE & THEME CUSTOMIZATION                      */}
       {/* ======================================================== */}
-      <div className={`p-6 sm:p-7 rounded-2xl border transition-all shadow-xs ${
-        isDeletionAllowed 
-          ? 'bg-amber-50/40 border-amber-200' 
-          : 'bg-emerald-50/40 border-emerald-200'
+      <ThemeSettingsSection />
+
+      {/* ======================================================== */}
+      {/* 1. DATA DELETION PERMISSION SWITCH (SETTINGS CONTROL)    */}
+      {/* ======================================================== */}
+      <div className={`p-5 sm:p-7 rounded-2xl border transition-all shadow-xs bg-theme-surface ${
+        isDeletionAllowed
+          ? 'border-theme-warning-border'
+          : 'border-theme-success-border'
       }`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start space-x-3.5">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
-              isDeletionAllowed 
-                ? 'bg-amber-100 text-amber-700 border-amber-300' 
-                : 'bg-emerald-100 text-emerald-700 border-emerald-300'
+              isDeletionAllowed
+                ? 'bg-theme-warning-soft text-theme-warning border-theme-warning-border'
+                : 'bg-theme-success-soft text-theme-success border-theme-success-border'
             }`}>
               {isDeletionAllowed ? <Unlock size={24} /> : <Lock size={24} />}
             </div>
             <div>
-              <div className="flex items-center space-x-2.5">
-                <h2 className="text-base font-bold text-slate-800">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold text-theme-text-primary">
                   সিস্টেম ডাটা ডিলিট নিয়ন্ত্রণ (Data Deletion Control)
                 </h2>
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
-                  isDeletionAllowed 
-                    ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                  isDeletionAllowed
+                    ? 'bg-theme-warning-soft text-theme-warning border-theme-warning-border'
+                    : 'bg-theme-success-soft text-theme-success border-theme-success-border'
                 }`}>
                   {isDeletionAllowed ? 'ডিলিট সক্রিয় (Unlocked)' : 'ডিলিট বন্ধ/সুরক্ষিত (Locked)'}
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed">
+              <p className="text-xs text-theme-text-secondary mt-1 max-w-xl leading-relaxed">
                 {isDeletionAllowed 
                   ? 'বর্তমানে সিস্টেমে ডাটা ডিলিট সুবিধা সক্রিয় রয়েছে। দুর্ঘটনা এড়াতে অথবা ডাটা মুছে ফেলা বন্ধ রাখতে চাইলে নিচের সুইচটি বন্ধ করে রাখুন।' 
                   : 'সিস্টেমের সমস্ত ডাটা মুছে ফেলা বর্তমানে সম্পূর্ণ বন্ধ ও লক করা রয়েছে। কোনো ব্যবহারকারী বা অ্যাডমিন ভুলবশত কোনো তথ্য ডিলিট করতে পারবেন না।'}
@@ -396,10 +404,10 @@ const Settings: React.FC = () => {
             type="button"
             onClick={handleToggleDeletion}
             disabled={togglingDeletion}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm self-start sm:self-auto shrink-0 ${
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-xs self-start sm:self-auto shrink-0 cursor-pointer ${
               isDeletionAllowed
-                ? 'bg-slate-800 hover:bg-slate-900 text-white'
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                ? 'bg-theme-elevated hover:bg-theme-surface-hover text-theme-text-primary border border-theme-border-strong'
+                : 'bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg'
             }`}
           >
             {isDeletionAllowed ? (
@@ -418,8 +426,8 @@ const Settings: React.FC = () => {
 
         {/* Lock warning badge if deletion is off */}
         {!isDeletionAllowed && (
-          <div className="mt-4 p-3 rounded-xl bg-white border border-emerald-200/80 text-xs text-emerald-900 flex items-center space-x-2">
-            <Shield size={16} className="text-emerald-600 shrink-0" />
+          <div className="mt-4 p-3 rounded-xl bg-theme-success-soft border border-theme-success-border text-xs text-theme-text-primary flex items-center space-x-2">
+            <Shield size={16} className="text-theme-success shrink-0" />
             <span>
               <strong>সুরক্ষা ও ফলব্যাক সক্রিয়:</strong> স্থায়ী ডাটা ডিলিট বন্ধ থাকায় কোনো রেকর্ড ডিলিটের অনুরোধ জানানো হলে তা স্থায়ীভাবে না মুছে স্বয়ংক্রিয়ভাবে সংরক্ষণাগারে (Archive Record) স্থানান্তরিত হবে।
             </span>
@@ -431,34 +439,34 @@ const Settings: React.FC = () => {
       {/* PUBLIC REGISTRATION CONTROL (COURSE DIRECTOR ONLY)      */}
       {/* ======================================================== */}
       {isCourseDirector && (
-        <div className={`p-6 sm:p-7 rounded-2xl border transition-all shadow-xs ${
+        <div className={`p-5 sm:p-7 rounded-2xl border transition-all shadow-xs bg-theme-surface ${
           settings.allowPublicRegistration !== false 
-            ? 'bg-blue-50/40 border-blue-200' 
-            : 'bg-rose-50/40 border-rose-200'
+            ? 'border-theme-info-border' 
+            : 'border-theme-danger-border'
         }`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start space-x-3.5">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
                 settings.allowPublicRegistration !== false 
-                  ? 'bg-blue-100 text-blue-700 border-blue-300' 
-                  : 'bg-rose-100 text-rose-700 border-rose-300'
+                  ? 'bg-theme-info-soft text-theme-info border-theme-info-border' 
+                  : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
               }`}>
                 <UserCheck size={24} />
               </div>
               <div>
-                <div className="flex items-center space-x-2.5">
-                  <h2 className="text-base font-bold text-slate-800">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold text-theme-text-primary">
                     উন্মুক্ত ব্যবহারকারী নিবন্ধন নিয়ন্ত্রণ (Public Registration Control)
                   </h2>
                   <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                     settings.allowPublicRegistration !== false 
-                      ? 'bg-blue-100 text-blue-900 border-blue-300' 
-                      : 'bg-rose-100 text-rose-900 border-rose-300'
+                      ? 'bg-theme-info-soft text-theme-info border-theme-info-border' 
+                      : 'bg-theme-danger-soft text-theme-danger border-theme-danger-border'
                   }`}>
                     {settings.allowPublicRegistration !== false ? 'উন্মুক্ত নিবন্ধন চালু (Open)' : 'উন্মুক্ত নিবন্ধন বন্ধ (Closed)'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed">
+                <p className="text-xs text-theme-text-secondary mt-1 max-w-xl leading-relaxed">
                   {settings.allowPublicRegistration !== false 
                     ? 'লগইন পেজ থেকে নতুন ব্যবহারকারীগণ নিবন্ধনের আবেদন করতে পারছেন। সকল নতুন একাউন্ট সুরক্ষিতভাবে Pending Approval অবস্থায় থাকে।' 
                     : 'লগইন পেজ থেকে সাধারণ ব্যবহারকারীদের নতুন নিবন্ধন বন্ধ রয়েছে। শুধুমাত্র কোর্স পরিচালক ইউজার ম্যানেজমেন্ট থেকে নতুন ইউজার যুক্ত করতে পারবেন।'}
@@ -474,10 +482,10 @@ const Settings: React.FC = () => {
                 setStatusMessage(`উন্মুক্ত নিবন্ধন সফলভাবে ${next ? 'চালু' : 'বন্ধ'} করা হয়েছে।`);
                 setTimeout(() => setStatusMessage(''), 4000);
               }}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm self-start sm:self-auto shrink-0 ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-xs self-start sm:self-auto shrink-0 cursor-pointer ${
                 settings.allowPublicRegistration !== false
-                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  ? 'bg-theme-danger hover:opacity-90 text-theme-danger-fg'
+                  : 'bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg'
               }`}
             >
               {settings.allowPublicRegistration !== false ? (
@@ -499,16 +507,16 @@ const Settings: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. CURRENT DATA METRICS & SUMMARY                       */}
       {/* ======================================================== */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+      <div className="bg-theme-surface p-5 sm:p-6 rounded-2xl border border-theme-border shadow-xs space-y-3">
+        <div className="flex items-center justify-between pb-2.5 border-b border-theme-border">
           <div className="flex items-center space-x-2">
-            <Database size={18} className="text-slate-600" />
-            <h3 className="text-sm font-bold text-slate-800">ক্লাউড ডাটাবেজ স্থিতি (Database Summary)</h3>
+            <Database size={18} className="text-theme-text-secondary" />
+            <h3 className="text-sm font-bold text-theme-text-primary">ক্লাউড ডাটাবেজ স্থিতি (Database Summary)</h3>
           </div>
           <button 
             type="button"
             onClick={fetchCounts}
-            className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center space-x-1"
+            className="text-xs text-theme-info hover:underline font-semibold flex items-center space-x-1 cursor-pointer"
           >
             <RefreshCw size={12} className={loadingCounts ? 'animate-spin' : ''} />
             <span>রিফ্রেশ</span>
@@ -516,27 +524,27 @@ const Settings: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-500 block">দৈনিক হাজিরা রেকর্ড</span>
-            <span className="text-lg font-bold text-indigo-700">
+          <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+            <span className="text-theme-text-secondary block">দৈনিক হাজিরা রেকর্ড</span>
+            <span className="text-lg font-bold text-theme-info tabular-nums">
               {loadingCounts ? '...' : counts.attendance} টি
             </span>
           </div>
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-500 block">মোট প্রশিক্ষণার্থী</span>
-            <span className="text-lg font-bold text-emerald-700">
+          <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+            <span className="text-theme-text-secondary block">মোট প্রশিক্ষণার্থী</span>
+            <span className="text-lg font-bold text-theme-primary tabular-nums">
               {loadingCounts ? '...' : counts.trainees} জন
             </span>
           </div>
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-500 block">পরীক্ষা ও মার্কস</span>
-            <span className="text-lg font-bold text-purple-700">
+          <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+            <span className="text-theme-text-secondary block">পরীক্ষা ও মার্কস</span>
+            <span className="text-lg font-bold text-theme-accent tabular-nums">
               {loadingCounts ? '...' : `${counts.exams} / ${counts.marks}`}
             </span>
           </div>
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-500 block">ব্যাচ / প্রতিষ্ঠান</span>
-            <span className="text-lg font-bold text-slate-700">
+          <div className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border">
+            <span className="text-theme-text-secondary block">ব্যাচ / প্রতিষ্ঠান</span>
+            <span className="text-lg font-bold text-theme-text-primary tabular-nums">
               {loadingCounts ? '...' : `${counts.batches} / ${counts.institutes}`}
             </span>
           </div>
@@ -546,27 +554,27 @@ const Settings: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. COMPREHENSIVE DATA DELETION SYSTEM                   */}
       {/* ======================================================== */}
-      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-        <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
-          <div className="p-2 rounded-xl bg-red-50 text-red-600">
+      <div className="bg-theme-surface p-5 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-5">
+        <div className="flex items-center space-x-3 pb-3 border-b border-theme-border">
+          <div className="p-2 rounded-xl bg-theme-danger-soft text-theme-danger border border-theme-danger-border">
             <Trash2 size={22} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800">
+            <h2 className="text-base font-bold text-theme-text-primary">
               ডাটা ক্লিনআপ ও ডিলিট অপশনসমূহ (Data Deletion Operations)
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-theme-text-secondary">
               দৈনিক হাজিরা, শিক্ষার্থী তালিকা ও পরীক্ষা নম্বর মুছে ফেলার সিস্টেম
             </p>
           </div>
         </div>
 
         {!isDeletionAllowed && (
-          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start space-x-2.5">
-            <Lock size={16} className="text-amber-700 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-xl bg-theme-warning-soft border border-theme-warning-border text-theme-text-primary text-xs flex items-start space-x-2.5">
+            <Lock size={16} className="text-theme-warning shrink-0 mt-0.5" />
             <div>
               <p className="font-bold">ডাটা ডিলিট সিস্টেম বর্তমানে বন্ধ রয়েছে</p>
-              <p className="text-amber-700 mt-0.5">
+              <p className="text-theme-text-secondary mt-0.5">
                 নিচের যেকোনো ডিলিট অপশন ব্যবহার করতে চাইলে উপরের <strong>"ডিলিট অনুমতি দিন (Unlock Deletions)"</strong> বাটনে ক্লিক করে অনুমতি প্রদান করুন।
               </p>
             </div>
@@ -575,16 +583,16 @@ const Settings: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Attendance Wipe */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <CalendarCheck size={16} className="text-indigo-600" />
-                <h4 className="text-sm font-bold text-slate-800">১. সকল দৈনিক হাজিরা মুছুন</h4>
+                <CalendarCheck size={16} className="text-theme-info" />
+                <h4 className="text-sm font-bold text-theme-text-primary">১. সকল দৈনিক হাজিরা মুছুন</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 সকল ব্যাচ ও তারিখের দৈনিক হাজিরা রেকর্ড মুছে ফেলা হবে। শিক্ষার্থী ও ব্যাচ অপরিবর্তিত থাকবে।
               </p>
-              <span className="inline-block mt-2 text-[11px] font-semibold text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-theme-text-secondary bg-theme-surface px-2.5 py-0.5 rounded-md border border-theme-border tabular-nums">
                 বিদ্যমান রেকর্ড: {counts.attendance} টি
               </span>
             </div>
@@ -595,8 +603,8 @@ const Settings: React.FC = () => {
               onClick={() => setActiveModal('attendance')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
                 !isDeletionAllowed || counts.attendance === 0
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  ? 'bg-theme-surface text-theme-text-muted cursor-not-allowed border border-theme-border'
+                  : 'bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border cursor-pointer'
               }`}
             >
               <Trash2 size={13} />
@@ -605,16 +613,16 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Card 2: Trainees & Attendance Wipe */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <Users size={16} className="text-emerald-600" />
-                <h4 className="text-sm font-bold text-slate-800">২. প্রশিক্ষণার্থী ও তাদের হাজিরা মুছুন</h4>
+                <Users size={16} className="text-theme-primary" />
+                <h4 className="text-sm font-bold text-theme-text-primary">২. প্রশিক্ষণার্থী ও তাদের হাজিরা মুছুন</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 সকল প্রশিক্ষণার্থী তালিকা এবং তাদের সংশ্লিষ্ট সমস্ত হাজিরা তথ্য মুছে ফেলা হবে। ব্যাচ ও প্রতিষ্ঠান থাকবে।
               </p>
-              <span className="inline-block mt-2 text-[11px] font-semibold text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-theme-text-secondary bg-theme-surface px-2.5 py-0.5 rounded-md border border-theme-border tabular-nums">
                 বিদ্যমান শিক্ষার্থী: {counts.trainees} জন
               </span>
             </div>
@@ -625,8 +633,8 @@ const Settings: React.FC = () => {
               onClick={() => setActiveModal('trainees')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
                 !isDeletionAllowed || counts.trainees === 0
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  ? 'bg-theme-surface text-theme-text-muted cursor-not-allowed border border-theme-border'
+                  : 'bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border cursor-pointer'
               }`}
             >
               <Trash2 size={13} />
@@ -635,16 +643,16 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Card 3: Exams & Marks Wipe */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <FileCheck2 size={16} className="text-purple-600" />
-                <h4 className="text-sm font-bold text-slate-800">৩. পরীক্ষা ও ফলাফল নম্বর মুছুন</h4>
+                <FileCheck2 size={16} className="text-theme-accent" />
+                <h4 className="text-sm font-bold text-theme-text-primary">৩. পরীক্ষা ও ফলাফল নম্বর মুছুন</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 সকল পরীক্ষার প্রশ্ন/শিডিউল এবং শিক্ষার্থীদের প্রাপ্ত ফলাফল নম্বর মুছে ফেলা হবে।
               </p>
-              <span className="inline-block mt-2 text-[11px] font-semibold text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-theme-text-secondary bg-theme-surface px-2.5 py-0.5 rounded-md border border-theme-border tabular-nums">
                 বিদ্যমান পরীক্ষা: {counts.exams} টি • মার্কস: {counts.marks} টি
               </span>
             </div>
@@ -655,8 +663,8 @@ const Settings: React.FC = () => {
               onClick={() => setActiveModal('exams')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
                 !isDeletionAllowed || (counts.exams === 0 && counts.marks === 0)
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  ? 'bg-theme-surface text-theme-text-muted cursor-not-allowed border border-theme-border'
+                  : 'bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border cursor-pointer'
               }`}
             >
               <Trash2 size={13} />
@@ -665,16 +673,16 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Card 4: Batches Wipe */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <Layers size={16} className="text-amber-600" />
-                <h4 className="text-sm font-bold text-slate-800">৪. সকল ব্যাচ মুছুন</h4>
+                <Layers size={16} className="text-theme-warning" />
+                <h4 className="text-sm font-bold text-theme-text-primary">৪. সকল ব্যাচ মুছুন</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 ক্লাউড ডাটাবেজ থেকে সকল প্রশিক্ষণ ব্যাচ মুছে ফেলা হবে।
               </p>
-              <span className="inline-block mt-2 text-[11px] font-semibold text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-theme-text-secondary bg-theme-surface px-2.5 py-0.5 rounded-md border border-theme-border tabular-nums">
                 বিদ্যমান ব্যাচ: {counts.batches} টি
               </span>
             </div>
@@ -685,8 +693,8 @@ const Settings: React.FC = () => {
               onClick={() => setActiveModal('batches')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
                 !isDeletionAllowed || counts.batches === 0
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  ? 'bg-theme-surface text-theme-text-muted cursor-not-allowed border border-theme-border'
+                  : 'bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border cursor-pointer'
               }`}
             >
               <Trash2 size={13} />
@@ -695,16 +703,16 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Card 5: Institutes Wipe */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <Building2 size={16} className="text-teal-600" />
-                <h4 className="text-sm font-bold text-slate-800">৫. সকল প্রতিষ্ঠান মুছুন</h4>
+                <Building2 size={16} className="text-theme-primary" />
+                <h4 className="text-sm font-bold text-theme-text-primary">৫. সকল প্রতিষ্ঠান মুছুন</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 সকল প্রশিক্ষণ কেন্দ্র (প্রতিষ্ঠান) ক্লাউড ডাটাবেজ থেকে মুছে ফেলা হবে।
               </p>
-              <span className="inline-block mt-2 text-[11px] font-semibold text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-theme-text-secondary bg-theme-surface px-2.5 py-0.5 rounded-md border border-theme-border tabular-nums">
                 বিদ্যমান প্রতিষ্ঠান: {counts.institutes} টি
               </span>
             </div>
@@ -715,8 +723,8 @@ const Settings: React.FC = () => {
               onClick={() => setActiveModal('institutes')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
                 !isDeletionAllowed || counts.institutes === 0
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  ? 'bg-theme-surface text-theme-text-muted cursor-not-allowed border border-theme-border'
+                  : 'bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border cursor-pointer'
               }`}
             >
               <Trash2 size={13} />
@@ -725,16 +733,16 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Card 6: Trades Wipe */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <Wrench size={16} className="text-cyan-600" />
-                <h4 className="text-sm font-bold text-slate-800">৬. সকল ট্রেড মুছুন</h4>
+                <Wrench size={16} className="text-theme-accent" />
+                <h4 className="text-sm font-bold text-theme-text-primary">৬. সকল ট্রেড মুছুন</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 সকল কারিগরি ও বৃত্তিমূলক ট্রেড ক্লাউড ডাটাবেজ থেকে মুছে ফেলা হবে।
               </p>
-              <span className="inline-block mt-2 text-[11px] font-semibold text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-theme-text-secondary bg-theme-surface px-2.5 py-0.5 rounded-md border border-theme-border tabular-nums">
                 বিদ্যমান ট্রেড: {counts.trades} টি
               </span>
             </div>
@@ -745,8 +753,8 @@ const Settings: React.FC = () => {
               onClick={() => setActiveModal('trades')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
                 !isDeletionAllowed || counts.trades === 0
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  ? 'bg-theme-surface text-theme-text-muted cursor-not-allowed border border-theme-border'
+                  : 'bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border cursor-pointer'
               }`}
             >
               <Trash2 size={13} />
@@ -755,13 +763,13 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Card 7: Local Browser Cache Reset */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center space-x-2">
-                <RefreshCw size={16} className="text-blue-600" />
-                <h4 className="text-sm font-bold text-slate-800">৭. ব্রাউজার ক্যাশ রিসেট</h4>
+                <RefreshCw size={16} className="text-theme-info" />
+                <h4 className="text-sm font-bold text-theme-text-primary">৭. ব্রাউজার ক্যাশ রিসেট</h4>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-theme-text-secondary mt-1">
                 আপনার ব্রাউজারে সংরক্ষিত লোকাল মেমোরি পরিষ্কার করুন। এটি ক্লাউডের কোনো তথ্য ডিলিট করবে না।
               </p>
             </div>
@@ -769,7 +777,7 @@ const Settings: React.FC = () => {
             <button
               type="button"
               onClick={handleResetLocalCache}
-              className="w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200"
+              className="w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-theme-info-soft hover:opacity-90 text-theme-info border border-theme-info-border cursor-pointer"
             >
               <RefreshCw size={13} />
               <span>ব্রাউজার ক্যাশ রিসেট করুন</span>
@@ -777,18 +785,18 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 5: Full System Factory Reset (DANGER ZONE) */}
-        <div className="mt-4 p-5 rounded-2xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 space-y-3">
-          <div className="flex items-start justify-between">
+        {/* Full System Factory Reset (DANGER ZONE) */}
+        <div className="mt-4 p-5 rounded-2xl bg-theme-danger-soft border border-theme-danger-border space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-red-100 text-red-700 border border-red-200 shrink-0">
+              <div className="p-2.5 rounded-xl bg-theme-surface text-theme-danger border border-theme-danger-border shrink-0">
                 <AlertTriangle size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-red-900">
+                <h3 className="text-sm font-bold text-theme-danger">
                   বিপদজনক অঞ্চল: সম্পূর্ণ সিস্টেম রিসেট (Full Factory Reset)
                 </h3>
-                <p className="text-xs text-red-700 mt-0.5">
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   ক্লাউড ডাটাবেজ থেকে সকল তথ্য (হাজিরা, শিক্ষার্থী, ব্যাচ ও ফলাফল) মুছে সম্পূর্ণ নতুন অবস্থায় ফিরিয়ে নেয়
                 </p>
               </div>
@@ -803,8 +811,8 @@ const Settings: React.FC = () => {
               }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center space-x-1.5 shrink-0 ${
                 !isDeletionAllowed
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  : 'bg-red-600 hover:bg-red-700 text-white'
+                  ? 'bg-theme-surface text-theme-text-muted border border-theme-border cursor-not-allowed'
+                  : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer'
               }`}
             >
               <Trash2 size={14} />
@@ -820,13 +828,13 @@ const Settings: React.FC = () => {
 
       {/* Modal 1: Attendance Delete Confirmation */}
       {activeModal === 'attendance' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertTriangle size={24} />
-              <h3 className="text-base font-bold text-slate-800">সকল দৈনিক হাজিরা মোছার নিশ্চিতকরণ</h3>
+              <h3 className="text-base font-bold text-theme-text-primary">সকল দৈনিক হাজিরা মোছার নিশ্চিতকরণ</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-theme-text-secondary leading-relaxed">
               আপনি কি নিশ্চিতভাবে ক্লাউড ডাটাবেজের সমস্ত <strong>({counts.attendance} টি)</strong> দৈনিক হাজিরা রেকর্ড মুছে ফেলতে চান? এটি স্থায়ীভাবে মুছে যাবে এবং পূর্বাবস্থায় ফিরিয়ে আনা সম্ভব নয়।
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
@@ -834,7 +842,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -842,7 +850,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteAttendanceDeletion}
                 disabled={isDeleting}
-                className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-xs flex items-center space-x-1.5"
+                className="px-5 py-2 text-xs font-bold bg-theme-danger hover:opacity-90 text-theme-danger-fg rounded-xl shadow-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 <span>{isDeleting ? 'মোছা হচ্ছে...' : 'হ্যাঁ, সকল হাজিরা মুছুন'}</span>
@@ -854,13 +862,13 @@ const Settings: React.FC = () => {
 
       {/* Modal 2: Trainees Delete Confirmation */}
       {activeModal === 'trainees' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertTriangle size={24} />
-              <h3 className="text-base font-bold text-slate-800">সকল প্রশিক্ষণার্থী ও হাজিরা মোছার নিশ্চিতকরণ</h3>
+              <h3 className="text-base font-bold text-theme-text-primary">সকল প্রশিক্ষণার্থী ও হাজিরা মোছার নিশ্চিতকরণ</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-theme-text-secondary leading-relaxed">
               আপনি কি নিশ্চিতভাবে সমস্ত <strong>({counts.trainees} জন)</strong> প্রশিক্ষণার্থী এবং তাদের সংশ্লিষ্ট সকল হাজিরা তথ্য মুছে ফেলতে চান?
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
@@ -868,7 +876,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -876,7 +884,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteTraineesDeletion}
                 disabled={isDeleting}
-                className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-xs flex items-center space-x-1.5"
+                className="px-5 py-2 text-xs font-bold bg-theme-danger hover:opacity-90 text-theme-danger-fg rounded-xl shadow-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 <span>{isDeleting ? 'মোছা হচ্ছে...' : 'হ্যাঁ, প্রশিক্ষণার্থী তালিকা মুছুন'}</span>
@@ -888,13 +896,13 @@ const Settings: React.FC = () => {
 
       {/* Modal 3: Exams Delete Confirmation */}
       {activeModal === 'exams' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertTriangle size={24} />
-              <h3 className="text-base font-bold text-slate-800">সকল পরীক্ষা ও নম্বর মোছার নিশ্চিতকরণ</h3>
+              <h3 className="text-base font-bold text-theme-text-primary">সকল পরীক্ষা ও নম্বর মোছার নিশ্চিতকরণ</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-theme-text-secondary leading-relaxed">
               আপনি কি নিশ্চিতভাবে সমস্ত <strong>({counts.exams} টি)</strong> পরীক্ষা ও তাদের ফলাফল নম্বর মুছে ফেলতে চান?
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
@@ -902,7 +910,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -910,7 +918,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteExamsDeletion}
                 disabled={isDeleting}
-                className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-xs flex items-center space-x-1.5"
+                className="px-5 py-2 text-xs font-bold bg-theme-danger hover:opacity-90 text-theme-danger-fg rounded-xl shadow-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 <span>{isDeleting ? 'মোছা হচ্ছে...' : 'হ্যাঁ, পরীক্ষা ও মার্কস মুছুন'}</span>
@@ -922,13 +930,13 @@ const Settings: React.FC = () => {
 
       {/* Modal 4: Batches Delete Confirmation */}
       {activeModal === 'batches' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertTriangle size={24} />
-              <h3 className="text-base font-bold text-slate-800">সকল প্রশিক্ষণ ব্যাচ মোছার নিশ্চিতকরণ</h3>
+              <h3 className="text-base font-bold text-theme-text-primary">সকল প্রশিক্ষণ ব্যাচ মোছার নিশ্চিতকরণ</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-theme-text-secondary leading-relaxed">
               আপনি কি নিশ্চিতভাবে ক্লাউড ডাটাবেজ থেকে সমস্ত <strong>({counts.batches} টি)</strong> প্রশিক্ষণ ব্যাচ মুছে ফেলতে চান? এটি স্থায়ীভাবে মুছে যাবে।
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
@@ -936,7 +944,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -944,7 +952,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteBatchesDeletion}
                 disabled={isDeleting}
-                className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-xs flex items-center space-x-1.5"
+                className="px-5 py-2 text-xs font-bold bg-theme-danger hover:opacity-90 text-theme-danger-fg rounded-xl shadow-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 <span>{isDeleting ? 'মোছা হচ্ছে...' : 'হ্যাঁ, সকল ব্যাচ মুছুন'}</span>
@@ -956,13 +964,13 @@ const Settings: React.FC = () => {
 
       {/* Modal 5: Institutes Delete Confirmation */}
       {activeModal === 'institutes' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertTriangle size={24} />
-              <h3 className="text-base font-bold text-slate-800">সকল প্রতিষ্ঠান মোছার নিশ্চিতকরণ</h3>
+              <h3 className="text-base font-bold text-theme-text-primary">সকল প্রতিষ্ঠান মোছার নিশ্চিতকরণ</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-theme-text-secondary leading-relaxed">
               আপনি কি নিশ্চিতভাবে ক্লাউড ডাটাবেজ থেকে সমস্ত <strong>({counts.institutes} টি)</strong> প্রতিষ্ঠান মুছে ফেলতে চান?
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
@@ -970,7 +978,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -978,7 +986,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteInstitutesDeletion}
                 disabled={isDeleting}
-                className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-xs flex items-center space-x-1.5"
+                className="px-5 py-2 text-xs font-bold bg-theme-danger hover:opacity-90 text-theme-danger-fg rounded-xl shadow-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 <span>{isDeleting ? 'মোছা হচ্ছে...' : 'হ্যাঁ, সকল প্রতিষ্ঠান মুছুন'}</span>
@@ -990,13 +998,13 @@ const Settings: React.FC = () => {
 
       {/* Modal 6: Trades Delete Confirmation */}
       {activeModal === 'trades' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertTriangle size={24} />
-              <h3 className="text-base font-bold text-slate-800">সকল ট্রেড মোছার নিশ্চিতকরণ</h3>
+              <h3 className="text-base font-bold text-theme-text-primary">সকল ট্রেড মোছার নিশ্চিতকরণ</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-theme-text-secondary leading-relaxed">
               আপনি কি নিশ্চিতভাবে ক্লাউড ডাটাবেজ থেকে সমস্ত <strong>({counts.trades} টি)</strong> ট্রেড মুছে ফেলতে চান?
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
@@ -1004,7 +1012,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -1012,7 +1020,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteTradesDeletion}
                 disabled={isDeleting}
-                className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-xs flex items-center space-x-1.5"
+                className="px-5 py-2 text-xs font-bold bg-theme-danger hover:opacity-90 text-theme-danger-fg rounded-xl shadow-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 <span>{isDeleting ? 'মোছা হচ্ছে...' : 'হ্যাঁ, সকল ট্রেড মুছুন'}</span>
@@ -1024,19 +1032,19 @@ const Settings: React.FC = () => {
 
       {/* Modal 7: Full Factory Reset Modal (with typed confirmation) */}
       {activeModal === 'factory_reset' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-red-200 space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center space-x-3 text-red-600">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-theme-danger-border space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center space-x-3 text-theme-danger">
               <AlertOctagon size={28} />
               <div>
-                <h3 className="text-lg font-bold text-slate-800">🚨 সম্পূর্ণ সিস্টেম রিসেট নিশ্চিতকরণ</h3>
-                <p className="text-xs text-red-600 font-semibold">এই অপারেশনটি সম্পূর্ণ অপরিবর্তনীয়</p>
+                <h3 className="text-lg font-bold text-theme-text-primary">সম্পূর্ণ সিস্টেম রিসেট নিশ্চিতকরণ</h3>
+                <p className="text-xs text-theme-danger font-semibold">এই অপারেশনটি সম্পূর্ণ অপরিবর্তনীয়</p>
               </div>
             </div>
 
-            <div className="p-3.5 bg-red-50 rounded-xl border border-red-200 text-xs text-red-900 space-y-1.5">
+            <div className="p-3.5 bg-theme-danger-soft rounded-xl border border-theme-danger-border text-xs text-theme-text-primary space-y-1.5">
               <p className="font-bold">সিস্টেম থেকে নিচের তথ্যগুলো স্থায়ীভাবে মুছে যাবে:</p>
-              <ul className="list-disc list-inside space-y-0.5 text-red-800">
+              <ul className="list-disc list-inside space-y-0.5 text-theme-text-secondary">
                 <li>সকল দৈনিক হাজিরা ({counts.attendance} টি)</li>
                 <li>সকল প্রশিক্ষণার্থী প্রোফাইল ({counts.trainees} জন)</li>
                 <li>সকল পরীক্ষা ও মূল্যায়ন নম্বর ({counts.exams} / {counts.marks})</li>
@@ -1045,27 +1053,27 @@ const Settings: React.FC = () => {
             </div>
 
             <div className="pt-1">
-              <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
+              <label className="flex items-center space-x-2 text-xs font-semibold text-theme-text-primary cursor-pointer">
                 <input
                   type="checkbox"
                   checked={keepInstitutesAndTrades}
                   onChange={e => setKeepInstitutesAndTrades(e.target.checked)}
-                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                  className="rounded border-theme-border text-theme-primary focus:ring-theme-primary w-4 h-4"
                 />
                 <span>প্রতিষ্ঠান ({counts.institutes}) ও ট্রেড ({counts.trades}) তালিকা সংরক্ষণ করুন (প্রস্তাবিত)</span>
               </label>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                নিশ্চিত করতে নিচের বক্সে <span className="font-mono text-red-600">DELETE</span> অথবা <span className="font-mono text-red-600">নিশ্চিত</span> লিখুন:
+              <label className="block text-xs font-bold text-theme-text-primary mb-1.5">
+                নিশ্চিত করতে নিচের বক্সে <span className="font-mono text-theme-danger">DELETE</span> অথবা <span className="font-mono text-theme-danger">নিশ্চিত</span> লিখুন:
               </label>
               <input
                 type="text"
                 value={deleteConfirmationInput}
                 onChange={e => setDeleteConfirmationInput(e.target.value)}
                 placeholder="DELETE"
-                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-theme-surface border border-theme-border rounded-xl text-sm font-mono text-theme-text-primary focus:ring-2 focus:ring-theme-danger focus:outline-none"
               />
             </div>
 
@@ -1074,7 +1082,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={() => setActiveModal(null)}
                 disabled={isDeleting}
-                className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2.5 text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl cursor-pointer"
               >
                 বাতিল করুন
               </button>
@@ -1082,11 +1090,7 @@ const Settings: React.FC = () => {
                 type="button"
                 onClick={handleExecuteFactoryReset}
                 disabled={isDeleting || (deleteConfirmationInput.trim().toUpperCase() !== 'DELETE' && deleteConfirmationInput.trim() !== 'নিশ্চিত')}
-                className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-xs flex items-center space-x-2 text-white ${
-                  isDeleting || (deleteConfirmationInput.trim().toUpperCase() !== 'DELETE' && deleteConfirmationInput.trim() !== 'নিশ্চিত')
-                    ? 'bg-red-300 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}
+                className="px-5 py-2.5 text-xs font-bold rounded-xl shadow-xs flex items-center space-x-2 bg-theme-danger hover:opacity-90 text-theme-danger-fg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 <span>{isDeleting ? 'রিসেট হচ্ছে...' : 'সম্পূর্ণ ডাটা মুছে ফেলুন'}</span>
@@ -1100,22 +1104,22 @@ const Settings: React.FC = () => {
       {/* 5. ROLE PERMISSIONS & LANDING ROUTES (Course Director)   */}
       {/* ======================================================== */}
       {isCourseDirector && (
-        <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white p-6 sm:p-7 rounded-2xl shadow-sm space-y-4">
+        <div className="bg-theme-surface p-5 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 text-purple-200 flex items-center justify-center border border-white/20 shrink-0">
-                <Shield size={26} />
+              <div className="w-12 h-12 rounded-2xl bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center border border-theme-primary-border shrink-0">
+                <Shield size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">রোল ও পারমিশন সিস্টেম (Roles & Permissions)</h2>
-                <p className="text-xs text-purple-200 mt-0.5">
+                <h2 className="text-base sm:text-lg font-bold text-theme-text-primary">রোল ও পারমিশন সিস্টেম (Roles &amp; Permissions)</h2>
+                <p className="text-xs text-theme-text-secondary mt-0.5">
                   সিস্টেমের প্রতিটি রোলের জন্য পেজ ভিউ এবং সকল অপারেশন পারমিশন পরিবর্তন ও নিয়ন্ত্রণ করুন
                 </p>
               </div>
             </div>
             <Link
               to="/roles"
-              className="px-5 py-2.5 bg-white text-purple-900 hover:bg-purple-50 rounded-xl text-sm font-bold shadow-md transition self-start sm:self-auto flex items-center space-x-2 shrink-0"
+              className="px-5 py-2.5 bg-theme-primary text-theme-primary-fg hover:bg-theme-primary-hover rounded-xl text-xs sm:text-sm font-bold shadow-xs transition self-start sm:self-auto flex items-center space-x-2 shrink-0"
             >
               <span>রোল টেবিল ও পারমিশন ওপেন করুন</span>
               <span>&rarr;</span>
@@ -1124,24 +1128,23 @@ const Settings: React.FC = () => {
         </div>
       )}
 
-
       {/* ======================================================== */}
       {/* 6. CERTIFICATE & GRADING RULES                          */}
       {/* ======================================================== */}
-      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
-          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+      <div className="bg-theme-surface p-5 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-4">
+        <div className="flex items-center space-x-3 pb-3 border-b border-theme-border">
+          <div className="p-2 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg">
             <Sliders size={22} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800">সনদ ও পাস নম্বর নীতিমালা (Rules & Criteria)</h2>
-            <p className="text-xs text-slate-500">সার্টিফিকেট যোগ্যতা ও পরীক্ষার পাস শতকরা হার নির্ধারণ</p>
+            <h2 className="text-base font-bold text-theme-text-primary">সনদ ও পাস নম্বর নীতিমালা (Rules &amp; Criteria)</h2>
+            <p className="text-xs text-theme-text-secondary">সার্টিফিকেট যোগ্যতা ও পরীক্ষার পাস শতকরা হার নির্ধারণ</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
               সার্টিফিকেটের জন্য ন্যূনতম উপস্থিতির হার (%)
             </label>
             <input
@@ -1150,12 +1153,12 @@ const Settings: React.FC = () => {
               max="100"
               value={minAttendance}
               onChange={e => setMinAttendance(parseInt(e.target.value) || 75)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-theme-elevated border border-theme-border rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none tabular-nums"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
               পরীক্ষায় ন্যূনতম পাস নম্বর শতকরা হার (%)
             </label>
             <input
@@ -1164,21 +1167,21 @@ const Settings: React.FC = () => {
               max="100"
               value={minPassMarks}
               onChange={e => setMinPassMarks(parseInt(e.target.value) || 40)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-theme-elevated border border-theme-border rounded-xl text-sm text-theme-text-primary focus:ring-2 focus:ring-theme-primary focus:outline-none tabular-nums"
             />
           </div>
         </div>
 
         <div className="pt-2 flex items-center justify-between">
           {settingsSaved && (
-            <span className="text-xs text-emerald-600 font-semibold flex items-center space-x-1">
+            <span className="text-xs text-theme-success font-semibold flex items-center space-x-1">
               <CheckCircle2 size={15} />
               <span>নীতিমালা সংরক্ষিত হয়েছে!</span>
             </span>
           )}
           <button
             onClick={saveSettings}
-            className="ml-auto px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold flex items-center space-x-2 transition"
+            className="ml-auto px-5 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold flex items-center space-x-2 transition cursor-pointer"
           >
             <Save size={16} />
             <span>সংরক্ষণ করুন</span>
@@ -1189,32 +1192,32 @@ const Settings: React.FC = () => {
       {/* ======================================================== */}
       {/* 7. ACTIVITY LOGS (AUDIT TRAIL)                          */}
       {/* ======================================================== */}
-      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
-          <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+      <div className="bg-theme-surface p-5 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-4">
+        <div className="flex items-center space-x-3 pb-3 border-b border-theme-border">
+          <div className="p-2 rounded-xl bg-theme-accent-soft text-theme-accent">
             <Clock size={22} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800">অডিট লগ ও সিস্টেম হিস্ট্রি (Activity Logs)</h2>
-            <p className="text-xs text-slate-500">ইউজারদের কার্যক্রম ও ডাটা পরিবর্তন ইতিহাস পর্যবেক্ষণ করুন</p>
+            <h2 className="text-base font-bold text-theme-text-primary">অডিট লগ ও সিস্টেম হিস্ট্রি (Activity Logs)</h2>
+            <p className="text-xs text-theme-text-secondary">ইউজারদের কার্যক্রম ও ডাটা পরিবর্তন ইতিহাস পর্যবেক্ষণ করুন</p>
           </div>
         </div>
 
         {loadingLogs ? (
-          <div className="py-8 text-center text-slate-400 text-xs">লগ লোড হচ্ছে...</div>
+          <div className="py-8 text-center text-theme-text-muted text-xs">লগ লোড হচ্ছে...</div>
         ) : activityLogs.length === 0 ? (
-          <div className="py-8 text-center text-slate-400 text-xs">এখনো কোনো অডিট লগ জমা হয়নি।</div>
+          <div className="py-8 text-center text-theme-text-muted text-xs">এখনো কোনো অডিট লগ জমা হয়নি।</div>
         ) : (
           <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
             {activityLogs.map((log) => (
-              <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start justify-between text-xs">
-                <div>
-                  <p className="font-semibold text-slate-800">{log.action}</p>
-                  <p className="text-slate-500 mt-0.5">
-                    ব্যবহারকারী: <span className="text-emerald-700 font-medium">{log.userName}</span> • মডিউল: {log.module}
+              <div key={log.id} className="p-3 bg-theme-surface-subtle rounded-xl border border-theme-border flex items-start justify-between text-xs gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-theme-text-primary">{log.action}</p>
+                  <p className="text-theme-text-secondary mt-0.5">
+                    ব্যবহারকারী: <span className="text-theme-primary font-medium">{log.userName}</span> • মডিউল: {log.module}
                   </p>
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono shrink-0 ml-3">
+                <span className="text-[11px] text-theme-text-muted font-mono shrink-0 tabular-nums">
                   {format(log.timestamp, 'dd/MM/yy, hh:mm a')}
                 </span>
               </div>

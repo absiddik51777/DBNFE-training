@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PermissionsProvider, usePermissions } from './contexts/PermissionsContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { SystemSettingsProvider } from './contexts/SystemSettingsContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -31,8 +32,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-600">
-        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+      <div className="min-h-screen bg-theme-bg flex flex-col items-center justify-center text-theme-text-secondary">
+        <div className="w-10 h-10 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mb-3"></div>
         <p className="text-sm font-medium">তথ্য যাচাই করা হচ্ছে (Authenticating)...</p>
       </div>
     );
@@ -55,16 +56,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-import { ShieldAlert } from 'lucide-react';
-
 const RootRouteHandler = () => {
   const { userProfile } = useAuth();
   const { canViewPage, getDefaultLandingRoute, loading } = usePermissions();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
         <span className="text-sm">লোড হচ্ছে...</span>
       </div>
     );
@@ -95,8 +94,8 @@ const PageGuard = ({ path, children }: { path: string; children: React.ReactNode
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-slate-500">
-        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
         <span className="text-sm">যাচাই করা হচ্ছে...</span>
       </div>
     );
@@ -153,16 +152,18 @@ import { ConfirmationProvider } from './contexts/ConfirmationContext';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <PermissionsProvider>
-        <SystemSettingsProvider>
-          <ConfirmationProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </ConfirmationProvider>
-        </SystemSettingsProvider>
-      </PermissionsProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <PermissionsProvider>
+          <SystemSettingsProvider>
+            <ConfirmationProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ConfirmationProvider>
+          </SystemSettingsProvider>
+        </PermissionsProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
