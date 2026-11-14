@@ -196,7 +196,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
     try {
       await purgeAllSystemData({
         keepInstitutesAndTrades,
-        keepLogs: false,
+        keepLogs: true,
       });
       setFactoryResetOpen(false);
       await Promise.all([onRefreshCounts(), onRefreshLogs()]);
@@ -316,7 +316,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
               সম্পূর্ণ ফ্যাক্টরি রিসেট
             </h2>
             <p className="text-xs text-theme-text-secondary leading-relaxed">
-              সিস্টেমের সকল হাজিরা, প্রশিক্ষণার্থী, পরীক্ষা, মার্কস, ব্যাচ ও অডিট লগ স্থায়ীভাবে মুছে নতুন অবস্থায় ফিরিয়ে আনুন।
+              সিস্টেমের সকল হাজিরা, প্রশিক্ষণার্থী, পরীক্ষা, মার্কস ও ব্যাচ স্থায়ীভাবে মুছে নতুন অবস্থায় ফিরিয়ে আনুন। (নিরীক্ষার জন্য অডিট লগ সংরক্ষিত থাকবে)
             </p>
           </div>
         </div>

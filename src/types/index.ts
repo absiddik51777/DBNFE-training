@@ -195,12 +195,65 @@ export interface ExamMark {
   updatedAt?: number;
 }
 
+export type AuditAction =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'bulk_delete'
+  | 'undo'
+  | 'restore'
+  | 'export'
+  | 'settings'
+  | 'security';
+
+export type AuditModule =
+  | 'trainees'
+  | 'batches'
+  | 'institutes'
+  | 'trades'
+  | 'exams'
+  | 'attendance'
+  | 'settings'
+  | 'security';
+
+export interface AuditChange {
+  field: string;
+  label: string;
+  before: unknown;
+  after: unknown;
+}
+
+export interface AuditRelatedDoc {
+  collection: string;
+  id: string;
+  data: Record<string, unknown>;
+}
+
 export interface ActivityLog {
   id: string;
+  action: AuditAction | string;
+  module: AuditModule | string;
+  collection?: string;
+  targetId?: string;
+  targetLabel?: string;
+  title?: string;
+  user?: string;
   userId: string;
+  userRole?: string;
+  changes?: AuditChange[];
+  snapshot?: Record<string, unknown> | null;
+  related?: AuditRelatedDoc[];
+  count?: number;
+  targetNames?: string[];
+  snapshotComplete?: boolean;
+  snapshotChunkCount?: number;
+  refLogId?: string;
+  reverted?: boolean;
+  revertedBy?: string;
+  revertedAt?: unknown;
+  createdAt?: unknown;
+  // Legacy fields preserved for full backwards compatibility
   userName: string;
-  action: string;
-  module: string;
   recordId: string;
   details?: string;
   timestamp: number;

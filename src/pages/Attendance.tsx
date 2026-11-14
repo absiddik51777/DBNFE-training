@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { logActivity } from '../lib/firebase';
 import { Institute, Trade, Batch, Trainee, AttendanceRecord, AttendanceStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
@@ -545,7 +544,22 @@ const Attendance: React.FC = () => {
         });
       });
 
-      const result = await dataService.saveAttendanceBatch(recordsToSave);
+      const traineeNamesMap: Record<string, string> = {};
+      markedItems.forEach(item => {
+        traineeNamesMap[item.id] = item.trainee.nameBn || item.trainee.nameEn || item.id;
+      });
+
+      const result = await dataService.saveAttendanceBatch(recordsToSave, {
+        traineeNamesMap,
+        batchName: currentBatch?.name || selectedBatch,
+        actor: userProfile
+          ? {
+              userId: userProfile.id || '',
+              user: userProfile.name || 'User',
+              userRole: userProfile.role || '',
+            }
+          : undefined,
+      });
 
       if (!result.success && result.error) {
         setSaveErrorMessage(`হাজিরা সংরক্ষণে সমস্যা হয়েছে: ${result.error}`);
@@ -568,19 +582,6 @@ const Attendance: React.FC = () => {
         });
         return next;
       });
-
-      const presentCount = recordsToSave.filter(r => r.status === 'Present').length;
-      const absentCount = recordsToSave.filter(r => r.status === 'Absent').length;
-      const leaveCount = recordsToSave.filter(r => r.status === 'Leave').length;
-
-      // Audit Log
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `হাজিরা সংরক্ষণ: "${currentBatch?.name || selectedBatch}" (${formatBengaliDate(selectedDate)}) — উপস্থিত: ${toBn(presentCount)}, অনুপস্থিত: ${toBn(absentCount)}, ছুটি: ${toBn(leaveCount)}`,
-        'Attendance',
-        selectedBatch
-      );
 
       setSaveSuccessMessage(`${toBn(recordsToSave.length)} জন শিক্ষার্থীর হাজিরা সফলভাবে সংরক্ষিত হয়েছে।`);
       setTimeout(() => setSaveSuccessMessage(''), 3500);

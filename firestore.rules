@@ -176,12 +176,30 @@ service cloud.firestore {
       allow write: if isCourseDirector() && isValidId(roleId);
     }
 
-    // --- 10. Audit Activity Logs (Append-Only) ---
+    // --- 10. Audit Activity Logs (Append-Only + One-Time Undo/Restore Mark + Chunked Snapshots) ---
     match /activityLogs/{logId} {
       allow get: if isCourseDirector() && isValidId(logId);
       allow list: if isCourseDirector();
       allow create: if isSignedIn() && isValidId(logId) && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false; // Immutable audit records
+      allow update: if isCourseDirector() &&
+                       isValidId(logId) &&
+                       (!('reverted' in resource.data) || resource.data.reverted == false) &&
+                       request.resource.data.reverted == true &&
+                       request.resource.data.revertedBy is string &&
+                       request.resource.data.revertedBy.size() > 0 &&
+                       request.resource.data.revertedBy.size() <= 150 &&
+                       request.resource.data.revertedAt != null &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reverted', 'revertedBy', 'revertedAt']);
+      allow delete: if false; // Never delete audit logs
+
+      match /snapshots/{chunkId} {
+        allow get, list: if isCourseDirector() && isValidId(logId) && isValidId(chunkId);
+        allow create: if isSignedIn() &&
+                         isValidId(logId) &&
+                         isValidId(chunkId) &&
+                         request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
 
     // --- 11. System Settings ---

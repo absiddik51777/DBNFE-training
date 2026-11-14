@@ -10,8 +10,9 @@ import {
   DocumentData,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { db, logActivity } from '../../lib/firebase';
+import { db } from '../../lib/firebase';
 import { dataService } from '../../lib/dataService';
+import { recordSimpleAuditLog } from '../../lib/auditLog';
 import { saveTextFile } from '../../lib/fileExportService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
@@ -29,7 +30,28 @@ import type { SettingsCounts, SettingsToast, SettingsToastType } from './types';
 
 const LOG_PAGE_SIZE = 20;
 
-export function useSettingsData() {
+const CANONICAL_MODULES = [
+  'trainees',
+  'batches',
+  'institutes',
+  'trades',
+  'exams',
+  'attendance',
+  'settings',
+  'security',
+] as const;
+
+export function normalizeAuditModuleKey(raw?: string): string {
+  const m = (raw || '').trim().toLowerCase();
+  if (!m) return 'settings';
+  if (m === 'results') return 'exams';
+  if (m === 'trainee_brn_verification') return 'trainees';
+  if (m === 'auth' || m === 'users' || m === 'roles') return 'security';
+  if (m === 'system') return 'settings';
+  return m;
+}
+
+export function useSettingsData(isAdmin: boolean = true) {
   const { userProfile } = useAuth();
   const { settings } = useSystemSettings();
 
@@ -111,6 +133,12 @@ export function useSettingsData() {
   }, []);
 
   const fetchLogs = useCallback(async () => {
+    if (!isAdmin) {
+      setLogs([]);
+      setHasMoreLogs(false);
+      setLoadingLogs(false);
+      return;
+    }
     setLoadingLogs(true);
     try {
       const q = query(
@@ -128,10 +156,10 @@ export function useSettingsData() {
     } finally {
       setLoadingLogs(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   const loadMoreLogs = useCallback(async () => {
-    if (!lastDocRef.current || loadingMoreLogs || !hasMoreLogs) return;
+    if (!isAdmin || !lastDocRef.current || loadingMoreLogs || !hasMoreLogs) return;
     setLoadingMoreLogs(true);
     try {
       const q = query(
@@ -161,7 +189,7 @@ export function useSettingsData() {
     } finally {
       setLoadingMoreLogs(false);
     }
-  }, [hasMoreLogs, loadingMoreLogs, showToast]);
+  }, [hasMoreLogs, isAdmin, loadingMoreLogs, showToast]);
 
   useEffect(() => {
     fetchCounts();
@@ -169,30 +197,22 @@ export function useSettingsData() {
   }, [fetchCounts, fetchLogs]);
 
   const availableLogModules = useMemo(() => {
-    const base = new Set<string>([
-      'Settings',
-      'Attendance',
-      'Trainees',
-      'Exams',
-      'Batches',
-      'Institutes',
-      'Trades',
-      'System',
-    ]);
+    const base = new Set<string>(CANONICAL_MODULES);
     for (const l of logs) {
-      if (l.module) base.add(l.module);
+      const key = normalizeAuditModuleKey(l.module);
+      if (key) base.add(key);
     }
     return Array.from(base);
   }, [logs]);
 
   const filteredLogs = useMemo(() => {
     if (moduleFilter === 'ALL') return logs;
-    return logs.filter(
-      (l) => (l.module || '').toLowerCase() === moduleFilter.toLowerCase()
-    );
+    const target = normalizeAuditModuleKey(moduleFilter);
+    return logs.filter((l) => normalizeAuditModuleKey(l.module) === target);
   }, [logs, moduleFilter]);
 
   const latestLogTimeText = useMemo(() => {
+    if (!isAdmin) return 'সংরক্ষিত';
     if (loadingLogs) return 'লোড হচ্ছে...';
     if (logs.length === 0 || !logs[0]?.timestamp) return 'কোনো লগ নেই';
     try {
@@ -200,7 +220,7 @@ export function useSettingsData() {
     } catch {
       return 'অজানা';
     }
-  }, [loadingLogs, logs]);
+  }, [isAdmin, loadingLogs, logs]);
 
   const exportAllSystemData = useCallback(async () => {
     if (exportingData) return;
@@ -223,13 +243,19 @@ export function useSettingsData() {
 
       if (result.success) {
         if (userProfile) {
-          await logActivity(
-            userProfile.id || '',
-            userProfile.name || 'User',
-            `সিস্টেম সম্পূর্ণ ডাটা ব্যাকআপ এক্সপোর্ট করা হয়েছে (${fileName})`,
-            'Settings',
-            'export_all'
-          ).catch(() => {});
+          await recordSimpleAuditLog({
+            action: 'export',
+            module: 'settings',
+            collectionName: 'settings',
+            targetId: 'export_all',
+            targetLabel: fileName,
+            title: `সিস্টেম সম্পূর্ণ ডাটা ব্যাকআপ এক্সপোর্ট (${fileName})`,
+            actor: {
+              userId: userProfile.id || '',
+              user: userProfile.name || 'User',
+              userRole: userProfile.role || '',
+            },
+          }).catch(() => {});
           fetchLogs();
         }
         showToast('success', result.message);

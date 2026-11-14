@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { logActivity } from '../lib/firebase';
 import { 
   Plus, 
   Edit2, 
@@ -395,18 +394,9 @@ const Trades: React.FC = () => {
         updatedAt: Date.now(),
       };
 
-      await dataService.saveItem('trades', savedTrade);
-
-      // Log activity
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        editingTrade 
-          ? `ট্রেড তথ্য আপডেট: ${savedTrade.name} (${savedTrade.code})` 
-          : `নতুন ট্রেড তৈরি: ${savedTrade.name} (${savedTrade.code})`,
-        'Trades',
-        id
-      );
+      await dataService.saveItem('trades', savedTrade, {
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       setActionSuccessMessage(editingTrade ? 'ট্রেডের তথ্য সফলভাবে আপডেট করা হয়েছে।' : 'নতুন ট্রেড সফলভাবে যুক্ত করা হয়েছে।');
       setTimeout(() => setActionSuccessMessage(''), 3000);
@@ -441,13 +431,11 @@ const Trades: React.FC = () => {
       });
 
       if (confirmed) {
-        await dataService.archiveRecord('trades', trade.id, 'সিস্টেম ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর');
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `ট্রেড সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${trade.name} (${trade.code})`,
-          'Trades',
-          trade.id
+        await dataService.archiveRecord(
+          'trades',
+          trade.id,
+          'সিস্টেম ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর',
+          userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
         );
         setActionSuccessMessage(`"${trade.name}" ট্রেডটি সফলভাবে সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
         setTimeout(() => setActionSuccessMessage(''), 3500);
@@ -467,14 +455,6 @@ const Trades: React.FC = () => {
         traineeCount: usage.traineeCount,
         examCount: usage.examCount,
       });
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `ট্রেড অপসারণ ডায়ালগ ওপেন (রেফারেন্স বিদ্যমান): ${trade.name} (${trade.code})`,
-        'Trades',
-        trade.id
-      );
     } else {
       // Unreferenced trade: Safe to hard delete directly with confirmation modal
       const confirmed = await confirm({
@@ -488,13 +468,10 @@ const Trades: React.FC = () => {
 
       if (confirmed) {
         try {
-          await dataService.deleteTrade(trade.id);
-          await logActivity(
-            userProfile?.id || '',
-            userProfile?.name || 'User',
-            `ট্রেড স্থায়ীভাবে অপসারণ: ${trade.name} (${trade.code})`,
-            'Trades',
-            trade.id
+          await dataService.deleteTrade(
+            trade.id,
+            true,
+            userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
           );
           setActionSuccessMessage(`"${trade.name}" ট্রেডটি সফলভাবে মুছে ফেলা হয়েছে।`);
           setTimeout(() => setActionSuccessMessage(''), 3000);
@@ -545,13 +522,10 @@ const Trades: React.FC = () => {
 
     if (confirmed) {
       try {
-        await dataService.deleteTrade(trade.id);
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `ট্রেড বলপূর্বক অপসারণ: ${trade.name} (${trade.code})`,
-          'Trades',
-          trade.id
+        await dataService.deleteTrade(
+          trade.id,
+          true,
+          userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
         );
         setSafeDeleteModalTrade(null);
         setActionSuccessMessage(`"${trade.name}" ট্রেডটি সফলভাবে মুছে ফেলা হয়েছে।`);
@@ -579,15 +553,10 @@ const Trades: React.FC = () => {
         status: 'Inactive',
         updatedAt: Date.now(),
       };
-      await dataService.saveItem('trades', updated);
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `ট্রেড নিষ্ক্রিয়করণ (ঐতিহাসিক রেকর্ড সংরক্ষিত): ${trade.name} (${trade.code})`,
-        'Trades',
-        trade.id
-      );
+      await dataService.saveItem('trades', updated, {
+        title: `ট্রেড নিষ্ক্রিয়করণ: ${trade.name}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       setActionSuccessMessage(`"${trade.name}" ট্রেডটি সফলভাবে নিষ্ক্রিয় করা হয়েছে। বিদ্যমান ব্যাচ ও শিক্ষার্থীদের রেকর্ড অক্ষত রয়েছে।`);
       setTimeout(() => setActionSuccessMessage(''), 4000);

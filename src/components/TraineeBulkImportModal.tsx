@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { Trainee, Batch, Institute, Trade } from '../types';
 import { dataService } from '../lib/dataService';
-import { logActivity } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { toBn, toEnDigits } from '../lib/dateUtils';
 import { downloadCSV, saveFileToDevice, FileExportResult } from '../lib/exportUtils';
@@ -954,19 +953,20 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         };
       });
 
-      const result = await dataService.saveTraineeBatch(traineesToSave);
+      const result = await dataService.saveTraineeBatch(traineesToSave, {
+        title: `বাল্ক এক্সেল/সিএসভি আপলোডের মাধ্যমে ${traineesToSave.length} জন শিক্ষার্থী নিবন্ধন`,
+        actor: userProfile
+          ? {
+              userId: userProfile.id || '',
+              user: userProfile.name || 'User',
+              userRole: userProfile.role || '',
+            }
+          : undefined,
+      });
 
       if (!result.success) {
         throw new Error(result.error || 'বাল্ক ডাটাবেজ সংরক্ষণ ব্যর্থ হয়েছে।');
       }
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `বাল্ক এক্সেল/সিএসভি আপলোডের মাধ্যমে ${result.count} জন শিক্ষার্থী সফলভাবে নিবন্ধন করা হয়েছে।`,
-        'Trainees',
-        'bulk_import'
-      );
 
       // Refresh parent list in background
       onSuccess(result.count);

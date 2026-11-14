@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { logActivity } from '../lib/firebase';
 import { Institute, Trade, Batch, Exam, Trainee, ExamMark } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -207,12 +206,16 @@ const Results: React.FC = () => {
     setSaving(true);
     setSaveSuccess(false);
     try {
+      const marksList: ExamMark[] = [];
+      const traineeNamesMap: Record<string, string> = {};
+
       for (const t of trainees) {
+        traineeNamesMap[t.id] = t.nameBn || t.nameEn || t.traineeId || t.id;
         const record = marksData[t.id];
         if (!record) continue;
 
         const markId = record.id || `MRK-${selectedExam}_${t.id}`;
-        const itemToSave: ExamMark = {
+        marksList.push({
           id: markId,
           examId: selectedExam,
           traineeId: t.id,
@@ -224,23 +227,31 @@ const Results: React.FC = () => {
           enteredBy: userProfile?.name || 'User',
           createdAt: record.createdAt || Date.now(),
           updatedAt: Date.now()
-        };
-
-        await dataService.saveItem('marks', itemToSave);
+        });
       }
 
-      setSaveSuccess(true);
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `ফলাফল ও মার্কস সংরক্ষণ: ${currentExam?.name || selectedExam}`,
-        'Results',
-        selectedExam
+      const examObj = exams.find(e => e.id === selectedExam);
+      await dataService.saveMarksBatch(
+        selectedExam,
+        examObj?.name || selectedExam,
+        marksList,
+        {
+          traineeNamesMap,
+          actor: userProfile
+            ? {
+                userId: userProfile.id || '',
+                user: userProfile.name || 'User',
+                userRole: userProfile.role || '',
+              }
+            : undefined,
+        }
       );
+
+      setSaveSuccess(true);
       fetchTraineesAndMarks();
     } catch (error) {
       console.warn("Notice saving marks:", error);
-      setSaveSuccess(true);
+      setSaveError("নম্বর সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।");
     } finally {
       setSaving(false);
     }

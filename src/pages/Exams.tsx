@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { logActivity } from '../lib/firebase';
 import { Plus, Edit2, Trash2, FileText, Calendar, Award, BookOpen, X } from 'lucide-react';
 import { Exam, Institute, Trade, Batch } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -143,15 +142,9 @@ const Exams: React.FC = () => {
         createdAt: editingExam?.createdAt || Date.now(),
       };
 
-      await dataService.saveItem('exams', savedExam);
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        editingExam ? `পরীক্ষা আপডেট: ${formData.name}` : `নতুন পরীক্ষা তৈরি: ${formData.name}`,
-        'Exams',
-        id
-      );
+      await dataService.saveItem('exams', savedExam, {
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       setIsModalOpen(false);
       fetchData();
@@ -174,13 +167,11 @@ const Exams: React.FC = () => {
 
       if (confirmed) {
         try {
-          await dataService.archiveRecord('exams', id, 'সিস্টেমে ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর');
-          await logActivity(
-            userProfile?.id || '',
-            userProfile?.name || 'User',
-            `পরীক্ষা সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${name}`,
-            'Exams',
-            id
+          await dataService.archiveRecord(
+            'exams',
+            id,
+            'সিস্টেমে ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর',
+            userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
           );
           fetchData();
         } catch (error) {
@@ -201,14 +192,9 @@ const Exams: React.FC = () => {
 
     if (confirmed) {
       try {
-        await dataService.deleteItem('exams', id);
-        logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `পরীক্ষা মুছে ফেলা হয়েছে: ${name}`,
-          'Exams',
-          id
-        );
+        await dataService.deleteItem('exams', id, true, {
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
         fetchData();
       } catch (error) {
         console.warn("Notice deleting exam:", error);

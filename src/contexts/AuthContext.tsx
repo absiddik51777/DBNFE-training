@@ -13,7 +13,7 @@ import {
 import { doc, getDoc, setDoc, deleteDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { UserProfile, UserRole } from '../types';
 import { dataService } from '../lib/dataService';
-import { logActivity } from '../lib/firebase';
+import { recordSimpleAuditLog } from '../lib/auditLog';
 
 const SUPER_ADMIN_EMAILS = [
   'unfeohaluaghat@gmail.com',
@@ -154,6 +154,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.warn("Could not remove old placeholder doc:", delErr);
             }
 
+            recordSimpleAuditLog({
+              action: 'update',
+              module: 'security',
+              collectionName: 'users',
+              targetId: uid,
+              targetLabel: adoptedProfile.name || cleanEmail,
+              title: `প্রাক-নিবন্ধিত অ্যাকাউন্ট সংযুক্ত: ${adoptedProfile.name || cleanEmail}`,
+              actor: {
+                userId: uid,
+                user: adoptedProfile.name || cleanEmail,
+                userRole: adoptedProfile.role || '',
+              },
+            }).catch(() => {});
+
             dataService.broadcastSync('users');
             setCachedProfile(adoptedProfile);
             return adoptedProfile;
@@ -196,6 +210,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         await setDoc(doc(db, 'users', uid), initialProfile);
+        recordSimpleAuditLog({
+          action: 'create',
+          module: 'security',
+          collectionName: 'users',
+          targetId: uid,
+          targetLabel: initialProfile.name,
+          title: `প্রাথমিক প্রোফাইল তৈরি: ${initialProfile.name} (${defaultRole})`,
+          actor: {
+            userId: uid,
+            user: initialProfile.name,
+            userRole: defaultRole,
+          },
+        }).catch(() => {});
         dataService.broadcastSync('users');
       } catch (e) {
         console.warn("Notice bootstrapping initial profile in Firestore:", e);
@@ -369,14 +396,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await setDoc(doc(db, 'users', uid), newProfile);
       dataService.broadcastSync('users');
       
-      logActivity(
-        uid,
-        newProfile.name,
-        `নতুন অ্যাকাউন্ট নিবন্ধন সম্পন্ন (${safeRole} - ${safeStatus})`,
-        'Auth',
-        uid,
-        `ইমেইল: ${cleanEmail}, ফোন: ${params.phone}`
-      );
+      recordSimpleAuditLog({
+        action: 'create',
+        module: 'security',
+        collectionName: 'users',
+        targetId: uid,
+        targetLabel: newProfile.name,
+        title: `নতুন অ্যাকাউন্ট নিবন্ধন: ${newProfile.name} (${safeRole} - ${safeStatus})`,
+        actor: {
+          userId: uid,
+          user: newProfile.name,
+          userRole: safeRole,
+        },
+      }).catch(() => {});
     } catch (err: any) {
       if (err?.code === 'auth/operation-not-allowed' || err?.message?.includes('operation-not-allowed')) {
         throw new Error(

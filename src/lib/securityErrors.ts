@@ -1,7 +1,7 @@
 /**
  * Structured Firebase / Firestore security error handling and logging
  */
-import { logActivity } from './firebase';
+import { recordSimpleAuditLog } from './auditLog';
 
 export type SecurityOperationType = 'get' | 'list' | 'create' | 'update' | 'delete' | 'write';
 
@@ -60,13 +60,19 @@ export function handleFirestoreError(errorInfo: FirestoreErrorInfo): SanitizedSe
   // If permission denied or security violation, write to security audit trail if user is identified
   if (isPermissionDenied && authInfo.userId) {
     try {
-      logActivity(
-        authInfo.userId,
-        authInfo.email || 'User',
-        `অননুমোদিত অ্যাক্সেস প্রচেষ্টা (Security Warning): ${operationType} on ${path || 'database'}`,
-        'Security',
-        authInfo.userId
-      );
+      void recordSimpleAuditLog({
+        action: 'security',
+        module: 'security',
+        collectionName: path ? path.split('/')[0] : 'security',
+        targetId: authInfo.userId,
+        targetLabel: path || 'database',
+        title: `অননুমোদিত অ্যাক্সেস প্রচেষ্টা (Security Warning): ${operationType} on ${path || 'database'}`,
+        actor: {
+          userId: authInfo.userId,
+          user: authInfo.email || 'User',
+          userRole: authInfo.role || 'User',
+        },
+      }).catch(() => {});
     } catch {
       // non-blocking
     }

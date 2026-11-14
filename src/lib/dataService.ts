@@ -24,6 +24,17 @@ import {
   ActivityLog,
   SystemSettings
 } from '../types';
+import {
+  recordAuditedSave,
+  recordAuditedDelete,
+  recordAuditedBulkDelete,
+  recordAuditedAttendanceBatch,
+  recordAuditedMarksBatch,
+  recordSimpleAuditLog,
+  AuditActor,
+  AuditModule,
+  AuditRelatedDoc,
+} from './auditLog';
 import { 
   BatchCalendarProgress, 
   DayCompletionStatus, 
@@ -230,18 +241,40 @@ export const dataService = {
   },
 
   /**
-   * Save or update an item directly in Cloud Firestore
+   * Save or update an item directly in Cloud Firestore (atomically audited via auditLog.ts)
    */
-  async saveItem<T extends { id: string }>(collectionName: string, item: T): Promise<T> {
+  async saveItem<T extends { id: string }>(
+    collectionName: string,
+    item: T,
+    auditMeta?: {
+      module?: AuditModule;
+      title?: string;
+      targetLabel?: string;
+      actor?: AuditActor;
+      skipAudit?: boolean;
+    }
+  ): Promise<T> {
     const cleanItem = sanitizeForFirestore(item);
-    
+
     try {
-      // Commit directly to Cloud Firestore
-      const docRef = doc(db, collectionName, cleanItem.id);
-      await setDoc(docRef, cleanItem, { merge: true });
+      if (auditMeta?.skipAudit) {
+        const docRef = doc(db, collectionName, cleanItem.id);
+        await setDoc(docRef, cleanItem, { merge: true });
+        this.broadcastSync(collectionName);
+        return cleanItem as T;
+      }
+
+      const saved = await recordAuditedSave<T>({
+        collectionName,
+        item: cleanItem as T,
+        module: auditMeta?.module,
+        title: auditMeta?.title,
+        targetLabel: auditMeta?.targetLabel,
+        actor: auditMeta?.actor,
+      });
 
       this.broadcastSync(collectionName);
-      return cleanItem as T;
+      return saved;
     } catch (err: any) {
       const sanitized = handleFirestoreError({
         error: err,
@@ -258,23 +291,28 @@ export const dataService = {
   },
 
   /**
-   * Delete an item by ID directly from Cloud Firestore.
+   * Delete an item by ID directly from Cloud Firestore (audited with full snapshot & related docs).
    * If deleting is denied by system settings, automatically fallbacks to archiveRecord when fallbackToArchive is true.
    */
   async deleteItem(
-    collectionName: string, 
-    id: string, 
-    fallbackToArchive: boolean = true
+    collectionName: string,
+    id: string,
+    fallbackToArchive: boolean = true,
+    auditMeta?: {
+      module?: AuditModule;
+      title?: string;
+      targetLabel?: string;
+      actor?: AuditActor;
+    }
   ): Promise<{ action: 'deleted' | 'archived'; id: string }> {
-    // Operational and curriculum collections that should always be directly deleted
     const alwaysDirectDelete = [
       'users',
+      'roles',
       'trade_skill_modules',
       'trade_literacy_modules',
       'batch_calendar_progress',
       'calendar_progress_logs',
       'attendance',
-      'activityLogs',
       'exams',
       'marks',
       'notifications'
@@ -286,7 +324,12 @@ export const dataService = {
         if (fallbackToArchive) {
           console.info(`Deletion denied by system settings. Falling back to archive record for ${collectionName}/${id}`);
           try {
-            await this.archiveRecord(collectionName, id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+            await this.archiveRecord(
+              collectionName,
+              id,
+              'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে',
+              auditMeta?.actor
+            );
             return { action: 'archived', id };
           } catch (archiveErr) {
             console.warn(`Record not found in Firestore during archive fallback (${id}), continuing with cleanup`);
@@ -298,8 +341,44 @@ export const dataService = {
     }
 
     try {
-      const docRef = doc(db, collectionName, id);
-      await deleteDoc(docRef);
+      const relatedDocs: AuditRelatedDoc[] = [];
+
+      if (collectionName === 'trainees') {
+        const [attSnap, marksSnap] = await Promise.all([
+          getDocs(collection(db, 'attendance')),
+          getDocs(collection(db, 'marks')),
+        ]);
+        attSnap.docs.forEach((d) => {
+          const data = d.data();
+          if (data.traineeId === id) {
+            relatedDocs.push({ collection: 'attendance', id: d.id, data: { id: d.id, ...data } });
+          }
+        });
+        marksSnap.docs.forEach((d) => {
+          const data = d.data();
+          if (data.traineeId === id) {
+            relatedDocs.push({ collection: 'marks', id: d.id, data: { id: d.id, ...data } });
+          }
+        });
+      } else if (collectionName === 'exams') {
+        const marksSnap = await getDocs(collection(db, 'marks'));
+        marksSnap.docs.forEach((d) => {
+          const data = d.data();
+          if (data.examId === id) {
+            relatedDocs.push({ collection: 'marks', id: d.id, data: { id: d.id, ...data } });
+          }
+        });
+      }
+
+      await recordAuditedDelete({
+        collectionName,
+        docId: id,
+        module: auditMeta?.module,
+        title: auditMeta?.title,
+        targetLabel: auditMeta?.targetLabel,
+        relatedDocs,
+        actor: auditMeta?.actor,
+      });
     } catch (e: any) {
       const sanitized = handleFirestoreError({
         error: e,
@@ -315,6 +394,12 @@ export const dataService = {
     }
 
     this.broadcastSync(collectionName);
+    if (collectionName === 'trainees') {
+      this.broadcastSync('attendance');
+      this.broadcastSync('marks');
+    } else if (collectionName === 'exams') {
+      this.broadcastSync('marks');
+    }
     return { action: 'deleted', id };
   },
 
@@ -325,7 +410,8 @@ export const dataService = {
   async archiveRecord(
     collectionName: string,
     id: string,
-    reason: string = 'সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে'
+    reason: string = 'সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে',
+    actor?: AuditActor
   ): Promise<any> {
     const docRef = doc(db, collectionName, id);
     const snap = await getDoc(docRef);
@@ -334,16 +420,21 @@ export const dataService = {
     }
 
     const currentData = snap.data();
-    const updatedData: Record<string, any> = {
+    const updatedData = sanitizeForFirestore({
       ...currentData,
+      id,
       status: 'Archived',
       isArchived: true,
       archivedAt: Date.now(),
       archivedReason: reason,
       updatedAt: Date.now()
-    };
+    });
 
-    await setDoc(docRef, sanitizeForFirestore(updatedData), { merge: true });
+    await recordAuditedSave({
+      collectionName,
+      item: updatedData,
+      actor,
+    });
     this.broadcastSync(collectionName);
     return updatedData;
   },
@@ -353,7 +444,8 @@ export const dataService = {
    */
   async unarchiveRecord(
     collectionName: string,
-    id: string
+    id: string,
+    actor?: AuditActor
   ): Promise<any> {
     const docRef = doc(db, collectionName, id);
     const snap = await getDoc(docRef);
@@ -362,30 +454,40 @@ export const dataService = {
     }
 
     const currentData = snap.data();
-    const defaultStatus = collectionName === 'batches' ? 'Active' : 'Active';
-    const updatedData: Record<string, any> = {
+    const updatedData = sanitizeForFirestore({
       ...currentData,
-      status: defaultStatus,
+      id,
+      status: 'Active',
       isArchived: false,
       archivedAt: null,
       archivedReason: null,
       updatedAt: Date.now()
-    };
+    });
 
-    await setDoc(docRef, sanitizeForFirestore(updatedData), { merge: true });
+    await recordAuditedSave({
+      collectionName,
+      item: updatedData,
+      actor,
+    });
     this.broadcastSync(collectionName);
     return updatedData;
   },
 
   /**
-   * Batch save attendance records atomically directly in Cloud Firestore
+   * Batch save attendance records atomically directly in Cloud Firestore with structured audit log
    * Enforces idempotent primary keys (ATT_${batchId}_${date}_${traineeId}) to prevent duplicates.
    */
-  async saveAttendanceBatch(records: AttendanceRecord[]): Promise<{ success: boolean; count: number; error?: string }> {
+  async saveAttendanceBatch(
+    records: AttendanceRecord[],
+    auditMeta?: {
+      traineeNamesMap?: Record<string, string>;
+      batchName?: string;
+      actor?: AuditActor;
+    }
+  ): Promise<{ success: boolean; count: number; error?: string }> {
     if (!records || records.length === 0) return { success: true, count: 0 };
 
     try {
-      // Deduplicate by composite key (batchId + date + traineeId)
       const recordMap = new Map<string, AttendanceRecord>();
       const now = Date.now();
 
@@ -401,23 +503,15 @@ export const dataService = {
       });
 
       const uniqueRecords = Array.from(recordMap.values());
-
-      // Commit to Cloud Firestore in chunks of up to 450 items (Firestore limit is 500)
-      const chunkSize = 450;
-      for (let i = 0; i < uniqueRecords.length; i += chunkSize) {
-        const chunk = uniqueRecords.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-
-        chunk.forEach(rec => {
-          const ref = doc(db, 'attendance', rec.id);
-          batch.set(ref, rec, { merge: true });
-        });
-
-        await batch.commit();
-      }
+      const count = await recordAuditedAttendanceBatch({
+        records: uniqueRecords as unknown as Array<Record<string, unknown> & { id: string; traineeId: string; status: string; date: string; batchId: string }>,
+        traineeNamesMap: auditMeta?.traineeNamesMap,
+        batchName: auditMeta?.batchName,
+        actor: auditMeta?.actor,
+      });
 
       this.broadcastSync('attendance');
-      return { success: true, count: uniqueRecords.length };
+      return { success: true, count };
     } catch (firestoreErr: any) {
       console.error("Cloud Firestore batch attendance save error:", firestoreErr);
       return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error' };
@@ -425,10 +519,43 @@ export const dataService = {
   },
 
   /**
-   * Batch save trainees atomically directly in Cloud Firestore
+   * Batch save exam marks atomically with structured diff audit log
+   */
+  async saveMarksBatch(
+    examId: string,
+    examName: string,
+    marks: ExamMark[],
+    auditMeta?: {
+      traineeNamesMap?: Record<string, string>;
+      actor?: AuditActor;
+    }
+  ): Promise<{ success: boolean; count: number; error?: string }> {
+    if (!marks || marks.length === 0) return { success: true, count: 0 };
+    try {
+      const cleanList = marks.map((m) => sanitizeForFirestore(m));
+      const count = await recordAuditedMarksBatch({
+        examId,
+        examName,
+        records: cleanList as unknown as Array<Record<string, unknown> & { id: string; traineeId: string; marksObtained: number; result: string; grade: string }>,
+        traineeNamesMap: auditMeta?.traineeNamesMap,
+        actor: auditMeta?.actor,
+      });
+      this.broadcastSync('marks');
+      return { success: true, count };
+    } catch (err: any) {
+      console.error("Cloud Firestore batch marks save error:", err);
+      return { success: false, count: 0, error: err?.message || 'Cloud write error' };
+    }
+  },
+
+  /**
+   * Batch save trainees atomically directly in Cloud Firestore with audit log
    * Enforces sanitization and chunks writes up to 450 items per batch.
    */
-  async saveTraineeBatch(traineesList: Trainee[]): Promise<{ success: boolean; count: number; error?: string }> {
+  async saveTraineeBatch(
+    traineesList: Trainee[],
+    auditMeta?: { title?: string; actor?: AuditActor }
+  ): Promise<{ success: boolean; count: number; error?: string }> {
     if (!traineesList || traineesList.length === 0) return { success: true, count: 0 };
 
     try {
@@ -443,7 +570,7 @@ export const dataService = {
         });
       });
 
-      const chunkSize = 450;
+      const chunkSize = 440;
       for (let i = 0; i < cleanList.length; i += chunkSize) {
         const chunk = cleanList.slice(i, i + chunkSize);
         const batch = writeBatch(db);
@@ -455,6 +582,18 @@ export const dataService = {
 
         await batch.commit();
       }
+
+      await recordSimpleAuditLog({
+        action: 'create',
+        module: 'trainees',
+        collectionName: 'trainees',
+        targetId: 'bulk_import',
+        targetLabel: `${cleanList.length} জন প্রশিক্ষণার্থী`,
+        title: auditMeta?.title || `বাল্ক নিবন্ধন: ${cleanList.length} জন প্রশিক্ষণার্থী`,
+        count: cleanList.length,
+        targetNames: cleanList.slice(0, 50).map((t) => t.nameBn || t.nameEn || t.traineeId || t.id),
+        actor: auditMeta?.actor,
+      });
 
       this.broadcastSync('trainees');
       return { success: true, count: cleanList.length };
@@ -621,7 +760,8 @@ export const dataService = {
    */
   async updateTraineeBrnVerification(
     traineeId: string,
-    verification: { is_brn_verified: boolean; brn_remark: string; verifiedBy?: string }
+    verification: { is_brn_verified: boolean; brn_remark: string; verifiedBy?: string },
+    actor?: AuditActor
   ): Promise<Trainee> {
     const trainees = await this.getItems<Trainee>('trainees', true);
     const trainee = trainees.find(t => t.id === traineeId);
@@ -636,7 +776,11 @@ export const dataService = {
       brn_verified_by: verification.verifiedBy || '',
       updatedAt: Date.now(),
     };
-    await this.saveItem('trainees', updated);
+    await this.saveItem('trainees', updated, {
+      module: 'trainees',
+      title: `জন্ম নিবন্ধন যাচাই হালনাগাদ: ${trainee.nameBn || trainee.nameEn}`,
+      actor,
+    });
     return updated;
   },
 
@@ -797,7 +941,7 @@ export const dataService = {
   async seedDemoTraineesForAllBatches(forceOverwrite: boolean = false): Promise<number> {
     const batches = await this.getItems<Batch>('batches');
     const existingTrainees = await this.getItems<Trainee>('trainees');
-    let totalAdded = 0;
+    const allToSave: Trainee[] = [];
 
     for (let bIdx = 0; bIdx < batches.length; bIdx++) {
       const b = batches[bIdx];
@@ -807,14 +951,17 @@ export const dataService = {
       }
 
       const generated = generate20TraineesForBatch(b, bIdx, bIdx * 20);
-      for (const t of generated) {
-        await this.saveItem('trainees', t);
-        totalAdded++;
-      }
+      allToSave.push(...generated);
+    }
+
+    if (allToSave.length > 0) {
+      await this.saveTraineeBatch(allToSave, {
+        title: `ডেমো প্রশিক্ষণার্থী অন্তর্ভুক্ত (${allToSave.length} জন)`,
+      });
     }
 
     this.broadcastSync('trainees');
-    return totalAdded;
+    return allToSave.length;
   },
 
   /**
@@ -889,17 +1036,33 @@ export const dataService = {
   },
 
   /**
-   * Save or update system settings directly in Cloud Firestore
+   * Save or update system settings directly in Cloud Firestore with diff audit log
    */
-  async saveSystemSettings(updates: Partial<SystemSettings>): Promise<SystemSettings> {
-    const docRef = doc(db, 'settings', 'system_config');
+  async saveSystemSettings(
+    updates: Partial<SystemSettings>,
+    actor?: AuditActor
+  ): Promise<SystemSettings> {
     const merged: SystemSettings = {
       ...cachedSystemSettings,
       ...updates,
       updatedAt: Date.now()
     };
-    const clean = sanitizeForFirestore(merged);
-    await setDoc(docRef, clean, { merge: true });
+    const clean = sanitizeForFirestore({ id: 'system_config', ...merged });
+    const title =
+      updates.allowDataDeletion !== undefined
+        ? `সিস্টেম ডাটা ডিলিট কন্ট্রোল: ${updates.allowDataDeletion ? 'আনলক (চালু)' : 'লক (বন্ধ)'}`
+        : updates.allowPublicRegistration !== undefined
+        ? `পাবলিক নিবন্ধন: ${updates.allowPublicRegistration ? 'চালু' : 'বন্ধ'}`
+        : 'সিস্টেম সেটিংস হালনাগাদ';
+
+    await recordAuditedSave({
+      collectionName: 'settings',
+      item: clean as SystemSettings & { id: string },
+      module: 'settings',
+      targetLabel: 'সিস্টেম কনফিগারেশন',
+      title,
+      actor,
+    });
     cachedSystemSettings = merged;
     if (typeof window !== 'undefined') {
       localStorage.setItem('bnfe_system_settings', JSON.stringify(merged));
@@ -935,26 +1098,39 @@ export const dataService = {
   },
 
   /**
-   * Delete attendance records directly from Cloud Firestore
-   * Supports filtering by batchId, date, or deleting all attendance.
+   * Delete attendance records directly from Cloud Firestore (audited bulk_delete)
    */
-  async deleteAttendance(filter?: { batchId?: string; date?: string; instituteId?: string }): Promise<number> {
+  async deleteAttendance(
+    filter?: { batchId?: string; date?: string; instituteId?: string },
+    actor?: AuditActor
+  ): Promise<number> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। অনুগ্রহ করে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
-    const allRecords = await this.getItems<AttendanceRecord>('attendance');
-    let toDelete = allRecords;
+    const snap = await getDocs(collection(db, 'attendance'));
+    let toDelete = snap.docs.map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }));
 
     if (filter) {
-      if (filter.batchId) toDelete = toDelete.filter(r => r.batchId === filter.batchId);
-      if (filter.date) toDelete = toDelete.filter(r => r.date === filter.date);
-      if (filter.instituteId) toDelete = toDelete.filter(r => r.instituteId === filter.instituteId);
+      if (filter.batchId) toDelete = toDelete.filter(r => r.data.batchId === filter.batchId);
+      if (filter.date) toDelete = toDelete.filter(r => r.data.date === filter.date);
+      if (filter.instituteId) toDelete = toDelete.filter(r => r.data.instituteId === filter.instituteId);
     }
 
-    const ids = toDelete.map(r => r.id);
-    const count = await batchDeleteDocuments('attendance', ids);
+    const title = filter?.date
+      ? `তারিখভিত্তিক হাজিরা রেকর্ড মোছা হয়েছে (${filter.date})`
+      : filter?.batchId
+      ? `ব্যাচভিত্তিক হাজিরা রেকর্ড মোছা হয়েছে`
+      : `সকল দৈনিক হাজিরা রেকর্ড মোছা হয়েছে (${toDelete.length} টি)`;
+
+    const count = await recordAuditedBulkDelete({
+      collectionName: 'attendance',
+      docs: toDelete,
+      module: 'attendance',
+      title,
+      actor,
+    });
     this.broadcastSync('attendance');
     return count;
   },
@@ -962,67 +1138,106 @@ export const dataService = {
   /**
    * Delete all trainees directly from Cloud Firestore, with option to delete attendance too
    */
-  async deleteAllTrainees(options?: { batchId?: string; deleteAttendanceToo?: boolean }): Promise<{ deletedTrainees: number; deletedAttendance: number }> {
+  async deleteAllTrainees(
+    options?: { batchId?: string; deleteAttendanceToo?: boolean },
+    actor?: AuditActor
+  ): Promise<{ deletedTrainees: number; deletedAttendance: number }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। অনুগ্রহ করে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
-    const trainees = await this.getItems<Trainee>('trainees');
-    const targetTrainees = options?.batchId 
-      ? trainees.filter(t => t.batchId === options.batchId)
-      : trainees;
+    const trnSnap = await getDocs(collection(db, 'trainees'));
+    const targetTrainees = trnSnap.docs
+      .map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }))
+      .filter((t) => !options?.batchId || t.data.batchId === options.batchId);
 
-    const traineeIds = targetTrainees.map(t => t.id);
-    const deletedTrainees = await batchDeleteDocuments('trainees', traineeIds);
-
+    const relatedDocs: AuditRelatedDoc[] = [];
     let deletedAttendance = 0;
+
     if (options?.deleteAttendanceToo !== false) {
-      const attendance = await this.getItems<AttendanceRecord>('attendance');
-      const targetAttendance = options?.batchId
-        ? attendance.filter(a => a.batchId === options.batchId)
-        : attendance;
-      deletedAttendance = await batchDeleteDocuments('attendance', targetAttendance.map(a => a.id));
+      const attSnap = await getDocs(collection(db, 'attendance'));
+      attSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (!options?.batchId || data.batchId === options.batchId) {
+          relatedDocs.push({ collection: 'attendance', id: d.id, data: { id: d.id, ...data } });
+          deletedAttendance++;
+        }
+      });
     }
+
+    await recordAuditedBulkDelete({
+      collectionName: 'trainees',
+      docs: targetTrainees,
+      relatedDocs,
+      module: 'trainees',
+      title: `প্রশিক্ষণার্থী বাল্ক ডিলিট (${targetTrainees.length} জন${deletedAttendance > 0 ? ` ও হাজিরা ${deletedAttendance} টি` : ''})`,
+      totalCountOverride: targetTrainees.length,
+      actor,
+    });
 
     this.broadcastSync('trainees');
     this.broadcastSync('attendance');
-    return { deletedTrainees, deletedAttendance };
+    return { deletedTrainees: targetTrainees.length, deletedAttendance };
   },
 
   /**
    * Delete all exams and marks directly from Cloud Firestore
    */
-  async deleteAllExamsAndMarks(options?: { batchId?: string }): Promise<{ deletedExams: number; deletedMarks: number }> {
+  async deleteAllExamsAndMarks(
+    options?: { batchId?: string },
+    actor?: AuditActor
+  ): Promise<{ deletedExams: number; deletedMarks: number }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। অনুগ্রহ করে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
-    const exams = await this.getItems<Exam>('exams');
-    const marks = await this.getItems<ExamMark>('marks');
+    const [exmSnap, mrkSnap] = await Promise.all([
+      getDocs(collection(db, 'exams')),
+      getDocs(collection(db, 'marks')),
+    ]);
 
-    const targetExams = options?.batchId ? exams.filter(e => e.batchId === options.batchId) : exams;
-    const targetMarks = options?.batchId ? marks.filter(m => m.batchId === options.batchId) : marks;
+    const targetExams = exmSnap.docs
+      .map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }))
+      .filter((e) => !options?.batchId || e.data.batchId === options.batchId);
 
-    const deletedMarks = await batchDeleteDocuments('marks', targetMarks.map(m => m.id));
-    const deletedExams = await batchDeleteDocuments('exams', targetExams.map(e => e.id));
+    const targetMarks: AuditRelatedDoc[] = mrkSnap.docs
+      .map((d) => ({ collection: 'marks', id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }))
+      .filter((m) => !options?.batchId || m.data.batchId === options.batchId);
+
+    await recordAuditedBulkDelete({
+      collectionName: 'exams',
+      docs: targetExams,
+      relatedDocs: targetMarks,
+      module: 'exams',
+      title: `পরীক্ষা ও ফলাফল বাল্ক ডিলিট (পরীক্ষা: ${targetExams.length} টি, মার্কস: ${targetMarks.length} টি)`,
+      totalCountOverride: targetExams.length + targetMarks.length,
+      actor,
+    });
 
     this.broadcastSync('marks');
     this.broadcastSync('exams');
-    return { deletedExams, deletedMarks };
+    return { deletedExams: targetExams.length, deletedMarks: targetMarks.length };
   },
 
   /**
    * Delete all batches
    */
-  async deleteAllBatches(): Promise<number> {
+  async deleteAllBatches(actor?: AuditActor): Promise<number> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে।");
     }
-    const batches = await this.getItems<Batch>('batches');
-    const count = await batchDeleteDocuments('batches', batches.map(b => b.id));
+    const snap = await getDocs(collection(db, 'batches'));
+    const docs = snap.docs.map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }));
+    const count = await recordAuditedBulkDelete({
+      collectionName: 'batches',
+      docs,
+      module: 'batches',
+      title: `সকল ব্যাচ মুছে ফেলা হয়েছে (${docs.length} টি)`,
+      actor,
+    });
     this.broadcastSync('batches');
     return count;
   },
@@ -1030,13 +1245,20 @@ export const dataService = {
   /**
    * Delete all trades
    */
-  async deleteAllTrades(): Promise<number> {
+  async deleteAllTrades(actor?: AuditActor): Promise<number> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে।");
     }
-    const trades = await this.getItems<Trade>('trades');
-    const count = await batchDeleteDocuments('trades', trades.map(t => t.id));
+    const snap = await getDocs(collection(db, 'trades'));
+    const docs = snap.docs.map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }));
+    const count = await recordAuditedBulkDelete({
+      collectionName: 'trades',
+      docs,
+      module: 'trades',
+      title: `সকল ট্রেড মুছে ফেলা হয়েছে (${docs.length} টি)`,
+      actor,
+    });
     this.broadcastSync('trades');
     return count;
   },
@@ -1044,140 +1266,175 @@ export const dataService = {
   /**
    * Delete all institutes
    */
-  async deleteAllInstitutes(): Promise<number> {
+  async deleteAllInstitutes(actor?: AuditActor): Promise<number> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে।");
     }
-    const institutes = await this.getItems<Institute>('institutes');
-    const count = await batchDeleteDocuments('institutes', institutes.map(i => i.id));
+    const snap = await getDocs(collection(db, 'institutes'));
+    const docs = snap.docs.map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }));
+    const count = await recordAuditedBulkDelete({
+      collectionName: 'institutes',
+      docs,
+      module: 'institutes',
+      title: `সকল প্রতিষ্ঠান মুছে ফেলা হয়েছে (${docs.length} টি)`,
+      actor,
+    });
     this.broadcastSync('institutes');
     return count;
   },
 
   /**
-   * Delete a single institute and unassign it from any linked batches.
+   * Delete a single institute and unassign it from any linked batches (audited with snapshot).
    * If deleting is denied, fallbacks to archiving when fallbackToArchive is true.
    */
-  async deleteInstitute(id: string, fallbackToArchive: boolean = true): Promise<{ action: 'deleted' | 'archived'; id: string }> {
+  async deleteInstitute(
+    id: string,
+    fallbackToArchive: boolean = true,
+    actor?: AuditActor
+  ): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       if (fallbackToArchive) {
-        await this.archiveRecord('institutes', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+        await this.archiveRecord('institutes', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে', actor);
         return { action: 'archived', id };
       }
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
-    // 1. Delete institute doc from Firestore
-    await deleteDoc(doc(db, 'institutes', id));
-
-    // 2. Unassign linked batches
+    const postUpdates: Array<{ collection: string; id: string; data: Record<string, unknown> }> = [];
     try {
       const snap = await getDocs(collection(db, 'batches'));
-      const batchWrites = writeBatch(db);
-      let updatedCount = 0;
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (data.instituteId === id) {
-          batchWrites.update(doc(db, 'batches', d.id), { instituteId: '' });
-          updatedCount++;
+      snap.docs.forEach((d) => {
+        if (d.data().instituteId === id) {
+          postUpdates.push({ collection: 'batches', id: d.id, data: { instituteId: '' } });
         }
       });
-      if (updatedCount > 0) {
-        await batchWrites.commit();
-        this.broadcastSync('batches');
-      }
     } catch (e) {
-      console.warn("Could not unassign batches for deleted institute:", e);
+      console.warn("Could not collect linked batches for deleted institute:", e);
     }
 
+    await recordAuditedDelete({
+      collectionName: 'institutes',
+      docId: id,
+      module: 'institutes',
+      postUpdates,
+      actor,
+    });
+
+    if (postUpdates.length > 0) this.broadcastSync('batches');
     this.broadcastSync('institutes');
     return { action: 'deleted', id };
   },
 
   /**
-   * Delete a single trade and unassign it from any linked batches.
+   * Delete a single trade and unassign it from any linked batches (audited with snapshot).
    * If deleting is denied, fallbacks to archiving when fallbackToArchive is true.
    */
-  async deleteTrade(id: string, fallbackToArchive: boolean = true): Promise<{ action: 'deleted' | 'archived'; id: string }> {
+  async deleteTrade(
+    id: string,
+    fallbackToArchive: boolean = true,
+    actor?: AuditActor
+  ): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       if (fallbackToArchive) {
-        await this.archiveRecord('trades', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+        await this.archiveRecord('trades', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে', actor);
         return { action: 'archived', id };
       }
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
-    // 1. Delete trade doc from Firestore
-    await deleteDoc(doc(db, 'trades', id));
-
-    // 2. Unassign linked batches
+    const postUpdates: Array<{ collection: string; id: string; data: Record<string, unknown> }> = [];
     try {
       const snap = await getDocs(collection(db, 'batches'));
-      const batchWrites = writeBatch(db);
-      let updatedCount = 0;
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (data.tradeId === id) {
-          batchWrites.update(doc(db, 'batches', d.id), { tradeId: '' });
-          updatedCount++;
+      snap.docs.forEach((d) => {
+        if (d.data().tradeId === id) {
+          postUpdates.push({ collection: 'batches', id: d.id, data: { tradeId: '' } });
         }
       });
-      if (updatedCount > 0) {
-        await batchWrites.commit();
-        this.broadcastSync('batches');
-      }
     } catch (e) {
-      console.warn("Could not unassign batches for deleted trade:", e);
+      console.warn("Could not collect linked batches for deleted trade:", e);
     }
 
+    await recordAuditedDelete({
+      collectionName: 'trades',
+      docId: id,
+      module: 'trades',
+      postUpdates,
+      actor,
+    });
+
+    if (postUpdates.length > 0) this.broadcastSync('batches');
     this.broadcastSync('trades');
     return { action: 'deleted', id };
   },
 
   /**
-   * Delete a single batch with optional cascade delete of attendance & trainees.
+   * Delete a single batch with optional cascade delete of attendance, trainees, exams & marks (all saved in related!).
    * If deleting is denied, fallbacks to archiving when fallbackToArchive is true.
    */
-  async deleteBatch(id: string, cascade: boolean = true, fallbackToArchive: boolean = true): Promise<{ action: 'deleted' | 'archived'; id: string }> {
+  async deleteBatch(
+    id: string,
+    cascade: boolean = true,
+    fallbackToArchive: boolean = true,
+    actor?: AuditActor
+  ): Promise<{ action: 'deleted' | 'archived'; id: string }> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       if (fallbackToArchive) {
-        await this.archiveRecord('batches', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে');
+        await this.archiveRecord('batches', id, 'সিস্টেম ডিলিট বন্ধ থাকায় সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে', actor);
         return { action: 'archived', id };
       }
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। কোনো রেকর্ড ডিলিট করতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
-    // 1. Delete batch doc
-    await deleteDoc(doc(db, 'batches', id));
-
+    const relatedDocs: AuditRelatedDoc[] = [];
     if (cascade) {
-      // Delete attendance for this batch
-      const attSnap = await getDocs(collection(db, 'attendance'));
-      const attIds = attSnap.docs.filter(d => d.data().batchId === id).map(d => d.id);
-      await batchDeleteDocuments('attendance', attIds);
+      const [attSnap, trnSnap, exmSnap, mrkSnap] = await Promise.all([
+        getDocs(collection(db, 'attendance')),
+        getDocs(collection(db, 'trainees')),
+        getDocs(collection(db, 'exams')),
+        getDocs(collection(db, 'marks')),
+      ]);
 
-      // Delete trainees for this batch
-      const trnSnap = await getDocs(collection(db, 'trainees'));
-      const trnIds = trnSnap.docs.filter(d => d.data().batchId === id).map(d => d.id);
-      await batchDeleteDocuments('trainees', trnIds);
-
-      // Delete exams and marks for this batch
-      const exmSnap = await getDocs(collection(db, 'exams'));
-      const exmIds = exmSnap.docs.filter(d => d.data().batchId === id).map(d => d.id);
-      await batchDeleteDocuments('exams', exmIds);
-
-      const mrkSnap = await getDocs(collection(db, 'marks'));
-      const mrkIds = mrkSnap.docs.filter(d => d.data().batchId === id).map(d => d.id);
-      await batchDeleteDocuments('marks', mrkIds);
+      attSnap.docs.forEach((d) => {
+        if (d.data().batchId === id) {
+          relatedDocs.push({ collection: 'attendance', id: d.id, data: { id: d.id, ...d.data() } });
+        }
+      });
+      trnSnap.docs.forEach((d) => {
+        if (d.data().batchId === id) {
+          relatedDocs.push({ collection: 'trainees', id: d.id, data: { id: d.id, ...d.data() } });
+        }
+      });
+      exmSnap.docs.forEach((d) => {
+        if (d.data().batchId === id) {
+          relatedDocs.push({ collection: 'exams', id: d.id, data: { id: d.id, ...d.data() } });
+        }
+      });
+      mrkSnap.docs.forEach((d) => {
+        if (d.data().batchId === id) {
+          relatedDocs.push({ collection: 'marks', id: d.id, data: { id: d.id, ...d.data() } });
+        }
+      });
     }
 
+    await recordAuditedDelete({
+      collectionName: 'batches',
+      docId: id,
+      module: 'batches',
+      relatedDocs,
+      actor,
+    });
+
     this.broadcastSync('batches');
-    this.broadcastSync('trainees');
-    this.broadcastSync('attendance');
+    if (cascade) {
+      this.broadcastSync('trainees');
+      this.broadcastSync('attendance');
+      this.broadcastSync('exams');
+      this.broadcastSync('marks');
+    }
     return { action: 'deleted', id };
   },
 
@@ -1262,7 +1519,7 @@ export const dataService = {
   },
 
   /**
-   * Save calendar progress for a batch
+   * Save calendar progress for a batch (audited)
    */
   async saveBatchCalendarProgress(progress: BatchCalendarProgress): Promise<void> {
     const docId = `progress_${progress.batchId}`;
@@ -1277,8 +1534,12 @@ export const dataService = {
     } catch (e) {}
 
     try {
-      const docRef = doc(db, 'batch_calendar_progress', docId);
-      await setDoc(docRef, cleanData, { merge: true });
+      await recordAuditedSave({
+        collectionName: 'batch_calendar_progress',
+        item: cleanData,
+        module: 'batches',
+        targetLabel: `ক্যালেন্ডার অগ্রগতি (${progress.batchId})`,
+      });
     } catch (err) {
       console.warn("Firestore saveBatchCalendarProgress error, saved locally:", err);
     }
@@ -1354,7 +1615,7 @@ export const dataService = {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
-      await this.saveItem('calendar_progress_logs', sanitizeForFirestore(logRecord));
+      await this.saveItem('calendar_progress_logs', sanitizeForFirestore(logRecord), { skipAudit: true });
       this.broadcastSync('calendar_progress_logs');
     } catch (e) {
       console.warn("Could not record skill progress log:", e);
@@ -1431,7 +1692,7 @@ export const dataService = {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
-      await this.saveItem('calendar_progress_logs', sanitizeForFirestore(logRecord));
+      await this.saveItem('calendar_progress_logs', sanitizeForFirestore(logRecord), { skipAudit: true });
       this.broadcastSync('calendar_progress_logs');
     } catch (e) {
       console.warn("Could not record literacy progress log:", e);
@@ -1607,17 +1868,20 @@ export const dataService = {
   },
 
   async bulkSaveTradeSkillModules(
-    tradeId: string, 
-    items: TradeSkillModule[], 
+    tradeId: string,
+    items: TradeSkillModule[],
     replaceExisting = false
   ): Promise<number> {
     if (!tradeId || items.length === 0) return 0;
 
     let existing = await this.getTradeSkillModules(tradeId);
-    if (replaceExisting) {
-      for (const m of existing) {
-        await this.deleteItem('trade_skill_modules', m.id).catch(() => {});
-      }
+    if (replaceExisting && existing.length > 0) {
+      await recordAuditedBulkDelete({
+        collectionName: 'trade_skill_modules',
+        docs: existing.map((m) => ({ id: m.id, data: { ...m } as unknown as Record<string, unknown> })),
+        module: 'trades',
+        title: `স্কিল মডিউল প্রতিস্থাপনের পূর্বে পুরনো মডিউল মোছা হয়েছে (${existing.length} টি)`,
+      });
       existing = [];
     }
 
@@ -1636,10 +1900,26 @@ export const dataService = {
         createdAt: item.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
-      await this.saveItem('trade_skill_modules', sanitizeForFirestore(cleanItem));
-      toSave.push(cleanItem);
+      toSave.push(sanitizeForFirestore(cleanItem));
       savedCount++;
     }
+
+    for (let i = 0; i < toSave.length; i += 440) {
+      const chunk = toSave.slice(i, i + 440);
+      const batch = writeBatch(db);
+      chunk.forEach((m) => batch.set(doc(db, 'trade_skill_modules', m.id), m, { merge: true }));
+      await batch.commit();
+    }
+
+    await recordSimpleAuditLog({
+      action: 'create',
+      module: 'trades',
+      collectionName: 'trade_skill_modules',
+      targetId: tradeId,
+      targetLabel: `${savedCount} টি স্কিল মডিউল`,
+      title: `বাল্ক স্কিল মডিউল সংরক্ষণ (${savedCount} টি)`,
+      count: savedCount,
+    });
 
     const merged = replaceExisting ? toSave : [...existing.filter(e => !toSave.some(t => t.id === e.id || t.dayNumber === e.dayNumber)), ...toSave];
     try {
@@ -1651,7 +1931,6 @@ export const dataService = {
   },
 
   async deleteTradeSkillModule(id: string, tradeId?: string): Promise<void> {
-    // 1. Immediately clean from localStorage
     try {
       if (tradeId) {
         const stored = localStorage.getItem(`bnfe_trade_skill_modules_${tradeId}`);
@@ -1677,7 +1956,6 @@ export const dataService = {
       }
     } catch (e) {}
 
-    // 2. Delete from Cloud Firestore
     await this.deleteItem('trade_skill_modules', id);
     this.broadcastSync('trades');
   },
@@ -1692,9 +1970,22 @@ export const dataService = {
       localStorage.setItem(`bnfe_trade_skill_modules_${tradeId}`, JSON.stringify(list));
     } catch (e) {}
 
-    for (const item of list) {
-      this.saveItem('trade_skill_modules', sanitizeForFirestore(item)).catch(() => {});
+    for (let i = 0; i < list.length; i += 440) {
+      const chunk = list.slice(i, i + 440);
+      const batch = writeBatch(db);
+      chunk.forEach((item) => batch.set(doc(db, 'trade_skill_modules', item.id), sanitizeForFirestore(item), { merge: true }));
+      batch.commit().catch(() => {});
     }
+
+    recordSimpleAuditLog({
+      action: 'create',
+      module: 'trades',
+      collectionName: 'trade_skill_modules',
+      targetId: tradeId,
+      targetLabel: tradeName || tradeId,
+      title: `ডিফল্ট স্কিল মডিউল লোড (${list.length} টি)`,
+      count: list.length,
+    }).catch(() => {});
 
     return list;
   },
@@ -1709,7 +2000,6 @@ export const dataService = {
     try {
       const all = await this.getItems<TradeLiteracyModule>('trade_literacy_modules');
       const filtered = all.filter(m => m.tradeId === tradeId);
-      // Sync local storage so stale deleted items are wiped out
       try {
         localStorage.setItem(`bnfe_trade_literacy_modules_${tradeId}`, JSON.stringify(filtered));
       } catch (e) {}
@@ -1734,7 +2024,7 @@ export const dataService = {
       updatedAt: Date.now()
     });
     await this.saveItem('trade_literacy_modules', clean);
-    
+
     try {
       const targetTradeId = item.tradeId || item.batchId || 'TRD-BC-01';
       const current = await this.getTradeLiteracyModules(targetTradeId);
@@ -1751,17 +2041,20 @@ export const dataService = {
   },
 
   async bulkSaveTradeLiteracyModules(
-    tradeId: string, 
-    items: TradeLiteracyModule[], 
+    tradeId: string,
+    items: TradeLiteracyModule[],
     replaceExisting = false
   ): Promise<number> {
     if (!tradeId || items.length === 0) return 0;
 
     let existing = await this.getTradeLiteracyModules(tradeId);
-    if (replaceExisting) {
-      for (const m of existing) {
-        await this.deleteItem('trade_literacy_modules', m.id).catch(() => {});
-      }
+    if (replaceExisting && existing.length > 0) {
+      await recordAuditedBulkDelete({
+        collectionName: 'trade_literacy_modules',
+        docs: existing.map((m) => ({ id: m.id, data: { ...m } as unknown as Record<string, unknown> })),
+        module: 'trades',
+        title: `লিটারেসি মডিউল প্রতিস্থাপনের পূর্বে পুরনো মডিউল মোছা হয়েছে (${existing.length} টি)`,
+      });
       existing = [];
     }
 
@@ -1780,10 +2073,26 @@ export const dataService = {
         createdAt: item.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
-      await this.saveItem('trade_literacy_modules', sanitizeForFirestore(cleanItem));
-      toSave.push(cleanItem);
+      toSave.push(sanitizeForFirestore(cleanItem));
       savedCount++;
     }
+
+    for (let i = 0; i < toSave.length; i += 440) {
+      const chunk = toSave.slice(i, i + 440);
+      const batch = writeBatch(db);
+      chunk.forEach((m) => batch.set(doc(db, 'trade_literacy_modules', m.id), m, { merge: true }));
+      await batch.commit();
+    }
+
+    await recordSimpleAuditLog({
+      action: 'create',
+      module: 'trades',
+      collectionName: 'trade_literacy_modules',
+      targetId: tradeId,
+      targetLabel: `${savedCount} টি লিটারেসি মডিউল`,
+      title: `বাল্ক লিটারেসি মডিউল সংরক্ষণ (${savedCount} টি)`,
+      count: savedCount,
+    });
 
     const merged = replaceExisting ? toSave : [...existing.filter(e => !toSave.some(t => t.id === e.id || t.dayNumber === e.dayNumber)), ...toSave];
     try {
@@ -1795,7 +2104,6 @@ export const dataService = {
   },
 
   async deleteTradeLiteracyModule(id: string, tradeId?: string): Promise<void> {
-    // 1. Immediately clean from localStorage
     try {
       if (tradeId) {
         const stored = localStorage.getItem(`bnfe_trade_literacy_modules_${tradeId}`);
@@ -1821,7 +2129,6 @@ export const dataService = {
       }
     } catch (e) {}
 
-    // 2. Delete from Cloud Firestore
     await this.deleteItem('trade_literacy_modules', id);
     this.broadcastSync('trades');
   },
@@ -1833,9 +2140,22 @@ export const dataService = {
       localStorage.setItem(`bnfe_trade_literacy_modules_${tradeId}`, JSON.stringify(list));
     } catch (e) {}
 
-    for (const item of list) {
-      this.saveItem('trade_literacy_modules', sanitizeForFirestore(item)).catch(() => {});
+    for (let i = 0; i < list.length; i += 440) {
+      const chunk = list.slice(i, i + 440);
+      const batch = writeBatch(db);
+      chunk.forEach((item) => batch.set(doc(db, 'trade_literacy_modules', item.id), sanitizeForFirestore(item), { merge: true }));
+      batch.commit().catch(() => {});
     }
+
+    recordSimpleAuditLog({
+      action: 'create',
+      module: 'trades',
+      collectionName: 'trade_literacy_modules',
+      targetId: tradeId,
+      targetLabel: tradeId,
+      title: `ডিফল্ট লিটারেসি মডিউল লোড (${list.length} টি)`,
+      count: list.length,
+    }).catch(() => {});
 
     return list;
   },
@@ -1849,17 +2169,34 @@ export const dataService = {
   },
 
   /**
-   * Clear all modules for a specific trade from Cloud Firestore and local cache
+   * Clear all modules for a specific trade from Cloud Firestore and local cache (audited)
    */
   async clearTradeModules(tradeId: string): Promise<{ skillDeleted: number; literacyDeleted: number }> {
     if (!tradeId) return { skillDeleted: 0, literacyDeleted: 0 };
-    const allSkills = await this.getItems<TradeSkillModule>('trade_skill_modules');
-    const allLiteracy = await this.getItems<TradeLiteracyModule>('trade_literacy_modules');
-    const tradeSkills = allSkills.filter(s => s.tradeId === tradeId);
-    const tradeLiteracy = allLiteracy.filter(l => l.tradeId === tradeId);
+    const [skillSnap, litSnap] = await Promise.all([
+      getDocs(collection(db, 'trade_skill_modules')),
+      getDocs(collection(db, 'trade_literacy_modules')),
+    ]);
 
-    const skillDeleted = await batchDeleteDocuments('trade_skill_modules', tradeSkills.map(s => s.id));
-    const literacyDeleted = await batchDeleteDocuments('trade_literacy_modules', tradeLiteracy.map(l => l.id));
+    const tradeSkills = skillSnap.docs
+      .filter((d) => d.data().tradeId === tradeId)
+      .map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }));
+
+    const tradeLiteracy: AuditRelatedDoc[] = litSnap.docs
+      .filter((d) => d.data().tradeId === tradeId)
+      .map((d) => ({
+        collection: 'trade_literacy_modules',
+        id: d.id,
+        data: { id: d.id, ...d.data() } as Record<string, unknown>,
+      }));
+
+    await recordAuditedBulkDelete({
+      collectionName: 'trade_skill_modules',
+      docs: tradeSkills,
+      relatedDocs: tradeLiteracy,
+      module: 'trades',
+      title: `ট্রেডের সকল কারিকুলাম মডিউল খালি করা হয়েছে (স্কিল: ${tradeSkills.length}, লিটারেসি: ${tradeLiteracy.length})`,
+    });
 
     if (typeof window !== 'undefined') {
       try {
@@ -1869,22 +2206,34 @@ export const dataService = {
     }
 
     this.broadcastSync('trades');
-    return { skillDeleted, literacyDeleted };
+    return { skillDeleted: tradeSkills.length, literacyDeleted: tradeLiteracy.length };
   },
 
   /**
-   * Clear all trade curriculum modules and batch calendar progress
+   * Clear all trade curriculum modules and batch calendar progress (audited)
    */
   async clearAllTradeCalendarData(): Promise<{ skillDeleted: number; literacyDeleted: number; progressDeleted: number; logsDeleted: number }> {
-    const skills = await this.getItems<TradeSkillModule>('trade_skill_modules');
-    const literacy = await this.getItems<TradeLiteracyModule>('trade_literacy_modules');
-    const progress = await this.getItems<BatchCalendarProgress>('batch_calendar_progress');
-    const logs = await this.getItems<CalendarProgressLog>('calendar_progress_logs');
+    const [skills, literacy, progress, logs] = await Promise.all([
+      getDocs(collection(db, 'trade_skill_modules')),
+      getDocs(collection(db, 'trade_literacy_modules')),
+      getDocs(collection(db, 'batch_calendar_progress')),
+      getDocs(collection(db, 'calendar_progress_logs')),
+    ]);
 
-    const skillDeleted = await batchDeleteDocuments('trade_skill_modules', skills.map(s => s.id));
-    const literacyDeleted = await batchDeleteDocuments('trade_literacy_modules', literacy.map(l => l.id));
-    const progressDeleted = await batchDeleteDocuments('batch_calendar_progress', progress.map(p => p.id));
-    const logsDeleted = await batchDeleteDocuments('calendar_progress_logs', logs.map(l => l.id));
+    const skillDocs = skills.docs.map((d) => ({ id: d.id, data: { id: d.id, ...d.data() } as Record<string, unknown> }));
+    const relatedDocs: AuditRelatedDoc[] = [
+      ...literacy.docs.map((d) => ({ collection: 'trade_literacy_modules', id: d.id, data: { id: d.id, ...d.data() } })),
+      ...progress.docs.map((d) => ({ collection: 'batch_calendar_progress', id: d.id, data: { id: d.id, ...d.data() } })),
+      ...logs.docs.map((d) => ({ collection: 'calendar_progress_logs', id: d.id, data: { id: d.id, ...d.data() } })),
+    ];
+
+    await recordAuditedBulkDelete({
+      collectionName: 'trade_skill_modules',
+      docs: skillDocs,
+      relatedDocs,
+      module: 'trades',
+      title: `সকল ট্রেড কারিকুলাম ও ক্যালেন্ডার অগ্রগতি মোছা হয়েছে`,
+    });
 
     if (typeof window !== 'undefined') {
       try {
@@ -1902,7 +2251,12 @@ export const dataService = {
     this.broadcastSync('trades');
     this.broadcastSync('batches');
     this.broadcastSync('calendar_progress_logs');
-    return { skillDeleted, literacyDeleted, progressDeleted, logsDeleted };
+    return {
+      skillDeleted: skills.size,
+      literacyDeleted: literacy.size,
+      progressDeleted: progress.size,
+      logsDeleted: logs.size,
+    };
   },
 
   /**
@@ -1970,13 +2324,17 @@ export const dataService = {
   },
 
   /**
-   * Comprehensive factory reset: Wipe all data across Cloud Firestore
+   * Comprehensive factory reset: Wipe operational data across Cloud Firestore.
+   * NEVER deletes `activityLogs` or its `snapshots` subcollection; writes ONE non-restorable `bulk_delete` audit log entry.
    */
-  async purgeAllSystemData(options?: { 
-    keepInstitutesAndTrades?: boolean; 
-    keepRoles?: boolean;
-    keepLogs?: boolean;
-  }): Promise<Record<string, number>> {
+  async purgeAllSystemData(
+    options?: {
+      keepInstitutesAndTrades?: boolean;
+      keepRoles?: boolean;
+      keepLogs?: boolean;
+    },
+    actor?: AuditActor
+  ): Promise<Record<string, number>> {
     const settings = await this.getSystemSettings();
     if (!settings.allowDataDeletion) {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। ডাটা মুছতে চাইলে প্রথমে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
@@ -2013,11 +2371,21 @@ export const dataService = {
       results['institutes'] = await batchDeleteDocuments('institutes', institutes.map(i => i.id));
     }
 
-    // 7. Activity Logs (optional)
-    if (!options?.keepLogs) {
-      const logs = await this.getItems<ActivityLog>('activityLogs');
-      results['activityLogs'] = await batchDeleteDocuments('activityLogs', logs.map(l => l.id));
-    }
+    const totalPurged = Object.values(results).reduce((sum, n) => sum + (n || 0), 0);
+
+    // Audit Log collection (`activityLogs`) is NEVER deleted during factory reset.
+    // Record a single non-restorable `bulk_delete` entry (`snapshotComplete: false`).
+    await recordAuditedBulkDelete({
+      collectionName: 'system',
+      docs: [],
+      module: 'settings',
+      targetLabel: `ফ্যাক্টরি রিসেট (${totalPurged} টি রেকর্ড)`,
+      title: `সম্পূর্ণ সিস্টেম ফ্যাক্টরি রিসেট সম্পন্ন হয়েছে (মোট ${totalPurged} টি রেকর্ড মোছা হয়েছে)`,
+      snapshotComplete: false,
+      skipDeletes: true,
+      totalCountOverride: totalPurged,
+      actor,
+    });
 
     // Clear local storage cache
     this.clearAllLocalData();

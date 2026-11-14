@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { logActivity } from '../lib/firebase';
 import { 
   Plus, 
   Edit2, 
@@ -252,15 +251,9 @@ const Institutes: React.FC = () => {
         createdAt: editingInstitute?.createdAt || Date.now(),
       };
 
-      await dataService.saveItem('institutes', savedInst);
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        editingInstitute ? `প্রতিষ্ঠান আপডেট: ${formData.name}` : `নতুন প্রতিষ্ঠান তৈরি: ${formData.name}`,
-        'Institutes',
-        id
-      );
+      await dataService.saveItem('institutes', savedInst, {
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       setIsModalOpen(false);
       fetchInstitutes();
@@ -291,13 +284,11 @@ const Institutes: React.FC = () => {
 
       if (confirmed) {
         try {
-          await dataService.archiveRecord('institutes', id, 'সিস্টেমে ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর');
-          await logActivity(
-            userProfile?.id || '',
-            userProfile?.name || 'User',
-            `প্রতিষ্ঠান সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${name}`,
-            'Institutes',
-            id
+          await dataService.archiveRecord(
+            'institutes',
+            id,
+            'সিস্টেমে ডিলিট নিষিদ্ধ থাকায় সংরক্ষণাগারে স্থানান্তর',
+            userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
           );
           setStatusMessage(`"${name}" প্রতিষ্ঠানটি সফলভাবে সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
           setTimeout(() => setStatusMessage(''), 3500);
@@ -320,13 +311,10 @@ const Institutes: React.FC = () => {
 
     if (confirmed) {
       try {
-        await dataService.deleteInstitute(id);
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `প্রতিষ্ঠান মুছে ফেলা হয়েছে: ${name}`,
-          'Institutes',
-          id
+        await dataService.deleteInstitute(
+          id,
+          true,
+          userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
         );
         setStatusMessage(`"${name}" প্রতিষ্ঠানটি সফলভাবে মুছে ফেলা হয়েছে।`);
         setTimeout(() => setStatusMessage(''), 3500);

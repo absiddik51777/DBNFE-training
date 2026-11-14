@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { logActivity } from '../lib/firebase';
 import { 
   Plus, 
   Edit2, 
@@ -663,31 +662,23 @@ const Batches: React.FC = () => {
         batchCode: cleanCode,
         instituteId: formData.instituteId,
         tradeId: formData.tradeId,
-        skillTrainerId: formData.skillTrainerId || undefined,
-        skillTrainerName: skillTrainerObj?.name || undefined,
-        literacyTrainerId: formData.literacyTrainerId || undefined,
-        literacyTrainerName: literacyTrainerObj?.name || undefined,
+        skillTrainerId: formData.skillTrainerId || '',
+        skillTrainerName: skillTrainerObj?.name || '',
+        literacyTrainerId: formData.literacyTrainerId || '',
+        literacyTrainerName: literacyTrainerObj?.name || '',
         fiscalYear: formData.fiscalYear,
         startDate: startMs,
         endDate: endMs,
         maxTrainees: Number(formData.maxTrainees),
         status: calculatedStatus,
-        cancellationReason: formData.cancellationReason?.trim() || undefined,
+        cancellationReason: calculatedStatus === 'Cancelled' ? (formData.cancellationReason?.trim() || '') : '',
         createdAt: editingBatch?.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
 
-      await dataService.saveItem('batches', savedBatch);
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        editingBatch 
-          ? `ব্যাচ তথ্য আপডেট: ${savedBatch.name} (${savedBatch.batchCode})` 
-          : `নতুন ব্যাচ তৈরি: ${savedBatch.name} (${savedBatch.batchCode})`,
-        'Batches',
-        id
-      );
+      await dataService.saveItem('batches', savedBatch, {
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       setActionSuccessMessage(editingBatch ? 'ব্যাচের তথ্য সফলভাবে আপডেট করা হয়েছে।' : 'নতুন প্রশিক্ষণ ব্যাচ সফলভাবে যুক্ত করা হয়েছে।');
       setTimeout(() => setActionSuccessMessage(''), 3500);
@@ -722,13 +713,11 @@ const Batches: React.FC = () => {
       });
 
       if (confirmed) {
-        await dataService.archiveRecord('batches', batch.id, 'সিস্টেমে ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর');
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `ব্যাচ সংরক্ষণাগারে স্থানান্তরিত (ডিলিট বন্ধ থাকায় ফলব্যাক): ${batch.name} (${batch.batchCode || batch.id})`,
-          'Batches',
-          batch.id
+        await dataService.archiveRecord(
+          'batches',
+          batch.id,
+          'সিস্টেমে ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর',
+          userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
         );
         setActionSuccessMessage(`"${batch.name}" ব্যাচটি সফলভাবে সংরক্ষণাগারে (Archive) স্থানান্তর করা হয়েছে।`);
         setTimeout(() => setActionSuccessMessage(''), 3500);
@@ -750,15 +739,6 @@ const Batches: React.FC = () => {
         });
         setLifecycleAction('archive');
         setCancellationReason('');
-
-        // Log the blocked deletion attempt
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `ব্যাচ অপসারণ চেষ্টা ব্যর্থ (রেফারেন্স বিদ্যমান): ${batch.name} (${batch.batchCode || batch.id})`,
-          'Batches',
-          batch.id
-        );
       } else {
         // Unreferenced batch: Safe to hard delete with confirmation modal
         const confirmed = await confirm({
@@ -771,14 +751,9 @@ const Batches: React.FC = () => {
         });
 
         if (confirmed) {
-          await dataService.deleteItem('batches', batch.id);
-          await logActivity(
-            userProfile?.id || '',
-            userProfile?.name || 'User',
-            `ব্যাচ স্থায়ীভাবে অপসারণ: ${batch.name} (${batch.batchCode || batch.id})`,
-            'Batches',
-            batch.id
-          );
+          await dataService.deleteItem('batches', batch.id, true, {
+            actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+          });
           setActionSuccessMessage(`"${batch.name}" ব্যাচটি সফলভাবে মুছে ফেলা হয়েছে।`);
           setTimeout(() => setActionSuccessMessage(''), 3000);
           fetchBatchesData();
@@ -808,21 +783,14 @@ const Batches: React.FC = () => {
       const updated: Batch = {
         ...batch,
         status: newStatus,
-        cancellationReason: lifecycleAction === 'cancel' ? cancellationReason.trim() : undefined,
+        cancellationReason: lifecycleAction === 'cancel' ? cancellationReason.trim() : '',
         updatedAt: Date.now(),
       };
 
-      await dataService.saveItem('batches', updated);
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        lifecycleAction === 'archive'
-          ? `ব্যাচ আর্কাইভকরণ (রেকর্ড সংরক্ষিত): ${batch.name}`
-          : `ব্যাচ বাতিলকরণ (কারণ: ${cancellationReason.trim()}): ${batch.name}`,
-        'Batches',
-        batch.id
-      );
+      await dataService.saveItem('batches', updated, {
+        title: lifecycleAction === 'archive' ? `ব্যাচ আর্কাইভকরণ: ${batch.name}` : `ব্যাচ বাতিলকরণ: ${batch.name}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       setActionSuccessMessage(
         lifecycleAction === 'archive'
@@ -872,13 +840,11 @@ const Batches: React.FC = () => {
 
     if (confirmed) {
       try {
-        await dataService.deleteBatch(batch.id, true);
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `ব্যাচ বলপূর্বক অপসারণ (ক্যাসকেড সহ): ${batch.name} (${batch.batchCode || batch.id})`,
-          'Batches',
-          batch.id
+        await dataService.deleteBatch(
+          batch.id,
+          true,
+          true,
+          userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
         );
         setSafeLifecycleBatch(null);
         setActionSuccessMessage(`"${batch.name}" ব্যাচ ও সংশ্লিষ্ট সকল রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।`);
@@ -900,13 +866,6 @@ const Batches: React.FC = () => {
     setSeeding(true);
     try {
       await dataService.seedDemoTraineesForAllBatches(false);
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        'সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী যোগ করা হয়েছে',
-        'Batches',
-        'seed_demo_trainees'
-      );
       await fetchBatchesData();
       setActionSuccessMessage('সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী সফলভাবে অন্তর্ভুক্ত করা হয়েছে!');
       setTimeout(() => setActionSuccessMessage(''), 5000);

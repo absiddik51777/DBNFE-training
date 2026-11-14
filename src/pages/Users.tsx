@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { logActivity } from '../lib/firebase';
+import { recordSimpleAuditLog } from '../lib/auditLog';
 import { UserProfile, UserRole, Institute, Batch, Trade, TrainerType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
@@ -235,14 +235,11 @@ const UsersPage: React.FC = () => {
         status: newStatus,
         updatedAt: Date.now()
       };
-      await dataService.saveItem('users', updatedUser);
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'Course Director',
-        `ব্যবহারকারী অ্যাকাউন্ট ${statusTextBn} করা হয়েছে: ${u.name} (${u.email})`,
-        'Security',
-        u.id
-      );
+      await dataService.saveItem('users', updatedUser, {
+        module: 'security',
+        title: `ব্যবহারকারী অ্যাকাউন্ট ${statusTextBn}: ${u.name}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'Course Director', userRole: userProfile.role || '' } : undefined,
+      });
 
       showAlert({
         title: 'স্ট্যাটাস আপডেট সম্পন্ন',
@@ -274,13 +271,15 @@ const UsersPage: React.FC = () => {
 
     try {
       await sendPasswordReset(u.email);
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'Course Director',
-        `পাসওয়ার্ড রিসেট লিঙ্ক প্রেরণ: ${u.name} (${u.email})`,
-        'Security',
-        u.id
-      );
+      recordSimpleAuditLog({
+        action: 'security',
+        module: 'security',
+        collectionName: 'users',
+        targetId: u.id,
+        targetLabel: u.name || u.email,
+        title: `পাসওয়ার্ড রিসেট লিঙ্ক প্রেরণ: ${u.name}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'Course Director', userRole: userProfile.role || '' } : undefined,
+      }).catch(() => {});
 
       showAlert({
         title: 'পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে',
@@ -352,14 +351,10 @@ const UsersPage: React.FC = () => {
     if (!ok) return;
 
     try {
-      await dataService.deleteItem('users', u.id);
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'Course Director',
-        `ব্যবহারকারী অ্যাকাউন্ট ডিলিট করা হয়েছে: ${u.name} (${u.email})`,
-        'Security',
-        u.id
-      );
+      await dataService.deleteItem('users', u.id, true, {
+        module: 'security',
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'Course Director', userRole: userProfile.role || '' } : undefined,
+      });
 
       showAlert({
         title: 'ব্যবহারকারী মুছে ফেলা হয়েছে',
@@ -410,7 +405,7 @@ const UsersPage: React.FC = () => {
         ...editingUser,
         name: editFormData.name.trim(),
         role: editFormData.role,
-        trainerType: editFormData.role === 'Trainer' ? editFormData.trainerType : undefined,
+        trainerType: editFormData.role === 'Trainer' ? editFormData.trainerType : (null as any),
         instituteId: editFormData.role === 'Trainer' ? editFormData.instituteId : '',
         batchId: editFormData.role === 'Trainer' ? editFormData.batchId : '',
         status: editFormData.status,
@@ -421,21 +416,17 @@ const UsersPage: React.FC = () => {
         } : {})
       };
 
-      await dataService.saveItem('users', updatedUser);
+      await dataService.saveItem('users', updatedUser, {
+        module: 'security',
+        title: `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name.trim()}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       // If current user updated their own profile
       if (userProfile?.id === updatedUser.id) {
         localStorage.setItem(`bnfe_user_profile_${updatedUser.id}`, JSON.stringify(updatedUser));
         await refreshProfile();
       }
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name} (${editFormData.role}${editFormData.role === 'Trainer' ? ` - ${editFormData.trainerType}` : ''}) [স্ট্যাটাস: ${editFormData.status}]`,
-        'Users',
-        editingUser.id
-      );
 
       setIsEditModalOpen(false);
       fetchData();
@@ -467,15 +458,11 @@ const UsersPage: React.FC = () => {
         updatedAt: Date.now()
       };
 
-      await dataService.saveItem('users', updatedUser);
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'Course Director',
-        `ব্যবহারকারী অনুমোদন সম্পন্ন: ${u.name} (${u.email}) - পদবী: ${assignedRole}`,
-        'Security',
-        u.id
-      );
+      await dataService.saveItem('users', updatedUser, {
+        module: 'security',
+        title: `ব্যবহারকারী অনুমোদন: ${u.name} (${assignedRole})`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'Course Director', userRole: userProfile.role || '' } : undefined,
+      });
 
       showAlert({
         title: 'অ্যাকাউন্ট অনুমোদিত',
@@ -511,15 +498,11 @@ const UsersPage: React.FC = () => {
         updatedAt: Date.now()
       };
 
-      await dataService.saveItem('users', updatedUser);
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'Course Director',
-        `ব্যবহারকারী আবেদন বাতিল: ${u.name} (${u.email})`,
-        'Security',
-        u.id
-      );
+      await dataService.saveItem('users', updatedUser, {
+        module: 'security',
+        title: `ব্যবহারকারী আবেদন বাতিল: ${u.name}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'Course Director', userRole: userProfile.role || '' } : undefined,
+      });
 
       showAlert({
         title: 'আবেদন বাতিল',
@@ -562,15 +545,11 @@ const UsersPage: React.FC = () => {
         createdAt: Date.now(),
       };
 
-      await dataService.saveItem('users', newUser);
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `নতুন ${addFormData.role === 'Trainer' ? (addFormData.trainerType === 'Literacy Trainer' ? 'লিটারেসি প্রশিক্ষক' : 'স্কিল প্রশিক্ষক') : 'ব্যবহারকারী'} নিবন্ধন: ${newUser.name} (${newUser.email})`,
-        'Users',
-        newId
-      );
+      await dataService.saveItem('users', newUser, {
+        module: 'security',
+        title: `নতুন ব্যবহারকারী নিবন্ধন: ${newUser.name} (${addFormData.role})`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       showAlert({
         title: 'ব্যবহারকারী সফলভাবে যুক্ত হয়েছে',

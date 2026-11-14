@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { logActivity } from '../../lib/firebase';
+import { recordSimpleAuditLog } from '../../lib/auditLog';
 import { 
   Plus, 
   Edit2, 
@@ -664,13 +664,11 @@ const TraineeList: React.FC = () => {
       });
 
       if (confirmed) {
-        await dataService.archiveRecord('trainees', trainee.id, 'সিস্টেমে ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর');
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `প্রশিক্ষণার্থী আর্কাইভে স্থানান্তর (ডিলিট নিষিদ্ধ থাকায় ফলব্যাক): ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
-          'Trainees',
-          trainee.id
+        await dataService.archiveRecord(
+          'trainees',
+          trainee.id,
+          'সিস্টেমে ডিলিট বন্ধ থাকায় ব্যবহারকারীর নির্দেশে সংরক্ষণাগারে স্থানান্তর',
+          userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
         );
         setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থীর রেকর্ড সফলভাবে আর্কাইভে স্থানান্তর করা হয়েছে।`);
         setTimeout(() => setActionSuccessMessage(''), 3500);
@@ -688,14 +686,6 @@ const TraineeList: React.FC = () => {
           attendanceCount: usage.attendanceCount,
           marksCount: usage.marksCount
         });
-
-        await logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `প্রশিক্ষণার্থী মোছার চেষ্টা (রেকর্ড বিদ্যমান থাকায় বিকল্প ট্রানজিশন উন্মুক্ত): ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
-          'Trainees',
-          trainee.id
-        );
       } else {
         // Unreferenced: Safe to hard delete with beautiful confirmation modal
         const confirmed = await confirm({
@@ -707,14 +697,9 @@ const TraineeList: React.FC = () => {
           variant: 'danger',
         });
         if (confirmed) {
-          await dataService.deleteItem('trainees', trainee.id);
-          await logActivity(
-            userProfile?.id || '',
-            userProfile?.name || 'User',
-            `প্রশিক্ষণার্থী স্থায়ীভাবে অপসারণ: ${trainee.nameBn || trainee.nameEn} (${trainee.registrationNumber})`,
-            'Trainees',
-            trainee.id
-          );
+          await dataService.deleteItem('trainees', trainee.id, true, {
+            actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+          });
           setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থীর রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।`);
           setTimeout(() => setActionSuccessMessage(''), 3000);
           fetchData();
@@ -736,19 +721,14 @@ const TraineeList: React.FC = () => {
         ...trainee,
         status,
         isArchived: isArchiving,
-        archivedAt: isArchiving ? Date.now() : undefined,
-        archivedReason: isArchiving ? 'রেফারেন্স ডেটা বিদ্যমান থাকায় মোছার পরিবর্তে সংরক্ষণাগারে স্থানান্তর' : undefined,
+        archivedAt: isArchiving ? Date.now() : (null as any),
+        archivedReason: isArchiving ? 'রেফারেন্স ডেটা বিদ্যমান থাকায় মোছার পরিবর্তে সংরক্ষণাগারে স্থানান্তর' : '',
         updatedAt: Date.now()
       };
-      await dataService.saveItem('trainees', updated);
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `প্রশিক্ষণার্থী স্ট্যাটাস পরিবর্তন: ${trainee.nameBn} -> ${status}`,
-        'Trainees',
-        trainee.id
-      );
+      await dataService.saveItem('trainees', updated, {
+        title: `প্রশিক্ষণার্থী স্ট্যাটাস পরিবর্তন: ${trainee.nameBn || trainee.nameEn} → ${status}`,
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       const statusLabels: Record<string, string> = {
         'Active': 'সক্রিয়',
@@ -770,13 +750,10 @@ const TraineeList: React.FC = () => {
   const handleRestoreTrainee = async (trainee: Trainee) => {
     if (!canEdit) return;
     try {
-      await dataService.unarchiveRecord('trainees', trainee.id);
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `আর্কাইভ থেকে প্রশিক্ষণার্থী পুনরুদ্ধার: ${trainee.nameBn || trainee.nameEn} (${trainee.traineeId})`,
-        'Trainees',
-        trainee.id
+      await dataService.unarchiveRecord(
+        'trainees',
+        trainee.id,
+        userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined
       );
       setActionSuccessMessage(`"${trainee.nameBn || trainee.nameEn}" শিক্ষার্থী সফলভাবে সক্রিয় তালিকায় ফিরিয়ে আনা হয়েছে।`);
       setTimeout(() => setActionSuccessMessage(''), 3500);
@@ -804,17 +781,12 @@ const TraineeList: React.FC = () => {
 
     try {
       const selectedTrainees = trainees.filter(t => selectedIds.has(t.id));
+      const actor = userProfile
+        ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' }
+        : undefined;
       for (const t of selectedTrainees) {
-        await dataService.saveItem('trainees', { ...t, status: newStatus, updatedAt: Date.now() });
+        await dataService.saveItem('trainees', { ...t, status: newStatus, updatedAt: Date.now() }, { actor });
       }
-
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        `বাল্ক স্ট্যাটাস আপডেট (${selectedIds.size} জন শিক্ষার্থী -> ${newStatus})`,
-        'Trainees',
-        'bulk_status'
-      );
 
       setActionSuccessMessage(`নির্বাচিত ${selectedIds.size} জন শিক্ষার্থীর স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে।`);
       setTimeout(() => setActionSuccessMessage(''), 3500);
@@ -830,13 +802,6 @@ const TraineeList: React.FC = () => {
     setSeeding(true);
     try {
       await dataService.seedDemoTraineesForAllBatches(false);
-      await logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        'সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী অন্তর্ভুক্তকরণ',
-        'Trainees',
-        'seed_demo_trainees'
-      );
       await fetchData();
       setActionSuccessMessage('সকল ব্যাচে ২০ জন করে ডেমো প্রশিক্ষণার্থী সফলভাবে যুক্ত করা হয়েছে!');
       setTimeout(() => setActionSuccessMessage(''), 5000);
@@ -920,13 +885,16 @@ const TraineeList: React.FC = () => {
         if (downloadRes.success) {
           setActionSuccessMessage(`${downloadRes.message} (${toBn(exportList.length)} জন শিক্ষার্থী)`);
           setTimeout(() => setActionSuccessMessage(''), 6000);
-          logActivity(
-            userProfile?.id || '',
-            userProfile?.name || 'User',
-            `প্রশিক্ষণার্থী তালিকা PDF এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
-            'Trainees',
-            'export_pdf'
-          );
+          recordSimpleAuditLog({
+            action: 'export',
+            module: 'trainees',
+            collectionName: 'trainees',
+            targetId: 'export_pdf',
+            targetLabel: baseFilename,
+            title: `প্রশিক্ষণার্থী তালিকা PDF এক্সপোর্ট (${exportList.length} জন)`,
+            count: exportList.length,
+            actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+          }).catch(() => {});
         } else {
           await showAlert({
             title: 'ডাউনলোড ব্যর্থ',
@@ -1043,13 +1011,16 @@ const TraineeList: React.FC = () => {
       if (exportResult.success) {
         setActionSuccessMessage(`${exportResult.message} (${toBn(exportList.length)} জন শিক্ষার্থী)`);
         setTimeout(() => setActionSuccessMessage(''), 6000);
-        logActivity(
-          userProfile?.id || '',
-          userProfile?.name || 'User',
-          `প্রশিক্ষণার্থী তালিকা ${formatType.toUpperCase()} এক্সপোর্ট সম্পন্ন (${exportList.length} জন)`,
-          'Trainees',
-          `export_${formatType}`
-        );
+        recordSimpleAuditLog({
+          action: 'export',
+          module: 'trainees',
+          collectionName: 'trainees',
+          targetId: `export_${formatType}`,
+          targetLabel: baseFilename,
+          title: `প্রশিক্ষণার্থী তালিকা ${formatType.toUpperCase()} এক্সপোর্ট (${exportList.length} জন)`,
+          count: exportList.length,
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        }).catch(() => {});
       } else {
         await showAlert({
           title: 'ডাউনলোড ব্যর্থ',

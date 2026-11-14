@@ -34,7 +34,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { Trainee, Institute, Trade, Batch } from '../types';
 import { dataService } from '../lib/dataService';
-import { logActivity } from '../lib/firebase';
 import { toBn, normalizeUBRN, normalizeBirthDate, formatBengaliDate } from '../lib/dateUtils';
 import {
   downloadCSV,
@@ -412,23 +411,28 @@ const BrnVerification: React.FC = () => {
     setSaving(true);
     try {
       const now = Date.now();
+      const verifiedBy = userProfile?.name || userProfile?.email || 'Course Director';
       const updatedData = {
         is_brn_verified: modalVerified,
         brn_remark: modalRemark.trim(),
         brn_verified_at: now,
-        brn_verified_by: userProfile?.name || userProfile?.email || 'Course Director'
+        brn_verified_by: verifiedBy
       };
 
-      await dataService.updateTraineeBrnVerification(activeTrainee.id, updatedData);
-
-      // Log activity
-      await logActivity(
-        userProfile?.id || 'cd-user',
-        userProfile?.name || 'Course Director',
-        'update',
-        'trainee_brn_verification',
+      await dataService.updateTraineeBrnVerification(
         activeTrainee.id,
-        `শিক্ষার্থী ${activeTrainee.nameBn}-এর জন্ম নিবন্ধন অনলাইন যাচাই হালনাগাদ: ${modalVerified ? 'Verified' : 'Invalid'}. ${modalRemark ? `মন্তব্য: ${modalRemark}` : ''}`
+        {
+          is_brn_verified: modalVerified,
+          brn_remark: modalRemark.trim(),
+          verifiedBy,
+        },
+        userProfile
+          ? {
+              userId: userProfile.id || '',
+              user: userProfile.name || 'Course Director',
+              userRole: userProfile.role || '',
+            }
+          : undefined
       );
 
       // Local optimistic update

@@ -50,7 +50,7 @@ const Settings: React.FC = () => {
     toast,
     showToast,
     dismissToast,
-  } = useSettingsData();
+  } = useSettingsData(isAdmin);
 
   const handleDenied = React.useCallback(
     (msg: string) => {
@@ -97,6 +97,16 @@ const Settings: React.FC = () => {
       case 'logs':
         return (
           <AuditLogsSection
+            isAdmin={isAdmin}
+            actor={
+              userProfile
+                ? {
+                    userId: userProfile.id || '',
+                    user: userProfile.name || 'User',
+                    userRole: userProfile.role || '',
+                  }
+                : undefined
+            }
             logs={filteredLogs}
             loadingLogs={loadingLogs}
             loadingMoreLogs={loadingMoreLogs}
@@ -106,6 +116,11 @@ const Settings: React.FC = () => {
             onChangeModuleFilter={setModuleFilter}
             onRefreshLogs={fetchLogs}
             onLoadMore={loadMoreLogs}
+            onActionSuccess={async (msg) => {
+              await Promise.all([fetchLogs(), fetchCounts()]);
+              showToast('success', msg);
+            }}
+            onNavigateToData={() => openSection('data')}
           />
         );
       case 'danger':

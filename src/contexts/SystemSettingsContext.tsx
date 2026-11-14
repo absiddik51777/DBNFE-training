@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SystemSettings } from '../types';
 import { dataService, DEFAULT_SYSTEM_SETTINGS } from '../lib/dataService';
-import { logActivity } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 
 interface SystemSettingsContextType {
@@ -53,6 +52,15 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
   const [loading, setLoading] = useState(true);
   const { userProfile } = useAuth();
 
+  const getActor = () =>
+    userProfile
+      ? {
+          userId: userProfile.id || '',
+          user: userProfile.name || 'User',
+          userRole: userProfile.role || '',
+        }
+      : undefined;
+
   useEffect(() => {
     // 1. Initial fetch from Firestore
     dataService.getSystemSettings().then(s => {
@@ -72,21 +80,8 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const updateSettings = async (updates: Partial<SystemSettings>): Promise<SystemSettings> => {
-    const updated = await dataService.saveSystemSettings(updates);
+    const updated = await dataService.saveSystemSettings(updates, getActor());
     setSettings(updated);
-
-    if (userProfile) {
-      const deletionStatusChanged = updates.allowDataDeletion !== undefined;
-      await logActivity(
-        userProfile.id || '',
-        userProfile.name || 'User',
-        deletionStatusChanged 
-          ? `সিস্টেম ডাটা ডিলিট কন্ট্রোল পরিবর্তিত: ${updates.allowDataDeletion ? 'অনুমতি সক্রিয়' : 'লক/বন্ধ করা হয়েছে'}`
-          : 'সিস্টেম সেটিংস আপডেট করা হয়েছে',
-        'Settings',
-        'system_config'
-      );
-    }
     return updated;
   };
 
@@ -97,118 +92,47 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
   };
 
   const deleteAttendanceForBatchAndDate = async (batchId: string, date: string): Promise<number> => {
-    const count = await dataService.deleteAttendance({ batchId, date });
-    if (userProfile) {
-      await logActivity(
-        userProfile.id || '',
-        userProfile.name || 'User',
-        `তারিখভিত্তিক হাজিরা রেকর্ড মোছা হয়েছে (${date}, ব্যাচ: ${batchId}, মোট: ${count}টি)`,
-        'Attendance',
-        batchId
-      );
-    }
-    return count;
+    return await dataService.deleteAttendance({ batchId, date }, getActor());
   };
 
   const deleteAllAttendance = async (batchId?: string): Promise<number> => {
-    const count = await dataService.deleteAttendance(batchId ? { batchId } : undefined);
-    if (userProfile) {
-      await logActivity(
-        userProfile.id || '',
-        userProfile.name || 'User',
-        `সকল হাজিরা রেকর্ড মোছা হয়েছে (মোট: ${count}টি)`,
-        'Attendance',
-        batchId || 'all'
-      );
-    }
-    return count;
+    return await dataService.deleteAttendance(batchId ? { batchId } : undefined, getActor());
   };
 
   const deleteAllTrainees = async (options?: { batchId?: string; deleteAttendanceToo?: boolean }) => {
-    const result = await dataService.deleteAllTrainees(options);
-    if (userProfile) {
-      await logActivity(
-        userProfile.id || '',
-        userProfile.name || 'User',
-        `প্রশিক্ষণার্থী তালিকা মোছা হয়েছে (শিক্ষার্থী: ${result.deletedTrainees}টি, হাজিরা: ${result.deletedAttendance}টি)`,
-        'Trainees',
-        options?.batchId || 'all'
-      );
-    }
-    return result;
+    return await dataService.deleteAllTrainees(options, getActor());
   };
 
   const deleteAllExamsAndMarks = async (batchId?: string) => {
-    const result = await dataService.deleteAllExamsAndMarks(batchId ? { batchId } : undefined);
-    if (userProfile) {
-      await logActivity(
-        userProfile.id || '',
-        userProfile.name || 'User',
-        `পরীক্ষা ও ফলাফল নম্বর মোছা হয়েছে (পরীক্ষা: ${result.deletedExams}টি, মার্কস: ${result.deletedMarks}টি)`,
-        'Exams',
-        batchId || 'all'
-      );
-    }
-    return result;
+    return await dataService.deleteAllExamsAndMarks(batchId ? { batchId } : undefined, getActor());
   };
 
   const deleteAllInstitutes = async (): Promise<number> => {
-    const count = await dataService.deleteAllInstitutes();
-    if (userProfile) {
-      await logActivity(userProfile.id || '', userProfile.name || 'User', `সকল প্রতিষ্ঠান মোছা হয়েছে (মোট: ${count}টি)`, 'Institutes', 'all');
-    }
-    return count;
+    return await dataService.deleteAllInstitutes(getActor());
   };
 
   const deleteAllTrades = async (): Promise<number> => {
-    const count = await dataService.deleteAllTrades();
-    if (userProfile) {
-      await logActivity(userProfile.id || '', userProfile.name || 'User', `সকল ট্রেড মোছা হয়েছে (মোট: ${count}টি)`, 'Trades', 'all');
-    }
-    return count;
+    return await dataService.deleteAllTrades(getActor());
   };
 
   const deleteAllBatches = async (): Promise<number> => {
-    const count = await dataService.deleteAllBatches();
-    if (userProfile) {
-      await logActivity(userProfile.id || '', userProfile.name || 'User', `সকল ব্যাচ মোছা হয়েছে (মোট: ${count}টি)`, 'Batches', 'all');
-    }
-    return count;
+    return await dataService.deleteAllBatches(getActor());
   };
 
   const deleteInstitute = async (id: string): Promise<void> => {
-    await dataService.deleteInstitute(id);
-    if (userProfile) {
-      await logActivity(userProfile.id || '', userProfile.name || 'User', `প্রতিষ্ঠান অপসারণ করা হয়েছে (আইডি: ${id})`, 'Institutes', id);
-    }
+    await dataService.deleteInstitute(id, true, getActor());
   };
 
   const deleteTrade = async (id: string): Promise<void> => {
-    await dataService.deleteTrade(id);
-    if (userProfile) {
-      await logActivity(userProfile.id || '', userProfile.name || 'User', `ট্রেড অপসারণ করা হয়েছে (আইডি: ${id})`, 'Trades', id);
-    }
+    await dataService.deleteTrade(id, true, getActor());
   };
 
   const deleteBatch = async (id: string, cascade?: boolean): Promise<void> => {
-    await dataService.deleteBatch(id, cascade);
-    if (userProfile) {
-      await logActivity(userProfile.id || '', userProfile.name || 'User', `ব্যাচ অপসারণ করা হয়েছে (আইডি: ${id})`, 'Batches', id);
-    }
+    await dataService.deleteBatch(id, cascade, true, getActor());
   };
 
   const purgeAllSystemData = async (options?: { keepInstitutesAndTrades?: boolean; keepLogs?: boolean }) => {
-    const counts = await dataService.purgeAllSystemData(options);
-    if (userProfile) {
-      await logActivity(
-        userProfile.id || '',
-        userProfile.name || 'User',
-        'সম্পূর্ণ সিস্টেম ডাটা ওয়াইপ / ফ্যাক্টরি রিসেট সম্পন্ন হয়েছে',
-        'System',
-        'purge'
-      );
-    }
-    return counts;
+    return await dataService.purgeAllSystemData({ ...options, keepLogs: true }, getActor());
   };
 
   return (

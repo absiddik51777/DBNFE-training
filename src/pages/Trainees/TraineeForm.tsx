@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
-import { logActivity } from '../../lib/firebase';
 import { Institute, Trade, Batch, Trainee } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -436,15 +435,9 @@ const TraineeForm: React.FC = () => {
         createdAt: id ? (formData.createdAt || Date.now()) : Date.now(),
       };
 
-      await dataService.saveItem('trainees', savedTrainee);
-
-      logActivity(
-        userProfile?.id || '',
-        userProfile?.name || 'User',
-        id ? `প্রশিক্ষণার্থী তথ্য আপডেট: ${formData.nameEn}` : `নতুন শিক্ষার্থী নিবন্ধন: ${formData.nameEn} (${formData.registrationNumber})`,
-        'Trainees',
-        traineeIdToSave
-      );
+      await dataService.saveItem('trainees', savedTrainee, {
+        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+      });
 
       handleReturn();
     } catch (err: any) {
