@@ -1,12 +1,18 @@
-import React, { useEffect, useRef } from 'react';
-import { AlertTriangle, RotateCcw, RefreshCw, X } from 'lucide-react';
+import React, { useEffect, useId, useRef } from 'react';
+import { AlertTriangle, Lock, RefreshCw, RotateCcw, X } from 'lucide-react';
 
 interface ConfirmActionDialogProps {
   open: boolean;
-  mode: 'undo' | 'restore';
+  mode: 'undo' | 'restore' | 'settle';
   title: string;
+  subtitle?: string;
   summaryLines: string[];
   warningNote?: string;
+  noteLabel?: string;
+  notePlaceholder?: string;
+  noteValue?: string;
+  maxNoteLength?: number;
+  onNoteChange?: (value: string) => void;
   confirmLabel: string;
   isProcessing: boolean;
   errorMessage?: string | null;
@@ -18,8 +24,14 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
   open,
   mode,
   title,
+  subtitle,
   summaryLines,
   warningNote,
+  noteLabel,
+  notePlaceholder,
+  noteValue = '',
+  maxNoteLength = 500,
+  onNoteChange,
   confirmLabel,
   isProcessing,
   errorMessage,
@@ -27,6 +39,7 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
   onClose,
 }) => {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const noteInputId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -42,6 +55,14 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
   }, [open]);
 
   if (!open) return null;
+
+  const isSettle = mode === 'settle';
+  const defaultSubtitle =
+    mode === 'undo'
+      ? 'নিচের ক্ষেত্রগুলো পূর্বের অবস্থায় ফিরিয়ে নেওয়া হবে:'
+      : mode === 'restore'
+      ? 'নিচের মুছে ফেলা তথ্য পুনরুদ্ধার করা হবে:'
+      : 'নিষ্পন্ন করলে এই এন্ট্রির পরিবর্তন আর ফেরত বা পুনরুদ্ধার করা যাবে না। এটি স্থায়ী।';
 
   return (
     <dialog
@@ -60,17 +81,21 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
       <div className="p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-[12px] border border-theme-primary/25 bg-theme-primary-soft text-theme-primary flex items-center justify-center shrink-0">
-              <RotateCcw size={18} />
+            <div
+              className={`w-10 h-10 rounded-[12px] border flex items-center justify-center shrink-0 ${
+                isSettle
+                  ? 'border-theme-border-strong bg-theme-surface-subtle text-theme-text-primary'
+                  : 'border-theme-primary/25 bg-theme-primary-soft text-theme-primary'
+              }`}
+            >
+              {isSettle ? <Lock size={18} /> : <RotateCcw size={18} />}
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-bold text-theme-text-primary leading-snug">
                 {title}
               </h3>
-              <p className="text-xs text-theme-text-secondary mt-0.5">
-                {mode === 'undo'
-                  ? 'নিচের ক্ষেত্রগুলো পূর্বের অবস্থায় ফিরিয়ে নেওয়া হবে:'
-                  : 'নিচের মুছে ফেলা তথ্য পুনরুদ্ধার করা হবে:'}
+              <p className="text-xs text-theme-text-secondary mt-1 leading-relaxed">
+                {subtitle ?? defaultSubtitle}
               </p>
             </div>
           </div>
@@ -98,6 +123,28 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
                 <span className="break-words min-w-0 flex-1">{line}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Optional note input (used by Settle) */}
+        {onNoteChange && (
+          <div className="space-y-1.5">
+            <label
+              htmlFor={noteInputId}
+              className="block text-xs font-semibold text-theme-text-secondary"
+            >
+              {noteLabel || 'মন্তব্য (ঐচ্ছিক)'}
+            </label>
+            <textarea
+              id={noteInputId}
+              rows={2}
+              maxLength={maxNoteLength}
+              disabled={isProcessing}
+              value={noteValue}
+              onChange={(e) => onNoteChange(e.target.value)}
+              placeholder={notePlaceholder || 'মন্তব্য লিখুন...'}
+              className="w-full px-3 py-2 rounded-[12px] bg-theme-surface border border-theme-border text-xs sm:text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/30 focus:border-theme-primary disabled:opacity-60 resize-none"
+            />
           </div>
         )}
 
@@ -135,10 +182,16 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
             type="button"
             disabled={isProcessing}
             onClick={onConfirm}
-            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-semibold text-theme-primary-fg inline-flex items-center justify-center gap-2 disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+            className={`min-h-[44px] px-4 py-2 rounded-[12px] border text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
+              isSettle
+                ? 'border-theme-border-strong bg-theme-text-primary hover:opacity-90 text-theme-bg'
+                : 'border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg'
+            }`}
           >
             {isProcessing ? (
               <RefreshCw size={15} className="animate-spin" />
+            ) : isSettle ? (
+              <Lock size={15} />
             ) : (
               <RotateCcw size={15} />
             )}

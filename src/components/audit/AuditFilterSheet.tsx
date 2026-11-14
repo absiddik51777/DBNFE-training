@@ -2,10 +2,12 @@ import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import {
   AUDIT_RANGE_CHIPS,
+  AUDIT_STATUS_CHIPS,
   AUDIT_TYPE_CHIPS,
   AuditDateRangePreset,
   AuditFilterType,
   AuditSheetFilters,
+  AuditStatusFilter,
 } from '../../lib/auditQueryBuilder';
 import type { AuditLogUserOption } from '../../hooks/useAuditFilters';
 import { FilterChip } from './FilterChip';
@@ -122,6 +124,18 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
     });
   };
 
+  const toggleStatus = (statusId: AuditStatusFilter) => {
+    onChangeDraft((prev) => {
+      const exists = prev.statuses.includes(statusId);
+      return {
+        ...prev,
+        statuses: exists
+          ? prev.statuses.filter((s) => s !== statusId)
+          : [...prev.statuses, statusId],
+      };
+    });
+  };
+
   const toggleRange = (rangeId: AuditDateRangePreset) => {
     onChangeDraft((prev) => {
       const nextRange = prev.range === rangeId ? null : rangeId;
@@ -198,6 +212,26 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
                   label={chip.label}
                   selected={draft.types.includes(chip.id)}
                   onClick={() => toggleType(chip.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Section 1.5: অবস্থা (multi-select chips) */}
+          <section aria-labelledby="filter-section-status" className="space-y-2.5">
+            <h3
+              id="filter-section-status"
+              className="text-xs font-semibold text-theme-text-secondary"
+            >
+              অবস্থা
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {AUDIT_STATUS_CHIPS.map((chip) => (
+                <FilterChip
+                  key={chip.id}
+                  label={chip.label}
+                  selected={draft.statuses.includes(chip.id)}
+                  onClick={() => toggleStatus(chip.id)}
                 />
               ))}
             </div>

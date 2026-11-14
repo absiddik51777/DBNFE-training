@@ -70,6 +70,9 @@ export async function undoChange(
   if (log.reverted) {
     throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
   }
+  if (log.settled) {
+    throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+  }
   if (!log.collection || !log.targetId || !Array.isArray(log.changes) || log.changes.length === 0) {
     throw new Error('এই লগে ফেরত নেওয়ার মতো পর্যাপ্ত পরিবর্তনের তথ্য নেই।');
   }
@@ -116,6 +119,9 @@ export async function undoChange(
       }
       if (liveLogSnap.data().reverted === true) {
         throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+      }
+      if (liveLogSnap.data().settled === true) {
+        throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
       }
 
       const targetRefs = traineeIds.map((tid) => {
@@ -187,11 +193,15 @@ export async function undoChange(
         refLogId: log.id,
         ...(auditLocation ? { location: auditLocation } : {}),
         reverted: false,
+        settled: false,
+        settledBy: null,
+        settledByName: null,
+        settledAt: null,
+        settleNote: null,
         createdAt: serverTimestamp(),
         userName: actor.user,
         recordId: log.targetId,
         details: `অডিট লগ ${log.id} এর পরিবর্তন পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
-        timestamp: Date.now(),
       });
     });
 
@@ -226,6 +236,9 @@ export async function undoChange(
       }
       if (liveLogSnap.data().reverted === true) {
         throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+      }
+      if (liveLogSnap.data().settled === true) {
+        throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
       }
 
       const examRef = doc(db, 'exams', examId);
@@ -325,11 +338,15 @@ export async function undoChange(
         refLogId: log.id,
         ...(auditLocation ? { location: auditLocation } : {}),
         reverted: false,
+        settled: false,
+        settledBy: null,
+        settledByName: null,
+        settledAt: null,
+        settleNote: null,
         createdAt: serverTimestamp(),
         userName: actor.user,
         recordId: log.targetId,
         details: `অডিট লগ ${log.id} এর নম্বর পরিবর্তন পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
-        timestamp: Date.now(),
       });
     });
 
@@ -351,6 +368,9 @@ export async function undoChange(
     }
     if (liveLogSnap.data().reverted === true) {
       throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+    }
+    if (liveLogSnap.data().settled === true) {
+      throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
     }
     if (!targetSnap.exists()) {
       throw new Error(
@@ -417,11 +437,15 @@ export async function undoChange(
       refLogId: log.id,
       ...(auditLocation ? { location: auditLocation } : {}),
       reverted: false,
+      settled: false,
+      settledBy: null,
+      settledByName: null,
+      settledAt: null,
+      settleNote: null,
       createdAt: serverTimestamp(),
       userName: actor.user,
       recordId: log.targetId,
       details: `অডিট লগ ${log.id} থেকে ${log.changes!.length} টি ক্ষেত্র পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
-      timestamp: Date.now(),
     });
   });
 
@@ -446,6 +470,9 @@ export async function restoreRecord(
   if (log.reverted) {
     throw new Error('এই রেকর্ডটি ইতোমধ্যে পুনরুদ্ধার করা হয়েছে।');
   }
+  if (log.settled) {
+    throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+  }
   if (log.snapshotComplete === false) {
     throw new Error(
       'এই লগে সম্পূর্ণ স্ন্যাপশট সংরক্ষিত নেই। অনুগ্রহ করে ব্যাকআপ থেকে পুনরুদ্ধার করুন।'
@@ -461,6 +488,9 @@ export async function restoreRecord(
   }
   if (liveLogSnap.data().reverted === true) {
     throw new Error('এই রেকর্ডটি ইতোমধ্যে পুনরুদ্ধার করা হয়েছে।');
+  }
+  if (liveLogSnap.data().settled === true) {
+    throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
   }
 
   // Assemble all records from main snapshot + inline related + chunked subcollection
@@ -556,6 +586,11 @@ export async function restoreRecord(
     refLogId: log.id,
     ...(auditLocation ? { location: auditLocation } : {}),
     reverted: false,
+    settled: false,
+    settledBy: null,
+    settledByName: null,
+    settledAt: null,
+    settleNote: null,
     createdAt: serverTimestamp(),
     userName: actor.user,
     recordId: log.targetId || 'bulk',
@@ -563,7 +598,6 @@ export async function restoreRecord(
       skippedCount > 0
         ? `${toCreate.length} টি রেকর্ড পুনরুদ্ধার করা হয়েছে এবং ${skippedCount} টি বিদ্যমান রেকর্ড স্কিপ করা হয়েছে`
         : `${toCreate.length} টি রেকর্ড পুনরুদ্ধার করা হয়েছে`,
-    timestamp: Date.now(),
   };
 
   if (toCreate.length === 0) {
@@ -616,4 +650,90 @@ export async function restoreRecord(
     skippedCount,
     collections: Array.from(touchedCollections),
   };
+}
+
+/**
+ * Permanently settle an active audit log entry (`update`, `delete`, or `bulk_delete`)
+ * inside a Firestore transaction so it can never be undone or restored.
+ */
+export async function settleEntry(
+  logId: string,
+  note?: string,
+  actorInput?: AuditActor
+): Promise<void> {
+  const cleanLogId = (logId || '').trim();
+  if (!cleanLogId) {
+    throw new Error('অডিট লগ আইডি পাওয়া যায়নি।');
+  }
+
+  const auditLocation = await captureAuditLocationForAction('settle');
+  const actor = resolveAuditActor(actorInput);
+  const trimmedNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+  const cleanNote = trimmedNote.length > 0 ? trimmedNote : null;
+
+  const logRef = doc(db, 'activityLogs', cleanLogId);
+  const newSettleLogRef = doc(collection(db, 'activityLogs'));
+
+  await runTransaction(db, async (tx) => {
+    const liveLogSnap = await tx.get(logRef);
+    if (!liveLogSnap.exists()) {
+      throw new Error('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+    }
+
+    const orig = liveLogSnap.data() as Record<string, unknown>;
+    const origAction = String(orig.action || '');
+    if (
+      origAction !== 'update' &&
+      origAction !== 'delete' &&
+      origAction !== 'bulk_delete'
+    ) {
+      throw new Error('শুধুমাত্র পরিবর্তন বা মুছে ফেলা এন্ট্রি নিষ্পন্ন করা যায়।');
+    }
+    if (orig.reverted === true) {
+      throw new Error('এই এন্ট্রিটি ইতোমধ্যে ফেরত নেওয়া বা পুনরুদ্ধার করা হয়েছে।');
+    }
+    if (orig.settled === true) {
+      throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+    }
+
+    const targetId = String(orig.targetId || orig.recordId || cleanLogId);
+    const targetLabel = String(orig.targetLabel || orig.title || origAction || cleanLogId);
+    const moduleName = String(orig.module || 'settings');
+    const collectionName = String(orig.collection || moduleName || 'settings');
+
+    tx.update(logRef, {
+      settled: true,
+      settledBy: actor.userId,
+      settledByName: actor.user,
+      settledAt: serverTimestamp(),
+      settleNote: cleanNote,
+    });
+
+    tx.set(newSettleLogRef, {
+      action: 'settle',
+      module: moduleName,
+      collection: collectionName,
+      targetId,
+      targetLabel,
+      title: `নিষ্পন্ন: ${orig.title || targetLabel}`,
+      user: actor.user,
+      userId: actor.userId,
+      userRole: actor.userRole,
+      changes: [],
+      snapshot: null,
+      related: [],
+      refLogId: cleanLogId,
+      ...(auditLocation ? { location: auditLocation } : {}),
+      reverted: false,
+      settled: false,
+      settledBy: null,
+      settledByName: null,
+      settledAt: null,
+      settleNote: null,
+      createdAt: serverTimestamp(),
+      userName: actor.user,
+      recordId: targetId,
+      details: cleanNote || `অডিট লগ ${cleanLogId} স্থায়ীভাবে নিষ্পন্ন করা হয়েছে`,
+    });
+  });
 }

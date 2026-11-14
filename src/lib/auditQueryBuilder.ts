@@ -1,21 +1,26 @@
 import {
   limit,
-  orderBy,
   QueryConstraint,
   QueryDocumentSnapshot,
   startAfter,
-  Timestamp,
   where,
   DocumentData,
 } from 'firebase/firestore';
 import type { ActivityLog } from '../types';
-import { extractTimestampMs } from '../components/audit/auditFormatters';
+import {
+  getDhakaDayBoundsMs,
+  getDhakaDayKey,
+  getLogDate,
+  shiftDhakaDayKey,
+} from './auditDate';
 
 export type AuditFilterType = 'update' | 'delete' | 'undo' | 'restore';
+export type AuditStatusFilter = 'active' | 'settled';
 export type AuditDateRangePreset = 'today' | 'yesterday' | '7d' | '30d' | 'custom';
 
 export interface AuditSheetFilters {
   types: AuditFilterType[];
+  statuses: AuditStatusFilter[];
   range: AuditDateRangePreset | null;
   from: string; // YYYY-MM-DD
   to: string;   // YYYY-MM-DD
@@ -30,6 +35,7 @@ export interface AuditFiltersState extends AuditSheetFilters {
 
 export const DEFAULT_SHEET_FILTERS: AuditSheetFilters = {
   types: [],
+  statuses: [],
   range: null,
   from: '',
   to: '',
@@ -60,6 +66,11 @@ export const AUDIT_TYPE_CHIPS: ReadonlyArray<{ id: AuditFilterType; label: strin
   { id: 'restore', label: 'পুনরুদ্ধার' },
 ];
 
+export const AUDIT_STATUS_CHIPS: ReadonlyArray<{ id: AuditStatusFilter; label: string }> = [
+  { id: 'active', label: 'সক্রিয়' },
+  { id: 'settled', label: 'নিষ্পন্ন' },
+];
+
 export const AUDIT_RANGE_CHIPS: ReadonlyArray<{ id: AuditDateRangePreset; label: string }> = [
   { id: 'today', label: 'আজ' },
   { id: 'yesterday', label: 'গতকাল' },
@@ -71,6 +82,7 @@ export const AUDIT_RANGE_CHIPS: ReadonlyArray<{ id: AuditDateRangePreset; label:
 export const AUDIT_PAGE_SIZE = 20;
 
 const VALID_TYPES = new Set<AuditFilterType>(['update', 'delete', 'undo', 'restore']);
+const VALID_STATUSES = new Set<AuditStatusFilter>(['active', 'settled']);
 const VALID_RANGES = new Set<AuditDateRangePreset>([
   'today',
   'yesterday',
@@ -142,53 +154,43 @@ export function resolveDateRangeBounds(
 ): DateRangeBounds | null {
   if (!range) return null;
 
-  const todayStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    0,
-    0,
-    0,
-    0
-  );
-  const todayEnd = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-    999
-  );
+  const todayKey = getDhakaDayKey(now);
+  const todayBounds = getDhakaDayBoundsMs(todayKey);
+  if (!todayBounds) return null;
 
   if (range === 'today') {
-    return { startMs: todayStart.getTime(), endMs: todayEnd.getTime() };
+    return todayBounds;
   }
 
   if (range === 'yesterday') {
-    const yStart = new Date(todayStart);
-    yStart.setDate(yStart.getDate() - 1);
-    const yEnd = new Date(todayEnd);
-    yEnd.setDate(yEnd.getDate() - 1);
-    return { startMs: yStart.getTime(), endMs: yEnd.getTime() };
+    const yesterdayKey = shiftDhakaDayKey(todayKey, -1);
+    return getDhakaDayBoundsMs(yesterdayKey);
   }
 
   if (range === '7d') {
-    const start = new Date(todayStart);
-    start.setDate(start.getDate() - 6);
-    return { startMs: start.getTime(), endMs: todayEnd.getTime() };
+    const startKey = shiftDhakaDayKey(todayKey, -6);
+    const startBounds = getDhakaDayBoundsMs(startKey);
+    return {
+      startMs: startBounds ? startBounds.startMs : todayBounds.startMs,
+      endMs: todayBounds.endMs,
+    };
   }
 
   if (range === '30d') {
-    const start = new Date(todayStart);
-    start.setDate(start.getDate() - 29);
-    return { startMs: start.getTime(), endMs: todayEnd.getTime() };
+    const startKey = shiftDhakaDayKey(todayKey, -29);
+    const startBounds = getDhakaDayBoundsMs(startKey);
+    return {
+      startMs: startBounds ? startBounds.startMs : todayBounds.startMs,
+      endMs: todayBounds.endMs,
+    };
   }
 
   if (range === 'custom') {
     if (validateCustomDateRange(range, from, to)) return null;
-    const startMs = from ? parseLocalDateStart(from) : null;
-    const endMs = to ? parseLocalDateEnd(to) : null;
+    const startBounds = from ? getDhakaDayBoundsMs(from) : null;
+    const endBounds = to ? getDhakaDayBoundsMs(to) : null;
+    const startMs = startBounds ? startBounds.startMs : null;
+    const endMs = endBounds ? endBounds.endMs : null;
     if (startMs === null && endMs === null) return null;
     return { startMs, endMs };
   }
@@ -210,13 +212,10 @@ export interface AuditQueryPlan {
 
 /**
  * Pure, framework-agnostic Firestore query planner for `activityLogs`.
- * Easily testable without Firestore SDK runtime mocks.
- *
- * When both `action in [...]` AND a `createdAt` date range are active,
- * Firestore disjunction + range-on-different-field queries require combinatorial
- * composite indexes and multiply backend sub-queries. We keep `createdAt` range
- * in Firestore (with `orderBy('createdAt', 'desc')`) and fall back to filtering
- * `action` on the client.
+ * Deliberately omits `orderBy('createdAt')` and Firestore-level `createdAt` ranges
+ * because Firestore silently drops legacy documents missing `createdAt`.
+ * Instead, equality `where(...)` filters run in Firestore (when compatible) and
+ * date range / sorting / search run deterministically on the client via `getLogDate`.
  */
 export function buildAuditQueryPlan(
   filters: AuditFiltersState,
@@ -233,19 +232,7 @@ export function buildAuditQueryPlan(
   const clientSearch = filters.search.trim().toLowerCase();
 
   const hasActions = expandedActions.length > 0;
-  const hasDateBounds = dateBounds !== null;
-
-  let actionIn: string[] | null = null;
-  let clientFilterActions: string[] | null = null;
-  let fallbackReason: 'action_in_with_date_range' | null = null;
-
-  if (hasActions && hasDateBounds) {
-    // Fall back to client-side action filtering when combined with a createdAt range
-    clientFilterActions = expandedActions;
-    fallbackReason = 'action_in_with_date_range';
-  } else if (hasActions) {
-    actionIn = expandedActions;
-  }
+  const actionIn = hasActions ? expandedActions : null;
 
   return {
     moduleEq,
@@ -253,10 +240,10 @@ export function buildAuditQueryPlan(
     locationStatusEq,
     actionIn,
     dateBounds,
-    clientFilterActions,
+    clientFilterActions: null,
     clientSearch,
-    fallbackReason,
-    hasClientOnlyFilters: Boolean(clientFilterActions || clientSearch),
+    fallbackReason: null,
+    hasClientOnlyFilters: Boolean(clientSearch || dateBounds || filters.statuses.length > 0),
   };
 }
 
@@ -264,19 +251,21 @@ export interface BuildConstraintsOptions {
   pageSize?: number;
   cursor?: QueryDocumentSnapshot<DocumentData> | null;
   forCount?: boolean;
-  /** Safe base query used only when Firestore reports a missing composite index */
+  /** Safe unfiltered fetch used when a multi-field composite index is missing */
   baseOrderOnly?: boolean;
 }
 
 /**
  * Converts an `AuditQueryPlan` into Firestore `QueryConstraint[]`.
+ * Note: intentionally avoids `orderBy('createdAt')` so documents without `createdAt`
+ * are never silently excluded by Firestore.
  */
 export function buildAuditFirestoreConstraints(
   plan: AuditQueryPlan,
   options: BuildConstraintsOptions = {}
 ): QueryConstraint[] {
   const {
-    pageSize = AUDIT_PAGE_SIZE,
+    pageSize,
     cursor = null,
     forCount = false,
     baseOrderOnly = false,
@@ -297,19 +286,12 @@ export function buildAuditFirestoreConstraints(
     if (plan.actionIn && plan.actionIn.length > 0) {
       constraints.push(where('action', 'in', plan.actionIn));
     }
-    if (plan.dateBounds?.startMs !== null && plan.dateBounds?.startMs !== undefined) {
-      constraints.push(where('createdAt', '>=', Timestamp.fromMillis(plan.dateBounds.startMs)));
-    }
-    if (plan.dateBounds?.endMs !== null && plan.dateBounds?.endMs !== undefined) {
-      constraints.push(where('createdAt', '<=', Timestamp.fromMillis(plan.dateBounds.endMs)));
-    }
   }
 
-  if (!forCount) {
-    constraints.push(orderBy('createdAt', 'desc'));
-    if (cursor) {
-      constraints.push(startAfter(cursor));
-    }
+  if (!forCount && cursor) {
+    constraints.push(startAfter(cursor));
+  }
+  if (!forCount && typeof pageSize === 'number' && pageSize > 0) {
     constraints.push(limit(pageSize));
   }
 
@@ -338,14 +320,26 @@ export function matchesAuditClientFilters(
     if (expanded.length > 0 && !expanded.includes(String(log.action || ''))) {
       return false;
     }
-    if (plan.dateBounds) {
-      const ms = extractTimestampMs(log.createdAt ?? log.timestamp);
-      if (ms === null) return false;
-      if (plan.dateBounds.startMs !== null && ms < plan.dateBounds.startMs) return false;
-      if (plan.dateBounds.endMs !== null && ms > plan.dateBounds.endMs) return false;
-    }
-  } else if (plan.clientFilterActions && plan.clientFilterActions.length > 0) {
-    if (!plan.clientFilterActions.includes(String(log.action || ''))) {
+  }
+
+  if (plan.dateBounds) {
+    const logDate = getLogDate(log);
+    if (!logDate) return false;
+    const ms = logDate.getTime();
+    if (plan.dateBounds.startMs !== null && ms < plan.dateBounds.startMs) return false;
+    if (plan.dateBounds.endMs !== null && ms > plan.dateBounds.endMs) return false;
+  }
+
+  if (filters.statuses.length > 0) {
+    const isSettled = Boolean(log.settled);
+    const isReverted = Boolean(log.reverted);
+    const isActive = !isReverted && !isSettled;
+    const matchesStatus = filters.statuses.some((statusKey) => {
+      if (statusKey === 'active') return isActive;
+      if (statusKey === 'settled') return isSettled;
+      return false;
+    });
+    if (!matchesStatus) {
       return false;
     }
   }
@@ -372,6 +366,12 @@ export function parseAuditFiltersFromSearch(search: string): AuditFiltersState {
     .filter((t) => VALID_TYPES.has(t));
   const types = Array.from(new Set(rawTypes));
 
+  const rawStatuses = (params.get('status') || '')
+    .split(',')
+    .map((s) => s.trim() as AuditStatusFilter)
+    .filter((s) => VALID_STATUSES.has(s));
+  const statuses = Array.from(new Set(rawStatuses));
+
   const rawRange = (params.get('range') || '').trim() as AuditDateRangePreset;
   const range = VALID_RANGES.has(rawRange) ? rawRange : null;
 
@@ -388,6 +388,7 @@ export function parseAuditFiltersFromSearch(search: string): AuditFiltersState {
     module,
     search: q,
     types,
+    statuses,
     range,
     from,
     to,
@@ -405,6 +406,7 @@ export function serializeAuditFiltersToSearch(
   // Clean managed audit keys first, preserving any unrelated params if present
   params.delete('module');
   params.delete('type');
+  params.delete('status');
   params.delete('range');
   params.delete('from');
   params.delete('to');
@@ -417,6 +419,9 @@ export function serializeAuditFiltersToSearch(
   }
   if (filters.types.length > 0) {
     params.set('type', filters.types.join(','));
+  }
+  if (filters.statuses.length > 0) {
+    params.set('status', filters.statuses.join(','));
   }
   if (filters.range) {
     params.set('range', filters.range);
@@ -442,6 +447,7 @@ export function serializeAuditFiltersToSearch(
 export function countActiveSheetFilters(sheet: AuditSheetFilters): number {
   return (
     sheet.types.length +
+    sheet.statuses.length +
     (sheet.range ? 1 : 0) +
     (sheet.userId ? 1 : 0) +
     (sheet.withLocation ? 1 : 0)
@@ -462,6 +468,11 @@ export function formatActiveSheetSummary(
 
   for (const t of sheet.types) {
     const found = AUDIT_TYPE_CHIPS.find((c) => c.id === t);
+    if (found) parts.push(found.label);
+  }
+
+  for (const s of sheet.statuses) {
+    const found = AUDIT_STATUS_CHIPS.find((c) => c.id === s);
     if (found) parts.push(found.label);
   }
 
@@ -500,35 +511,23 @@ export interface RequiredCompositeIndexDoc {
 
 export const REQUIRED_AUDIT_COMPOSITE_INDEXES: RequiredCompositeIndexDoc[] = [
   {
-    fields: 'module ASC, createdAt DESC',
-    usedBy: 'Module chip (with or without createdAt date range)',
+    fields: 'module ASC, userId ASC',
+    usedBy: 'Module chip + User filter (multi-equality combo; falls back to client filter if not created)',
   },
   {
-    fields: 'userId ASC, createdAt DESC',
-    usedBy: 'User filter (with or without createdAt date range)',
+    fields: 'module ASC, action ASC',
+    usedBy: 'Module chip + Type filter (falls back to client filter if not created)',
   },
   {
-    fields: 'location.status ASC, createdAt DESC',
-    usedBy: 'Location filter ("অবস্থানসহ")',
+    fields: 'userId ASC, action ASC',
+    usedBy: 'User filter + Type filter (falls back to client filter if not created)',
   },
   {
-    fields: 'action ASC, createdAt DESC',
-    usedBy: 'Type filter (when no date range is selected)',
+    fields: 'module ASC, location.status ASC',
+    usedBy: 'Module chip + "অবস্থানসহ" filter (falls back to client filter if not created)',
   },
   {
-    fields: 'module ASC, userId ASC, createdAt DESC',
-    usedBy: 'Module chip + User filter (with or without createdAt date range)',
-  },
-  {
-    fields: 'module ASC, action ASC, createdAt DESC',
-    usedBy: 'Module chip + Type filter (without date range)',
-  },
-  {
-    fields: 'userId ASC, action ASC, createdAt DESC',
-    usedBy: 'User filter + Type filter (without date range)',
-  },
-  {
-    fields: 'module ASC, userId ASC, action ASC, createdAt DESC',
-    usedBy: 'Module chip + User filter + Type filter (without date range)',
+    fields: 'module ASC, userId ASC, action ASC',
+    usedBy: 'Module chip + User filter + Type filter (falls back to client filter if not created)',
   },
 ];

@@ -5,11 +5,13 @@ import {
   getDocs,
   runTransaction,
   serverTimestamp,
+  Timestamp,
   writeBatch,
   query,
   where,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { getLogDate, hasValidFirestoreCreatedAt } from './auditDate';
 import {
   getActionLocation,
   LOCATION_REQUIRED_BLOCK_MESSAGE,
@@ -236,6 +238,11 @@ export function sanitizeAuditValue<T>(value: T): T {
     return value.map((item) => sanitizeAuditValue(item)) as unknown as T;
   }
   if (typeof value === 'object') {
+    // Preserve Date, Firestore Timestamp, and Firestore FieldValue sentinels (e.g. serverTimestamp())
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== null && proto !== Object.prototype) {
+      return value;
+    }
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(value as Record<string, unknown>)) {
       if (REDACTED_KEYS.has(key.toLowerCase())) continue;
@@ -434,6 +441,7 @@ function buildDefaultTitle(
   }
   if (action === 'undo') return `পরিবর্তন ফেরত নেওয়া হয়েছে: ${targetLabel}`;
   if (action === 'restore') return `রেকর্ড পুনরুদ্ধার করা হয়েছে: ${targetLabel}`;
+  if (action === 'settle') return `নিষ্পন্ন: ${targetLabel}`;
   if (action === 'export') return `ডাটা এক্সপোর্ট: ${targetLabel}`;
   if (action === 'security') return `নিরাপত্তা কার্যক্রম: ${targetLabel}`;
   return `${entityBn}: ${targetLabel}`;
@@ -482,6 +490,7 @@ const DESTRUCTIVE_AUDIT_ACTIONS = new Set<AuditAction>([
   'bulk_delete',
   'undo',
   'restore',
+  'settle',
 ]);
 
 let cachedAuditLocationMode: AuditLocationMode | null = null;
@@ -557,7 +566,6 @@ function buildBaseLogPayload(params: {
   location?: AuditLocation;
   details?: string;
 }): Omit<ActivityLog, 'id'> {
-  const now = Date.now();
   return sanitizeAuditValue({
     action: params.action,
     module: params.module,
@@ -582,12 +590,16 @@ function buildBaseLogPayload(params: {
     ...(params.refLogId ? { refLogId: params.refLogId } : {}),
     ...(params.location ? { location: params.location } : {}),
     reverted: false,
+    settled: false,
+    settledBy: null,
+    settledByName: null,
+    settledAt: null,
+    settleNote: null,
     createdAt: serverTimestamp(),
-    // Legacy compatibility fields
+    // Legacy compatibility fields (time uses createdAt: serverTimestamp() only)
     userName: params.actor.user,
     recordId: params.targetId,
     details: params.details || params.title,
-    timestamp: now,
   }) as Omit<ActivityLog, 'id'>;
 }
 
@@ -1328,4 +1340,54 @@ export async function loadLogSnapshotChunks(logId: string): Promise<AuditRelated
     }
   }
   return combined;
+}
+
+export interface LegacyAuditBackfillResult {
+  scannedCount: number;
+  updatedCount: number;
+  skippedNoDateCount: number;
+}
+
+/**
+ * One-time admin-only migration helper: copies legacy time fields (`timestamp`, `time`, `date`)
+ * into `createdAt` (as a Firestore Timestamp) for entries missing a valid `createdAt` Timestamp.
+ * Never deletes any document or existing field.
+ */
+export async function backfillLegacyAuditCreatedAt(): Promise<LegacyAuditBackfillResult> {
+  const snap = await getDocs(collection(db, 'activityLogs'));
+  const pendingUpdates: Array<{ id: string; createdAt: Timestamp }> = [];
+  let skippedNoDateCount = 0;
+
+  for (const d of snap.docs) {
+    const data = { id: d.id, ...d.data() } as ActivityLog;
+    if (hasValidFirestoreCreatedAt(data)) continue;
+
+    const resolvedDate = getLogDate(data);
+    if (!resolvedDate) {
+      skippedNoDateCount++;
+      continue;
+    }
+
+    pendingUpdates.push({
+      id: d.id,
+      createdAt: Timestamp.fromDate(resolvedDate),
+    });
+  }
+
+  for (let i = 0; i < pendingUpdates.length; i += MAX_BATCH_OPS) {
+    const chunk = pendingUpdates.slice(i, i + MAX_BATCH_OPS);
+    const batch = writeBatch(db);
+    for (const item of chunk) {
+      batch.update(doc(db, 'activityLogs', item.id), {
+        createdAt: item.createdAt,
+      });
+    }
+    await batch.commit();
+  }
+
+  return {
+    scannedCount: snap.size,
+    updatedCount: pendingUpdates.length,
+    skippedNoDateCount,
+  };
 }

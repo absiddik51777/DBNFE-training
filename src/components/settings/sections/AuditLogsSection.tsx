@@ -39,6 +39,7 @@ export const AuditLogsSection: React.FC<AuditLogsSectionProps> = ({
     loadingMoreLogs,
     hasMoreLogs,
     logsError,
+    legacyFixCount,
     refreshLogs,
     loadMoreLogs,
     availableUsers,
@@ -70,6 +71,7 @@ export const AuditLogsSection: React.FC<AuditLogsSectionProps> = ({
       loadingMoreLogs={loadingMoreLogs}
       hasMoreLogs={hasMoreLogs}
       logsError={logsError}
+      legacyFixCount={legacyFixCount}
       searchInput={searchInput}
       selectedModule={appliedFilters.module}
       activeSheetFilterCount={activeSheetFilterCount}

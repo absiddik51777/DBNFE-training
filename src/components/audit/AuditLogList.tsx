@@ -1,11 +1,14 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
-import { format } from 'date-fns';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, RefreshCw, Wrench } from 'lucide-react';
 import type { ActivityLog } from '../../types';
-import type { AuditActor } from '../../lib/auditLog';
+import {
+  backfillLegacyAuditCreatedAt,
+  type AuditActor,
+} from '../../lib/auditLog';
+import { formatCountBn, groupAuditLogsByDhakaDay } from '../../lib/auditDate';
 import type { AuditSheetFilters } from '../../lib/auditQueryBuilder';
 import type { AuditLogUserOption } from '../../hooks/useAuditFilters';
-import { extractTimestampMs } from './auditFormatters';
+import { useConfirm } from '../../contexts/ConfirmationContext';
 import { AuditFilterBar } from './AuditFilterBar';
 import { AuditFilterSheet } from './AuditFilterSheet';
 import { AuditLogRow } from './AuditLogRow';
@@ -17,6 +20,7 @@ interface AuditLogListProps {
   loadingMoreLogs: boolean;
   hasMoreLogs: boolean;
   logsError: string | null;
+  legacyFixCount?: number;
   searchInput: string;
   selectedModule: string;
   activeSheetFilterCount: number;
@@ -45,48 +49,13 @@ interface AuditLogListProps {
   onNavigateToData?: () => void;
 }
 
-interface DayGroup {
-  key: string;
-  label: string;
-  items: ActivityLog[];
-}
-
-function getLocalDayKey(ms: number): string {
-  const d = new Date(ms);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function formatDayHeadingLabel(ms: number | null): string {
-  if (!ms) return 'অন্যান্য';
-  const now = new Date();
-  const todayKey = getLocalDayKey(now.getTime());
-  const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const yesterdayKey = getLocalDayKey(yest.getTime());
-  const itemKey = getLocalDayKey(ms);
-
-  if (itemKey === todayKey) return 'আজ';
-  if (itemKey === yesterdayKey) return 'গতকাল';
-
-  try {
-    return new Intl.DateTimeFormat('bn-BD', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date(ms));
-  } catch {
-    return format(ms, 'dd/MM/yyyy');
-  }
-}
-
 export const AuditLogList: React.FC<AuditLogListProps> = ({
   logs,
   loadingLogs,
   loadingMoreLogs,
   hasMoreLogs,
   logsError,
+  legacyFixCount = 0,
   searchInput,
   selectedModule,
   activeSheetFilterCount,
@@ -114,61 +83,122 @@ export const AuditLogList: React.FC<AuditLogListProps> = ({
   onActionSuccess,
   onNavigateToData,
 }) => {
+  const { confirm, showAlert } = useConfirm();
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [fixingLegacy, setFixingLegacy] = useState(false);
   const rowTriggerRef = useRef<HTMLButtonElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const filterBarContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const rootEl = rootRef.current;
+    const filterEl = filterBarContainerRef.current;
+    if (!rootEl || !filterEl) return;
+
+    const updateOffset = () => {
+      // Top navbar is h-16 (64px)
+      const topPx = 64 + Math.ceil(filterEl.getBoundingClientRect().height);
+      rootEl.style.setProperty('--audit-sticky-top', `${topPx}px`);
+    };
+
+    updateOffset();
+
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(updateOffset);
+      ro.observe(filterEl);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener('resize', updateOffset);
+    return () => window.removeEventListener('resize', updateOffset);
+  }, []);
 
   const handleSelectLog = (log: ActivityLog, triggerEl: HTMLButtonElement) => {
     rowTriggerRef.current = triggerEl;
     setSelectedLog(log);
   };
 
+  const handleFixLegacyLogs = async () => {
+    if (!isAdmin || fixingLegacy) return;
+    const ok = await confirm({
+      title: 'পুরনো লগ ঠিক করুন',
+      message: `${formatCountBn(legacyFixCount)} পুরনো অডিট লগের পুরনো সময় createdAt ফিল্ডে কপি করা হবে। কোনো তথ্য মুছে ফেলা হবে না। আপনি কি এগিয়ে যেতে চান?`,
+      confirmText: 'হ্যাঁ, ঠিক করুন',
+      cancelText: 'বাতিল',
+      variant: 'warning',
+    });
+    if (!ok) return;
+
+    setFixingLegacy(true);
+    try {
+      const res = await backfillLegacyAuditCreatedAt();
+      await onRefreshLogs();
+      const msg = `${formatCountBn(res.updatedCount)} পুরনো লগ সফলভাবে হালনাগাদ করা হয়েছে।`;
+      if (onActionSuccess) {
+        await onActionSuccess(msg);
+      } else {
+        await showAlert({ title: 'সম্পন্ন', message: msg, variant: 'success' });
+      }
+    } catch (err: any) {
+      await showAlert({
+        title: 'ত্রুটি',
+        message: err?.message || 'পুরনো লগ ঠিক করতে সমস্যা হয়েছে।',
+        variant: 'danger',
+      });
+    } finally {
+      setFixingLegacy(false);
+    }
+  };
+
   const activeLog = selectedLog
     ? logs.find((l) => l.id === selectedLog.id) || selectedLog
     : null;
 
-  const groupedDays: DayGroup[] = useMemo(() => {
-    const groups: DayGroup[] = [];
-    const byKey = new Map<string, DayGroup>();
-
-    for (const log of logs) {
-      const ms = extractTimestampMs(log.createdAt ?? log.timestamp);
-      const key = ms ? getLocalDayKey(ms) : 'unknown';
-      let group = byKey.get(key);
-      if (!group) {
-        group = {
-          key,
-          label: formatDayHeadingLabel(ms),
-          items: [],
-        };
-        byKey.set(key, group);
-        groups.push(group);
-      }
-      group.items.push(log);
-    }
-
-    return groups;
-  }, [logs]);
+  const groupedDays = useMemo(() => groupAuditLogsByDhakaDay(logs), [logs]);
 
   return (
-    <div className="space-y-4">
-      {/* Compact Closed Filter Bar */}
-      <AuditFilterBar
-        searchInput={searchInput}
-        onSearchChange={onSearchChange}
-        selectedModule={selectedModule}
-        onSelectModule={onSelectModule}
-        activeSheetFilterCount={activeSheetFilterCount}
-        activeSheetSummaryText={activeSheetSummaryText}
-        resultCount={logs.length}
-        hasMoreLogs={hasMoreLogs}
-        loadingLogs={loadingLogs}
-        hasAnyActiveFilter={hasAnyActiveFilter}
-        onOpenSheet={onOpenSheet}
-        onRefresh={onRefreshLogs}
-        onClearAll={onClearAllFilters}
-        filterButtonRef={filterButtonRef}
-      />
+    <div ref={rootRef} className="space-y-4">
+      {/* Compact Closed Filter Bar (sticky below 64px top navbar) */}
+      <div
+        ref={filterBarContainerRef}
+        className="sticky top-16 z-20 bg-theme-bg pt-1 pb-2 -mx-1 px-1"
+      >
+        <AuditFilterBar
+          searchInput={searchInput}
+          onSearchChange={onSearchChange}
+          selectedModule={selectedModule}
+          onSelectModule={onSelectModule}
+          activeSheetFilterCount={activeSheetFilterCount}
+          activeSheetSummaryText={activeSheetSummaryText}
+          resultCount={logs.length}
+          hasMoreLogs={hasMoreLogs}
+          loadingLogs={loadingLogs}
+          hasAnyActiveFilter={hasAnyActiveFilter}
+          onOpenSheet={onOpenSheet}
+          onRefresh={onRefreshLogs}
+          onClearAll={onClearAllFilters}
+          filterButtonRef={filterButtonRef}
+        />
+      </div>
+
+      {/* One-time admin-only migration action for legacy entries missing valid createdAt */}
+      {isAdmin && legacyFixCount > 0 && !loadingLogs && (
+        <div className="rounded-[12px] border border-theme-border bg-theme-surface px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <span className="text-theme-text-secondary">
+            {formatCountBn(legacyFixCount)} পুরনো লগে সার্ভার টাইমস্ট্যাম্প (createdAt) অনুপস্থিত।
+          </span>
+          <button
+            type="button"
+            disabled={fixingLegacy}
+            onClick={handleFixLegacyLogs}
+            className="min-h-[38px] px-3 py-1.5 rounded-[10px] border border-theme-primary bg-theme-primary-soft hover:bg-theme-primary text-theme-primary hover:text-theme-primary-fg font-semibold inline-flex items-center gap-1.5 transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+          >
+            <Wrench size={14} aria-hidden="true" />
+            <span>{fixingLegacy ? 'ঠিক করা হচ্ছে...' : 'পুরনো লগ ঠিক করুন'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Loading Skeleton State */}
       {loadingLogs ? (
@@ -225,7 +255,7 @@ export const AuditLogList: React.FC<AuditLogListProps> = ({
           )}
         </div>
       ) : (
-        /* Grouped by Day Headings without altering AuditLogRow design */
+        /* Grouped by Asia/Dhaka Day Headings (sticky below filter bar) */
         <div className="space-y-4">
           {logsError && (
             <div
@@ -245,8 +275,11 @@ export const AuditLogList: React.FC<AuditLogListProps> = ({
 
           {groupedDays.map((group) => (
             <section key={group.key} aria-label={group.label} className="space-y-1.5">
-              <h3 className="text-xs font-semibold text-theme-text-secondary px-1">
-                {group.label}
+              <h3 className="sticky top-[var(--audit-sticky-top,12.5rem)] z-10 bg-theme-bg/95 backdrop-blur-xs py-1.5 px-1 flex items-center gap-2 text-xs font-semibold text-theme-text-secondary">
+                <span>{group.label}</span>
+                <span className="text-[11px] font-medium text-theme-text-muted tabular-nums">
+                  {formatCountBn(group.items.length)}
+                </span>
               </h3>
               <div className="rounded-[14px] border border-theme-border bg-theme-surface overflow-hidden">
                 <ul className="divide-y divide-theme-border">

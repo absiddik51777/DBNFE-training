@@ -201,16 +201,37 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
                        isValidId(logId) &&
                        request.resource.data.userId == request.auth.uid &&
+                       (!('reverted' in request.resource.data) || request.resource.data.reverted == false) &&
+                       (!('settled' in request.resource.data) || request.resource.data.settled == false) &&
                        (!('location' in request.resource.data) || isValidAuditLocation(request.resource.data.location));
       allow update: if isCourseDirector() &&
                        isValidId(logId) &&
                        (!('reverted' in resource.data) || resource.data.reverted == false) &&
-                       request.resource.data.reverted == true &&
-                       request.resource.data.revertedBy is string &&
-                       request.resource.data.revertedBy.size() > 0 &&
-                       request.resource.data.revertedBy.size() <= 150 &&
-                       request.resource.data.revertedAt != null &&
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reverted', 'revertedBy', 'revertedAt']);
+                       (!('settled' in resource.data) || resource.data.settled == false) && (
+                         (
+                           request.resource.data.reverted == true &&
+                           request.resource.data.revertedBy is string &&
+                           request.resource.data.revertedBy.size() > 0 &&
+                           request.resource.data.revertedBy.size() <= 150 &&
+                           request.resource.data.revertedAt is timestamp &&
+                           request.resource.data.keys().hasAll(['reverted', 'revertedBy', 'revertedAt']) &&
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reverted', 'revertedBy', 'revertedAt'])
+                         ) ||
+                         (
+                           request.resource.data.settled == true &&
+                           request.resource.data.settledBy == request.auth.uid &&
+                           request.resource.data.settledByName is string &&
+                           request.resource.data.settledByName.size() > 0 &&
+                           request.resource.data.settledByName.size() <= 150 &&
+                           request.resource.data.settledAt is timestamp &&
+                           (
+                             request.resource.data.settleNote == null ||
+                             (request.resource.data.settleNote is string && request.resource.data.settleNote.size() <= 500)
+                           ) &&
+                           request.resource.data.keys().hasAll(['settled', 'settledBy', 'settledByName', 'settledAt', 'settleNote']) &&
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['settled', 'settledBy', 'settledByName', 'settledAt', 'settleNote'])
+                         )
+                       );
       allow delete: if false; // Never delete audit logs
 
       match /snapshots/{chunkId} {

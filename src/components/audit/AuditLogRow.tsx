@@ -2,8 +2,9 @@ import React from 'react';
 import { ChevronRight, MapPin } from 'lucide-react';
 import type { ActivityLog } from '../../types';
 import {
-  formatAuditTimestamp,
+  formatDhakaTime12h,
   getActionLabelBn,
+  getLogDate,
   getModuleLabelBn,
   hasLogDetails,
   isStructuredAuditLog,
@@ -21,7 +22,8 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
   const actorName = log.user || log.userName || 'অজানা';
   const moduleLabel = getModuleLabelBn(log.module);
   const actionLabel = structured ? getActionLabelBn(log.action) : '';
-  const formattedDate = formatAuditTimestamp(log.createdAt ?? log.timestamp);
+  const logDate = getLogDate(log);
+  const formattedTime = formatDhakaTime12h(logDate);
   const changeCount = Array.isArray(log.changes) ? log.changes.length : 0;
   const hasGrantedLocation = log.location?.status === 'granted';
 
@@ -38,13 +40,41 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
               ফেরত নেওয়া
             </span>
           )}
+          {log.settled && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/10 dark:bg-emerald-400/10 text-theme-text-secondary border border-theme-border-strong">
+              নিষ্পন্ন
+            </span>
+          )}
         </div>
 
-        {/* Line 2: User */}
-        <p className="text-xs text-theme-text-secondary">
-          ব্যবহারকারী:{' '}
-          <span className="font-medium text-theme-text-primary">{actorName}</span>
-        </p>
+        {/* Line 2: User + right-aligned 12h Dhaka time */}
+        <div className="flex items-center justify-between gap-2 text-xs text-theme-text-secondary">
+          <p className="min-w-0 truncate">
+            ব্যবহারকারী:{' '}
+            <span className="font-medium text-theme-text-primary">{actorName}</span>
+          </p>
+          {(formattedTime || hasGrantedLocation) && (
+            <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-theme-text-muted">
+              {hasGrantedLocation && (
+                <span
+                  title="অবস্থান সংরক্ষিত"
+                  className="inline-flex items-center text-theme-primary"
+                >
+                  <MapPin size={12} aria-hidden="true" />
+                  <span className="sr-only">অবস্থান সংরক্ষিত</span>
+                </span>
+              )}
+              {formattedTime && (
+                <time
+                  dateTime={logDate ? logDate.toISOString() : undefined}
+                  className="font-mono tabular-nums"
+                >
+                  {formattedTime}
+                </time>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Line 3: Module chip + action / diff summary */}
         <div className="flex flex-wrap items-center gap-1.5">
@@ -67,31 +97,6 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
             </span>
           )}
         </div>
-
-        {/* Line 4: Timestamp on its own line + subtle MapPin if location granted */}
-        {(formattedDate || hasGrantedLocation) && (
-          <div className="flex items-center gap-1.5 text-[11px] text-theme-text-muted">
-            {formattedDate && (
-              <time
-                dateTime={
-                  log.timestamp ? new Date(log.timestamp).toISOString() : undefined
-                }
-                className="font-mono tabular-nums"
-              >
-                {formattedDate}
-              </time>
-            )}
-            {hasGrantedLocation && (
-              <span
-                title="অবস্থান সংরক্ষিত"
-                className="inline-flex items-center text-theme-primary"
-              >
-                <MapPin size={12} aria-hidden="true" />
-                <span className="sr-only">অবস্থান সংরক্ষিত</span>
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {interactive && (

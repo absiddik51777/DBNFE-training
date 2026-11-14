@@ -1,6 +1,15 @@
 import { format } from 'date-fns';
 import type { ActivityLog } from '../../types';
 import { getFieldLabelBn, maskSensitiveValue } from '../../lib/auditLog';
+import {
+  DHAKA_TIMEZONE,
+  formatCountBn,
+  formatDhakaTime12h,
+  getLogDate,
+  parseAuditDateValue,
+} from '../../lib/auditDate';
+
+export { formatCountBn, formatDhakaTime12h, getLogDate, parseAuditDateValue };
 
 export const MODULE_LABELS_BN: Record<string, string> = {
   trainees: 'প্রশিক্ষণার্থী',
@@ -44,6 +53,7 @@ export const ACTION_LABELS_BN: Record<string, string> = {
   bulk_delete: 'বাল্ক ডিলিট',
   undo: 'পরিবর্তন ফেরত',
   restore: 'পুনরুদ্ধার',
+  settle: 'নিষ্পন্ন',
   export: 'এক্সপোর্ট',
   settings: 'সেটিংস',
   security: 'নিরাপত্তা',
@@ -56,6 +66,7 @@ const STANDARD_ACTIONS = new Set([
   'bulk_delete',
   'undo',
   'restore',
+  'settle',
   'export',
   'settings',
   'security',
@@ -95,44 +106,41 @@ export function getActionLabelBn(action?: string): string {
 }
 
 export function extractTimestampMs(ts: unknown): number | null {
-  if (ts === null || ts === undefined) return null;
-  if (typeof ts === 'number' && Number.isFinite(ts)) return ts;
-  if (ts instanceof Date) return ts.getTime();
-  if (typeof ts === 'object') {
-    const obj = ts as { toMillis?: () => number; toDate?: () => Date; seconds?: number };
-    if (typeof obj.toMillis === 'function') {
-      try {
-        return obj.toMillis();
-      } catch {
-        return null;
-      }
-    }
-    if (typeof obj.toDate === 'function') {
-      try {
-        return obj.toDate().getTime();
-      } catch {
-        return null;
-      }
-    }
-    if (typeof obj.seconds === 'number') {
-      return obj.seconds * 1000;
-    }
-  }
-  if (typeof ts === 'string') {
-    const parsed = Date.parse(ts);
-    if (!Number.isNaN(parsed)) return parsed;
-  }
-  return null;
+  const d = parseAuditDateValue(ts);
+  return d ? d.getTime() : null;
 }
+
+const dhakaDateTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DHAKA_TIMEZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: true,
+});
+
+const dhakaDateOnlyFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DHAKA_TIMEZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
 
 export function formatAuditTimestamp(
   ts: unknown,
   pattern: string = 'dd/MM/yyyy, hh:mm a'
 ): string {
-  const ms = extractTimestampMs(ts);
-  if (!ms) return '';
+  const d = parseAuditDateValue(ts);
+  if (!d) return '';
   try {
-    return format(ms, pattern);
+    if (pattern === 'dd/MM/yyyy') {
+      return dhakaDateOnlyFormatter.format(d);
+    }
+    if (pattern === 'dd/MM/yyyy, hh:mm a') {
+      return dhakaDateTimeFormatter.format(d).replace(/am|pm/i, (m) => m.toUpperCase());
+    }
+    return format(d, pattern);
   } catch {
     return '';
   }
@@ -197,5 +205,6 @@ export function hasLogDetails(log: ActivityLog): boolean {
     return true;
   }
   if (log.location) return true;
+  if (log.settled || log.reverted || log.action === 'settle') return true;
   return false;
 }

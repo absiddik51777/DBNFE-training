@@ -206,6 +206,11 @@
         "reverted": { "type": "boolean" },
         "revertedBy": { "type": "string", "maxLength": 150 },
         "revertedAt": { "type": "number" },
+        "settled": { "type": "boolean" },
+        "settledBy": { "type": ["string", "null"], "maxLength": 128 },
+        "settledByName": { "type": ["string", "null"], "maxLength": 150 },
+        "settledAt": { "type": ["object", "null"], "description": "Firestore serverTimestamp" },
+        "settleNote": { "type": ["string", "null"], "maxLength": 500 },
         "refLogId": { "type": "string", "maxLength": 128 },
         "location": {
           "type": "object",
@@ -219,9 +224,10 @@
           },
           "required": ["status", "capturedAt", "source"]
         },
+        "createdAt": { "type": "object", "description": "Firestore serverTimestamp" },
         "timestamp": { "type": "number" }
       },
-      "required": ["userId", "action", "module", "timestamp"]
+      "required": ["userId", "action", "module", "createdAt"]
     },
     "SystemSettings": {
       "title": "SystemSettings",

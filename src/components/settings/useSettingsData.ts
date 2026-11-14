@@ -2,15 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   collection,
   getDocs,
-  limit,
-  orderBy,
-  query,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { db } from '../../lib/firebase';
 import { dataService } from '../../lib/dataService';
 import { recordSimpleAuditLog } from '../../lib/auditLog';
-import { extractTimestampMs } from '../audit/auditFormatters';
+import { sortAuditLogsNewestFirst } from '../../lib/auditDate';
+import { extractTimestampMs, getLogDate } from '../audit/auditFormatters';
 import { saveTextFile } from '../../lib/fileExportService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
@@ -111,17 +109,17 @@ export function useSettingsData(isAdmin: boolean = true) {
     }
     setLoadingLogs(true);
     try {
-      const q = query(
-        collection(db, 'activityLogs'),
-        orderBy('createdAt', 'desc'),
-        limit(1)
+      const snap = await getDocs(collection(db, 'activityLogs'));
+      const docs = snap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...d.data(),
+            hasPendingWrites: d.metadata.hasPendingWrites,
+          }) as ActivityLog
       );
-      const snap = await getDocs(q);
-      setLatestLog(
-        snap.docs.length > 0
-          ? ({ id: snap.docs[0].id, ...snap.docs[0].data() } as ActivityLog)
-          : null
-      );
+      const sorted = sortAuditLogsNewestFirst(docs);
+      setLatestLog(sorted[0] ?? null);
     } catch (err) {
       console.warn('Could not fetch latest activity log:', err);
     } finally {
@@ -137,7 +135,7 @@ export function useSettingsData(isAdmin: boolean = true) {
   const latestLogTimeText = useMemo(() => {
     if (!isAdmin) return 'সংরক্ষিত';
     if (loadingLogs) return 'লোড হচ্ছে...';
-    const ms = extractTimestampMs(latestLog?.createdAt ?? latestLog?.timestamp);
+    const ms = extractTimestampMs(getLogDate(latestLog));
     if (!ms) return 'কোনো লগ নেই';
     try {
       return format(ms, 'dd/MM/yy, hh:mm a');

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   collection,
-  DocumentData,
   getCountFromServer,
   getDocs,
-  limit,
   query,
-  QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import type { ActivityLog } from '../types';
+import {
+  getLogDate,
+  hasValidFirestoreCreatedAt,
+  mergeAndSortAuditLogs,
+  sortAuditLogsNewestFirst,
+} from '../lib/auditDate';
 import {
   AUDIT_PAGE_SIZE,
   AuditFiltersState,
@@ -31,10 +34,6 @@ export interface AuditLogUserOption {
   userId: string;
   label: string;
 }
-
-const PREVIEW_CAP = 200;
-const FALLBACK_PAGE_SIZE = 80;
-const AUTO_ADVANCE_MAX_PAGES = 2;
 
 function isMissingIndexError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
@@ -68,6 +67,7 @@ export function useAuditFilters(isAdmin: boolean) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<AuditSheetFilters>({
     types: appliedFilters.types,
+    statuses: appliedFilters.statuses,
     range: appliedFilters.range,
     from: appliedFilters.from,
     to: appliedFilters.to,
@@ -82,8 +82,8 @@ export function useAuditFilters(isAdmin: boolean) {
   const [hasMoreLogs, setHasMoreLogs] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
 
-  const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const usingFallbackIndexModeRef = useRef(false);
+  const allMatchedLogsRef = useRef<ActivityLog[]>([]);
+  const [legacyFixCount, setLegacyFixCount] = useState(0);
   const fetchGenerationRef = useRef(0);
 
   // Known users collected from logs so dropdown remains populated across filters
@@ -134,11 +134,14 @@ export function useAuditFilters(isAdmin: boolean) {
     [appliedFilters]
   );
 
-  // Fetch first page whenever applied Firestore-level filters change (or on refresh)
+  // Fetch all matching docs without orderBy('createdAt') so old entries missing createdAt
+  // are never dropped, then sort newest-first on the client and paginate stably.
   const fetchLogs = useCallback(async () => {
     if (!isAdmin) {
+      allMatchedLogsRef.current = [];
       setLogs([]);
       setHasMoreLogs(false);
+      setLegacyFixCount(0);
       setLogsError(null);
       setLoadingLogs(false);
       return;
@@ -147,17 +150,10 @@ export function useAuditFilters(isAdmin: boolean) {
     const gen = ++fetchGenerationRef.current;
     setLoadingLogs(true);
     setLogsError(null);
-    lastDocRef.current = null;
-    usingFallbackIndexModeRef.current = false;
+    allMatchedLogsRef.current = [];
 
-    const executeQuery = async (
-      cursor: QueryDocumentSnapshot<DocumentData> | null,
-      fallbackMode: boolean
-    ) => {
-      const pageSize = fallbackMode ? FALLBACK_PAGE_SIZE : AUDIT_PAGE_SIZE;
+    const executeQuery = async (fallbackMode: boolean) => {
       const constraints = buildAuditFirestoreConstraints(queryPlan, {
-        pageSize,
-        cursor,
         baseOrderOnly: fallbackMode,
       });
       return getDocs(query(collection(db, 'activityLogs'), ...constraints));
@@ -167,7 +163,7 @@ export function useAuditFilters(isAdmin: boolean) {
       let fallbackMode = false;
       let snap;
       try {
-        snap = await executeQuery(null, false);
+        snap = await executeQuery(false);
       } catch (err) {
         if (isMissingIndexError(err)) {
           console.warn(
@@ -175,8 +171,7 @@ export function useAuditFilters(isAdmin: boolean) {
             err
           );
           fallbackMode = true;
-          usingFallbackIndexModeRef.current = true;
-          snap = await executeQuery(null, true);
+          snap = await executeQuery(true);
         } else {
           throw err;
         }
@@ -184,56 +179,32 @@ export function useAuditFilters(isAdmin: boolean) {
 
       if (gen !== fetchGenerationRef.current) return;
 
-      const pageLimit = fallbackMode ? FALLBACK_PAGE_SIZE : AUDIT_PAGE_SIZE;
-      let cursor =
-        snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null;
-      let serverHasMore = snap.docs.length === pageLimit;
-
-      const accumulatedDocs: ActivityLog[] = snap.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as ActivityLog
+      const rawDocs: ActivityLog[] = snap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...d.data(),
+            hasPendingWrites: d.metadata.hasPendingWrites,
+          }) as ActivityLog
       );
-      recordObservedUsers(accumulatedDocs);
+      recordObservedUsers(rawDocs);
 
-      let matched = accumulatedDocs.filter((item) =>
+      const needFixCount = rawDocs.filter(
+        (item) => !hasValidFirestoreCreatedAt(item) && getLogDate(item) !== null
+      ).length;
+      setLegacyFixCount(needFixCount);
+
+      const matched = rawDocs.filter((item) =>
         matchesAuditClientFilters(item, appliedFilters, queryPlan, {
           includeServerConstraints: fallbackMode,
         })
       );
 
-      // If client-side filtering narrowed page 1 to 0 items and more pages exist, peek ahead up to 2 pages
-      let extraPages = 0;
-      while (
-        matched.length === 0 &&
-        serverHasMore &&
-        cursor &&
-        extraPages < AUTO_ADVANCE_MAX_PAGES
-      ) {
-        extraPages += 1;
-        const nextSnap = await executeQuery(cursor, fallbackMode);
-        if (gen !== fetchGenerationRef.current) return;
-        if (nextSnap.docs.length === 0) {
-          serverHasMore = false;
-          break;
-        }
-        cursor = nextSnap.docs[nextSnap.docs.length - 1];
-        serverHasMore = nextSnap.docs.length === pageLimit;
-        const nextItems = nextSnap.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as ActivityLog
-        );
-        recordObservedUsers(nextItems);
-        const nextMatched = nextItems.filter((item) =>
-          matchesAuditClientFilters(item, appliedFilters, queryPlan, {
-            includeServerConstraints: fallbackMode,
-          })
-        );
-        matched = [...matched, ...nextMatched];
-      }
+      const sortedMatched = sortAuditLogsNewestFirst(matched);
+      allMatchedLogsRef.current = sortedMatched;
 
-      if (gen !== fetchGenerationRef.current) return;
-
-      lastDocRef.current = cursor;
-      setHasMoreLogs(serverHasMore);
-      setLogs(matched);
+      setLogs(sortedMatched.slice(0, AUDIT_PAGE_SIZE));
+      setHasMoreLogs(sortedMatched.length > AUDIT_PAGE_SIZE);
     } catch (err) {
       if (gen !== fetchGenerationRef.current) return;
       console.warn('Could not fetch filtered activity logs:', err);
@@ -246,65 +217,20 @@ export function useAuditFilters(isAdmin: boolean) {
   }, [appliedFilters, isAdmin, queryPlan, recordObservedUsers]);
 
   const loadMoreLogs = useCallback(async () => {
-    if (!isAdmin || !lastDocRef.current || loadingMoreLogs || !hasMoreLogs) return;
-    const gen = fetchGenerationRef.current;
+    if (!isAdmin || loadingMoreLogs || !hasMoreLogs) return;
     setLoadingMoreLogs(true);
-    setLogsError(null);
-
-    const fallbackMode = usingFallbackIndexModeRef.current;
-    const pageLimit = fallbackMode ? FALLBACK_PAGE_SIZE : AUDIT_PAGE_SIZE;
-
     try {
-      const constraints = buildAuditFirestoreConstraints(queryPlan, {
-        pageSize: pageLimit,
-        cursor: lastDocRef.current,
-        baseOrderOnly: fallbackMode,
-      });
-      const snap = await getDocs(query(collection(db, 'activityLogs'), ...constraints));
-      if (gen !== fetchGenerationRef.current) return;
-
-      lastDocRef.current =
-        snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : lastDocRef.current;
-      setHasMoreLogs(snap.docs.length === pageLimit);
-
-      const rawNext = snap.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as ActivityLog
-      );
-      recordObservedUsers(rawNext);
-
-      const filteredNext = rawNext.filter((item) =>
-        matchesAuditClientFilters(item, appliedFilters, queryPlan, {
-          includeServerConstraints: fallbackMode,
-        })
-      );
-
-      setLogs((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        for (const item of filteredNext) {
-          if (!seen.has(item.id)) merged.push(item);
-        }
-        return merged;
-      });
-    } catch (err) {
-      if (gen !== fetchGenerationRef.current) return;
-      console.warn('Could not load more activity logs:', err);
-      setLogsError('আরও লগ লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+      const pool = allMatchedLogsRef.current;
+      const nextSlice = pool.slice(logs.length, logs.length + AUDIT_PAGE_SIZE);
+      const merged = mergeAndSortAuditLogs(logs, nextSlice);
+      setLogs(merged);
+      setHasMoreLogs(merged.length < pool.length);
     } finally {
-      if (gen === fetchGenerationRef.current) {
-        setLoadingMoreLogs(false);
-      }
+      setLoadingMoreLogs(false);
     }
-  }, [
-    appliedFilters,
-    hasMoreLogs,
-    isAdmin,
-    loadingMoreLogs,
-    queryPlan,
-    recordObservedUsers,
-  ]);
+  }, [hasMoreLogs, isAdmin, loadingMoreLogs, logs]);
 
-  // Trigger query when server-side constraints change; search & client filters re-run fetch cleanly
+  // Trigger query when applied filters change
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
@@ -365,6 +291,7 @@ export function useAuditFilters(isAdmin: boolean) {
   const openSheet = useCallback(() => {
     setDraftFilters({
       types: appliedFilters.types,
+      statuses: appliedFilters.statuses,
       range: appliedFilters.range,
       from: appliedFilters.from,
       to: appliedFilters.to,
@@ -393,6 +320,7 @@ export function useAuditFilters(isAdmin: boolean) {
     updateUrlFilters({
       ...appliedFilters,
       types: draftFilters.types,
+      statuses: draftFilters.statuses,
       range: draftFilters.range,
       from: draftFilters.range === 'custom' ? draftFilters.from : '',
       to: draftFilters.range === 'custom' ? draftFilters.to : '',
@@ -449,21 +377,18 @@ export function useAuditFilters(isAdmin: boolean) {
           }
         }
 
-        // Client-filtered count (either search/action+range or missing index fallback)
-        const fallbackMode = false;
+        // Client-filtered count (when search, Dhaka date range, or missing index fallback applies)
         let snap;
         let usedBaseFallback = false;
         try {
           const constraints = buildAuditFirestoreConstraints(draftPlan, {
-            pageSize: PREVIEW_CAP,
-            baseOrderOnly: fallbackMode,
+            baseOrderOnly: false,
           });
           snap = await getDocs(query(collection(db, 'activityLogs'), ...constraints));
         } catch (err) {
           if (!isMissingIndexError(err)) throw err;
           usedBaseFallback = true;
           const constraints = buildAuditFirestoreConstraints(draftPlan, {
-            pageSize: PREVIEW_CAP,
             baseOrderOnly: true,
           });
           snap = await getDocs(query(collection(db, 'activityLogs'), ...constraints));
@@ -471,7 +396,12 @@ export function useAuditFilters(isAdmin: boolean) {
 
         if (cancelled) return;
         const docs = snap.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as ActivityLog
+          (d) =>
+            ({
+              id: d.id,
+              ...d.data(),
+              hasPendingWrites: d.metadata.hasPendingWrites,
+            }) as ActivityLog
         );
         recordObservedUsers(docs);
         const filtered = docs.filter((item) =>
@@ -480,7 +410,7 @@ export function useAuditFilters(isAdmin: boolean) {
           })
         );
         setPendingCount(filtered.length);
-        setPendingCountCapped(snap.docs.length === PREVIEW_CAP);
+        setPendingCountCapped(false);
       } catch {
         if (!cancelled) {
           setPendingCount(null);
@@ -555,6 +485,7 @@ export function useAuditFilters(isAdmin: boolean) {
     loadingMoreLogs,
     hasMoreLogs,
     logsError,
+    legacyFixCount,
     refreshLogs: fetchLogs,
     loadMoreLogs,
     availableUsers,

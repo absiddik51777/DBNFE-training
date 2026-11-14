@@ -202,6 +202,7 @@ export type AuditAction =
   | 'bulk_delete'
   | 'undo'
   | 'restore'
+  | 'settle'
   | 'export'
   | 'settings'
   | 'security';
@@ -271,13 +272,21 @@ export interface ActivityLog {
   reverted?: boolean;
   revertedBy?: string;
   revertedAt?: unknown;
+  settled?: boolean;
+  settledBy?: string | null;
+  settledByName?: string | null;
+  settledAt?: unknown;
+  settleNote?: string | null;
   location?: AuditLocation;
   createdAt?: unknown;
-  // Legacy fields preserved for full backwards compatibility
+  // Legacy & runtime compatibility fields
   userName: string;
   recordId: string;
   details?: string;
-  timestamp: number;
+  timestamp?: unknown;
+  time?: unknown;
+  date?: unknown;
+  hasPendingWrites?: boolean;
 }
 
 export interface SystemSettings {

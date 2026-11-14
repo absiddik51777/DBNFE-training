@@ -65,6 +65,7 @@ import {
 } from '../types';
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
+import { getLogDate } from '../lib/auditDate';
 import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
 
@@ -1963,7 +1964,7 @@ const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     <span className="text-[10px] text-theme-text-muted shrink-0 font-medium tabular-nums">
-                      {safeFormatDate(log.timestamp, 'dd MMM, hh:mm a')}
+                      {safeFormatDate(getLogDate(log), 'dd MMM, hh:mm a')}
                     </span>
                   </div>
                 ))}
