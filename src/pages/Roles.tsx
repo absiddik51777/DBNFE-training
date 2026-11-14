@@ -31,7 +31,11 @@ import {
   Info
 } from 'lucide-react';
 
-const RolesPage: React.FC = () => {
+interface RolesPageProps {
+  embedded?: boolean;
+}
+
+const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
   const { 
     roles, 
     updateRolePermissions, 
@@ -85,20 +89,22 @@ const RolesPage: React.FC = () => {
   // Course Director security check
   if (!isCourseDirector) {
     return (
-      <div className="max-w-2xl mx-auto my-12 p-8 bg-theme-surface border border-theme-danger-border rounded-2xl shadow-sm text-center">
-        <div className="w-16 h-16 bg-theme-danger-soft text-theme-danger rounded-full flex items-center justify-center mx-auto mb-4">
-          <ShieldAlert size={36} />
+      <div className={`${embedded ? '' : 'max-w-2xl mx-auto my-12'} p-6 sm:p-8 bg-theme-surface border border-theme-danger-border rounded-[14px] text-center`}>
+        <div className="w-14 h-14 bg-theme-danger-soft text-theme-danger rounded-full flex items-center justify-center mx-auto mb-4">
+          <ShieldAlert size={30} />
         </div>
-        <h2 className="text-xl font-bold text-theme-text-primary mb-2">প্রবেশাধিকার সংরক্ষিত (Access Denied)</h2>
-        <p className="text-theme-text-secondary mb-6 text-sm">
+        <h2 className="text-lg font-bold text-theme-text-primary mb-2">প্রবেশাধিকার সংরক্ষিত (Access Denied)</h2>
+        <p className="text-theme-text-secondary mb-6 text-sm leading-relaxed">
           রোল ও পারমিশন ব্যবস্থাপনা শুধুমাত্র <b>কোর্স পরিচালক (Course Director)</b> এর অধীনে পরিচালিত হয়। আপনার বর্তমান পদবী ({userProfile?.role || 'ব্যবহারকারী'}) এই সেকশনে প্রবেশের জন্য অনুমোদিত নয়।
         </p>
-        <a
-          href="/"
-          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-theme-primary text-theme-primary-fg rounded-xl text-sm font-semibold hover:bg-theme-primary-hover transition"
-        >
-          <span>মূল ড্যাশবোর্ডে ফিরে যান</span>
-        </a>
+        {!embedded && (
+          <a
+            href="/"
+            className="inline-flex items-center justify-center min-h-[44px] px-5 py-2.5 bg-theme-primary text-theme-primary-fg rounded-xl text-sm font-semibold hover:bg-theme-primary-hover transition"
+          >
+            <span>মূল ড্যাশবোর্ডে ফিরে যান</span>
+          </a>
+        )}
       </div>
     );
   }
@@ -319,118 +325,150 @@ const RolesPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className={embedded ? 'space-y-4' : 'space-y-6'}>
       {/* Top Banner & Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-80 opacity-10 flex items-center justify-center pointer-events-none">
-          <Shield size={240} />
-        </div>
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-              <ShieldCheck size={14} />
-              <span>শুধুমাত্র কোর্স পরিচালক (Course Director) এর নিয়ন্ত্রণে</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              রোল ও পারমিশন সিস্টেম (Roles & Permissions)
-            </h1>
-            <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-              সিস্টেমের প্রতিটি ব্যবহারকারী রোলের বিপরীতে পেজ ভিউ (Page View) এবং সকল অপারেশনভিত্তিক পারমিশন পর্যবেক্ষণ, কনফিগার ও নিয়ন্ত্রণ করুন।
+      {embedded ? (
+        <div className="bg-theme-surface border border-theme-border rounded-[14px] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-theme-text-primary">রোল ও পারমিশন তালিকা</h2>
+            <p className="text-xs text-theme-text-secondary mt-0.5 tabular-nums">
+              মোট {roles.length} টি রোল · {ALL_PERMISSIONS.length} টি পারমিশন ({ALL_PERMISSIONS.filter(p => p.isPageView).length} টি পেজ ভিউ)
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
+              type="button"
               onClick={handleResetToDefaults}
-              className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 flex items-center space-x-2 transition"
+              className="min-h-[44px] px-3.5 py-2 bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-xs font-semibold border border-theme-border flex items-center gap-1.5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
               title="ডিফল্ট রোল ও পারমিশনে ফিরুন"
             >
-              <RotateCcw size={16} />
+              <RotateCcw size={15} />
               <span>ডিফল্ট রিসেট</span>
             </button>
             <button
+              type="button"
               onClick={() => setIsRoleModalOpen(true)}
-              className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs sm:text-sm font-semibold shadow-md flex items-center space-x-2 transition"
+              className="min-h-[44px] px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs font-semibold flex items-center gap-1.5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
             >
-              <Plus size={18} />
-              <span>নতুন রোল তৈরি করুন</span>
+              <Plus size={16} />
+              <span>নতুন রোল</span>
             </button>
           </div>
         </div>
+      ) : (
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 w-80 opacity-10 flex items-center justify-center pointer-events-none">
+            <Shield size={240} />
+          </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800/80">
-          <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-slate-400 block">মোট রোল (Total Roles)</span>
-            <span className="text-2xl font-bold text-white mt-1 block tabular-nums">{roles.length} টি</span>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
+                <ShieldCheck size={14} />
+                <span>শুধুমাত্র কোর্স পরিচালক (Course Director) এর নিয়ন্ত্রণে</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                রোল ও পারমিশন সিস্টেম (Roles & Permissions)
+              </h1>
+              <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
+                সিস্টেমের প্রতিটি ব্যবহারকারী রোলের বিপরীতে পেজ ভিউ (Page View) এবং সকল অপারেশনভিত্তিক পারমিশন পর্যবেক্ষণ, কনফিগার ও নিয়ন্ত্রণ করুন।
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleResetToDefaults}
+                className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 flex items-center space-x-2 transition"
+                title="ডিফল্ট রোল ও পারমিশনে ফিরুন"
+              >
+                <RotateCcw size={16} />
+                <span>ডিফল্ট রিসেট</span>
+              </button>
+              <button
+                onClick={() => setIsRoleModalOpen(true)}
+                className="px-4 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs sm:text-sm font-semibold shadow-md flex items-center space-x-2 transition"
+              >
+                <Plus size={18} />
+                <span>নতুন রোল তৈরি করুন</span>
+              </button>
+            </div>
           </div>
-          <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-slate-400 block">সিস্টেম রোল (System Roles)</span>
-            <span className="text-2xl font-bold text-emerald-400 mt-1 block tabular-nums">
-              {roles.filter(r => r.isSystem).length} টি
-            </span>
-          </div>
-          <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-slate-400 block">মোট পারমিশন (Permissions)</span>
-            <span className="text-2xl font-bold text-indigo-300 mt-1 block tabular-nums">
-              {ALL_PERMISSIONS.length} টি
-            </span>
-          </div>
-          <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-slate-400 block">পেজ ভিউ পারমিশন (Pages)</span>
-            <span className="text-2xl font-bold text-amber-300 mt-1 block tabular-nums">
-              {ALL_PERMISSIONS.filter(p => p.isPageView).length} টি
-            </span>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+              <span className="text-xs text-slate-400 block">মোট রোল (Total Roles)</span>
+              <span className="text-2xl font-bold text-white mt-1 block tabular-nums">{roles.length} টি</span>
+            </div>
+            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+              <span className="text-xs text-slate-400 block">সিস্টেম রোল (System Roles)</span>
+              <span className="text-2xl font-bold text-emerald-400 mt-1 block tabular-nums">
+                {roles.filter(r => r.isSystem).length} টি
+              </span>
+            </div>
+            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+              <span className="text-xs text-slate-400 block">মোট পারমিশন (Permissions)</span>
+              <span className="text-2xl font-bold text-indigo-300 mt-1 block tabular-nums">
+                {ALL_PERMISSIONS.length} টি
+              </span>
+            </div>
+            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+              <span className="text-xs text-slate-400 block">পেজ ভিউ পারমিশন (Pages)</span>
+              <span className="text-2xl font-bold text-amber-300 mt-1 block tabular-nums">
+                {ALL_PERMISSIONS.filter(p => p.isPageView).length} টি
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Control Bar */}
-      <div className="bg-theme-surface rounded-2xl border border-theme-border p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className={`bg-theme-surface border border-theme-border p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${embedded ? 'rounded-[14px]' : 'rounded-2xl shadow-xs'}`}>
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-text-muted" />
+        <div className="relative flex-1 min-w-0">
+          <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-text-muted" />
           <input
             type="text"
             placeholder="রোল নাম, কোড বা বিবরণ দিয়ে খুঁজুন..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary text-theme-text-primary placeholder:text-theme-text-muted"
+            className="w-full min-h-[44px] pl-10 pr-4 py-2 bg-theme-surface-subtle border border-theme-border rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary text-theme-text-primary placeholder:text-theme-text-muted"
           />
         </div>
 
         {/* View Switcher: Table vs Matrix */}
-        <div className="flex items-center space-x-1.5 p-1 bg-theme-surface-subtle rounded-xl border border-theme-border shrink-0">
+        <div className="flex items-center space-x-1 p-1 bg-theme-surface-subtle rounded-xl border border-theme-border shrink-0">
           <button
+            type="button"
             onClick={() => setActiveTab('table')}
-            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+            className={`min-h-[38px] flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
               activeTab === 'table'
-                ? 'bg-theme-surface text-theme-text-primary shadow-xs'
+                ? 'bg-theme-surface text-theme-text-primary border border-theme-border'
                 : 'text-theme-text-secondary hover:text-theme-text-primary'
             }`}
           >
-            <TableIcon size={16} />
-            <span>রোল তালিকা (Roles Table)</span>
+            <TableIcon size={15} />
+            <span>রোল তালিকা</span>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('matrix')}
-            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+            className={`min-h-[38px] flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
               activeTab === 'matrix'
-                ? 'bg-theme-surface text-theme-text-primary shadow-xs'
+                ? 'bg-theme-surface text-theme-text-primary border border-theme-border'
                 : 'text-theme-text-secondary hover:text-theme-text-primary'
             }`}
           >
-            <Grid size={16} />
-            <span>পারমিশন ম্যাট্রিক্স (Matrix View)</span>
+            <Grid size={15} />
+            <span>ম্যাট্রিক্স</span>
           </button>
         </div>
       </div>
 
       {/* View 1: ROLES TABLE */}
       {activeTab === 'table' && (
-        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
-          <div className="p-5 border-b border-theme-border flex items-center justify-between">
+        <div className={`bg-theme-surface border border-theme-border overflow-hidden ${embedded ? 'rounded-[14px]' : 'rounded-2xl shadow-xs'}`}>
+          <div className="p-4 sm:p-5 border-b border-theme-border flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-theme-text-primary">রোল তালিকা (Roles Table)</h2>
               <p className="text-xs text-theme-text-secondary mt-0.5">
@@ -568,7 +606,7 @@ const RolesPage: React.FC = () => {
 
       {/* View 2: PERMISSIONS MATRIX VIEW */}
       {activeTab === 'matrix' && (
-        <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
+        <div className={`bg-theme-surface border border-theme-border overflow-hidden ${embedded ? 'rounded-[14px]' : 'rounded-2xl shadow-xs'}`}>
           <div className="p-5 border-b border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-theme-text-primary">পারমিশন ম্যাট্রিক্স (Permissions Matrix)</h2>

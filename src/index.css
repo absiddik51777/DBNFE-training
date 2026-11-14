@@ -223,3 +223,20 @@
     display: table-header-group;
   }
 }
+
+/* Native <dialog> modal backdrop and reset */
+dialog.settings-dialog::backdrop {
+  background-color: rgba(2, 6, 23, 0.58);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

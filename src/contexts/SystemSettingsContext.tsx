@@ -26,9 +26,9 @@ interface SystemSettingsContextType {
 const SystemSettingsContext = createContext<SystemSettingsContextType>({
   settings: DEFAULT_SYSTEM_SETTINGS,
   loading: true,
-  isDeletionAllowed: true,
+  isDeletionAllowed: false,
   updateSettings: async () => DEFAULT_SYSTEM_SETTINGS,
-  toggleDataDeletion: async () => true,
+  toggleDataDeletion: async () => false,
   deleteAttendanceForBatchAndDate: async () => 0,
   deleteAllAttendance: async () => 0,
   deleteAllTrainees: async () => ({ deletedTrainees: 0, deletedAttendance: 0 }),
@@ -216,7 +216,7 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
       value={{
         settings,
         loading,
-        isDeletionAllowed: settings.allowDataDeletion !== false,
+        isDeletionAllowed: settings.allowDataDeletion === true,
         updateSettings,
         toggleDataDeletion,
         deleteAttendanceForBatchAndDate,

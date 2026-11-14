@@ -46,7 +46,7 @@ import { DEFAULT_ROLES, ALL_PERMISSION_KEYS } from './permissions';
 import { toTimestampNumber } from './dateUtils';
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-  allowDataDeletion: true,
+  allowDataDeletion: false,
   deletionLockedReason: '',
   minAttendancePercentForCert: 75,
   passMarkPercent: 40,
@@ -865,7 +865,7 @@ export const dataService = {
         cachedSystemSettings = {
           ...DEFAULT_SYSTEM_SETTINGS,
           ...data,
-          allowDataDeletion: data.allowDataDeletion !== undefined ? !!data.allowDataDeletion : true
+          allowDataDeletion: data.allowDataDeletion === true
         };
       } else {
         // Initialize default in Firestore
@@ -885,7 +885,7 @@ export const dataService = {
    * Check synchronously if data deletion is permitted according to Settings
    */
   isDeletionAllowed(): boolean {
-    return cachedSystemSettings.allowDataDeletion !== false;
+    return cachedSystemSettings.allowDataDeletion === true;
   },
 
   /**
@@ -919,7 +919,7 @@ export const dataService = {
         cachedSystemSettings = {
           ...DEFAULT_SYSTEM_SETTINGS,
           ...data,
-          allowDataDeletion: data.allowDataDeletion !== undefined ? !!data.allowDataDeletion : true
+          allowDataDeletion: data.allowDataDeletion === true
         };
       } else {
         cachedSystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
