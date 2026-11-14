@@ -37,16 +37,8 @@ const Settings: React.FC = () => {
     fetchCounts,
     exportingData,
     exportAllSystemData,
-    filteredLogs,
-    loadingLogs,
-    loadingMoreLogs,
-    hasMoreLogs,
-    moduleFilter,
-    setModuleFilter,
-    availableLogModules,
     latestLogTimeText,
     fetchLogs,
-    loadMoreLogs,
     toast,
     showToast,
     dismissToast,
@@ -107,15 +99,6 @@ const Settings: React.FC = () => {
                   }
                 : undefined
             }
-            logs={filteredLogs}
-            loadingLogs={loadingLogs}
-            loadingMoreLogs={loadingMoreLogs}
-            hasMoreLogs={hasMoreLogs}
-            moduleFilter={moduleFilter}
-            availableModules={availableLogModules}
-            onChangeModuleFilter={setModuleFilter}
-            onRefreshLogs={fetchLogs}
-            onLoadMore={loadMoreLogs}
             onActionSuccess={async (msg) => {
               await Promise.all([fetchLogs(), fetchCounts()]);
               showToast('success', msg);

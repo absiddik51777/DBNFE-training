@@ -5,14 +5,12 @@ import {
   limit,
   orderBy,
   query,
-  QueryDocumentSnapshot,
-  startAfter,
-  DocumentData,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { db } from '../../lib/firebase';
 import { dataService } from '../../lib/dataService';
 import { recordSimpleAuditLog } from '../../lib/auditLog';
+import { extractTimestampMs } from '../audit/auditFormatters';
 import { saveTextFile } from '../../lib/fileExportService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
@@ -27,29 +25,6 @@ import type {
   Trainee,
 } from '../../types';
 import type { SettingsCounts, SettingsToast, SettingsToastType } from './types';
-
-const LOG_PAGE_SIZE = 20;
-
-const CANONICAL_MODULES = [
-  'trainees',
-  'batches',
-  'institutes',
-  'trades',
-  'exams',
-  'attendance',
-  'settings',
-  'security',
-] as const;
-
-export function normalizeAuditModuleKey(raw?: string): string {
-  const m = (raw || '').trim().toLowerCase();
-  if (!m) return 'settings';
-  if (m === 'results') return 'exams';
-  if (m === 'trainee_brn_verification') return 'trainees';
-  if (m === 'auth' || m === 'users' || m === 'roles') return 'security';
-  if (m === 'system') return 'settings';
-  return m;
-}
 
 export function useSettingsData(isAdmin: boolean = true) {
   const { userProfile } = useAuth();
@@ -67,12 +42,8 @@ export function useSettingsData(isAdmin: boolean = true) {
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [exportingData, setExportingData] = useState(false);
 
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [latestLog, setLatestLog] = useState<ActivityLog | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(true);
-  const [loadingMoreLogs, setLoadingMoreLogs] = useState(false);
-  const [hasMoreLogs, setHasMoreLogs] = useState(false);
-  const [moduleFilter, setModuleFilter] = useState<string>('ALL');
-  const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
 
   const [toast, setToast] = useState<SettingsToast | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -134,8 +105,7 @@ export function useSettingsData(isAdmin: boolean = true) {
 
   const fetchLogs = useCallback(async () => {
     if (!isAdmin) {
-      setLogs([]);
-      setHasMoreLogs(false);
+      setLatestLog(null);
       setLoadingLogs(false);
       return;
     }
@@ -143,84 +113,38 @@ export function useSettingsData(isAdmin: boolean = true) {
     try {
       const q = query(
         collection(db, 'activityLogs'),
-        orderBy('timestamp', 'desc'),
-        limit(LOG_PAGE_SIZE)
+        orderBy('createdAt', 'desc'),
+        limit(1)
       );
       const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ActivityLog));
-      lastDocRef.current = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null;
-      setHasMoreLogs(snap.docs.length === LOG_PAGE_SIZE);
-      setLogs(list);
+      setLatestLog(
+        snap.docs.length > 0
+          ? ({ id: snap.docs[0].id, ...snap.docs[0].data() } as ActivityLog)
+          : null
+      );
     } catch (err) {
-      console.warn('Could not fetch activity logs:', err);
+      console.warn('Could not fetch latest activity log:', err);
     } finally {
       setLoadingLogs(false);
     }
   }, [isAdmin]);
-
-  const loadMoreLogs = useCallback(async () => {
-    if (!isAdmin || !lastDocRef.current || loadingMoreLogs || !hasMoreLogs) return;
-    setLoadingMoreLogs(true);
-    try {
-      const q = query(
-        collection(db, 'activityLogs'),
-        orderBy('timestamp', 'desc'),
-        startAfter(lastDocRef.current),
-        limit(LOG_PAGE_SIZE)
-      );
-      const snap = await getDocs(q);
-      const nextList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ActivityLog));
-      lastDocRef.current =
-        snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : lastDocRef.current;
-      setHasMoreLogs(snap.docs.length === LOG_PAGE_SIZE);
-      setLogs((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        for (const item of nextList) {
-          if (!seen.has(item.id)) {
-            merged.push(item);
-          }
-        }
-        return merged;
-      });
-    } catch (err) {
-      console.warn('Could not load more activity logs:', err);
-      showToast('error', 'আরও লগ লোড করতে সমস্যা হয়েছে।');
-    } finally {
-      setLoadingMoreLogs(false);
-    }
-  }, [hasMoreLogs, isAdmin, loadingMoreLogs, showToast]);
 
   useEffect(() => {
     fetchCounts();
     fetchLogs();
   }, [fetchCounts, fetchLogs]);
 
-  const availableLogModules = useMemo(() => {
-    const base = new Set<string>(CANONICAL_MODULES);
-    for (const l of logs) {
-      const key = normalizeAuditModuleKey(l.module);
-      if (key) base.add(key);
-    }
-    return Array.from(base);
-  }, [logs]);
-
-  const filteredLogs = useMemo(() => {
-    if (moduleFilter === 'ALL') return logs;
-    const target = normalizeAuditModuleKey(moduleFilter);
-    return logs.filter((l) => normalizeAuditModuleKey(l.module) === target);
-  }, [logs, moduleFilter]);
-
   const latestLogTimeText = useMemo(() => {
     if (!isAdmin) return 'সংরক্ষিত';
     if (loadingLogs) return 'লোড হচ্ছে...';
-    if (logs.length === 0 || !logs[0]?.timestamp) return 'কোনো লগ নেই';
+    const ms = extractTimestampMs(latestLog?.createdAt ?? latestLog?.timestamp);
+    if (!ms) return 'কোনো লগ নেই';
     try {
-      return format(logs[0].timestamp, 'dd/MM/yy, hh:mm a');
+      return format(ms, 'dd/MM/yy, hh:mm a');
     } catch {
       return 'অজানা';
     }
-  }, [isAdmin, loadingLogs, logs]);
+  }, [isAdmin, latestLog, loadingLogs]);
 
   const exportAllSystemData = useCallback(async () => {
     if (exportingData) return;
@@ -275,17 +199,8 @@ export function useSettingsData(isAdmin: boolean = true) {
     fetchCounts,
     exportingData,
     exportAllSystemData,
-    logs,
-    filteredLogs,
-    loadingLogs,
-    loadingMoreLogs,
-    hasMoreLogs,
-    moduleFilter,
-    setModuleFilter,
-    availableLogModules,
     latestLogTimeText,
     fetchLogs,
-    loadMoreLogs,
     toast,
     showToast,
     dismissToast,

@@ -37,7 +37,9 @@ export function useSettingsRouter(
     return () => mq.removeListener(onChange);
   }, []);
 
-  const rawSection = parseHashSection(location.hash);
+  const rawSection: SettingsSectionId | null = location.pathname.endsWith('/settings/logs')
+    ? 'logs'
+    : parseHashSection(location.hash);
 
   // Guard admin-only #danger hash
   useEffect(() => {
@@ -60,9 +62,13 @@ export function useSettingsRouter(
         onDenied?.('ডেঞ্জার জোন শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।');
         return;
       }
+      if (sectionId === 'logs') {
+        navigate(`/settings${location.search || ''}#logs`);
+        return;
+      }
       navigate(`/settings#${sectionId}`);
     },
-    [isAdmin, navigate, onDenied]
+    [isAdmin, location.search, navigate, onDenied]
   );
 
   const goToHub = useCallback(() => {
