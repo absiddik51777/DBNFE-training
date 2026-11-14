@@ -1,71 +1,61 @@
 name: Build Android APK
+
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch: {}
+  push:
+    branches: [main]
 
 env:
-  APP_ID: com.dbnfe.training
-  APP_NAME: DBNFE Training
+  APP_NAME: "BNFE Training"
+  APP_ID: "com.bnfe.training"   # use the SAME id as your current APK, or phones treat it as a different app
+  CAP_VERSION: "7"              # use the same major version as your current @capacitor/core
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
-
-      - uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - name: Install web dependencies
+        run: npm install
+
+      - name: Install Capacitor packages (including geolocation)
+        run: |
+          npm install @capacitor/core@${CAP_VERSION} @capacitor/android@${CAP_VERSION} @capacitor/geolocation@${CAP_VERSION}
+          npm install -D @capacitor/cli@${CAP_VERSION}
 
       - name: Build web app
-        run: bun run build
-        env:
-          # Add any VITE_* values from .env.example as repo secrets
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+        run: npm run build
 
-      - name: Add Capacitor Android platform
+      - name: Create Capacitor config if missing
         run: |
-          bun add @capacitor/android@^8.6.2
-          bun add -d @capacitor/cli@^8.6.2
-          cat > capacitor.config.json <<EOF
-          {
-            "appId": "${APP_ID}",
-            "appName": "${APP_NAME}",
-            "webDir": "dist"
-          }
-          EOF
+          ls capacitor.config.* >/dev/null 2>&1 || npx cap init "$APP_NAME" "$APP_ID" --web-dir=dist
 
-      - name: Create Android project and sync plugins
+      - name: Add Android project if missing
         run: |
-          bunx cap add android
-          bunx cap sync android
-          echo "=== Synced Capacitor Plugins ==="
-          cat android/app/src/main/assets/capacitor.plugins.json
-          grep -q "FileDownloadPlugin" android/app/src/main/assets/capacitor.plugins.json
-          grep -q "SharePlugin" android/app/src/main/assets/capacitor.plugins.json
-          grep -q "bnfe-file-download" android/capacitor.settings.gradle
+          [ -d android ] || npx cap add android
 
-      - name: Generate app icons
-        if: ${{ hashFiles('assets/icon-only.png', 'assets/icon-foreground.png') != '' }}
+      - name: Sync web build into Android
+        run: npx cap sync android
+
+      - name: Add location permissions to AndroidManifest
         run: |
-          bun add -d @capacitor/assets
-          bunx capacitor-assets generate --android \
-            --iconBackgroundColor '#ffffff' \
-            --iconBackgroundColorDark '#000000'
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q ACCESS_FINE_LOCATION "$M" || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\n</manifest>#' "$M"
+          echo "---- location entries in manifest ----"
+          grep -n "LOCATION\|location.gps" "$M"
 
       - name: Build debug APK
         working-directory: android
@@ -76,6 +66,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: dbnfe-training-debug-apk
+          name: bnfe-training-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
