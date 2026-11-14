@@ -23,6 +23,7 @@ import Certificates from './pages/Certificates';
 import UsersPage from './pages/Users';
 import RolesPage from './pages/Roles';
 import Settings from './pages/Settings';
+import ThemeSettings from './pages/ThemeSettings';
 import BrnVerification from './pages/BrnVerification';
 
 import { PendingApproval } from './pages/PendingApproval';
@@ -142,6 +143,8 @@ const AppRoutes = () => {
         <Route path="users" element={<PageGuard path="/users"><UsersPage /></PageGuard>} />
         <Route path="roles" element={<RolesPage />} />
         <Route path="settings" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
+        <Route path="settings/theme" element={<PageGuard path="/settings"><ThemeSettings /></PageGuard>} />
+        <Route path="theme-settings" element={<Navigate to="/settings/theme" replace />} />
         <Route path="*" element={<CatchAllRedirect />} />
       </Route>
     </Routes>

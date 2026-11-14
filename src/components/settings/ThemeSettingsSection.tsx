@@ -41,8 +41,12 @@ const GROUP_LABELS: Record<'brand' | 'surfaces' | 'typography' | 'status', { tit
   status: { titleBn: 'স্ট্যাটাস ও অ্যালার্ট কালার', sub: 'Semantic Statuses' },
 };
 
-export const ThemeSettingsSection: React.FC = () => {
-  const { config, resolvedMode, setMode, applyConfig, selectPreset, restoreDefaultTheme } = useTheme();
+interface ThemeSettingsSectionProps {
+  hideHeader?: boolean;
+}
+
+export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hideHeader = false }) => {
+  const { config, resolvedMode, setMode, applyConfig, restoreDefaultTheme } = useTheme();
 
   // Draft state for live preview before clicking Apply Changes
   const [draftConfig, setDraftConfig] = useState<ThemeConfig>(config);
@@ -197,26 +201,28 @@ export const ThemeSettingsSection: React.FC = () => {
   return (
     <section className="bg-theme-surface p-5 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-theme-border">
-        <div className="flex items-start space-x-3">
-          <div className="p-2.5 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border shrink-0">
-            <Palette size={22} />
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-theme-border">
+          <div className="flex items-start space-x-3">
+            <div className="p-2.5 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border shrink-0">
+              <Palette size={22} />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-theme-text-primary">
+                অ্যাপিয়ারেন্স ও থিম কাস্টমাইজেশন (Appearance &amp; Theme Settings)
+              </h2>
+              <p className="text-xs text-theme-text-secondary mt-0.5 leading-relaxed">
+                Light Mode, Dark Mode বা System Default নির্বাচন করুন এবং উভয় মোডের জন্য প্রতিটি কালার টোকেন স্বাধীনভাবে কাস্টমাইজ করুন।
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-theme-text-primary">
-              অ্যাপিয়ারেন্স ও থিম কাস্টমাইজেশন (Appearance &amp; Theme Settings)
-            </h2>
-            <p className="text-xs text-theme-text-secondary mt-0.5 leading-relaxed">
-              Light Mode, Dark Mode বা System Default নির্বাচন করুন এবং উভয় মোডের জন্য প্রতিটি কালার টোকেন স্বাধীনভাবে কাস্টমাইজ করুন।
-            </p>
-          </div>
-        </div>
 
-        <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-theme-surface-subtle text-theme-text-secondary border border-theme-border self-start sm:self-center shrink-0">
-          {resolvedMode === 'dark' ? <Moon size={13} className="text-theme-primary" /> : <Sun size={13} className="text-theme-primary" />}
-          <span>সক্রিয় মোড: {resolvedMode === 'dark' ? 'Dark' : 'Light'}</span>
-        </span>
-      </div>
+          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-theme-surface-subtle text-theme-text-secondary border border-theme-border self-start sm:self-center shrink-0">
+            {resolvedMode === 'dark' ? <Moon size={13} className="text-theme-primary" /> : <Sun size={13} className="text-theme-primary" />}
+            <span>সক্রিয় মোড: {resolvedMode === 'dark' ? 'Dark' : 'Light'}</span>
+          </span>
+        </div>
+      )}
 
       {savedNotice && (
         <div className="p-3.5 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-xs sm:text-sm font-semibold flex items-center space-x-2">

@@ -30,21 +30,25 @@ import {
   Wrench,
   Layers,
   Info,
-  UserCheck
+  UserCheck,
+  Palette,
+  ChevronRight
 } from 'lucide-react';
 import { ActivityLog, Institute, Trade, Batch, Trainee, AttendanceRecord, Exam, ExamMark } from '../types';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
-import { ThemeSettingsSection } from '../components/settings/ThemeSettingsSection';
+import { useTheme } from '../contexts/ThemeContext';
+import { THEME_PRESETS } from '../lib/theme';
 
 const Settings: React.FC = () => {
   const { userProfile } = useAuth();
+  const { config: themeConfig, resolvedMode } = useTheme();
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
 
-  const { roles } = usePermissions();
+  const { isCourseDirector: hasCourseDirectorPerm } = usePermissions();
 
   // System Settings Hook
   const { 
@@ -96,7 +100,14 @@ const Settings: React.FC = () => {
   const [keepInstitutesAndTrades, setKeepInstitutesAndTrades] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isCourseDirector = userProfile?.role === 'Course Director';
+  const isCourseDirector = userProfile?.role === 'Course Director' || hasCourseDirectorPerm;
+  const activePresetName = THEME_PRESETS.find((p) => p.id === themeConfig.presetId)?.name || 'Custom';
+  const activeModeLabel =
+    themeConfig.mode === 'system'
+      ? `System (${resolvedMode === 'dark' ? 'Dark' : 'Light'})`
+      : themeConfig.mode === 'dark'
+      ? 'Dark Mode'
+      : 'Light Mode';
 
   useEffect(() => {
     fetchLogs();
@@ -358,9 +369,31 @@ const Settings: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 0. APPEARANCE & THEME CUSTOMIZATION                      */}
+      {/* 0. APPEARANCE & THEME SETTINGS LINK ROW                  */}
       {/* ======================================================== */}
-      <ThemeSettingsSection />
+      <Link
+        to="/settings/theme"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl border border-theme-border bg-theme-surface hover:border-theme-primary/50 hover:bg-theme-surface-hover transition-all shadow-xs group"
+      >
+        <div className="flex items-center space-x-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border flex items-center justify-center shrink-0">
+            <Palette size={22} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-theme-text-primary group-hover:text-theme-primary transition-colors">
+              থিম ও অ্যাপিয়ারেন্স সেটিংস (Theme &amp; Appearance)
+            </h2>
+            <p className="text-xs text-theme-text-secondary mt-0.5 truncate">
+              সক্রিয় মোড: {activeModeLabel} · প্রিসেট: {activePresetName} · লাইট/ডার্ক মোড ও কালার কাস্টমাইজেশন
+            </p>
+          </div>
+        </div>
+
+        <div className="inline-flex items-center space-x-1.5 text-xs sm:text-sm font-bold text-theme-primary shrink-0 self-end sm:self-center whitespace-nowrap">
+          <span>থিম কাস্টমাইজ করুন</span>
+          <ChevronRight size={17} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </Link>
 
       {/* ======================================================== */}
       {/* 1. DATA DELETION PERMISSION SWITCH (SETTINGS CONTROL)    */}
