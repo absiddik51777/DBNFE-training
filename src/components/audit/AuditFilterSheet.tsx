@@ -301,6 +301,28 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
                 )}
             </select>
           </section>
+
+          {/* Section 4: অবস্থান */}
+          <section aria-labelledby="filter-section-location" className="space-y-2.5">
+            <h3
+              id="filter-section-location"
+              className="text-xs font-semibold text-theme-text-secondary"
+            >
+              অবস্থান
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <FilterChip
+                label="অবস্থানসহ"
+                selected={draft.withLocation}
+                onClick={() =>
+                  onChangeDraft((prev) => ({
+                    ...prev,
+                    withLocation: !prev.withLocation,
+                  }))
+                }
+              />
+            </div>
+          </section>
         </div>
 
         {/* Footer: Reset (draft only) & Primary Apply with live count */}

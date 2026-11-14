@@ -178,6 +178,7 @@ const Settings: React.FC = () => {
               isAdmin={isAdmin}
               appearanceSummary={appearanceSummary}
               isPublicRegistrationOpen={settings.allowPublicRegistration !== false}
+              auditLocationMode={settings.auditLocationMode || 'optional'}
               minAttendancePercent={settings.minAttendancePercentForCert ?? 75}
               passMarkPercent={settings.passMarkPercent ?? 40}
               latestLogTimeText={latestLogTimeText}

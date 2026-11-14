@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   AlertTriangle,
   Trash2,
@@ -7,6 +7,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import { registerLocationUiBridge } from '../lib/location';
 
 export interface ConfirmOptions {
   title?: string;
@@ -102,6 +103,27 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     });
   }, []);
+
+  useEffect(() => {
+    registerLocationUiBridge({
+      confirmExplanation: (message) =>
+        confirm({
+          title: 'অবস্থান অনুমতি প্রয়োজন',
+          message,
+          confirmText: 'অনুমতি দিন',
+          cancelText: 'এখন নয়',
+          variant: 'info',
+        }),
+      showNotice: (title, message) =>
+        showAlert({
+          title,
+          message,
+          buttonText: 'ঠিক আছে',
+          variant: 'warning',
+        }),
+    });
+    return () => registerLocationUiBridge(null);
+  }, [confirm, showAlert]);
 
   const handleClose = () => {
     if (dialogState) {

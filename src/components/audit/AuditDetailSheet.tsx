@@ -11,6 +11,7 @@ import {
   getModuleLabelBn,
 } from './auditFormatters';
 import { DiffList } from './DiffList';
+import { LocationRow } from './LocationRow';
 import { SnapshotView } from './SnapshotView';
 import { ConfirmActionDialog } from './ConfirmActionDialog';
 
@@ -315,6 +316,9 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Location (shown when captured) */}
+            <LocationRow location={log.location} isAdmin={isAdmin} />
 
             {/* Field diffs (update) */}
             {Array.isArray(log.changes) && log.changes.length > 0 && (

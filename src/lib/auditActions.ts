@@ -13,6 +13,7 @@ import {
 import { db } from './firebase';
 import {
   AuditActor,
+  captureAuditLocationForAction,
   getFieldLabelBn,
   loadLogSnapshotChunks,
   resolveAuditActor,
@@ -73,6 +74,7 @@ export async function undoChange(
     throw new Error('এই লগে ফেরত নেওয়ার মতো পর্যাপ্ত পরিবর্তনের তথ্য নেই।');
   }
 
+  const auditLocation = await captureAuditLocationForAction('undo');
   const actor = resolveAuditActor(actorInput);
   const logRef = doc(db, 'activityLogs', log.id);
   const newUndoLogRef = doc(collection(db, 'activityLogs'));
@@ -183,6 +185,7 @@ export async function undoChange(
         snapshot: null,
         related: [],
         refLogId: log.id,
+        ...(auditLocation ? { location: auditLocation } : {}),
         reverted: false,
         createdAt: serverTimestamp(),
         userName: actor.user,
@@ -320,6 +323,7 @@ export async function undoChange(
         snapshot: null,
         related: [],
         refLogId: log.id,
+        ...(auditLocation ? { location: auditLocation } : {}),
         reverted: false,
         createdAt: serverTimestamp(),
         userName: actor.user,
@@ -411,6 +415,7 @@ export async function undoChange(
       snapshot: null,
       related: [],
       refLogId: log.id,
+      ...(auditLocation ? { location: auditLocation } : {}),
       reverted: false,
       createdAt: serverTimestamp(),
       userName: actor.user,
@@ -447,6 +452,7 @@ export async function restoreRecord(
     );
   }
 
+  const auditLocation = await captureAuditLocationForAction('restore');
   const actor = resolveAuditActor(actorInput);
   const logRef = doc(db, 'activityLogs', log.id);
   const liveLogSnap = await getDoc(logRef);
@@ -548,6 +554,7 @@ export async function restoreRecord(
     count: toCreate.length,
     targetNames: log.targetNames?.slice(0, 50) || [],
     refLogId: log.id,
+    ...(auditLocation ? { location: auditLocation } : {}),
     reverted: false,
     createdAt: serverTimestamp(),
     userName: actor.user,

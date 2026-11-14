@@ -229,6 +229,26 @@ export interface AuditRelatedDoc {
   data: Record<string, unknown>;
 }
 
+export type AuditLocationStatus =
+  | 'granted'
+  | 'denied'
+  | 'unavailable'
+  | 'timeout'
+  | 'unsupported';
+
+export type AuditLocationSource = 'native' | 'web';
+
+export interface AuditLocation {
+  status: AuditLocationStatus;
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  capturedAt: string;
+  source: AuditLocationSource;
+}
+
+export type AuditLocationMode = 'off' | 'optional' | 'required';
+
 export interface ActivityLog {
   id: string;
   action: AuditAction | string;
@@ -251,6 +271,7 @@ export interface ActivityLog {
   reverted?: boolean;
   revertedBy?: string;
   revertedAt?: unknown;
+  location?: AuditLocation;
   createdAt?: unknown;
   // Legacy fields preserved for full backwards compatibility
   userName: string;
@@ -262,6 +283,7 @@ export interface ActivityLog {
 export interface SystemSettings {
   allowDataDeletion: boolean; // Controls whether deletion of data (trainees, batches, trades, institutes, attendance, exams) is permitted
   allowPublicRegistration?: boolean; // Controls whether public self-registration is permitted by Course Director
+  auditLocationMode?: AuditLocationMode; // Controls audit log location capture ('off' | 'optional' | 'required')
   registrationClosedReason?: string;
   deletionLockedReason?: string;
   minAttendancePercentForCert: number;

@@ -72,6 +72,7 @@ export function useAuditFilters(isAdmin: boolean) {
     from: appliedFilters.from,
     to: appliedFilters.to,
     userId: appliedFilters.userId,
+    withLocation: appliedFilters.withLocation,
   });
 
   // Fetched logs + pagination + status
@@ -368,6 +369,7 @@ export function useAuditFilters(isAdmin: boolean) {
       from: appliedFilters.from,
       to: appliedFilters.to,
       userId: appliedFilters.userId,
+      withLocation: appliedFilters.withLocation,
     });
     setSheetOpen(true);
   }, [appliedFilters]);
@@ -395,6 +397,7 @@ export function useAuditFilters(isAdmin: boolean) {
       from: draftFilters.range === 'custom' ? draftFilters.from : '',
       to: draftFilters.range === 'custom' ? draftFilters.to : '',
       userId: draftFilters.userId,
+      withLocation: draftFilters.withLocation,
     });
   }, [appliedFilters, customRangeError, draftFilters, updateUrlFilters]);
 

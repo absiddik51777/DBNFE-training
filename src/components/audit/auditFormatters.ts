@@ -196,5 +196,6 @@ export function hasLogDetails(log: ActivityLog): boolean {
   if (log.snapshotComplete === false && (log.action === 'delete' || log.action === 'bulk_delete')) {
     return true;
   }
+  if (log.location) return true;
   return false;
 }

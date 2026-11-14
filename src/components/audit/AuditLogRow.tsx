@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, MapPin } from 'lucide-react';
 import type { ActivityLog } from '../../types';
 import {
   formatAuditTimestamp,
@@ -23,6 +23,7 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
   const actionLabel = structured ? getActionLabelBn(log.action) : '';
   const formattedDate = formatAuditTimestamp(log.createdAt ?? log.timestamp);
   const changeCount = Array.isArray(log.changes) ? log.changes.length : 0;
+  const hasGrantedLocation = log.location?.status === 'granted';
 
   const content = (
     <div className="flex items-start justify-between gap-3 w-full text-left">
@@ -67,16 +68,29 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
           )}
         </div>
 
-        {/* Line 4: Timestamp on its own line */}
-        {formattedDate && (
-          <time
-            dateTime={
-              log.timestamp ? new Date(log.timestamp).toISOString() : undefined
-            }
-            className="block text-[11px] text-theme-text-muted font-mono tabular-nums"
-          >
-            {formattedDate}
-          </time>
+        {/* Line 4: Timestamp on its own line + subtle MapPin if location granted */}
+        {(formattedDate || hasGrantedLocation) && (
+          <div className="flex items-center gap-1.5 text-[11px] text-theme-text-muted">
+            {formattedDate && (
+              <time
+                dateTime={
+                  log.timestamp ? new Date(log.timestamp).toISOString() : undefined
+                }
+                className="font-mono tabular-nums"
+              >
+                {formattedDate}
+              </time>
+            )}
+            {hasGrantedLocation && (
+              <span
+                title="অবস্থান সংরক্ষিত"
+                className="inline-flex items-center text-theme-primary"
+              >
+                <MapPin size={12} aria-hidden="true" />
+                <span className="sr-only">অবস্থান সংরক্ষিত</span>
+              </span>
+            )}
+          </div>
         )}
       </div>
 

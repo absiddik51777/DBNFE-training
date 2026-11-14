@@ -31,6 +31,8 @@ import {
   recordAuditedAttendanceBatch,
   recordAuditedMarksBatch,
   recordSimpleAuditLog,
+  captureAuditLocationForAction,
+  setAuditLocationModeCache,
   AuditActor,
   AuditModule,
   AuditRelatedDoc,
@@ -58,6 +60,7 @@ import { toTimestampNumber } from './dateUtils';
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   allowDataDeletion: false,
+  auditLocationMode: 'optional',
   deletionLockedReason: '',
   minAttendancePercentForCert: 75,
   passMarkPercent: 40,
@@ -76,6 +79,7 @@ if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('bnfe_system_settings');
     if (saved) {
       cachedSystemSettings = { ...DEFAULT_SYSTEM_SETTINGS, ...JSON.parse(saved) };
+      setAuditLocationModeCache(cachedSystemSettings.auditLocationMode);
     }
   } catch (e) {}
 }
@@ -1019,6 +1023,7 @@ export const dataService = {
         await setDoc(docRef, sanitizeForFirestore(DEFAULT_SYSTEM_SETTINGS));
         cachedSystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
       }
+      setAuditLocationModeCache(cachedSystemSettings.auditLocationMode || 'optional');
       if (typeof window !== 'undefined') {
         localStorage.setItem('bnfe_system_settings', JSON.stringify(cachedSystemSettings));
       }
@@ -1053,6 +1058,14 @@ export const dataService = {
         ? `সিস্টেম ডাটা ডিলিট কন্ট্রোল: ${updates.allowDataDeletion ? 'আনলক (চালু)' : 'লক (বন্ধ)'}`
         : updates.allowPublicRegistration !== undefined
         ? `পাবলিক নিবন্ধন: ${updates.allowPublicRegistration ? 'চালু' : 'বন্ধ'}`
+        : updates.auditLocationMode !== undefined
+        ? `কাজের অবস্থান সংরক্ষণ: ${
+            updates.auditLocationMode === 'off'
+              ? 'বন্ধ'
+              : updates.auditLocationMode === 'required'
+              ? 'বাধ্যতামূলক'
+              : 'ঐচ্ছিক'
+          }`
         : 'সিস্টেম সেটিংস হালনাগাদ';
 
     await recordAuditedSave({
@@ -1064,6 +1077,7 @@ export const dataService = {
       actor,
     });
     cachedSystemSettings = merged;
+    setAuditLocationModeCache(merged.auditLocationMode || 'optional');
     if (typeof window !== 'undefined') {
       localStorage.setItem('bnfe_system_settings', JSON.stringify(merged));
     }
@@ -1087,6 +1101,7 @@ export const dataService = {
       } else {
         cachedSystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
       }
+      setAuditLocationModeCache(cachedSystemSettings.auditLocationMode || 'optional');
       if (typeof window !== 'undefined') {
         localStorage.setItem('bnfe_system_settings', JSON.stringify(cachedSystemSettings));
       }
@@ -2340,6 +2355,9 @@ export const dataService = {
       throw new Error("সেটিংস থেকে সিস্টেম ডাটা ডিলিট বন্ধ (Disabled) রাখা হয়েছে। ডাটা মুছতে চাইলে প্রথমে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
     }
 
+    // Capture location once at the start (blocks immediately if mode is 'required' and not granted)
+    const preCapturedLocation = await captureAuditLocationForAction('bulk_delete');
+
     const results: Record<string, number> = {};
 
     // 1. Attendance
@@ -2384,6 +2402,7 @@ export const dataService = {
       snapshotComplete: false,
       skipDeletes: true,
       totalCountOverride: totalPurged,
+      preCapturedLocation,
       actor,
     });
 

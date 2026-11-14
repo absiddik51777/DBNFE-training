@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ChevronRight,
 } from 'lucide-react';
+import type { AuditLocationMode } from '../../types';
 import { SettingsSectionId } from './types';
 
 interface SettingsHubProps {
@@ -17,6 +18,7 @@ interface SettingsHubProps {
   isAdmin: boolean;
   appearanceSummary: string;
   isPublicRegistrationOpen: boolean;
+  auditLocationMode: AuditLocationMode;
   minAttendancePercent: number;
   passMarkPercent: number;
   latestLogTimeText: string;
@@ -124,6 +126,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
   isAdmin,
   appearanceSummary,
   isPublicRegistrationOpen,
+  auditLocationMode,
   minAttendancePercent,
   passMarkPercent,
   latestLogTimeText,
@@ -132,6 +135,13 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
 }) => {
   const isRowSelected = (id: SettingsSectionId) =>
     highlightSelection && activeSection === id;
+
+  const locationModeLabel =
+    auditLocationMode === 'off'
+      ? 'বন্ধ'
+      : auditLocationMode === 'required'
+      ? 'বাধ্যতামূলক'
+      : 'ঐচ্ছিক';
 
   return (
     <div className="space-y-5">
@@ -165,7 +175,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
             id="access"
             icon={<UserCheck size={17} />}
             title="নিবন্ধন ও অ্যাক্সেস"
-            status="পাবলিক নিবন্ধন"
+            status={`পাবলিক নিবন্ধন · অবস্থান: ${locationModeLabel}`}
             chip={{
               label: isPublicRegistrationOpen ? 'চালু' : 'বন্ধ',
               tone: isPublicRegistrationOpen ? 'green' : 'red',

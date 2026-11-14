@@ -20,6 +20,7 @@ export interface AuditSheetFilters {
   from: string; // YYYY-MM-DD
   to: string;   // YYYY-MM-DD
   userId: string;
+  withLocation: boolean;
 }
 
 export interface AuditFiltersState extends AuditSheetFilters {
@@ -33,6 +34,7 @@ export const DEFAULT_SHEET_FILTERS: AuditSheetFilters = {
   from: '',
   to: '',
   userId: '',
+  withLocation: false,
 };
 
 export const DEFAULT_AUDIT_FILTERS: AuditFiltersState = {
@@ -197,6 +199,7 @@ export function resolveDateRangeBounds(
 export interface AuditQueryPlan {
   moduleEq: string | null;
   userIdEq: string | null;
+  locationStatusEq: 'granted' | null;
   actionIn: string[] | null;
   dateBounds: DateRangeBounds | null;
   clientFilterActions: string[] | null;
@@ -224,6 +227,7 @@ export function buildAuditQueryPlan(
       ? normalizeAuditModuleKey(filters.module)
       : null;
   const userIdEq = filters.userId.trim() ? filters.userId.trim() : null;
+  const locationStatusEq: 'granted' | null = filters.withLocation ? 'granted' : null;
   const expandedActions = expandAuditFilterTypes(filters.types);
   const dateBounds = resolveDateRangeBounds(filters.range, filters.from, filters.to, now);
   const clientSearch = filters.search.trim().toLowerCase();
@@ -246,6 +250,7 @@ export function buildAuditQueryPlan(
   return {
     moduleEq,
     userIdEq,
+    locationStatusEq,
     actionIn,
     dateBounds,
     clientFilterActions,
@@ -286,6 +291,9 @@ export function buildAuditFirestoreConstraints(
     if (plan.userIdEq) {
       constraints.push(where('userId', '==', plan.userIdEq));
     }
+    if (plan.locationStatusEq) {
+      constraints.push(where('location.status', '==', plan.locationStatusEq));
+    }
     if (plan.actionIn && plan.actionIn.length > 0) {
       constraints.push(where('action', 'in', plan.actionIn));
     }
@@ -321,6 +329,9 @@ export function matchesAuditClientFilters(
       return false;
     }
     if (plan.userIdEq && (log.userId || '') !== plan.userIdEq) {
+      return false;
+    }
+    if (plan.locationStatusEq && log.location?.status !== plan.locationStatusEq) {
       return false;
     }
     const expanded = expandAuditFilterTypes(filters.types);
@@ -371,6 +382,7 @@ export function parseAuditFiltersFromSearch(search: string): AuditFiltersState {
 
   const userId = (params.get('user') || '').trim();
   const q = params.get('q') || '';
+  const withLocation = params.get('loc') === '1';
 
   return {
     module,
@@ -380,6 +392,7 @@ export function parseAuditFiltersFromSearch(search: string): AuditFiltersState {
     from,
     to,
     userId,
+    withLocation,
   };
 }
 
@@ -397,6 +410,7 @@ export function serializeAuditFiltersToSearch(
   params.delete('to');
   params.delete('user');
   params.delete('q');
+  params.delete('loc');
 
   if (filters.module && filters.module !== 'ALL') {
     params.set('module', filters.module);
@@ -414,6 +428,9 @@ export function serializeAuditFiltersToSearch(
   if (filters.userId) {
     params.set('user', filters.userId);
   }
+  if (filters.withLocation) {
+    params.set('loc', '1');
+  }
   if (filters.search.trim()) {
     params.set('q', filters.search.trim());
   }
@@ -423,7 +440,12 @@ export function serializeAuditFiltersToSearch(
 }
 
 export function countActiveSheetFilters(sheet: AuditSheetFilters): number {
-  return sheet.types.length + (sheet.range ? 1 : 0) + (sheet.userId ? 1 : 0);
+  return (
+    sheet.types.length +
+    (sheet.range ? 1 : 0) +
+    (sheet.userId ? 1 : 0) +
+    (sheet.withLocation ? 1 : 0)
+  );
 }
 
 export function formatShortYmdBn(ymd: string): string {
@@ -464,6 +486,10 @@ export function formatActiveSheetSummary(
     parts.push(userLabelMap.get(sheet.userId) || sheet.userId);
   }
 
+  if (sheet.withLocation) {
+    parts.push('অবস্থানসহ');
+  }
+
   return parts.join(' · ');
 }
 
@@ -480,6 +506,10 @@ export const REQUIRED_AUDIT_COMPOSITE_INDEXES: RequiredCompositeIndexDoc[] = [
   {
     fields: 'userId ASC, createdAt DESC',
     usedBy: 'User filter (with or without createdAt date range)',
+  },
+  {
+    fields: 'location.status ASC, createdAt DESC',
+    usedBy: 'Location filter ("অবস্থানসহ")',
   },
   {
     fields: 'action ASC, createdAt DESC',

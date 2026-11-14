@@ -207,6 +207,18 @@
         "revertedBy": { "type": "string", "maxLength": 150 },
         "revertedAt": { "type": "number" },
         "refLogId": { "type": "string", "maxLength": 128 },
+        "location": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["granted", "denied", "unavailable", "timeout", "unsupported"] },
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "accuracy": { "type": "number" },
+            "capturedAt": { "type": "string", "maxLength": 40 },
+            "source": { "type": "string", "enum": ["native", "web"] }
+          },
+          "required": ["status", "capturedAt", "source"]
+        },
         "timestamp": { "type": "number" }
       },
       "required": ["userId", "action", "module", "timestamp"]
@@ -219,6 +231,7 @@
         "id": { "type": "string" },
         "allowDataDeletion": { "type": "boolean" },
         "allowPublicRegistration": { "type": "boolean" },
+        "auditLocationMode": { "type": "string", "enum": ["off", "optional", "required"] },
         "deletionLockedReason": { "type": "string", "maxLength": 500 },
         "minAttendancePercentForCert": { "type": "number" },
         "passMarkPercent": { "type": "number" },

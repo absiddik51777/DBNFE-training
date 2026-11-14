@@ -10,10 +10,16 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import {
+  getActionLocation,
+  LOCATION_REQUIRED_BLOCK_MESSAGE,
+} from './location';
 import type {
   ActivityLog,
   AuditAction,
   AuditChange,
+  AuditLocation,
+  AuditLocationMode,
   AuditModule,
   AuditRelatedDoc,
 } from '../types';
@@ -22,6 +28,8 @@ export type {
   ActivityLog,
   AuditAction,
   AuditChange,
+  AuditLocation,
+  AuditLocationMode,
   AuditModule,
   AuditRelatedDoc,
 };
@@ -162,6 +170,7 @@ export const FIELD_LABELS_BN: Record<string, string> = {
   // System Settings
   allowDataDeletion: 'ডাটা ডিলিট অনুমতি',
   allowPublicRegistration: 'পাবলিক নিবন্ধন',
+  auditLocationMode: 'কাজের অবস্থান সংরক্ষণ',
   registrationClosedReason: 'নিবন্ধন বন্ধের কারণ',
   deletionLockedReason: 'ডিলিট লকের কারণ',
   minAttendancePercentForCert: 'ন্যূনতম উপস্থিতির হার (%)',
@@ -468,6 +477,67 @@ function splitRelatedIntoChunks(
   return chunks;
 }
 
+const DESTRUCTIVE_AUDIT_ACTIONS = new Set<AuditAction>([
+  'delete',
+  'bulk_delete',
+  'undo',
+  'restore',
+]);
+
+let cachedAuditLocationMode: AuditLocationMode | null = null;
+
+export function setAuditLocationModeCache(mode?: AuditLocationMode): void {
+  if (mode === 'off' || mode === 'optional' || mode === 'required') {
+    cachedAuditLocationMode = mode;
+  }
+}
+
+export function getAuditLocationMode(): AuditLocationMode {
+  if (cachedAuditLocationMode) return cachedAuditLocationMode;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('bnfe_system_settings');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { auditLocationMode?: AuditLocationMode };
+        if (
+          parsed?.auditLocationMode === 'off' ||
+          parsed?.auditLocationMode === 'optional' ||
+          parsed?.auditLocationMode === 'required'
+        ) {
+          return parsed.auditLocationMode;
+        }
+      }
+    } catch {
+      // ignore localStorage read failures
+    }
+  }
+  return 'optional';
+}
+
+/**
+ * Captures the actor's approximate location before writing an audit log entry.
+ * - 'off': returns undefined (not requested or stored).
+ * - 'optional': captures best-effort, never blocks.
+ * - 'required': blocks destructive actions unless status is 'granted'.
+ */
+export async function captureAuditLocationForAction(
+  action: AuditAction
+): Promise<AuditLocation | undefined> {
+  const mode = getAuditLocationMode();
+  if (mode === 'off') return undefined;
+
+  const isDestructive = DESTRUCTIVE_AUDIT_ACTIONS.has(action);
+  const location = await getActionLocation({
+    forceNoticeOnIssue: mode === 'required' && isDestructive,
+  });
+
+  if (mode === 'required' && isDestructive && location.status !== 'granted') {
+    throw new Error(LOCATION_REQUIRED_BLOCK_MESSAGE);
+  }
+
+  return sanitizeAuditValue(location);
+}
+
 function buildBaseLogPayload(params: {
   action: AuditAction;
   module: AuditModule;
@@ -484,6 +554,7 @@ function buildBaseLogPayload(params: {
   snapshotComplete?: boolean;
   snapshotChunkCount?: number;
   refLogId?: string;
+  location?: AuditLocation;
   details?: string;
 }): Omit<ActivityLog, 'id'> {
   const now = Date.now();
@@ -509,6 +580,7 @@ function buildBaseLogPayload(params: {
       ? { snapshotChunkCount: params.snapshotChunkCount }
       : {}),
     ...(params.refLogId ? { refLogId: params.refLogId } : {}),
+    ...(params.location ? { location: params.location } : {}),
     reverted: false,
     createdAt: serverTimestamp(),
     // Legacy compatibility fields
@@ -555,6 +627,7 @@ export async function recordAuditedSave<T extends { id: string }>(params: {
   const logRef = doc(collection(db, 'activityLogs'));
   const actor = resolveAuditActor(params.actor);
   const moduleName = params.module || inferCollectionModule(collectionName);
+  const location = await captureAuditLocationForAction('update');
 
   const saved = await runTransaction(db, async (tx) => {
     const existingSnap = await tx.get(targetRef);
@@ -588,6 +661,7 @@ export async function recordAuditedSave<T extends { id: string }>(params: {
           changes,
           snapshot: null,
           related: [],
+          location,
         });
         tx.set(logRef, logPayload);
       }
@@ -614,6 +688,7 @@ export async function recordAuditedSave<T extends { id: string }>(params: {
         snapshot: snapBytes <= MAX_INLINE_LOG_BYTES ? cleanSnap : null,
         snapshotComplete: snapBytes <= MAX_INLINE_LOG_BYTES,
         related: [],
+        location,
       });
       tx.set(logRef, logPayload);
     }
@@ -639,6 +714,7 @@ export async function recordAuditedDelete(params: {
   actor?: AuditActor;
 }): Promise<void> {
   const { collectionName, docId } = params;
+  const location = await captureAuditLocationForAction('delete');
   const actor = resolveAuditActor(params.actor);
   const moduleName = params.module || inferCollectionModule(collectionName);
 
@@ -675,6 +751,7 @@ export async function recordAuditedDelete(params: {
     snapshot: existingData,
     related: cleanRelated,
     snapshotComplete: Boolean(existingData),
+    location,
   });
 
   const inlineBytes = estimateJsonBytes(inlineCandidate);
@@ -699,6 +776,7 @@ export async function recordAuditedDelete(params: {
       related: [],
       snapshotComplete: Boolean(existingData),
       snapshotChunkCount: chunkDocs.length,
+      location,
     });
   }
 
@@ -814,9 +892,15 @@ export async function recordAuditedBulkDelete(params: {
   snapshotComplete?: boolean;
   skipDeletes?: boolean;
   totalCountOverride?: number;
+  preCapturedLocation?: AuditLocation;
   actor?: AuditActor;
 }): Promise<number> {
   const { collectionName, docs } = params;
+  const location =
+    params.preCapturedLocation !== undefined
+      ? params.preCapturedLocation
+      : await captureAuditLocationForAction('bulk_delete');
+
   const relatedDocs = params.relatedDocs || [];
   const totalCount =
     params.totalCountOverride !== undefined
@@ -876,6 +960,7 @@ export async function recordAuditedBulkDelete(params: {
       snapshot: null,
       related: inlineRelated,
       snapshotComplete: true,
+      location,
     });
 
     if (estimateJsonBytes(candidatePayload) > MAX_INLINE_LOG_BYTES) {
@@ -903,6 +988,7 @@ export async function recordAuditedBulkDelete(params: {
     related: inlineRelated,
     snapshotComplete,
     snapshotChunkCount: chunkDocs.length > 0 ? chunkDocs.length : undefined,
+    location,
   });
 
   // Commit log + optional chunks
@@ -971,6 +1057,8 @@ export async function recordAuditedAttendanceBatch(params: {
   const { records, traineeNamesMap = {} } = params;
   if (!records || records.length === 0) return 0;
 
+  // Capture once at start of batch operation
+  const location = await captureAuditLocationForAction('update');
   const actor = resolveAuditActor(params.actor);
   const firstRec = records[0];
 
@@ -1054,6 +1142,7 @@ export async function recordAuditedAttendanceBatch(params: {
           leaveCount,
         }
       : null,
+    location,
     details: `উপস্থিত: ${presentCount}, অনুপস্থিত: ${absentCount}, ছুটি: ${leaveCount}`,
   });
 
@@ -1088,6 +1177,8 @@ export async function recordAuditedMarksBatch(params: {
   const { examId, records, traineeNamesMap = {} } = params;
   if (!records || records.length === 0) return 0;
 
+  // Capture once at start of batch operation
+  const location = await captureAuditLocationForAction('update');
   const actor = resolveAuditActor(params.actor);
   const existingMap = new Map<string, Record<string, unknown>>();
 
@@ -1157,6 +1248,7 @@ export async function recordAuditedMarksBatch(params: {
     snapshot: isPureCreate
       ? { examId, examName: label, totalMarksEntered: toWrite.length }
       : null,
+    location,
   });
 
   for (let i = 0; i < toWrite.length; i += MAX_BATCH_OPS - 1) {
@@ -1191,6 +1283,7 @@ export async function recordSimpleAuditLog(params: {
   refLogId?: string;
   actor?: AuditActor;
 }): Promise<string> {
+  const location = await captureAuditLocationForAction(params.action);
   const actor = resolveAuditActor(params.actor);
   const logRef = doc(collection(db, 'activityLogs'));
 
@@ -1209,6 +1302,7 @@ export async function recordSimpleAuditLog(params: {
     targetNames: params.targetNames,
     snapshotComplete: params.snapshotComplete,
     refLogId: params.refLogId,
+    location,
     details: params.details,
   });
 

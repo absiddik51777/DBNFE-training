@@ -39,6 +39,8 @@ export function useSettingsRouter(
 
   const rawSection: SettingsSectionId | null = location.pathname.endsWith('/settings/logs')
     ? 'logs'
+    : location.pathname.endsWith('/settings/access')
+    ? 'access'
     : parseHashSection(location.hash);
 
   // Guard admin-only #danger hash

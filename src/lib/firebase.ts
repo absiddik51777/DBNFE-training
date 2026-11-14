@@ -36,7 +36,7 @@ function inferLegacyAction(rawAction: string, rawModule: string): string {
   return 'settings';
 }
 
-// Backwards-compatible Activity Logger helper saving directly to Cloud Firestore
+// Backwards-compatible Activity Logger helper routed through centralized auditLog helper
 export async function logActivity(
   userId: string,
   userName: string,
@@ -48,29 +48,23 @@ export async function logActivity(
   try {
     const resolvedUid = auth.currentUser?.uid || userId || 'system';
     const resolvedName = userName || auth.currentUser?.displayName || auth.currentUser?.email || 'User';
-    const normalizedModule = normalizeLegacyModule(module);
-    const inferredAction = inferLegacyAction(action, module);
+    const normalizedModule = normalizeLegacyModule(module) as import('../types').AuditModule;
+    const inferredAction = inferLegacyAction(action, module) as import('../types').AuditAction;
 
-    await addDoc(collection(db, 'activityLogs'), {
+    const { recordSimpleAuditLog } = await import('./auditLog');
+    await recordSimpleAuditLog({
       action: inferredAction,
       module: normalizedModule,
-      collection: normalizedModule,
+      collectionName: normalizedModule,
       targetId: recordId || 'system',
       targetLabel: details || action,
       title: action,
-      user: resolvedName,
-      userId: resolvedUid,
-      userRole: 'User',
-      changes: [],
-      snapshot: null,
-      related: [],
-      reverted: false,
-      createdAt: serverTimestamp(),
-      // Legacy compatibility fields
-      userName: resolvedName,
-      recordId: recordId || 'system',
       details: details || action || '',
-      timestamp: Date.now()
+      actor: {
+        userId: resolvedUid,
+        user: resolvedName,
+        userRole: 'User',
+      },
     });
   } catch (error) {
     console.warn("Failed to log activity to Cloud Firestore:", error);

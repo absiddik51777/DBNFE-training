@@ -177,10 +177,31 @@ service cloud.firestore {
     }
 
     // --- 10. Audit Activity Logs (Append-Only + One-Time Undo/Restore Mark + Chunked Snapshots) ---
+    function isValidAuditLocation(loc) {
+      return loc is map &&
+             loc.keys().hasAll(['status', 'capturedAt', 'source']) &&
+             loc.keys().hasOnly(['status', 'lat', 'lng', 'accuracy', 'capturedAt', 'source']) &&
+             loc.status in ['granted', 'denied', 'unavailable', 'timeout', 'unsupported'] &&
+             loc.source in ['native', 'web'] &&
+             loc.capturedAt is string &&
+             loc.capturedAt.size() >= 10 &&
+             loc.capturedAt.size() <= 40 &&
+             (
+               (loc.status == 'granted' && 'lat' in loc && 'lng' in loc) ||
+               (loc.status != 'granted' && loc.keys().hasOnly(['status', 'capturedAt', 'source']))
+             ) &&
+             (!('lat' in loc) || ((loc.lat is int || loc.lat is float) && loc.lat >= -90 && loc.lat <= 90)) &&
+             (!('lng' in loc) || ((loc.lng is int || loc.lng is float) && loc.lng >= -180 && loc.lng <= 180)) &&
+             (!('accuracy' in loc) || ((loc.accuracy is int || loc.accuracy is float) && loc.accuracy >= 0));
+    }
+
     match /activityLogs/{logId} {
       allow get: if isCourseDirector() && isValidId(logId);
       allow list: if isCourseDirector();
-      allow create: if isSignedIn() && isValidId(logId) && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       isValidId(logId) &&
+                       request.resource.data.userId == request.auth.uid &&
+                       (!('location' in request.resource.data) || isValidAuditLocation(request.resource.data.location));
       allow update: if isCourseDirector() &&
                        isValidId(logId) &&
                        (!('reverted' in resource.data) || resource.data.reverted == false) &&

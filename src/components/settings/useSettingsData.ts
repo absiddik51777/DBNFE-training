@@ -151,11 +151,17 @@ export function useSettingsData(isAdmin: boolean = true) {
     setExportingData(true);
     try {
       const cloudSnapshot = await dataService.syncAllFromCloud();
+      const sanitizedActivityLogs = (cloudSnapshot.activityLogs || []).map((entry) => {
+        if (!entry || typeof entry !== 'object') return entry;
+        const { location: _omittedLocation, ...rest } = entry;
+        return rest;
+      });
       const payload = {
         exportedAt: new Date().toISOString(),
         exportedBy: userProfile?.name || userProfile?.email || 'Admin',
         systemSettings: settings,
         ...cloudSnapshot,
+        activityLogs: sanitizedActivityLogs,
       };
       const fileName = `bnfe_backup_${format(new Date(), 'yyyy-MM-dd_HHmm')}.json`;
       const result = await saveTextFile(

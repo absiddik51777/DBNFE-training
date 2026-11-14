@@ -143,6 +143,7 @@ const AppRoutes = () => {
         <Route path="users" element={<PageGuard path="/users"><UsersPage /></PageGuard>} />
         <Route path="roles" element={<RolesPage />} />
         <Route path="settings" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
+        <Route path="settings/access" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
         <Route path="settings/logs" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
         <Route path="settings/theme" element={<PageGuard path="/settings"><ThemeSettings /></PageGuard>} />
         <Route path="theme-settings" element={<Navigate to="/settings/theme" replace />} />
