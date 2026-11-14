@@ -65,7 +65,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
       <div className="rounded-[14px] border border-theme-border bg-theme-surface p-4 sm:p-5 space-y-5">
         <div className="space-y-2.5">
           <div>
-            <h2 className="text-sm font-bold text-theme-text-primary">থিম মোড</h2>
+            <h2 className="text-sm font-medium text-theme-text-primary">থিম মোড</h2>
             <p className="text-xs text-theme-text-secondary mt-0.5">
               ডিভাইসের সেটিংস অনুযায়ী অথবা সরাসরি লাইট/ডার্ক মোড বেছে নিন
             </p>
@@ -85,7 +85,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
                   role="radio"
                   aria-checked={active}
                   onClick={() => setMode(opt.mode)}
-                  className={`min-h-[44px] px-3 py-2 rounded-[10px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
+                  className={`min-h-[44px] px-3 py-2 rounded-[10px] text-xs sm:text-sm font-medium whitespace-nowrap flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
                     active
                       ? 'bg-theme-surface text-theme-text-primary border border-theme-border'
                       : 'text-theme-text-secondary hover:text-theme-text-primary border border-transparent'
@@ -102,7 +102,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
         <div className="pt-4 border-t border-theme-border space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold text-theme-text-primary">অ্যাক্সেন্ট কালার</h2>
+              <h2 className="text-sm font-medium text-theme-text-primary">অ্যাক্সেন্ট কালার</h2>
               <p className="text-xs text-theme-text-secondary mt-0.5">
                 বাটন, সক্রিয় ট্যাব ও হাইলাইটের রঙ নির্বাচন করুন
               </p>
@@ -140,7 +140,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
 
             <Link
               to="/settings/theme"
-              className="ml-auto min-h-[44px] px-3.5 py-2 rounded-[12px] border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-xs font-semibold text-theme-text-primary inline-flex items-center gap-1.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+              className="ml-auto min-h-[44px] px-3.5 py-2 rounded-[12px] border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-xs font-medium whitespace-nowrap text-theme-text-primary inline-flex items-center gap-1.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
             >
               <Sliders size={14} />
               <span>বিস্তারিত থিম এডিটর</span>
@@ -152,7 +152,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
       {/* Browser Cache Reset Card */}
       <div className="rounded-[14px] border border-theme-border bg-theme-surface p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-sm font-bold text-theme-text-primary">ব্রাউজার ক্যাশ</h2>
+          <h2 className="text-sm font-medium text-theme-text-primary">ব্রাউজার ক্যাশ</h2>
           <p className="text-xs text-theme-text-secondary leading-relaxed">
             ডিভাইসের অস্থায়ী লোকাল ক্যাশ পরিষ্কার করে ক্লাউড থেকে নতুন তথ্য লোড করে। ক্লাউড ডাটাবেজের কোনো তথ্য মুছবে না।
           </p>
@@ -161,7 +161,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
         <button
           type="button"
           onClick={() => setConfirmCacheOpen(true)}
-          className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-xs sm:text-sm font-semibold text-theme-text-primary inline-flex items-center justify-center gap-2 shrink-0 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+          className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-xs sm:text-sm font-medium whitespace-nowrap text-theme-text-primary inline-flex items-center justify-center gap-2 shrink-0 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
         >
           <RefreshCw size={15} />
           <span>ব্রাউজার ক্যাশ রিসেট করুন</span>

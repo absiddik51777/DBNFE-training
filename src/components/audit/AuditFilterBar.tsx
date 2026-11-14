@@ -85,7 +85,7 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
           {activeSheetFilterCount > 0 && (
             <span
               aria-hidden="true"
-              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-theme-primary text-theme-primary-fg text-[10px] font-bold leading-none inline-flex items-center justify-center tabular-nums"
+              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-theme-primary text-theme-primary-fg text-[10px] font-medium leading-none inline-flex items-center justify-center tabular-nums"
             >
               {activeSheetFilterCount}
             </span>
@@ -148,7 +148,7 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
           <button
             type="button"
             onClick={onClearAll}
-            className="text-xs font-semibold text-theme-primary hover:underline py-1 px-1 -mr-1 rounded focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+            className="text-xs font-medium whitespace-nowrap text-theme-primary hover:underline py-1 px-1 -mr-1 rounded focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
           >
             ফিল্টার মুছুন
           </button>

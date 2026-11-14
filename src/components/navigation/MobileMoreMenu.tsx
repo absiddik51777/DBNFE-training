@@ -224,15 +224,15 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
 
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center space-x-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border flex items-center justify-center font-bold text-sm shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border flex items-center justify-center font-medium text-sm shrink-0">
                 {userProfile?.name?.charAt(0) || 'U'}
               </div>
               <div className="min-w-0">
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-bold text-sm text-theme-text-primary truncate">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h3 className="font-medium text-sm text-theme-text-primary leading-snug break-words">
                     {userProfile?.name}
                   </h3>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border shrink-0">
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border whitespace-nowrap shrink-0">
                     {userProfile?.role}
                   </span>
                 </div>
@@ -256,7 +256,7 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 overscroll-contain">
           {sections.map((section) => (
             <div key={section.title} className="space-y-2">
-              <span className="px-2 text-[11px] font-bold text-theme-text-muted uppercase tracking-wider block">
+              <span className="px-2 text-[11px] font-medium text-theme-text-muted tracking-wide block">
                 {section.title}
               </span>
 
@@ -287,7 +287,7 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
                           {item.icon}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-xs sm:text-sm text-theme-text-primary truncate">
+                          <p className="font-medium text-xs sm:text-sm text-theme-text-primary leading-snug break-words">
                             {item.name}
                           </p>
                           <p className="text-[10px] text-theme-text-secondary truncate">
@@ -316,7 +316,7 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
                 onClose();
                 signOut();
               }}
-              className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold text-theme-danger bg-theme-danger-soft hover:opacity-90 border border-theme-danger-border transition active:scale-[0.99] cursor-pointer"
+              className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-medium text-theme-danger bg-theme-danger-soft hover:opacity-90 border border-theme-danger-border transition active:scale-[0.99] cursor-pointer"
             >
               <LogOut size={16} />
               <span>লগআউট (Logout)</span>

@@ -30,18 +30,18 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
   const content = (
     <div className="flex items-start justify-between gap-3 w-full text-left">
       <div className="min-w-0 flex-1 space-y-1.5">
-        {/* Line 1: Title + optional reverted badge */}
+        {/* Line 1: Title + optional reverted/settled badges */}
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-theme-text-primary leading-snug break-words">
+          <p className="text-sm font-medium text-theme-text-primary leading-snug break-words">
             {titleText}
           </p>
           {log.reverted && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-theme-success-soft text-theme-success border border-theme-success-border">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug whitespace-nowrap shrink-0 bg-theme-success-soft text-theme-success border border-theme-success-border">
               ফেরত নেওয়া
             </span>
           )}
           {log.settled && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/10 dark:bg-emerald-400/10 text-theme-text-secondary border border-theme-border-strong">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug whitespace-nowrap shrink-0 bg-emerald-950/10 dark:bg-emerald-400/10 text-theme-text-secondary border border-theme-border-strong">
               নিষ্পন্ন
             </span>
           )}
@@ -78,11 +78,11 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
 
         {/* Line 3: Module chip + action / diff summary */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold bg-theme-surface-subtle text-theme-text-secondary border border-theme-border">
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug whitespace-nowrap shrink-0 bg-theme-surface-subtle text-theme-text-secondary border border-theme-border">
             {moduleLabel}
           </span>
           {actionLabel && (
-            <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-theme-primary-soft text-theme-primary border border-theme-primary/20">
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug whitespace-nowrap shrink-0 bg-theme-primary-soft text-theme-primary border border-theme-primary/20">
               {actionLabel}
             </span>
           )}

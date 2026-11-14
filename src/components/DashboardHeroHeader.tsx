@@ -159,7 +159,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-bold text-lg sm:text-xl flex items-center justify-center tracking-tight">
+                  <div className="w-full h-full rounded-full bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border font-medium text-lg sm:text-xl flex items-center justify-center">
                     {getInitials(displayName)}
                   </div>
                 )}
@@ -171,21 +171,21 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
             </div>
 
             <div className="space-y-0.5 min-w-0">
-              <div className="text-xs sm:text-sm font-semibold text-theme-primary tracking-wide">
+              <div className="text-xs sm:text-sm font-medium text-theme-primary">
                 {getGreeting()}
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-theme-text-primary tracking-tight leading-tight truncate">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium text-theme-text-primary leading-snug break-words">
                 {displayName}
               </h1>
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <div
-                  className={`inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${roleStyles.wrapper}`}
+                  className={`inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap leading-snug border ${roleStyles.wrapper}`}
                 >
                   <Bookmark size={12} className={`${roleStyles.icon} shrink-0`} />
                   <span>{roleName}</span>
                 </div>
                 {batchInfoBadge && (
-                  <span className="text-xs font-medium text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-0.5 rounded-full border border-theme-border">
+                  <span className="text-xs font-medium whitespace-nowrap leading-snug text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-0.5 rounded-full border border-theme-border">
                     {batchInfoBadge}
                   </span>
                 )}
@@ -216,7 +216,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                     <div className="w-9 h-9 rounded-xl bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0">
                       <CalendarCheck size={18} />
                     </div>
-                    <span className="text-sm font-bold text-theme-text-primary group-hover:text-theme-primary transition-colors">
+                    <span className="text-sm font-medium text-theme-text-primary group-hover:text-theme-primary transition-colors">
                       হাজিরা এন্ট্রি
                     </span>
                   </Link>
@@ -229,7 +229,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                     <div className="w-9 h-9 rounded-xl bg-theme-surface-subtle text-theme-text-primary border border-theme-border flex items-center justify-center shrink-0">
                       <Plus size={19} strokeWidth={2.5} />
                     </div>
-                    <span className="text-sm font-bold text-theme-text-primary transition-colors">
+                    <span className="text-sm font-medium text-theme-text-primary transition-colors">
                       নতুন ভর্তি
                     </span>
                   </Link>
@@ -242,7 +242,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                     <div className="w-9 h-9 rounded-xl bg-theme-accent-soft text-theme-accent border border-theme-accent-border flex items-center justify-center shrink-0">
                       <UserCheck size={18} />
                     </div>
-                    <span className="text-sm font-bold text-theme-text-primary group-hover:text-theme-accent transition-colors">
+                    <span className="text-sm font-medium text-theme-text-primary group-hover:text-theme-accent transition-colors">
                       {isTrainerDashboard ? 'সার্বিক ড্যাশবোর্ড' : 'প্রশিক্ষক ড্যাশবোর্ড'}
                     </span>
                   </Link>
@@ -261,7 +261,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                     <div className="w-9 h-9 flex items-center justify-center shrink-0 text-theme-primary">
                       <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
                     </div>
-                    <span className="text-sm font-semibold text-theme-text-primary">
+                    <span className="text-sm font-medium text-theme-text-primary">
                       {refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                     </span>
                   </button>
@@ -278,7 +278,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                       <div className="w-9 h-9 flex items-center justify-center shrink-0 text-theme-text-secondary">
                         <Printer size={18} />
                       </div>
-                      <span className="text-sm font-semibold text-theme-text-primary">
+                      <span className="text-sm font-medium text-theme-text-primary">
                         প্রিন্ট
                       </span>
                     </button>
@@ -296,7 +296,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
                       <div className="w-9 h-9 flex items-center justify-center shrink-0 text-theme-text-secondary">
                         <Download size={18} />
                       </div>
-                      <span className="text-sm font-semibold text-theme-text-primary">
+                      <span className="text-sm font-medium text-theme-text-primary">
                         এক্সপোর্ট
                       </span>
                     </button>
@@ -314,14 +314,14 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
         <div className="flex items-center justify-between text-xs sm:text-sm text-theme-text-secondary">
           <div className="flex items-center space-x-2">
             <Calendar size={16} className="text-theme-primary shrink-0" />
-            <span className="font-semibold text-theme-text-primary tracking-wide">
+            <span className="font-medium text-theme-text-primary">
               {getFormattedDateBn()}
             </span>
           </div>
 
           <div className="flex items-center space-x-1.5">
             <span className="font-medium text-theme-text-secondary">সিঙ্ক:</span>
-            <span className="font-bold text-theme-text-primary font-mono tabular-nums">
+            <span className="font-medium text-theme-text-primary font-mono tabular-nums">
               {getFormattedSyncTimeBn()}
             </span>
           </div>
@@ -329,7 +329,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
       </div>
 
       {syncSuccessMsg && (
-        <div className="mt-2.5 p-3 bg-theme-success-soft border border-theme-success-border text-theme-success rounded-2xl text-xs font-semibold flex items-center space-x-2">
+        <div className="mt-2.5 p-3 bg-theme-success-soft border border-theme-success-border text-theme-success rounded-2xl text-xs font-medium flex items-center space-x-2">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{syncSuccessMsg}</span>
         </div>

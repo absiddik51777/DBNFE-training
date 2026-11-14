@@ -123,7 +123,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                   setIsFilterOpen(false);
                   setIsColumnsOpen(false);
                 }}
-                className={`h-9 px-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center space-x-2 transition cursor-pointer shrink-0 ${
+                className={`min-h-9 h-auto py-1 px-3 rounded-xl border text-xs sm:text-sm font-medium flex items-center space-x-2 transition cursor-pointer shrink-0 whitespace-nowrap leading-snug ${
                   groupBy !== 'none'
                     ? 'bg-theme-primary-soft border-theme-primary text-theme-primary-soft-fg'
                     : 'bg-theme-elevated border-theme-border text-theme-text-primary hover:bg-theme-surface-hover'
@@ -134,7 +134,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                   size={14}
                   className={groupBy !== 'none' ? 'text-theme-primary' : 'text-theme-text-secondary'}
                 />
-                <span className="font-bold">
+                <span className="font-medium">
                   {groupBy !== 'none' && currentGroupLabel ? currentGroupLabel : groupByLabel}
                 </span>
                 <ChevronDown
@@ -154,7 +154,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                   />
                   <div className="fixed inset-x-3 bottom-3 max-h-[75vh] md:max-h-none md:inset-auto md:absolute md:left-0 md:top-full md:mt-1.5 w-auto md:w-60 bg-theme-elevated rounded-2xl md:rounded-xl border border-theme-border shadow-2xl md:shadow-xl py-2 md:py-1.5 z-50 text-xs flex flex-col overflow-hidden">
                     <div className="w-10 h-1 bg-theme-border-strong rounded-full mx-auto my-1 md:hidden" />
-                    <div className="px-3.5 py-2 text-[11px] font-bold text-theme-text-muted uppercase tracking-wider border-b border-theme-border mb-1 flex items-center justify-between">
+                    <div className="px-3.5 py-2 text-[11px] font-medium text-theme-text-muted uppercase tracking-wider border-b border-theme-border mb-1 flex items-center justify-between">
                       <span>গ্রুপিং নির্বাচন করুন (Group By)</span>
                       <button
                         type="button"
@@ -177,7 +177,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                             }}
                             className={`w-full px-3.5 py-2.5 md:py-2 text-left flex items-center justify-between hover:bg-theme-surface-hover transition cursor-pointer ${
                               isSelected
-                                ? 'font-bold text-theme-primary bg-theme-primary-soft'
+                                ? 'font-medium text-theme-primary bg-theme-primary-soft'
                                 : 'text-theme-text-primary'
                             }`}
                           >
@@ -208,7 +208,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
               placeholder={searchPlaceholder}
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full h-9 pl-9 pr-7 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs sm:text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary transition"
+              className="w-full min-h-9 h-auto py-1.5 pl-9 pr-7 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs sm:text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:bg-theme-elevated focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary transition"
             />
             {searchTerm && (
               <button
@@ -231,7 +231,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                   setIsColumnsOpen(false);
                   setIsGroupByOpen(false);
                 }}
-                className={`relative h-9 px-2.5 sm:px-3 rounded-xl border flex items-center justify-center space-x-1.5 transition cursor-pointer shrink-0 ${
+                className={`relative min-h-9 h-auto py-1 px-2.5 sm:px-3 rounded-xl border flex items-center justify-center space-x-1.5 transition cursor-pointer shrink-0 whitespace-nowrap leading-snug ${
                   filterCount > 0 || isFilterOpen
                     ? 'bg-theme-warning-soft border-theme-warning-border text-theme-warning'
                     : 'bg-theme-elevated border-theme-border text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
@@ -239,10 +239,10 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                 title="ফিল্টার অপশন দেখুন"
               >
                 <Filter size={15} />
-                <span className="hidden sm:inline text-xs font-semibold">ফিল্টার</span>
+                <span className="hidden sm:inline text-xs font-medium">ফিল্টার</span>
 
                 {filterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-theme-warning text-theme-warning-fg text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-theme-surface tabular-nums">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-theme-warning text-theme-warning-fg text-[10px] font-medium rounded-full flex items-center justify-center border-2 border-theme-surface tabular-nums">
                     {filterCount}
                   </span>
                 )}
@@ -264,11 +264,11 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                         <div className="w-7 h-7 rounded-lg bg-theme-warning-soft text-theme-warning flex items-center justify-center shrink-0">
                           <Filter size={15} />
                         </div>
-                        <h4 className="text-sm font-bold text-theme-text-primary">
+                        <h4 className="text-sm font-medium text-theme-text-primary">
                           ফিল্টারসমূহ (Filters)
                         </h4>
                         {filterCount > 0 && (
-                          <span className="bg-theme-warning-soft text-theme-warning border border-theme-warning-border text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 tabular-nums">
+                          <span className="bg-theme-warning-soft text-theme-warning border border-theme-warning-border text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap leading-snug tabular-nums">
                             {filterCount}টি সক্রিয়
                           </span>
                         )}
@@ -278,7 +278,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                           <button
                             type="button"
                             onClick={() => onClearAllFilters()}
-                            className="text-xs text-theme-danger font-semibold hover:underline cursor-pointer"
+                            className="text-xs text-theme-danger font-medium hover:underline cursor-pointer whitespace-nowrap"
                           >
                             রিসেট করুন
                           </button>
@@ -303,14 +303,14 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                         type="button"
                         onClick={() => onClearAllFilters()}
                         disabled={filterCount === 0}
-                        className="text-xs font-semibold text-theme-text-secondary hover:text-theme-text-primary disabled:opacity-40 cursor-pointer py-1.5 px-1"
+                        className="text-xs font-medium text-theme-text-secondary hover:text-theme-text-primary disabled:opacity-40 cursor-pointer py-1.5 px-1 whitespace-nowrap"
                       >
                         ফিল্টার ক্লিয়ার
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsFilterOpen(false)}
-                        className="px-5 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer"
+                        className="px-5 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs font-medium shadow-2xs transition cursor-pointer whitespace-nowrap"
                       >
                         প্রয়োগ করুন (Apply)
                       </button>
@@ -330,7 +330,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                   setIsFilterOpen(false);
                   setIsGroupByOpen(false);
                 }}
-                className={`h-9 px-2.5 rounded-xl border flex items-center justify-center space-x-1.5 transition cursor-pointer shrink-0 ${
+                className={`min-h-9 h-auto py-1 px-2.5 rounded-xl border flex items-center justify-center space-x-1.5 transition cursor-pointer shrink-0 whitespace-nowrap leading-snug ${
                   isColumnsOpen
                     ? 'bg-theme-surface-subtle border-theme-border-strong text-theme-text-primary'
                     : 'bg-theme-elevated border-theme-border text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
@@ -338,7 +338,7 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                 title="কলাম দৃশ্যমানতা (Show / Hide Columns)"
               >
                 <Columns3 size={15} />
-                <span className="hidden sm:inline text-xs font-semibold">কলাম</span>
+                <span className="hidden sm:inline text-xs font-medium">কলাম</span>
               </button>
 
               {isColumnsOpen && (
@@ -353,14 +353,14 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-theme-border shrink-0">
                       <div className="flex items-center space-x-1.5">
                         <SlidersHorizontal size={14} className="text-theme-text-secondary" />
-                        <span className="font-bold text-theme-text-primary">কলাম প্রদর্শন নিয়ন্ত্রণ</span>
+                        <span className="font-medium text-theme-text-primary">কলাম প্রদর্শন নিয়ন্ত্রণ</span>
                       </div>
                       <div className="flex items-center space-x-1.5">
                         {onResetColumns && (
                           <button
                             type="button"
                             onClick={onResetColumns}
-                            className="text-[11px] text-theme-primary font-semibold hover:underline flex items-center space-x-0.5 cursor-pointer"
+                            className="text-[11px] text-theme-primary font-medium hover:underline flex items-center space-x-0.5 cursor-pointer whitespace-nowrap"
                             title="ডিফল্ট কলাম ভিউতে ফিরে যান"
                           >
                             <RotateCcw size={11} />
@@ -415,20 +415,20 @@ export const DataTableToolbar: React.FC<DataTableToolbarProps> = ({
       {activeFilterChips.length > 0 && (
         <div className="px-3.5 py-2 bg-theme-surface-subtle border-t border-theme-border flex items-center justify-between flex-wrap gap-2 text-xs">
           <div className="flex items-center flex-wrap gap-2">
-            <span className="text-xs font-bold text-theme-text-secondary">Active filters:</span>
+            <span className="text-xs font-medium text-theme-text-secondary">Active filters:</span>
 
             {activeFilterChips.map((chip) => (
               <span
                 key={chip.id}
-                className="inline-flex items-center space-x-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-theme-warning-soft text-theme-warning border border-theme-warning-border"
+                className="inline-flex items-center space-x-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium leading-snug whitespace-nowrap bg-theme-warning-soft text-theme-warning border border-theme-warning-border"
               >
                 {chip.valueLabel ? (
                   <>
-                    <span className="font-semibold text-theme-text-secondary">{chip.label}:</span>
-                    <span className="font-bold">{chip.valueLabel}</span>
+                    <span className="font-medium text-theme-text-secondary">{chip.label}:</span>
+                    <span className="font-medium">{chip.valueLabel}</span>
                   </>
                 ) : (
-                  <span className="font-bold">{chip.label}</span>
+                  <span className="font-medium">{chip.label}</span>
                 )}
                 <button
                   type="button"

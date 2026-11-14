@@ -168,7 +168,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
     >
       <div
         ref={sheetRef}
-        className="w-full md:w-[420px] max-h-[88dvh] md:max-h-full md:h-full bg-theme-elevated border-t md:border-t-0 md:border-l border-theme-border rounded-t-[20px] md:rounded-none md:rounded-l-[20px] flex flex-col overflow-hidden transition-transform duration-200 motion-reduce:transition-none"
+        className="font-sans w-full md:w-[420px] max-h-[88dvh] md:max-h-full md:h-full bg-theme-elevated border-t md:border-t-0 md:border-l border-theme-border rounded-t-[20px] md:rounded-none md:rounded-l-[20px] flex flex-col overflow-hidden transition-transform duration-200 motion-reduce:transition-none"
       >
         {/* Mobile drag handle */}
         <div className="pt-2.5 pb-1 flex justify-center md:hidden shrink-0">
@@ -179,7 +179,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
         <header className="px-4 sm:px-5 py-3 border-b border-theme-border flex items-center justify-between gap-3 shrink-0 bg-theme-surface">
           <h2
             id="audit-filter-sheet-title"
-            className="text-base font-bold text-theme-text-primary"
+            className="text-base font-medium text-theme-text-primary"
           >
             ফিল্টার
           </h2>
@@ -201,7 +201,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
           <section aria-labelledby="filter-section-type" className="space-y-2.5">
             <h3
               id="filter-section-type"
-              className="text-xs font-semibold text-theme-text-secondary"
+              className="text-xs font-medium text-theme-text-secondary"
             >
               ধরন
             </h3>
@@ -221,7 +221,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
           <section aria-labelledby="filter-section-status" className="space-y-2.5">
             <h3
               id="filter-section-status"
-              className="text-xs font-semibold text-theme-text-secondary"
+              className="text-xs font-medium text-theme-text-secondary"
             >
               অবস্থা
             </h3>
@@ -241,7 +241,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
           <section aria-labelledby="filter-section-time" className="space-y-2.5">
             <h3
               id="filter-section-time"
-              className="text-xs font-semibold text-theme-text-secondary"
+              className="text-xs font-medium text-theme-text-secondary"
             >
               সময়
             </h3>
@@ -311,7 +311,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
             <label
               id="filter-section-user"
               htmlFor={userSelectId}
-              className="block text-xs font-semibold text-theme-text-secondary"
+              className="block text-xs font-medium text-theme-text-secondary"
             >
               ব্যবহারকারী
             </label>
@@ -340,7 +340,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
           <section aria-labelledby="filter-section-location" className="space-y-2.5">
             <h3
               id="filter-section-location"
-              className="text-xs font-semibold text-theme-text-secondary"
+              className="text-xs font-medium text-theme-text-secondary"
             >
               অবস্থান
             </h3>
@@ -364,7 +364,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
           <button
             type="button"
             onClick={onResetDraft}
-            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-sm font-semibold text-theme-text-primary transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary motion-reduce:transition-none"
+            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-sm font-medium whitespace-nowrap text-theme-text-primary transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary motion-reduce:transition-none"
           >
             রিসেট
           </button>
@@ -373,7 +373,7 @@ export const AuditFilterSheet: React.FC<AuditFilterSheetProps> = ({
             type="button"
             disabled={Boolean(customRangeError)}
             onClick={onApply}
-            className="flex-1 min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-sm font-semibold text-theme-primary-fg tabular-nums transition-colors disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary motion-reduce:transition-none"
+            className="flex-1 min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-sm font-medium whitespace-nowrap text-theme-primary-fg tabular-nums transition-colors disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary motion-reduce:transition-none"
           >
             {applyButtonLabel}
           </button>

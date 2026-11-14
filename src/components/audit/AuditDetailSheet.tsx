@@ -258,17 +258,17 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
             <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 {actionLabel && (
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-theme-primary-soft text-theme-primary border border-theme-primary/20">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug whitespace-nowrap bg-theme-primary-soft text-theme-primary border border-theme-primary/20">
                     {actionLabel}
                   </span>
                 )}
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-theme-surface-subtle text-theme-text-secondary border border-theme-border">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug whitespace-nowrap bg-theme-surface-subtle text-theme-text-secondary border border-theme-border">
                   {moduleLabel}
                 </span>
               </div>
               <h2
                 id="audit-detail-sheet-title"
-                className="text-sm sm:text-base font-bold text-theme-text-primary leading-snug break-words"
+                className="text-sm sm:text-base font-medium text-theme-text-primary leading-snug break-words"
               >
                 {log.title || log.action}
               </h2>
@@ -292,7 +292,7 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
               <div className="rounded-[12px] border border-theme-success-border bg-theme-success-soft px-3.5 py-2.5 flex items-start gap-2.5">
                 <CheckCircle2 size={16} className="text-theme-success shrink-0 mt-0.5" />
                 <div className="text-xs text-theme-text-primary leading-relaxed">
-                  <span className="font-bold">ফেরত নেওয়া হয়েছে</span>
+                  <span className="font-medium">ফেরত নেওয়া হয়েছে</span>
                   {log.revertedBy ? ` · ${log.revertedBy}` : ''}
                   {revertedTime ? ` · ${revertedTime}` : ''}
                 </div>
@@ -305,7 +305,7 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                 <Lock size={15} className="text-theme-text-secondary shrink-0 mt-0.5" />
                 <div className="text-xs text-theme-text-primary leading-relaxed min-w-0 flex-1 space-y-1">
                   <div>
-                    <span className="font-bold">নিষ্পন্ন</span>
+                    <span className="font-medium">নিষ্পন্ন</span>
                     {settledActorName ? ` · ${settledActorName}` : ''}
                     {settledTime ? ` · ${settledTime}` : ''}
                   </div>
@@ -391,7 +391,7 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                         setActionError(null);
                         setConfirmMode('undo');
                       }}
-                      className="min-h-[44px] flex-1 px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-semibold text-theme-primary-fg inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+                      className="min-h-[44px] flex-1 px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-medium text-theme-primary-fg inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
                     >
                       <RotateCcw size={16} />
                       <span>পরিবর্তন ফেরত নিন</span>
@@ -405,7 +405,7 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                         setActionError(null);
                         setConfirmMode('restore');
                       }}
-                      className="min-h-[44px] flex-1 px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-semibold text-theme-primary-fg inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+                      className="min-h-[44px] flex-1 px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-medium text-theme-primary-fg inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
                     >
                       <ArchiveRestore size={16} />
                       <span>পুনরুদ্ধার করুন</span>
@@ -420,7 +420,7 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                         setSettleNote('');
                         setConfirmMode('settle');
                       }}
-                      className="min-h-[44px] sm:flex-1 px-4 py-2 rounded-[12px] border border-theme-border-strong bg-theme-surface hover:bg-theme-surface-hover text-xs sm:text-sm font-semibold text-theme-text-primary inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+                      className="min-h-[44px] sm:flex-1 px-4 py-2 rounded-[12px] border border-theme-border-strong bg-theme-surface hover:bg-theme-surface-hover text-xs sm:text-sm font-medium text-theme-text-primary inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
                     >
                       <Lock size={15} />
                       <span>নিষ্পন্ন করুন</span>

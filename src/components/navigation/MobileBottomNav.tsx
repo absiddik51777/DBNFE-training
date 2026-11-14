@@ -78,27 +78,27 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   }, [location.pathname, isTrainer, isMoreOpen]);
 
   const tabClass = (tabKey: string) =>
-    `relative flex flex-col items-center justify-center min-h-[56px] h-full py-1.5 px-1 transition-colors duration-150 active:scale-95 ${
+    `relative flex flex-col items-center justify-center min-h-[58px] h-full min-w-0 py-1.5 px-0.5 font-sans font-medium transition-colors duration-150 active:scale-95 ${
       activeTab === tabKey
-        ? 'text-theme-primary font-semibold'
-        : 'text-theme-text-muted hover:text-theme-text-secondary font-medium'
+        ? 'text-theme-primary'
+        : 'text-theme-text-muted hover:text-theme-text-secondary'
     }`;
 
   return (
     <nav
       aria-label="মোবাইল নেভিগেশন বার"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-theme-nav border-t border-theme-border shadow-[0_-1px_8px_rgba(15,23,42,0.05)] dark:shadow-[0_-1px_12px_rgba(0,0,0,0.35)] select-none"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 font-sans bg-theme-nav border-t border-theme-border shadow-[0_-1px_8px_rgba(15,23,42,0.05)] dark:shadow-[0_-1px_12px_rgba(0,0,0,0.35)] select-none"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <div className="grid grid-cols-5 items-stretch h-16 max-w-lg mx-auto">
+      <div className="grid grid-cols-5 items-stretch min-h-16 max-w-lg mx-auto">
         {/* 1. Home Tab */}
         <Link to={homePath} className={tabClass('home')}>
           {activeTab === 'home' && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
           )}
-          <Home size={20} strokeWidth={activeTab === 'home' ? 2.25 : 1.85} />
+          <Home size={20} strokeWidth={activeTab === 'home' ? 2.15 : 1.85} />
           <span
-            className={`text-[11px] leading-tight mt-1 tracking-tight ${
+            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
               activeTab === 'home' ? 'text-theme-primary' : 'text-theme-text-secondary'
             }`}
           >
@@ -111,9 +111,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {activeTab === 'batches' && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
           )}
-          <Layers size={20} strokeWidth={activeTab === 'batches' ? 2.25 : 1.85} />
+          <Layers size={20} strokeWidth={activeTab === 'batches' ? 2.15 : 1.85} />
           <span
-            className={`text-[11px] leading-tight mt-1 tracking-tight ${
+            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
               activeTab === 'batches' ? 'text-theme-primary' : 'text-theme-text-secondary'
             }`}
           >
@@ -126,9 +126,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {activeTab === 'trainees' && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
           )}
-          <Users size={20} strokeWidth={activeTab === 'trainees' ? 2.25 : 1.85} />
+          <Users size={20} strokeWidth={activeTab === 'trainees' ? 2.15 : 1.85} />
           <span
-            className={`text-[11px] leading-tight mt-1 tracking-tight ${
+            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
               activeTab === 'trainees' ? 'text-theme-primary' : 'text-theme-text-secondary'
             }`}
           >
@@ -141,9 +141,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {activeTab === 'attendance' && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
           )}
-          <CalendarCheck size={20} strokeWidth={activeTab === 'attendance' ? 2.25 : 1.85} />
+          <CalendarCheck size={20} strokeWidth={activeTab === 'attendance' ? 2.15 : 1.85} />
           <span
-            className={`text-[11px] leading-tight mt-1 tracking-tight ${
+            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
               activeTab === 'attendance' ? 'text-theme-primary' : 'text-theme-text-secondary'
             }`}
           >
@@ -161,9 +161,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {activeTab === 'more' && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
           )}
-          <MoreHorizontal size={20} strokeWidth={activeTab === 'more' ? 2.25 : 1.85} />
+          <MoreHorizontal size={20} strokeWidth={activeTab === 'more' ? 2.15 : 1.85} />
           <span
-            className={`text-[11px] leading-tight mt-1 tracking-tight ${
+            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
               activeTab === 'more' ? 'text-theme-primary' : 'text-theme-text-secondary'
             }`}
           >

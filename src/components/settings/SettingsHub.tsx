@@ -88,10 +88,10 @@ const HubRow: React.FC<HubRowProps> = ({
         </span>
 
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-theme-text-primary truncate">
+          <div className="text-sm font-medium text-theme-text-primary leading-snug break-words">
             {title}
           </div>
-          <div className="text-xs text-theme-text-secondary truncate mt-0.5 tabular-nums">
+          <div className="text-xs text-theme-text-secondary leading-snug break-words mt-0.5 tabular-nums">
             {status}
           </div>
         </div>
@@ -100,7 +100,7 @@ const HubRow: React.FC<HubRowProps> = ({
       <div className="flex items-center gap-2 shrink-0">
         {chip && (
           <span
-            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${chipClasses}`}
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium leading-snug border whitespace-nowrap ${chipClasses}`}
           >
             {chip.label}
           </span>
@@ -146,7 +146,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-xl sm:text-2xl font-bold text-theme-text-primary tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-medium text-theme-text-primary leading-snug">
           সেটিংস
         </h1>
         <p className="text-xs sm:text-sm text-theme-text-secondary mt-0.5">
@@ -158,7 +158,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
       <section aria-labelledby="settings-group-general" className="space-y-1.5">
         <h2
           id="settings-group-general"
-          className="px-1 text-xs font-semibold text-theme-text-secondary"
+          className="px-1 text-xs font-medium text-theme-text-secondary"
         >
           সাধারণ
         </h2>
@@ -206,7 +206,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
       <section aria-labelledby="settings-group-data" className="space-y-1.5">
         <h2
           id="settings-group-data"
-          className="px-1 text-xs font-semibold text-theme-text-secondary"
+          className="px-1 text-xs font-medium text-theme-text-secondary"
         >
           ডাটা ও নিরীক্ষা
         </h2>
@@ -235,7 +235,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
         <section aria-labelledby="settings-group-risk" className="space-y-1.5">
           <h2
             id="settings-group-risk"
-            className="px-1 text-xs font-semibold text-theme-danger"
+            className="px-1 text-xs font-medium text-theme-danger"
           >
             ঝুঁকিপূর্ণ
           </h2>

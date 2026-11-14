@@ -84,7 +84,7 @@ export const SettingsConfirmDialog: React.FC<SettingsConfirmDialogProps> = ({
       aria-describedby={descId}
       onCancel={handleNativeCancel}
       onClick={handleBackdropClick}
-      className="settings-dialog m-auto w-[calc(100%-2rem)] max-w-md rounded-[14px] border border-theme-border bg-theme-elevated p-0 text-theme-text-primary shadow-none"
+      className="settings-dialog font-sans m-auto w-[calc(100%-2rem)] max-w-md rounded-[14px] border border-theme-border bg-theme-elevated p-0 text-theme-text-primary shadow-none"
     >
       <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -99,7 +99,7 @@ export const SettingsConfirmDialog: React.FC<SettingsConfirmDialogProps> = ({
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h2 id={titleId} className="text-base font-bold text-theme-text-primary leading-snug">
+              <h2 id={titleId} className="text-base font-medium text-theme-text-primary leading-snug">
                 {title}
               </h2>
               <p className="text-xs text-theme-text-secondary mt-0.5">
@@ -139,8 +139,8 @@ export const SettingsConfirmDialog: React.FC<SettingsConfirmDialogProps> = ({
 
         {requireKeyword && (
           <div className="space-y-1.5">
-            <label htmlFor={inputId} className="block text-xs font-semibold text-theme-text-primary">
-              নিশ্চিত করতে নিচের ঘরে <code className="font-mono text-theme-danger font-bold">{requireKeyword}</code> লিখুন
+            <label htmlFor={inputId} className="block text-xs font-medium text-theme-text-primary">
+              নিশ্চিত করতে নিচের ঘরে <code className="font-mono text-theme-danger font-medium">{requireKeyword}</code> লিখুন
             </label>
             <input
               id={inputId}
@@ -160,14 +160,14 @@ export const SettingsConfirmDialog: React.FC<SettingsConfirmDialogProps> = ({
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border text-sm font-semibold text-theme-text-primary bg-theme-surface hover:bg-theme-surface-hover transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border text-sm font-medium text-theme-text-primary bg-theme-surface hover:bg-theme-surface-hover transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
           >
             {cancelLabel}
           </button>
           <button
             type="submit"
             disabled={!keywordMatched || isProcessing}
-            className={`min-h-[44px] px-5 py-2 rounded-[12px] text-sm font-semibold inline-flex items-center justify-center gap-2 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-theme-elevated disabled:opacity-45 disabled:cursor-not-allowed ${
+            className={`min-h-[44px] px-5 py-2 rounded-[12px] text-sm font-medium inline-flex items-center justify-center gap-2 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-theme-elevated disabled:opacity-45 disabled:cursor-not-allowed ${
               isDanger
                 ? 'bg-theme-danger text-theme-danger-fg hover:opacity-90 focus-visible:ring-theme-danger'
                 : 'bg-theme-primary text-theme-primary-fg hover:bg-theme-primary-hover focus-visible:ring-theme-primary'

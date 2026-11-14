@@ -208,7 +208,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
               <Palette size={22} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-theme-text-primary">
+              <h2 className="text-base sm:text-lg font-medium text-theme-text-primary leading-snug">
                 অ্যাপিয়ারেন্স ও থিম কাস্টমাইজেশন (Appearance &amp; Theme Settings)
               </h2>
               <p className="text-xs text-theme-text-secondary mt-0.5 leading-relaxed">
@@ -217,7 +217,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
             </div>
           </div>
 
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-theme-surface-subtle text-theme-text-secondary border border-theme-border self-start sm:self-center shrink-0">
+          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium leading-snug whitespace-nowrap bg-theme-surface-subtle text-theme-text-secondary border border-theme-border self-start sm:self-center shrink-0">
             {resolvedMode === 'dark' ? <Moon size={13} className="text-theme-primary" /> : <Sun size={13} className="text-theme-primary" />}
             <span>সক্রিয় মোড: {resolvedMode === 'dark' ? 'Dark' : 'Light'}</span>
           </span>
@@ -225,7 +225,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
       )}
 
       {savedNotice && (
-        <div className="p-3.5 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-xs sm:text-sm font-semibold flex items-center space-x-2">
+        <div className="p-3.5 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-xs sm:text-sm font-medium flex items-center space-x-2">
           <CheckCircle2 size={17} className="shrink-0" />
           <span>{savedNotice}</span>
         </div>
@@ -234,7 +234,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
       {/* 1. APPEARANCE MODE SELECTOR (IMMEDIATE APPLY) */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs sm:text-sm font-bold text-theme-text-primary uppercase tracking-wider">
+          <h3 className="text-xs sm:text-sm font-medium text-theme-text-primary uppercase tracking-wider">
             ১. অ্যাপিয়ারেন্স মোড (Appearance Mode)
           </h3>
           <span className="text-[11px] text-theme-text-muted">তাৎক্ষণিক পরিবর্তনযোগ্য</span>
@@ -287,7 +287,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-sm font-bold text-theme-text-primary">{m.titleBn}</span>
+                    <span className="text-sm font-medium text-theme-text-primary">{m.titleBn}</span>
                     {isSelected && <Check size={15} className="text-theme-primary shrink-0" />}
                   </div>
                   <span className="block text-[11px] font-medium text-theme-text-muted">{m.title}</span>
@@ -302,12 +302,12 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
       {/* 2. THEME PRESETS */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h3 className="text-xs sm:text-sm font-bold text-theme-text-primary uppercase tracking-wider flex items-center space-x-1.5">
+          <h3 className="text-xs sm:text-sm font-medium text-theme-text-primary uppercase tracking-wider flex items-center space-x-1.5">
             <Sparkles size={14} className="text-theme-primary" />
             <span>২. থিম প্রিসেট (Theme Presets)</span>
           </h3>
           {draftConfig.presetId === 'custom' && (
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-theme-accent-soft text-theme-accent font-semibold border border-theme-accent-border">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-theme-accent-soft text-theme-accent font-medium whitespace-nowrap leading-snug border border-theme-accent-border">
               কাস্টম কালার সক্রিয় (Custom)
             </span>
           )}
@@ -329,8 +329,8 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-theme-text-primary truncate">{preset.name}</p>
-                    <p className="text-[10px] text-theme-text-secondary truncate">{preset.nameBn}</p>
+                    <p className="text-xs font-medium text-theme-text-primary leading-snug break-words">{preset.name}</p>
+                    <p className="text-[11px] text-theme-text-secondary leading-snug break-words">{preset.nameBn}</p>
                   </div>
                   {isSelected && (
                     <span className="w-5 h-5 rounded-full bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0">
@@ -381,7 +381,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
       <div className="space-y-4 pt-2 border-t border-theme-border">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-xs sm:text-sm font-bold text-theme-text-primary uppercase tracking-wider">
+            <h3 className="text-xs sm:text-sm font-medium text-theme-text-primary uppercase tracking-wider">
               ৩. বিস্তারিত কালার কাস্টমাইজেশন (Independent Light &amp; Dark Tokens)
             </h3>
             <p className="text-xs text-theme-text-secondary mt-0.5">
@@ -394,7 +394,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
             <button
               type="button"
               onClick={() => setEditTabMode('light')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex items-center space-x-1.5 transition cursor-pointer ${
                 editTabMode === 'light'
                   ? 'bg-theme-surface text-theme-primary shadow-xs border border-theme-border'
                   : 'text-theme-text-secondary hover:text-theme-text-primary'
@@ -406,7 +406,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
             <button
               type="button"
               onClick={() => setEditTabMode('dark')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex items-center space-x-1.5 transition cursor-pointer ${
                 editTabMode === 'dark'
                   ? 'bg-theme-surface text-theme-primary shadow-xs border border-theme-border'
                   : 'text-theme-text-secondary hover:text-theme-text-primary'
@@ -421,7 +421,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
         {/* Live Theme Preview Panel (Scoped CSS Variables from Draft) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-theme-text-primary flex items-center space-x-1.5">
+            <span className="text-xs font-medium text-theme-text-primary flex items-center space-x-1.5">
               <Eye size={14} className="text-theme-primary" />
               <span>লাইভ থিম প্রিভিউ ({editTabMode === 'dark' ? 'Dark Mode' : 'Light Mode'})</span>
             </span>
@@ -451,12 +451,12 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                     backgroundColor: 'var(--theme-primary)',
                     color: 'var(--theme-primary-fg)',
                   }}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-medium"
                 >
                   B
                 </span>
                 <div>
-                  <span style={{ color: 'var(--theme-text-primary)' }} className="text-xs font-bold block leading-tight">
+                  <span style={{ color: 'var(--theme-text-primary)' }} className="text-xs font-medium block leading-tight">
                     BNFE ট্রেইনিং
                   </span>
                   <span style={{ color: 'var(--theme-text-secondary)' }} className="text-[10px] block leading-tight">
@@ -471,7 +471,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                     backgroundColor: 'var(--theme-primary-soft)',
                     color: 'var(--theme-primary-soft-fg)',
                   }}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap leading-snug"
                 >
                   Active Role
                 </span>
@@ -480,7 +480,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                     backgroundColor: 'var(--theme-primary)',
                     color: 'var(--theme-primary-fg)',
                   }}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap leading-snug"
                 >
                   প্রাইমারি বাটন
                 </span>
@@ -499,7 +499,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
               >
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p style={{ color: 'var(--theme-text-primary)' }} className="text-xs font-bold">
+                    <p style={{ color: 'var(--theme-text-primary)' }} className="text-xs font-medium">
                       প্রশিক্ষণার্থী ও হাজিরা সারসংক্ষেপ
                     </p>
                     <p style={{ color: 'var(--theme-text-secondary)' }} className="text-[11px]">
@@ -515,7 +515,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                       color: 'var(--theme-text-primary)',
                       borderColor: 'var(--theme-border)',
                     }}
-                    className="px-2.5 py-1 rounded-lg border text-[11px] font-semibold"
+                    className="px-2.5 py-1 rounded-lg border text-[11px] font-medium whitespace-nowrap"
                   >
                     সেকেন্ডারি
                   </button>
@@ -541,7 +541,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                       color: 'var(--theme-success)',
                       borderColor: 'var(--theme-success-border)',
                     }}
-                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-bold"
+                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-medium whitespace-nowrap leading-snug"
                   >
                     <CheckCircle2 size={10} />
                     <span>উপস্থিত (Success)</span>
@@ -552,7 +552,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                       color: 'var(--theme-warning)',
                       borderColor: 'var(--theme-warning-border)',
                     }}
-                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-bold"
+                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-medium whitespace-nowrap leading-snug"
                   >
                     <AlertTriangle size={10} />
                     <span>ছুটি (Warning)</span>
@@ -563,7 +563,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                       color: 'var(--theme-danger)',
                       borderColor: 'var(--theme-danger-border)',
                     }}
-                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-bold"
+                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-medium whitespace-nowrap leading-snug"
                   >
                     <AlertCircle size={10} />
                     <span>অনুপস্থিত (Danger)</span>
@@ -574,7 +574,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                       color: 'var(--theme-info)',
                       borderColor: 'var(--theme-info-border)',
                     }}
-                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-bold"
+                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-medium whitespace-nowrap leading-snug"
                   >
                     <Info size={10} />
                     <span>তথ্য (Info)</span>
@@ -590,7 +590,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                 }}
                 className="p-3 rounded-xl border flex flex-col justify-between space-y-2"
               >
-                <span style={{ color: 'var(--theme-text-secondary)' }} className="text-[10px] font-bold uppercase">
+                <span style={{ color: 'var(--theme-text-secondary)' }} className="text-[10px] font-medium uppercase">
                   বটম নেভিগেশন প্রিভিউ
                 </span>
                 <div
@@ -611,7 +611,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                       style={{
                         color: tab.active ? 'var(--theme-primary)' : 'var(--theme-text-muted)',
                       }}
-                      className="relative flex flex-col items-center justify-center py-0.5"
+                      className="relative flex flex-col items-center justify-center py-0.5 min-w-0 px-0.5"
                     >
                       {tab.active && (
                         <span
@@ -620,7 +620,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                         />
                       )}
                       {tab.icon}
-                      <span className="text-[9px] font-semibold mt-0.5">{tab.label}</span>
+                      <span className="text-[10px] font-medium leading-snug whitespace-nowrap text-center mt-0.5">{tab.label}</span>
                     </div>
                   ))}
                 </div>
@@ -634,8 +634,8 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
           {groupedTokens.map(({ group, meta, tokens }) => (
             <div key={group} className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-theme-text-primary">
-                  {meta.titleBn} <span className="text-theme-text-muted font-medium">({meta.sub})</span>
+                <h4 className="text-xs font-medium text-theme-text-primary">
+                  {meta.titleBn} <span className="text-theme-text-muted font-normal">({meta.sub})</span>
                 </h4>
               </div>
 
@@ -671,20 +671,20 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-1.5">
-                            <span className="text-xs font-bold text-theme-text-primary truncate">
+                            <span className="text-xs font-medium text-theme-text-primary truncate">
                               {tokenMeta.labelEn}
                             </span>
                             {isModified && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-theme-primary-soft text-theme-primary-soft-fg font-semibold shrink-0">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-theme-primary-soft text-theme-primary-soft-fg font-medium whitespace-nowrap leading-snug shrink-0">
                                 পরিবর্তিত
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-theme-text-secondary truncate">
+                          <p className="text-[11px] text-theme-text-secondary leading-snug break-words">
                             {tokenMeta.labelBn} • {tokenMeta.descriptionBn}
                           </p>
                           {errorMsg && (
-                            <p className="text-[10px] text-theme-danger font-semibold mt-0.5">
+                            <p className="text-[10px] text-theme-danger font-medium mt-0.5">
                               {errorMsg}
                             </p>
                           )}
@@ -730,7 +730,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
             <button
               type="button"
               onClick={handleResetCurrentMode}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary flex items-center space-x-1.5 transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-medium border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary flex items-center space-x-1.5 transition cursor-pointer"
             >
               <RotateCcw size={14} />
               <span>বর্তমান মোড রিসেট ({editTabMode === 'dark' ? 'Dark' : 'Light'})</span>
@@ -739,7 +739,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
             <button
               type="button"
               onClick={handleRestoreDefaultTheme}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary hover:text-theme-text-primary flex items-center space-x-1.5 transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-medium border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary hover:text-theme-text-primary flex items-center space-x-1.5 transition cursor-pointer"
             >
               <Palette size={14} />
               <span>ডিফল্ট থিমে ফিরুন (Emerald Slate)</span>
@@ -751,7 +751,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
               <button
                 type="button"
                 onClick={handleCancelChanges}
-                className="px-4 py-2 rounded-xl text-xs font-semibold border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-text-secondary flex items-center space-x-1.5 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-medium border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-text-secondary flex items-center space-x-1.5 transition cursor-pointer"
               >
                 <X size={14} />
                 <span>বাতিল (Cancel)</span>
@@ -762,7 +762,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
               type="button"
               onClick={handleApplyChanges}
               disabled={!isDirty || hasValidationErrors}
-              className="px-5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg flex items-center space-x-2 transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="px-5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg flex items-center space-x-2 transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Check size={15} />
               <span>পরিবর্তন প্রয়োগ করুন (Apply Changes)</span>

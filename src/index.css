@@ -1,8 +1,16 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+@font-face {
+  font-family: 'Nikosh';
+  src: url('/fonts/Nikosh.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
-  --font-sans: "Inter", "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+  --font-sans: 'Nikosh', 'Inter', system-ui, sans-serif;
 
   --color-theme-primary: var(--theme-primary);
   --color-theme-primary-hover: var(--theme-primary-hover);
@@ -147,14 +155,35 @@
 }
 
 @layer base {
+  html {
+    font-size: 17px;
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+  }
+
   html,
   body {
     background-color: var(--theme-bg);
     color: var(--theme-text-primary);
-    font-family: "Inter", "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  dialog,
+  optgroup,
+  option {
+    font-family: inherit;
   }
 
   /* Ensure select options remain legible in Dark Mode */

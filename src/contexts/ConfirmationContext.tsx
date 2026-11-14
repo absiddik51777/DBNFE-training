@@ -209,7 +209,7 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         >
           <div className="min-h-full w-full flex items-start sm:items-center justify-center p-3 sm:p-4 pt-6 sm:py-6 pb-16">
             <div
-              className="bg-theme-elevated rounded-3xl shadow-2xl border border-theme-border w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150"
+              className="font-sans bg-theme-elevated rounded-3xl shadow-2xl border border-theme-border w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -234,11 +234,11 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                 <div className="space-y-1.5">
                   <span
-                    className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${vStyles.badgeClass}`}
+                    className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap leading-snug border ${vStyles.badgeClass}`}
                   >
                     {vStyles.badgeText}
                   </span>
-                  <h3 className="text-lg font-bold text-theme-text-primary">
+                  <h3 className="text-lg font-medium text-theme-text-primary leading-snug">
                     {dialogState.title}
                   </h3>
                 </div>
@@ -261,7 +261,7 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="flex-1 px-4 py-2.5 bg-theme-surface border border-theme-border hover:bg-theme-surface-hover active:scale-95 text-theme-text-primary rounded-xl text-xs font-bold transition cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-theme-surface border border-theme-border hover:bg-theme-surface-hover active:scale-95 text-theme-text-primary rounded-xl text-xs font-medium whitespace-nowrap transition cursor-pointer"
                   >
                     {dialogState.cancelText}
                   </button>
@@ -271,7 +271,7 @@ export const ConfirmationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   type="button"
                   autoFocus
                   onClick={handleConfirm}
-                  className={`flex-1 px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${vStyles.confirmBtn}`}
+                  className={`flex-1 px-5 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition flex items-center justify-center space-x-1.5 cursor-pointer ${vStyles.confirmBtn}`}
                 >
                   <Check size={16} />
                   <span>{dialogState.confirmText}</span>

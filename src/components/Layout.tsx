@@ -134,25 +134,25 @@ const Layout: React.FC = () => {
     switch (role) {
       case 'Course Director':
         return (
-          <span className="bg-theme-accent-soft text-theme-accent border border-theme-accent-border text-xs px-2.5 py-0.5 rounded-full font-semibold">
+          <span className="bg-theme-accent-soft text-theme-accent border border-theme-accent-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
             কোর্স পরিচালক
           </span>
         );
       case 'FMA':
         return (
-          <span className="bg-theme-info-soft text-theme-info border border-theme-info-border text-xs px-2.5 py-0.5 rounded-full font-semibold">
+          <span className="bg-theme-info-soft text-theme-info border border-theme-info-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
             FMA
           </span>
         );
       case 'Trainer':
         return (
-          <span className="bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border text-xs px-2.5 py-0.5 rounded-full font-semibold">
+          <span className="bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
             প্রশিক্ষক
           </span>
         );
       default:
         return role ? (
-          <span className="bg-theme-surface-subtle text-theme-text-secondary border border-theme-border text-xs px-2.5 py-0.5 rounded-full font-semibold">
+          <span className="bg-theme-surface-subtle text-theme-text-secondary border border-theme-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
             {role}
           </span>
         ) : null;
@@ -164,7 +164,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-theme-bg text-theme-text-primary flex flex-col lg:flex-row antialiased">
+    <div className="min-h-screen bg-theme-bg text-theme-text-primary font-sans flex flex-col lg:flex-row antialiased">
       {/* Desktop and Large Tablet Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen lg:shrink-0 w-72 bg-theme-nav border-r border-theme-border text-theme-text-primary justify-between z-30">
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -175,10 +175,10 @@ const Layout: React.FC = () => {
                 <GraduationCap size={22} />
               </div>
               <div>
-                <span className="font-bold text-base text-theme-text-primary tracking-tight block">
+                <span className="font-medium text-base text-theme-text-primary block leading-snug">
                   BNFE ট্রেইনিং
                 </span>
-                <span className="text-[11px] text-theme-primary font-semibold block">
+                <span className="text-[11px] text-theme-primary font-medium block leading-snug">
                   উপানুষ্ঠানিক শিক্ষা ব্যুরো
                 </span>
               </div>
@@ -188,11 +188,11 @@ const Layout: React.FC = () => {
           {/* User quick card in sidebar */}
           <div className="p-3.5 mx-4 my-3 rounded-xl bg-theme-surface-subtle border border-theme-border shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center font-bold text-sm border border-theme-primary-border shrink-0">
+              <div className="w-9 h-9 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center font-medium text-sm border border-theme-primary-border shrink-0">
                 {userProfile?.name?.charAt(0) || 'U'}
               </div>
               <div className="overflow-hidden flex-1">
-                <p className="font-semibold text-sm text-theme-text-primary truncate">
+                <p className="font-medium text-sm text-theme-text-primary truncate leading-snug">
                   {userProfile?.name}
                 </p>
                 <div className="flex items-center space-x-1.5 mt-0.5">
@@ -217,7 +217,7 @@ const Layout: React.FC = () => {
                   to={item.path}
                   className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-theme-primary text-theme-primary-fg shadow-xs font-semibold'
+                      ? 'bg-theme-primary text-theme-primary-fg shadow-xs'
                       : 'text-theme-text-secondary hover:bg-theme-surface-hover hover:text-theme-text-primary'
                   }`}
                 >
@@ -229,7 +229,7 @@ const Layout: React.FC = () => {
                     >
                       {item.icon}
                     </span>
-                    <span className="truncate">{item.name}</span>
+                    <span className="leading-snug break-words">{item.name}</span>
                   </div>
                   <span
                     className={`text-[10px] shrink-0 ml-2 ${
@@ -248,7 +248,7 @@ const Layout: React.FC = () => {
         <div className="p-4 border-t border-theme-border shrink-0">
           <button
             onClick={() => signOut()}
-            className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-theme-danger bg-theme-danger-soft hover:opacity-90 transition-colors border border-theme-danger-border cursor-pointer"
+            className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-sm font-medium text-theme-danger bg-theme-danger-soft hover:opacity-90 transition-colors border border-theme-danger-border cursor-pointer"
           >
             <LogOut size={17} />
             <span>লগআউট (Logout)</span>
@@ -263,21 +263,21 @@ const Layout: React.FC = () => {
           <div className="flex items-center space-x-3 min-w-0">
             {/* Mobile Native App Branding */}
             <div className="flex items-center space-x-2.5 lg:hidden">
-              <div className="w-9 h-9 rounded-xl bg-theme-primary text-theme-primary-fg flex items-center justify-center font-bold shadow-2xs shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-theme-primary text-theme-primary-fg flex items-center justify-center font-medium shadow-2xs shrink-0">
                 <GraduationCap size={20} />
               </div>
-              <div className="leading-tight">
-                <span className="font-bold text-theme-text-primary text-sm block tracking-tight">
+              <div className="leading-snug">
+                <span className="font-medium text-theme-text-primary text-sm block">
                   BNFE ট্রেইনিং
                 </span>
-                <span className="text-[10px] text-theme-primary font-semibold block">
+                <span className="text-[10px] text-theme-primary font-medium block">
                   উপানুষ্ঠানিক শিক্ষা ব্যুরো
                 </span>
               </div>
             </div>
 
             {/* Desktop Program Title */}
-            <div className="hidden lg:block text-theme-text-primary font-semibold text-sm truncate">
+            <div className="hidden lg:block text-theme-text-primary font-medium text-sm truncate">
               ঝরে পড়া শিক্ষার্থীদের দক্ষতা উন্নয়ন প্রশিক্ষণ কর্মসূচি (Class 8 Dropout Program)
             </div>
           </div>
@@ -286,7 +286,7 @@ const Layout: React.FC = () => {
             {getRoleBadge(userProfile?.role)}
             <div className="h-4 w-px bg-theme-border mx-1 hidden sm:block" />
             <div className="text-right hidden sm:block">
-              <span className="block text-xs font-semibold text-theme-text-primary">
+              <span className="block text-xs font-medium text-theme-text-primary">
                 {userProfile?.name}
               </span>
               <span className="block text-[11px] text-theme-text-secondary tabular-nums">

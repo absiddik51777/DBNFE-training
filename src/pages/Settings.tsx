@@ -128,7 +128,7 @@ const Settings: React.FC = () => {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 right-4 left-4 sm:left-auto sm:w-96 z-50"
+          className="font-sans fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 right-4 left-4 sm:left-auto sm:w-96 z-50"
         >
           <div
             className={`rounded-[14px] border px-4 py-3 flex items-start justify-between gap-3 ${
@@ -201,7 +201,7 @@ const Settings: React.FC = () => {
                   type="button"
                   onClick={goToHub}
                   aria-label="সেটিংস তালিকায় ফিরে যান"
-                  className="min-h-[44px] px-2.5 -ml-2 rounded-[12px] inline-flex items-center gap-1.5 text-sm font-semibold text-theme-primary hover:bg-theme-surface-hover transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+                  className="min-h-[44px] px-2.5 -ml-2 rounded-[12px] inline-flex items-center gap-1.5 text-sm font-medium whitespace-nowrap text-theme-primary hover:bg-theme-surface-hover transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
                 >
                   <ArrowLeft size={18} />
                   <span>সেটিংস</span>
@@ -210,7 +210,7 @@ const Settings: React.FC = () => {
 
               <div className={!isDesktopSplit ? 'ml-auto text-right' : ''}>
                 <h1
-                  className={`font-bold text-theme-text-primary tracking-tight ${
+                  className={`font-medium text-theme-text-primary leading-snug ${
                     isDesktopSplit ? 'text-xl' : 'text-base'
                   }`}
                 >
