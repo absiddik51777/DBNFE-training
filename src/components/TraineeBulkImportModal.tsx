@@ -250,10 +250,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Trainees_Template');
         const xlsxBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+        const xlsxBlob = new Blob([xlsxBuf], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
 
         res = await saveFileToDevice({
           fileName: 'BNFE_Trainee_Bulk_Import_Template.xlsx',
-          content: new Uint8Array(xlsxBuf),
+          content: xlsxBlob,
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           category: 'template'
         });

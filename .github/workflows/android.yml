@@ -59,10 +59,9 @@ jobs:
           bunx cap sync android
           echo "=== Synced Capacitor Plugins ==="
           cat android/app/src/main/assets/capacitor.plugins.json
-          grep -q "FileDownloadPlugin" android/app/src/main/assets/capacitor.plugins.json
+          grep -q "FilesystemPlugin" android/app/src/main/assets/capacitor.plugins.json
           grep -q "SharePlugin" android/app/src/main/assets/capacitor.plugins.json
           grep -q "GeolocationPlugin" android/app/src/main/assets/capacitor.plugins.json
-          grep -q "bnfe-file-download" android/capacitor.settings.gradle
 
       # NEW: declare location permissions so Android shows and prompts for them
       - name: Add location permissions to AndroidManifest

@@ -1,7 +1,6 @@
 node_modules/
 /build/
 /dist/
-!capacitor-plugins/file-download/dist/
 coverage/
 .DS_Store
 *.log

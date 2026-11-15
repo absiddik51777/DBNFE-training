@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { FileDownload } from '@bnfe/file-download';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export type ExportFileCategory =
   | 'pdf'
@@ -30,9 +32,35 @@ export interface FileExportResult {
   error?: string;
 }
 
-const MAX_DIRECT_SAVE_BYTES = 768 * 1024; // 768 KB
-const CHUNK_SIZE_BYTES = 393216; // 384 KB (exact multiple of 3 for clean Base64 chunks)
 const activeExportLocks = new Set<string>();
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve((r.result as string).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+export async function saveFile(fileName: string, blob: Blob) {
+  if (!Capacitor.isNativePlatform()) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const data = await blobToBase64(blob);
+  const { uri } = await Filesystem.writeFile({
+    path: fileName,
+    data,
+    directory: Directory.Cache,
+  });
+  await Share.share({ title: fileName, url: uri });
+}
 
 export function getRuntimePlatform(): 'android' | 'ios' | 'web' {
   const platform = Capacitor.getPlatform();
@@ -61,38 +89,6 @@ export function isExportLocked(fileName: string): boolean {
   return activeExportLocks.has(sanitizeExportFileName(fileName).toLowerCase());
 }
 
-/**
- * Encodes a Uint8Array cleanly to Base64 without stack overflow on large binaries
- */
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  const SLICE_SIZE = 8192;
-  const parts: string[] = [];
-  for (let i = 0; i < bytes.length; i += SLICE_SIZE) {
-    const sub = bytes.subarray(i, Math.min(i + SLICE_SIZE, bytes.length));
-    parts.push(String.fromCharCode(...sub));
-  }
-  return btoa(parts.join(''));
-}
-
-async function normalizeContentToBytes(
-  content: Blob | ArrayBuffer | Uint8Array | string
-): Promise<Uint8Array> {
-  if (typeof content === 'string') {
-    return new TextEncoder().encode(content);
-  }
-  if (content instanceof Uint8Array) {
-    return content;
-  }
-  if (content instanceof ArrayBuffer) {
-    return new Uint8Array(content);
-  }
-  if (content instanceof Blob) {
-    const buf = await content.arrayBuffer();
-    return new Uint8Array(buf);
-  }
-  throw new Error('অসমর্থিত ফাইল ফরম্যাট (Unsupported content type)');
-}
-
 function normalizeContentToBlob(
   content: Blob | ArrayBuffer | Uint8Array | string,
   mimeType: string
@@ -101,7 +97,6 @@ function normalizeContentToBlob(
     return content.type === mimeType ? content : new Blob([content], { type: mimeType });
   }
   if (content instanceof Uint8Array) {
-    // Copy into fresh ArrayBuffer slice to satisfy strict TS BlobPart types
     const copy = new Uint8Array(content.byteLength);
     copy.set(content);
     return new Blob([copy.buffer], { type: mimeType });
@@ -124,119 +119,17 @@ function isCancelError(err: unknown): boolean {
   const anyErr = err as { name?: string; message?: string };
   if (anyErr.name === 'AbortError') return true;
   const msg = (anyErr.message || String(err)).toLowerCase();
-  return msg.includes('cancel') || msg.includes('canceled') || msg.includes('cancelled') || msg.includes('dismiss');
-}
-
-async function saveViaNativeAndroid(
-  safeFileName: string,
-  mimeType: string,
-  content: Blob | ArrayBuffer | Uint8Array | string,
-  destination: 'downloads' | 'cache'
-): Promise<{ fileName: string; uri: string; relativePath: string }> {
-  // Handle Blob in chunks directly without holding multiple giant strings in memory
-  if (content instanceof Blob && content.size > MAX_DIRECT_SAVE_BYTES) {
-    if (content.size === 0) {
-      throw new Error('তৈরিকৃত ফাইলটি খালি পাওয়া গেছে।');
-    }
-    const { uploadId, fileName } = await FileDownload.startChunkedSave({
-      fileName: safeFileName,
-      mimeType,
-      destination
-    });
-
-    try {
-      let offset = 0;
-      while (offset < content.size) {
-        const end = Math.min(offset + CHUNK_SIZE_BYTES, content.size);
-        const sliceBuf = await content.slice(offset, end).arrayBuffer();
-        const base64Chunk = uint8ArrayToBase64(new Uint8Array(sliceBuf));
-        await FileDownload.appendChunk({ uploadId, base64Chunk });
-        offset = end;
-      }
-      const finalRes = await FileDownload.finishChunkedSave({ uploadId });
-      return {
-        fileName: finalRes.fileName || fileName,
-        uri: finalRes.uri,
-        relativePath: finalRes.relativePath
-      };
-    } catch (err) {
-      await FileDownload.abortChunkedSave({ uploadId }).catch(() => {});
-      throw err;
-    }
-  }
-
-  const bytes = await normalizeContentToBytes(content);
-  if (bytes.byteLength === 0) {
-    throw new Error('তৈরিকৃত ফাইলটি খালি পাওয়া গেছে।');
-  }
-
-  if (bytes.byteLength > MAX_DIRECT_SAVE_BYTES) {
-    const { uploadId, fileName } = await FileDownload.startChunkedSave({
-      fileName: safeFileName,
-      mimeType,
-      destination
-    });
-
-    try {
-      let offset = 0;
-      while (offset < bytes.byteLength) {
-        const end = Math.min(offset + CHUNK_SIZE_BYTES, bytes.byteLength);
-        const base64Chunk = uint8ArrayToBase64(bytes.subarray(offset, end));
-        await FileDownload.appendChunk({ uploadId, base64Chunk });
-        offset = end;
-      }
-      const finalRes = await FileDownload.finishChunkedSave({ uploadId });
-      return {
-        fileName: finalRes.fileName || fileName,
-        uri: finalRes.uri,
-        relativePath: finalRes.relativePath
-      };
-    } catch (err) {
-      await FileDownload.abortChunkedSave({ uploadId }).catch(() => {});
-      throw err;
-    }
-  }
-
-  const base64Data = uint8ArrayToBase64(bytes);
-  const res = await FileDownload.saveFile({
-    fileName: safeFileName,
-    mimeType,
-    base64Data,
-    destination
-  });
-
-  return {
-    fileName: res.fileName || safeFileName,
-    uri: res.uri,
-    relativePath: res.relativePath
-  };
-}
-
-function triggerWebBlobDownload(blob: Blob, safeFileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = safeFileName;
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-
-  setTimeout(() => {
-    try {
-      if (link.parentNode) {
-        link.parentNode.removeChild(link);
-      }
-    } catch {
-      // ignore DOM detach race
-    }
-    URL.revokeObjectURL(url);
-  }, 4000);
+  return (
+    msg.includes('cancel') ||
+    msg.includes('canceled') ||
+    msg.includes('cancelled') ||
+    msg.includes('dismiss')
+  );
 }
 
 /**
- * Primary centralized export & download API across Web Browsers and Capacitor Android APK.
- * On Android APK: Saves directly to the public Downloads folder via Android MediaStore.
- * On Web Browser: Preserves standard Blob URL anchor download with clean revocation.
+ * Primary centralized export & download API across Web Browsers and Capacitor Native Apps.
+ * Delegates all actual file saving/sharing to saveFile(fileName, blob).
  */
 export async function saveFileToDevice(input: FileExportInput): Promise<FileExportResult> {
   const platform = getRuntimePlatform();
@@ -256,56 +149,46 @@ export async function saveFileToDevice(input: FileExportInput): Promise<FileExpo
   activeExportLocks.add(lockKey);
 
   try {
-    if (isNativeAndroidApp()) {
-      const saved = await saveViaNativeAndroid(
-        safeFileName,
-        input.mimeType,
-        input.content,
-        'downloads'
-      );
-
-      return {
-        success: true,
-        fileName: saved.fileName,
-        savedPath: saved.relativePath,
-        uri: saved.uri,
-        platform: 'android',
-        method: 'android_mediastore_downloads',
-        message: `ফাইলটি সফলভাবে Downloads ফোল্ডারে সংরক্ষণ করা হয়েছে: ${saved.fileName}`
-      };
-    }
-
-    // Native iOS fallback via share sheet if ever bundled for iOS
-    if (isNativeCapacitorApp() && platform === 'ios') {
-      return await shareExportedFile(input);
-    }
-
-    // Standard Web Browser Download
     const blob = normalizeContentToBlob(input.content, input.mimeType);
     if (blob.size === 0) {
       throw new Error('তৈরিকৃত ফাইলটি খালি পাওয়া গেছে।');
     }
 
-    triggerWebBlobDownload(blob, safeFileName);
+    await saveFile(safeFileName, blob);
 
+    const native = isNativeCapacitorApp();
     return {
       success: true,
       fileName: safeFileName,
-      platform: 'web',
-      method: 'web_blob_anchor',
-      message: `ফাইলটি সফলভাবে ডাউনলোড হয়েছে: ${safeFileName}`
+      platform,
+      method: native ? 'capacitor_filesystem_share' : 'web_blob_anchor',
+      message: native
+        ? `ফাইলটি সংরক্ষণ ও শেয়ারের জন্য প্রস্তুত হয়েছে: ${safeFileName}`
+        : `ফাইলটি সফলভাবে ডাউনলোড হয়েছে: ${safeFileName}`
     };
   } catch (err) {
+    if (isCancelError(err)) {
+      return {
+        success: false,
+        cancelled: true,
+        fileName: safeFileName,
+        platform,
+        method: 'share_cancelled',
+        message: 'ফাইল সংরক্ষণ / শেয়ার বাতিল করা হয়েছে।'
+      };
+    }
+
     console.error(`[FileExportService] Failed to save ${safeFileName}:`, err);
     const errMsg = extractReadableError(err);
     return {
       success: false,
       fileName: safeFileName,
       platform,
-      method: isNativeAndroidApp() ? 'android_mediastore_error' : 'web_download_error',
-      message: errMsg.includes('ফাইল') || errMsg.includes('ডিভাইস')
-        ? errMsg
-        : 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      method: isNativeCapacitorApp() ? 'native_export_error' : 'web_download_error',
+      message:
+        errMsg.includes('ফাইল') || errMsg.includes('ডিভাইস')
+          ? errMsg
+          : 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
       error: errMsg
     };
   } finally {
@@ -322,9 +205,10 @@ export async function saveTextFile(
   mimeType = 'text/plain;charset=utf-8;',
   category: ExportFileCategory = 'text'
 ): Promise<FileExportResult> {
+  const blob = new Blob([textContent], { type: mimeType });
   return saveFileToDevice({
     fileName,
-    content: textContent,
+    content: blob,
     mimeType,
     category
   });
@@ -340,150 +224,182 @@ export async function saveCsvFile(
 ): Promise<FileExportResult> {
   const safeName = fileName.toLowerCase().endsWith('.csv') ? fileName : `${fileName}.csv`;
   const withBom = csvContent.startsWith('\uFEFF') ? csvContent : `\uFEFF${csvContent}`;
+  const blob = new Blob([withBom], { type: 'text/csv' });
   return saveFileToDevice({
     fileName: safeName,
-    content: withBom,
-    mimeType: 'text/csv;charset=utf-8;',
+    content: blob,
+    mimeType: 'text/csv',
     category
   });
 }
 
 /**
- * Shares an exported document via Android/iOS native Share sheet (using cached file:// URI)
- * or browser Web Share API. Explicitly detects user cancellation and never treats cancel as success.
+ * Shares/saves an exported document using saveFile(fileName, blob).
  */
 export async function shareExportedFile(input: FileExportInput): Promise<FileExportResult> {
-  const platform = getRuntimePlatform();
-  const safeFileName = sanitizeExportFileName(input.fileName);
-
-  try {
-    if (isNativeCapacitorApp()) {
-      const cached = await saveViaNativeAndroid(
-        safeFileName,
-        input.mimeType,
-        input.content,
-        'cache'
-      );
-
-      await Share.share({
-        title: input.title || safeFileName,
-        text: input.title ? `${input.title} (${safeFileName})` : safeFileName,
-        files: [cached.uri],
-        dialogTitle: input.title || 'ফাইল শেয়ার করুন'
-      });
-
-      return {
-        success: true,
-        fileName: cached.fileName,
-        uri: cached.uri,
-        savedPath: cached.relativePath,
-        platform,
-        method: 'capacitor_share',
-        message: `ফাইলটি সফলভাবে শেয়ার করা হয়েছে: ${cached.fileName}`
-      };
-    }
-
-    // Web Share API check
-    const blob = normalizeContentToBlob(input.content, input.mimeType);
-    if (typeof navigator !== 'undefined' && navigator.share && typeof File !== 'undefined') {
-      const file = new File([blob], safeFileName, { type: input.mimeType });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: input.title || safeFileName,
-          text: `${input.title || safeFileName}`
-        });
-        return {
-          success: true,
-          fileName: safeFileName,
-          platform: 'web',
-          method: 'web_share_api',
-          message: `ফাইলটি সফলভাবে শেয়ার করা হয়েছে: ${safeFileName}`
-        };
-      }
-    }
-
-    // Fallback to standard download on desktop browsers without file share support
-    return await saveFileToDevice(input);
-  } catch (err) {
-    if (isCancelError(err)) {
-      return {
-        success: false,
-        cancelled: true,
-        fileName: safeFileName,
-        platform,
-        method: 'share_cancelled',
-        message: 'ফাইল শেয়ার করা বাতিল করা হয়েছে।'
-      };
-    }
-
-    const errMsg = extractReadableError(err);
-    console.error(`[FileExportService] Share failed for ${safeFileName}:`, err);
-    return {
-      success: false,
-      fileName: safeFileName,
-      platform,
-      method: 'share_error',
-      message: 'ফাইল শেয়ার করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
-      error: errMsg
-    };
-  }
+  return saveFileToDevice(input);
 }
 
 /**
- * Triggers printing cleanly across both Web browser (window.print)
- * and Capacitor Android APK (Android PrintManager PrintDocumentAdapter).
+ * Renders an HTML element into a paginated A4 jsPDF Blob using html2canvas + jsPDF.
+ */
+async function renderElementToPdfBlob(
+  element: HTMLElement,
+  options: { landscape?: boolean; cloneLightMode?: boolean } = {}
+): Promise<Blob> {
+  const landscape = options.landscape ?? false;
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    ignoreElements: (el) => {
+      if (!el || !(el instanceof HTMLElement)) return false;
+      if (el.classList.contains('print:hidden')) return true;
+      if (el.getAttribute('role') === 'status') return true;
+      return false;
+    },
+    onclone: (clonedDoc, clonedEl) => {
+      if (options.cloneLightMode) {
+        clonedDoc.documentElement.classList.remove('dark');
+        clonedDoc.documentElement.setAttribute('data-theme', 'light');
+      }
+      clonedEl.querySelectorAll('[class*="print:hidden"]').forEach((node) => {
+        (node as HTMLElement).style.display = 'none';
+      });
+      clonedEl.querySelectorAll('.overflow-x-auto, .overflow-y-auto, .overflow-hidden').forEach((node) => {
+        const htmlNode = node as HTMLElement;
+        htmlNode.style.overflow = 'visible';
+        htmlNode.style.maxHeight = 'none';
+      });
+      clonedEl.style.backgroundColor = '#ffffff';
+      clonedEl.style.color = '#0f172a';
+    }
+  });
+
+  const pdf = new jsPDF({
+    orientation: landscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true
+  });
+
+  const pageWidthMm = pdf.internal.pageSize.getWidth();
+  const pageHeightMm = pdf.internal.pageSize.getHeight();
+  const marginMm = 10;
+  const contentWidthMm = pageWidthMm - marginMm * 2;
+  const contentHeightMm = pageHeightMm - marginMm * 2;
+
+  const pageSliceHeightPx = Math.floor((canvas.width * contentHeightMm) / contentWidthMm);
+  const totalHeightPx = canvas.height;
+
+  if (totalHeightPx <= pageSliceHeightPx || pageSliceHeightPx <= 0) {
+    const imgWidthMm = contentWidthMm;
+    const imgHeightMm = (canvas.height / canvas.width) * imgWidthMm;
+    const imgData = canvas.toDataURL('image/jpeg', 0.94);
+    pdf.addImage(imgData, 'JPEG', marginMm, marginMm, imgWidthMm, imgHeightMm, undefined, 'FAST');
+    return pdf.output('blob');
+  }
+
+  let offsetY = 0;
+  let pageIndex = 0;
+
+  while (offsetY < totalHeightPx) {
+    const sliceHeight = Math.min(pageSliceHeightPx, totalHeightPx - offsetY);
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvas.width;
+    pageCanvas.height = sliceHeight;
+
+    const ctx = pageCanvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(
+        canvas,
+        0,
+        offsetY,
+        canvas.width,
+        sliceHeight,
+        0,
+        0,
+        canvas.width,
+        sliceHeight
+      );
+    }
+
+    const sliceImgData = pageCanvas.toDataURL('image/jpeg', 0.94);
+    const sliceImgHeightMm = (sliceHeight / canvas.width) * contentWidthMm;
+
+    if (pageIndex > 0) {
+      pdf.addPage('a4', landscape ? 'landscape' : 'portrait');
+    }
+    pdf.addImage(
+      sliceImgData,
+      'JPEG',
+      marginMm,
+      marginMm,
+      contentWidthMm,
+      sliceImgHeightMm,
+      undefined,
+      'FAST'
+    );
+
+    offsetY += sliceHeight;
+    pageIndex++;
+  }
+
+  return pdf.output('blob');
+}
+
+/**
+ * Generates a PDF file from the current visible document (excluding .print:hidden UI controls)
+ * using jsPDF + html2canvas and saves/shares it via saveFile(fileName, blob).
  */
 export async function printCurrentDocument(options?: {
   jobName?: string;
   landscape?: boolean;
 }): Promise<FileExportResult> {
   const platform = getRuntimePlatform();
-  const jobName = options?.jobName || 'BNFE Document';
+  const baseName = sanitizeExportFileName(options?.jobName || 'BNFE_Document');
+  const pdfFileName = baseName.toLowerCase().endsWith('.pdf') ? baseName : `${baseName}.pdf`;
 
   try {
-    if (isNativeAndroidApp()) {
-      const res = await FileDownload.printCurrentView({
-        jobName,
-        landscape: options?.landscape ?? false
-      });
-      return {
-        success: res.success,
-        fileName: res.jobName || jobName,
-        platform: 'android',
-        method: 'android_print_manager',
-        message: 'প্রিন্ট / PDF সংরক্ষণ ডায়ালগ খোলা হয়েছে।'
-      };
+    if (typeof document === 'undefined') {
+      throw new Error('পিডিএফ সেবা উপলব্ধ নয়।');
     }
 
-    if (typeof window !== 'undefined' && typeof window.print === 'function') {
-      window.print();
-      return {
-        success: true,
-        fileName: jobName,
-        platform: 'web',
-        method: 'web_window_print',
-        message: 'প্রিন্ট ডায়ালগ খোলা হয়েছে।'
-      };
-    }
+    const targetEl =
+      (document.querySelector('main') as HTMLElement | null) || document.body;
 
-    throw new Error('প্রিন্ট সেবা উপলব্ধ নয়।');
+    const pdfBlob = await renderElementToPdfBlob(targetEl, {
+      landscape: options?.landscape ?? false,
+      cloneLightMode: true
+    });
+
+    return await saveFileToDevice({
+      fileName: pdfFileName,
+      content: pdfBlob,
+      mimeType: 'application/pdf',
+      category: 'pdf',
+      title: options?.jobName || 'BNFE Document'
+    });
   } catch (err) {
     const errMsg = extractReadableError(err);
     console.error('[FileExportService] printCurrentDocument failed:', err);
     return {
       success: false,
-      fileName: jobName,
+      fileName: pdfFileName,
       platform,
-      method: 'print_error',
-      message: 'প্রিন্ট ডায়ালগ খোলা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      method: 'pdf_error',
+      message: 'পিডিএফ ফাইল তৈরি বা সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
       error: errMsg
     };
   }
 }
 
 /**
- * Prints custom HTML report content across Web (invisible iframe) and Android APK (native WebView PrintManager).
+ * Renders custom HTML report content into a PDF Blob via jsPDF and saves/shares via saveFile(fileName, blob).
  */
 export async function printCustomHtmlDocument(options: {
   html: string;
@@ -492,87 +408,53 @@ export async function printCustomHtmlDocument(options: {
   iframeId?: string;
 }): Promise<FileExportResult> {
   const platform = getRuntimePlatform();
-  const jobName = options.jobName || 'BNFE Report';
+  const baseName = sanitizeExportFileName(options.jobName || 'BNFE_Report');
+  const pdfFileName = baseName.toLowerCase().endsWith('.pdf') ? baseName : `${baseName}.pdf`;
+
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.top = '-99999px';
+  container.style.left = '-99999px';
+  container.style.width = options.landscape ? '1140px' : '820px';
+  container.style.backgroundColor = '#ffffff';
+  container.style.pointerEvents = 'none';
+  container.style.zIndex = '-999';
 
   try {
-    if (isNativeAndroidApp()) {
-      const cleanHtml = options.html.replace(/<script[\s\S]*?<\/script>/gi, '');
-      const res = await FileDownload.printHtml({
-        html: cleanHtml,
-        jobName,
-        landscape: options.landscape ?? true
-      });
-      return {
-        success: res.success,
-        fileName: res.jobName || jobName,
-        platform: 'android',
-        method: 'android_print_html',
-        message: 'প্রিন্ট ডায়ালগ খোলা হয়েছে।'
-      };
-    }
+    const cleanHtml = options.html.replace(/<script[\s\S]*?<\/script>/gi, '');
+    const parsed = new DOMParser().parseFromString(cleanHtml, 'text/html');
+    const styleTags = Array.from(parsed.querySelectorAll('style'))
+      .map((s) => s.outerHTML)
+      .join('\n');
+    container.innerHTML = `${styleTags}<div class="bnfe-custom-pdf-root">${parsed.body?.innerHTML || cleanHtml}</div>`;
+    document.body.appendChild(container);
 
-    const frameId = options.iframeId || 'bnfe-print-iframe';
-    let printFrame = document.getElementById(frameId) as HTMLIFrameElement | null;
-    if (!printFrame) {
-      printFrame = document.createElement('iframe');
-      printFrame.id = frameId;
-      printFrame.style.position = 'fixed';
-      printFrame.style.right = '0';
-      printFrame.style.bottom = '0';
-      printFrame.style.width = '0';
-      printFrame.style.height = '0';
-      printFrame.style.border = '0';
-      document.body.appendChild(printFrame);
-    }
-
-    const frameDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-    if (!frameDoc || !printFrame.contentWindow) {
-      throw new Error('প্রিন্ট ফ্রেম তৈরি করা যায়নি।');
-    }
-
-    const targetWin = printFrame.contentWindow;
-    const htmlWithoutAutoScript = options.html.replace(/<script[\s\S]*?<\/script>/gi, '');
-
-    await new Promise<void>((resolve) => {
-      let triggered = false;
-      const triggerPrint = () => {
-        if (triggered) return;
-        triggered = true;
-        setTimeout(() => {
-          try {
-            targetWin.focus();
-            targetWin.print();
-          } finally {
-            resolve();
-          }
-        }, 250);
-      };
-
-      printFrame!.onload = triggerPrint;
-      frameDoc.open();
-      frameDoc.write(htmlWithoutAutoScript);
-      frameDoc.close();
-      // Safety fallback in case onload doesn't fire synchronously for document.write
-      setTimeout(triggerPrint, 450);
+    const pdfBlob = await renderElementToPdfBlob(container, {
+      landscape: options.landscape ?? true,
+      cloneLightMode: false
     });
 
-    return {
-      success: true,
-      fileName: jobName,
-      platform: 'web',
-      method: 'web_iframe_print',
-      message: 'প্রিন্ট ডায়ালগ খোলা হয়েছে।'
-    };
+    return await saveFileToDevice({
+      fileName: pdfFileName,
+      content: pdfBlob,
+      mimeType: 'application/pdf',
+      category: 'pdf',
+      title: options.jobName || 'BNFE Report'
+    });
   } catch (err) {
     const errMsg = extractReadableError(err);
     console.error('[FileExportService] printCustomHtmlDocument failed:', err);
     return {
       success: false,
-      fileName: jobName,
+      fileName: pdfFileName,
       platform,
-      method: 'print_error',
-      message: 'প্রিন্ট ডায়ালগ খোলা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      method: 'pdf_error',
+      message: 'পিডিএফ ফাইল তৈরি বা সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
       error: errMsg
     };
+  } finally {
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
   }
 }
