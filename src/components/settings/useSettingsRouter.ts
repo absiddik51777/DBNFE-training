@@ -43,16 +43,20 @@ export function useSettingsRouter(
     ? 'access'
     : parseHashSection(location.hash);
 
-  // Guard admin-only #danger hash
+  // Guard admin-only #danger and #logs sections
   useEffect(() => {
-    if (rawSection === 'danger' && !isAdmin) {
-      onDenied?.('ডেঞ্জার জোন শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।');
+    if ((rawSection === 'danger' || rawSection === 'logs') && !isAdmin) {
+      onDenied?.(
+        rawSection === 'logs'
+          ? 'অডিট লগ শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।'
+          : 'ডেঞ্জার জোন শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।'
+      );
       navigate(isDesktopSplit ? '/settings#appearance' : '/settings', { replace: true });
     }
   }, [rawSection, isAdmin, isDesktopSplit, navigate, onDenied]);
 
   const effectiveSection: SettingsSectionId | null =
-    rawSection === 'danger' && !isAdmin
+    (rawSection === 'danger' || rawSection === 'logs') && !isAdmin
       ? isDesktopSplit
         ? 'appearance'
         : null
@@ -60,8 +64,12 @@ export function useSettingsRouter(
 
   const openSection = useCallback(
     (sectionId: SettingsSectionId) => {
-      if (sectionId === 'danger' && !isAdmin) {
-        onDenied?.('ডেঞ্জার জোন শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।');
+      if ((sectionId === 'danger' || sectionId === 'logs') && !isAdmin) {
+        onDenied?.(
+          sectionId === 'logs'
+            ? 'অডিট লগ শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।'
+            : 'ডেঞ্জার জোন শুধুমাত্র কোর্স পরিচালকের জন্য সংরক্ষিত।'
+        );
         return;
       }
       if (sectionId === 'logs') {

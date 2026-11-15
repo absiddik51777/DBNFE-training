@@ -16,6 +16,7 @@ import {
   getActionLocation,
   LOCATION_REQUIRED_BLOCK_MESSAGE,
 } from './location';
+import { resolveNotificationRouting } from './notificationRules';
 import type {
   ActivityLog,
   AuditAction,
@@ -24,6 +25,7 @@ import type {
   AuditLocationMode,
   AuditModule,
   AuditRelatedDoc,
+  NotificationPriority,
 } from '../types';
 
 export type {
@@ -547,7 +549,7 @@ export async function captureAuditLocationForAction(
   return sanitizeAuditValue(location);
 }
 
-function buildBaseLogPayload(params: {
+export function buildBaseLogPayload(params: {
   action: AuditAction;
   module: AuditModule;
   collection: string;
@@ -565,7 +567,29 @@ function buildBaseLogPayload(params: {
   refLogId?: string;
   location?: AuditLocation;
   details?: string;
+  notifyRoles?: string[];
+  notifyUserIds?: string[];
+  priority?: NotificationPriority;
+  targetOriginalActor?: { userId?: string | null; userRole?: string | null } | null;
+  isAttendanceSummary?: boolean;
+  isSecurityAlert?: boolean;
+  replacedBy?: string | null;
 }): Omit<ActivityLog, 'id'> {
+  const routing = resolveNotificationRouting({
+    action: params.action,
+    module: params.module,
+    collectionName: params.collection,
+    actorUserId: params.actor.userId,
+    actorRole: params.actor.userRole,
+    targetOriginalActor: params.targetOriginalActor,
+    isAttendanceSummary: params.isAttendanceSummary,
+    isSecurityAlert: params.isSecurityAlert,
+    title: params.title,
+    explicitNotifyRoles: params.notifyRoles,
+    explicitNotifyUserIds: params.notifyUserIds,
+    explicitPriority: params.priority,
+  });
+
   return sanitizeAuditValue({
     action: params.action,
     module: params.module,
@@ -589,6 +613,10 @@ function buildBaseLogPayload(params: {
       : {}),
     ...(params.refLogId ? { refLogId: params.refLogId } : {}),
     ...(params.location ? { location: params.location } : {}),
+    notifyRoles: routing.notifyRoles,
+    notifyUserIds: routing.notifyUserIds,
+    priority: routing.priority,
+    ...(params.replacedBy !== undefined ? { replacedBy: params.replacedBy } : {}),
     reverted: false,
     settled: false,
     settledBy: null,
@@ -1128,7 +1156,33 @@ export async function recordAuditedAttendanceBatch(params: {
   const leaveCount = records.filter((r) => r.status === 'Leave').length;
   const batchTitle = params.batchName || firstRec.batchId;
 
-  const logRef = doc(collection(db, 'activityLogs'));
+  const compactDate = firstRec.date.replace(/[^0-9]/g, '').slice(0, 8);
+  const detLogId = compactDate.length === 8 ? `att_${firstRec.batchId}_${compactDate}` : '';
+  const detRef = detLogId
+    ? doc(db, 'activityLogs', detLogId)
+    : doc(collection(db, 'activityLogs'));
+
+  let targetLogRef = detRef;
+  if (detLogId) {
+    try {
+      const detSnap = await getDoc(detRef);
+      if (detSnap.exists()) {
+        const detData = detSnap.data() as Record<string, unknown>;
+        const canUpdateInPlace =
+          detData.userId === actor.userId &&
+          detData.reverted !== true &&
+          detData.settled !== true;
+        if (!canUpdateInPlace) {
+          // Different author or finalized log: write a separate log entry without touching the original
+          targetLogRef = doc(collection(db, 'activityLogs'));
+        }
+      }
+    } catch {
+      // Non-admin trainer unable to read another author's att_ log falls back to a fresh log ID
+      targetLogRef = doc(collection(db, 'activityLogs'));
+    }
+  }
+
   const title = isPureCreate
     ? `দৈনিক হাজিরা সংরক্ষণ: ${batchTitle} (${firstRec.date})`
     : `দৈনিক হাজিরা হালনাগাদ: ${batchTitle} (${firstRec.date})`;
@@ -1143,28 +1197,28 @@ export async function recordAuditedAttendanceBatch(params: {
     actor,
     changes: changes.slice(0, 100),
     count: records.length,
-    snapshot: isPureCreate
-      ? {
-          batchId: firstRec.batchId,
-          batchName: batchTitle,
-          date: firstRec.date,
-          total: records.length,
-          presentCount,
-          absentCount,
-          leaveCount,
-        }
-      : null,
+    snapshot: {
+      batchId: firstRec.batchId,
+      batchName: batchTitle,
+      date: firstRec.date,
+      total: records.length,
+      presentCount,
+      absentCount,
+      leaveCount,
+      trainerName: actor.user,
+    },
     location,
-    details: `উপস্থিত: ${presentCount}, অনুপস্থিত: ${absentCount}, ছুটি: ${leaveCount}`,
+    details: `${batchTitle} · ${firstRec.date} · উপস্থিত ${presentCount}/${records.length} জন (অনুপস্থিত: ${absentCount}, ছুটি: ${leaveCount}) · ${actor.user}`,
+    isAttendanceSummary: true,
+    priority: 'normal',
   });
 
-  // Commit in chunks of MAX_BATCH_OPS; include audit log if any change or new record occurred
-  const shouldWriteLog = isPureCreate || changes.length > 0;
+  // Commit in chunks of MAX_BATCH_OPS; always maintain ONE summary entry for the batch & date
   for (let i = 0; i < records.length; i += MAX_BATCH_OPS - 1) {
     const chunk = records.slice(i, i + MAX_BATCH_OPS - 1);
     const batch = writeBatch(db);
-    if (i === 0 && shouldWriteLog) {
-      batch.set(logRef, logPayload);
+    if (i === 0) {
+      batch.set(targetLogRef, logPayload);
     }
     for (const rec of chunk) {
       batch.set(doc(db, 'attendance', rec.id), sanitizeAuditValue(rec), { merge: true });

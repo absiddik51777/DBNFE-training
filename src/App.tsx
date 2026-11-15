@@ -25,6 +25,8 @@ import RolesPage from './pages/Roles';
 import Settings from './pages/Settings';
 import ThemeSettings from './pages/ThemeSettings';
 import BrnVerification from './pages/BrnVerification';
+import NotificationsPage from './pages/NotificationsPage';
+import { NotificationsProvider } from './hooks/useNotifications';
 
 import { PendingApproval } from './pages/PendingApproval';
 
@@ -113,6 +115,28 @@ const PageGuard = ({ path, children }: { path: string; children: React.ReactNode
   return <>{children}</>;
 };
 
+const CourseDirectorRoute = ({ children }: { children: React.ReactNode }) => {
+  const { userProfile } = useAuth();
+  const { isCourseDirector, getDefaultLandingRoute, loading } = usePermissions();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
+        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
+        <span className="text-sm">যাচাই করা হচ্ছে...</span>
+      </div>
+    );
+  }
+
+  const isAdmin = userProfile?.role === 'Course Director' || isCourseDirector;
+  if (!isAdmin) {
+    const fallback = getDefaultLandingRoute('/settings/logs');
+    return <Navigate to={fallback || '/settings'} replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const CatchAllRedirect = () => {
   const { getDefaultLandingRoute } = usePermissions();
   const fallback = getDefaultLandingRoute('/');
@@ -144,8 +168,9 @@ const AppRoutes = () => {
         <Route path="roles" element={<RolesPage />} />
         <Route path="settings" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
         <Route path="settings/access" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
-        <Route path="settings/logs" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
+        <Route path="settings/logs" element={<CourseDirectorRoute><PageGuard path="/settings"><Settings /></PageGuard></CourseDirectorRoute>} />
         <Route path="settings/theme" element={<PageGuard path="/settings"><ThemeSettings /></PageGuard>} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="theme-settings" element={<Navigate to="/settings/theme" replace />} />
         <Route path="*" element={<CatchAllRedirect />} />
       </Route>
@@ -159,15 +184,17 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <PermissionsProvider>
-          <SystemSettingsProvider>
-            <ConfirmationProvider>
-              <BrowserRouter>
-                <AppRoutes />
-              </BrowserRouter>
-            </ConfirmationProvider>
-          </SystemSettingsProvider>
-        </PermissionsProvider>
+        <NotificationsProvider>
+          <PermissionsProvider>
+            <SystemSettingsProvider>
+              <ConfirmationProvider>
+                <BrowserRouter>
+                  <AppRoutes />
+                </BrowserRouter>
+              </ConfirmationProvider>
+            </SystemSettingsProvider>
+          </PermissionsProvider>
+        </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

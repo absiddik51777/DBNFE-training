@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Institute, Trade, Batch, Trainee, AttendanceRecord, AttendanceStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
@@ -48,6 +48,9 @@ interface TraineeAttendanceItem {
 const Attendance: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission } = usePermissions();
+  const [searchParams] = useSearchParams();
+  const paramBatchId = searchParams.get('batchId') || '';
+  const paramDate = searchParams.get('date') || '';
 
   const canTakeAttendance = hasPermission('take_attendance');
   const canEditAttendance = hasPermission('edit_attendance');
@@ -64,7 +67,9 @@ const Attendance: React.FC = () => {
   const [selectedInstitute, setSelectedInstitute] = useState('');
   const [selectedTrade, setSelectedTrade] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('');
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState(() =>
+    /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : format(new Date(), 'yyyy-MM-dd')
+  );
 
   // Pending selector change target (when unsaved changes prompt is shown)
   const [pendingChange, setPendingChange] = useState<{
@@ -184,6 +189,20 @@ const Attendance: React.FC = () => {
         targetTrade = trdData[0].id;
       }
 
+      // Honor URL ?batchId & ?date when navigable from notification links
+      if (paramBatchId) {
+        const requestedBatch = btcData.find((b) => b.id === paramBatchId);
+        if (requestedBatch && (userProfile?.role !== 'Trainer' || !userProfile.batchId || userProfile.batchId === requestedBatch.id)) {
+          targetBatch = requestedBatch.id;
+          targetInst = requestedBatch.instituteId || targetInst;
+          targetTrade = requestedBatch.tradeId || targetTrade;
+        }
+      }
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(paramDate)) {
+        setSelectedDate(paramDate);
+      }
+
       setSelectedInstitute(targetInst);
       setSelectedBatch(targetBatch);
       setSelectedTrade(targetTrade);
@@ -194,6 +213,33 @@ const Attendance: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Sync URL ?batchId & ?date if user navigates from another notification while already on /attendance
+  useEffect(() => {
+    if (batches.length === 0) return;
+    if (paramBatchId) {
+      const requestedBatch = batches.find((b) => b.id === paramBatchId);
+      if (
+        requestedBatch &&
+        (userProfile?.role !== 'Trainer' ||
+          !userProfile.batchId ||
+          userProfile.batchId === requestedBatch.id)
+      ) {
+        if (requestedBatch.instituteId && requestedBatch.instituteId !== selectedInstitute) {
+          setSelectedInstitute(requestedBatch.instituteId);
+        }
+        if (requestedBatch.tradeId && requestedBatch.tradeId !== selectedTrade) {
+          setSelectedTrade(requestedBatch.tradeId);
+        }
+        if (requestedBatch.id !== selectedBatch) {
+          setSelectedBatch(requestedBatch.id);
+        }
+      }
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(paramDate) && paramDate !== selectedDate) {
+      setSelectedDate(paramDate);
+    }
+  }, [paramBatchId, paramDate, batches, userProfile?.role, userProfile?.batchId]);
 
   // When batch or date changes, fetch trainees and attendance
   useEffect(() => {

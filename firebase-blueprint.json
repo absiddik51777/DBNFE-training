@@ -16,6 +16,8 @@
         "batchId": { "type": "string", "maxLength": 128 },
         "batchName": { "type": "string", "maxLength": 150 },
         "status": { "type": "string", "enum": ["Active", "Inactive", "Pending Approval"] },
+        "notificationsSeenAt": { "type": ["object", "null"], "description": "Firestore serverTimestamp of last seen notification" },
+        "notificationsClearedAt": { "type": ["object", "null"], "description": "Firestore serverTimestamp when user cleared notification feed" },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" }
       },
@@ -224,10 +226,14 @@
           },
           "required": ["status", "capturedAt", "source"]
         },
+        "notifyRoles": { "type": "array", "description": "Roles notified by this audit log entry" },
+        "notifyUserIds": { "type": "array", "description": "Specific user UIDs notified by this audit log entry" },
+        "priority": { "type": "string", "enum": ["normal", "warning", "urgent"] },
+        "replacedBy": { "type": ["string", "null"], "maxLength": 128 },
         "createdAt": { "type": "object", "description": "Firestore serverTimestamp" },
         "timestamp": { "type": "number" }
       },
-      "required": ["userId", "action", "module", "createdAt"]
+      "required": ["userId", "action", "module", "notifyRoles", "notifyUserIds", "priority", "createdAt"]
     },
     "SystemSettings": {
       "title": "SystemSettings",

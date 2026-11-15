@@ -41,6 +41,8 @@ export interface UserProfile {
   approvedAt?: number;
   approvedBy?: string;
   rejectionReason?: string;
+  notificationsSeenAt?: unknown;
+  notificationsClearedAt?: unknown;
   createdAt: number;
   updatedAt?: number;
 }
@@ -250,6 +252,8 @@ export interface AuditLocation {
 
 export type AuditLocationMode = 'off' | 'optional' | 'required';
 
+export type NotificationPriority = 'normal' | 'warning' | 'urgent';
+
 export interface ActivityLog {
   id: string;
   action: AuditAction | string;
@@ -278,6 +282,10 @@ export interface ActivityLog {
   settledAt?: unknown;
   settleNote?: string | null;
   location?: AuditLocation;
+  notifyRoles?: string[];
+  notifyUserIds?: string[];
+  priority?: NotificationPriority;
+  replacedBy?: string | null;
   createdAt?: unknown;
   // Legacy & runtime compatibility fields
   userName: string;

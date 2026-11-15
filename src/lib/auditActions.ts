@@ -13,12 +13,14 @@ import {
 import { db } from './firebase';
 import {
   AuditActor,
+  buildBaseLogPayload,
   captureAuditLocationForAction,
   getFieldLabelBn,
   loadLogSnapshotChunks,
   resolveAuditActor,
   sanitizeAuditValue,
 } from './auditLog';
+import type { AuditModule } from '../types';
 import { dataService } from './dataService';
 import type { ActivityLog, AuditRelatedDoc } from '../types';
 
@@ -166,43 +168,45 @@ export async function undoChange(
         }
       });
 
+      const origData = liveLogSnap.data() as Record<string, unknown>;
+      const origActorUserId = String(origData.userId || log.userId || '');
+      const origActorRole = String(origData.userRole || log.userRole || '');
+      const isCdRejectingFma =
+        actor.userRole === 'Course Director' && origActorRole === 'FMA' && Boolean(origActorUserId);
+      const baseTitle = String(origData.title || log.title || log.targetLabel || 'হাজিরা');
+
       tx.update(logRef, {
         reverted: true,
         revertedBy: actor.user,
         revertedAt: serverTimestamp(),
       });
 
-      tx.set(newUndoLogRef, {
-        action: 'undo',
-        module: log.module || 'attendance',
-        collection: 'attendance',
-        targetId: log.targetId,
-        targetLabel: log.targetLabel || log.targetId,
-        title: `পরিবর্তন ফেরত: ${log.targetLabel || log.title || 'হাজিরা'}`,
-        user: actor.user,
-        userId: actor.userId,
-        userRole: actor.userRole,
-        changes: log.changes!.map((c) => ({
-          field: c.field,
-          label: c.label,
-          before: c.after,
-          after: c.before,
-        })),
-        snapshot: null,
-        related: [],
-        refLogId: log.id,
-        ...(auditLocation ? { location: auditLocation } : {}),
-        reverted: false,
-        settled: false,
-        settledBy: null,
-        settledByName: null,
-        settledAt: null,
-        settleNote: null,
-        createdAt: serverTimestamp(),
-        userName: actor.user,
-        recordId: log.targetId,
-        details: `অডিট লগ ${log.id} এর পরিবর্তন পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
-      });
+      tx.set(
+        newUndoLogRef,
+        buildBaseLogPayload({
+          action: 'undo',
+          module: (log.module || 'attendance') as AuditModule,
+          collection: 'attendance',
+          targetId: String(log.targetId || origData.targetId || ''),
+          targetLabel: String(log.targetLabel || log.targetId || origData.targetId || ''),
+          title: isCdRejectingFma
+            ? `কোর্স পরিচালক আপনার কাজ প্রত্যাখ্যান করেছেন: ${baseTitle}`
+            : `পরিবর্তন ফেরত: ${log.targetLabel || log.title || 'হাজিরা'}`,
+          actor,
+          changes: log.changes!.map((c) => ({
+            field: c.field,
+            label: c.label,
+            before: c.after,
+            after: c.before,
+          })),
+          snapshot: null,
+          related: [],
+          refLogId: log.id,
+          location: auditLocation,
+          details: `অডিট লগ ${log.id} এর পরিবর্তন পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
+          targetOriginalActor: { userId: origActorUserId, userRole: origActorRole },
+        })
+      );
     });
 
     dataService.broadcastSync('attendance');
@@ -311,43 +315,45 @@ export async function undoChange(
         );
       });
 
+      const origData = liveLogSnap.data() as Record<string, unknown>;
+      const origActorUserId = String(origData.userId || log.userId || '');
+      const origActorRole = String(origData.userRole || log.userRole || '');
+      const isCdRejectingFma =
+        actor.userRole === 'Course Director' && origActorRole === 'FMA' && Boolean(origActorUserId);
+      const baseTitle = String(origData.title || log.title || log.targetLabel || 'পরীক্ষার নম্বর');
+
       tx.update(logRef, {
         reverted: true,
         revertedBy: actor.user,
         revertedAt: serverTimestamp(),
       });
 
-      tx.set(newUndoLogRef, {
-        action: 'undo',
-        module: log.module || 'exams',
-        collection: 'marks',
-        targetId: log.targetId,
-        targetLabel: log.targetLabel || log.targetId,
-        title: `পরিবর্তন ফেরত: ${log.targetLabel || log.title || 'পরীক্ষার নম্বর'}`,
-        user: actor.user,
-        userId: actor.userId,
-        userRole: actor.userRole,
-        changes: log.changes!.map((c) => ({
-          field: c.field,
-          label: c.label,
-          before: c.after,
-          after: c.before,
-        })),
-        snapshot: null,
-        related: [],
-        refLogId: log.id,
-        ...(auditLocation ? { location: auditLocation } : {}),
-        reverted: false,
-        settled: false,
-        settledBy: null,
-        settledByName: null,
-        settledAt: null,
-        settleNote: null,
-        createdAt: serverTimestamp(),
-        userName: actor.user,
-        recordId: log.targetId,
-        details: `অডিট লগ ${log.id} এর নম্বর পরিবর্তন পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
-      });
+      tx.set(
+        newUndoLogRef,
+        buildBaseLogPayload({
+          action: 'undo',
+          module: (log.module || 'exams') as AuditModule,
+          collection: 'marks',
+          targetId: String(log.targetId || origData.targetId || ''),
+          targetLabel: String(log.targetLabel || log.targetId || origData.targetId || ''),
+          title: isCdRejectingFma
+            ? `কোর্স পরিচালক আপনার কাজ প্রত্যাখ্যান করেছেন: ${baseTitle}`
+            : `পরিবর্তন ফেরত: ${log.targetLabel || log.title || 'পরীক্ষার নম্বর'}`,
+          actor,
+          changes: log.changes!.map((c) => ({
+            field: c.field,
+            label: c.label,
+            before: c.after,
+            after: c.before,
+          })),
+          snapshot: null,
+          related: [],
+          refLogId: log.id,
+          location: auditLocation,
+          details: `অডিট লগ ${log.id} এর নম্বর পরিবর্তন পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
+          targetOriginalActor: { userId: origActorUserId, userRole: origActorRole },
+        })
+      );
     });
 
     dataService.broadcastSync('marks');
@@ -410,43 +416,45 @@ export async function undoChange(
 
     tx.update(targetRef, revertPatch);
 
+    const origData = liveLogSnap.data() as Record<string, unknown>;
+    const origActorUserId = String(origData.userId || log.userId || '');
+    const origActorRole = String(origData.userRole || log.userRole || '');
+    const isCdRejectingFma =
+      actor.userRole === 'Course Director' && origActorRole === 'FMA' && Boolean(origActorUserId);
+    const baseTitle = String(origData.title || log.title || log.targetLabel || log.targetId);
+
     tx.update(logRef, {
       reverted: true,
       revertedBy: actor.user,
       revertedAt: serverTimestamp(),
     });
 
-    tx.set(newUndoLogRef, {
-      action: 'undo',
-      module: log.module || 'settings',
-      collection: log.collection,
-      targetId: log.targetId,
-      targetLabel: log.targetLabel || log.targetId,
-      title: `পরিবর্তন ফেরত: ${log.targetLabel || log.title || log.targetId}`,
-      user: actor.user,
-      userId: actor.userId,
-      userRole: actor.userRole,
-      changes: log.changes!.map((c) => ({
-        field: c.field,
-        label: c.label,
-        before: c.after,
-        after: c.before,
-      })),
-      snapshot: null,
-      related: [],
-      refLogId: log.id,
-      ...(auditLocation ? { location: auditLocation } : {}),
-      reverted: false,
-      settled: false,
-      settledBy: null,
-      settledByName: null,
-      settledAt: null,
-      settleNote: null,
-      createdAt: serverTimestamp(),
-      userName: actor.user,
-      recordId: log.targetId,
-      details: `অডিট লগ ${log.id} থেকে ${log.changes!.length} টি ক্ষেত্র পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
-    });
+    tx.set(
+      newUndoLogRef,
+      buildBaseLogPayload({
+        action: 'undo',
+        module: (log.module || 'settings') as AuditModule,
+        collection: log.collection!,
+        targetId: log.targetId!,
+        targetLabel: log.targetLabel || log.targetId!,
+        title: isCdRejectingFma
+          ? `কোর্স পরিচালক আপনার কাজ প্রত্যাখ্যান করেছেন: ${baseTitle}`
+          : `পরিবর্তন ফেরত: ${log.targetLabel || log.title || log.targetId}`,
+        actor,
+        changes: log.changes!.map((c) => ({
+          field: c.field,
+          label: c.label,
+          before: c.after,
+          after: c.before,
+        })),
+        snapshot: null,
+        related: [],
+        refLogId: log.id,
+        location: auditLocation,
+        details: `অডিট লগ ${log.id} থেকে ${log.changes!.length} টি ক্ষেত্র পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
+        targetOriginalActor: { userId: origActorUserId, userRole: origActorRole },
+      })
+    );
   });
 
   dataService.broadcastSync(log.collection);
@@ -567,38 +575,36 @@ export async function restoreRecord(
 
   const touchedCollections = new Set<string>();
   const restoreLogRef = doc(collection(db, 'activityLogs'));
+  const origData = liveLogSnap.data() as Record<string, unknown>;
+  const origActorUserId = String(origData.userId || log.userId || '');
+  const origActorRole = String(origData.userRole || log.userRole || '');
+  const isCdRejectingFma =
+    actor.userRole === 'Course Director' && origActorRole === 'FMA' && Boolean(origActorUserId);
+  const baseTitle = String(origData.title || log.title || log.targetLabel || 'মুছে ফেলা রেকর্ড');
 
-  const restoreLogPayload = {
+  const restoreLogPayload = buildBaseLogPayload({
     action: 'restore',
-    module: log.module || 'settings',
+    module: (log.module || 'settings') as AuditModule,
     collection: log.collection || log.module || 'system',
     targetId: log.targetId || 'bulk',
     targetLabel: log.targetLabel || log.title || 'পুনরুদ্ধার',
-    title: `পুনরুদ্ধার: ${log.targetLabel || log.title || 'মুছে ফেলা রেকর্ড'}`,
-    user: actor.user,
-    userId: actor.userId,
-    userRole: actor.userRole,
+    title: isCdRejectingFma
+      ? `কোর্স পরিচালক আপনার কাজ প্রত্যাখ্যান করেছেন: ${baseTitle}`
+      : `পুনরুদ্ধার: ${log.targetLabel || log.title || 'মুছে ফেলা রেকর্ড'}`,
+    actor,
     changes: [],
     snapshot: null,
     related: [],
     count: toCreate.length,
     targetNames: log.targetNames?.slice(0, 50) || [],
     refLogId: log.id,
-    ...(auditLocation ? { location: auditLocation } : {}),
-    reverted: false,
-    settled: false,
-    settledBy: null,
-    settledByName: null,
-    settledAt: null,
-    settleNote: null,
-    createdAt: serverTimestamp(),
-    userName: actor.user,
-    recordId: log.targetId || 'bulk',
+    location: auditLocation,
     details:
       skippedCount > 0
         ? `${toCreate.length} টি রেকর্ড পুনরুদ্ধার করা হয়েছে এবং ${skippedCount} টি বিদ্যমান রেকর্ড স্কিপ করা হয়েছে`
         : `${toCreate.length} টি রেকর্ড পুনরুদ্ধার করা হয়েছে`,
-  };
+    targetOriginalActor: { userId: origActorUserId, userRole: origActorRole },
+  });
 
   if (toCreate.length === 0) {
     const batch = writeBatch(db);
@@ -698,8 +704,13 @@ export async function settleEntry(
 
     const targetId = String(orig.targetId || orig.recordId || cleanLogId);
     const targetLabel = String(orig.targetLabel || orig.title || origAction || cleanLogId);
-    const moduleName = String(orig.module || 'settings');
+    const moduleName = (String(orig.module || 'settings') || 'settings') as AuditModule;
     const collectionName = String(orig.collection || moduleName || 'settings');
+    const origActorUserId = String(orig.userId || '');
+    const origActorRole = String(orig.userRole || '');
+    const isCdSettlingFma =
+      actor.userRole === 'Course Director' && origActorRole === 'FMA' && Boolean(origActorUserId);
+    const baseTitle = String(orig.title || targetLabel);
 
     tx.update(logRef, {
       settled: true,
@@ -709,31 +720,26 @@ export async function settleEntry(
       settleNote: cleanNote,
     });
 
-    tx.set(newSettleLogRef, {
-      action: 'settle',
-      module: moduleName,
-      collection: collectionName,
-      targetId,
-      targetLabel,
-      title: `নিষ্পন্ন: ${orig.title || targetLabel}`,
-      user: actor.user,
-      userId: actor.userId,
-      userRole: actor.userRole,
-      changes: [],
-      snapshot: null,
-      related: [],
-      refLogId: cleanLogId,
-      ...(auditLocation ? { location: auditLocation } : {}),
-      reverted: false,
-      settled: false,
-      settledBy: null,
-      settledByName: null,
-      settledAt: null,
-      settleNote: null,
-      createdAt: serverTimestamp(),
-      userName: actor.user,
-      recordId: targetId,
-      details: cleanNote || `অডিট লগ ${cleanLogId} স্থায়ীভাবে নিষ্পন্ন করা হয়েছে`,
-    });
+    tx.set(
+      newSettleLogRef,
+      buildBaseLogPayload({
+        action: 'settle',
+        module: moduleName,
+        collection: collectionName,
+        targetId,
+        targetLabel,
+        title: isCdSettlingFma
+          ? `আপনার কাজ নিষ্পন্ন (চূড়ান্ত) করা হয়েছে: ${baseTitle}`
+          : `নিষ্পন্ন: ${orig.title || targetLabel}`,
+        actor,
+        changes: [],
+        snapshot: null,
+        related: [],
+        refLogId: cleanLogId,
+        location: auditLocation,
+        details: cleanNote || `অডিট লগ ${cleanLogId} স্থায়ীভাবে নিষ্পন্ন করা হয়েছে`,
+        targetOriginalActor: { userId: origActorUserId, userRole: origActorRole },
+      })
+    );
   });
 }

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -29,16 +29,47 @@ import { usePermissions } from '../contexts/PermissionsContext';
 import { SHOW_CALENDAR_MODULES } from '../config/features';
 import { MobileBottomNav } from './navigation/MobileBottomNav';
 import { MobileMoreMenu } from './navigation/MobileMoreMenu';
+import { NotificationBell } from './notifications/NotificationBell';
+import { NotificationDropdown } from './notifications/NotificationDropdown';
+import {
+  NotificationBanner,
+  UrgentNotificationModal,
+} from './notifications/NotificationBanner';
+import { extractAttendanceNavigationTarget } from './notifications/notificationHelpers';
+import { AuditDetailSheet } from './audit/AuditDetailSheet';
+import { useNotifications } from '../hooks/useNotifications';
+import type { ActivityLog } from '../types';
 
 const Layout: React.FC = () => {
   const { userProfile, signOut, permissionError } = useAuth();
   const { canViewPage, isCourseDirector } = usePermissions();
   const { resolvedMode, setMode } = useTheme();
+  const { refreshNotifications } = useNotifications();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [dismissPermNotice, setDismissPermNotice] = useState(false);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [selectedNotifLog, setSelectedNotifLog] = useState<ActivityLog | null>(null);
+  const bellButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const isTrainer = userProfile?.role === 'Trainer';
+
+  const handleSelectNotification = useCallback(
+    (log: ActivityLog) => {
+      const attTarget = extractAttendanceNavigationTarget(log);
+      if (attTarget) {
+        navigate(
+          `/attendance?batchId=${encodeURIComponent(attTarget.batchId)}&date=${encodeURIComponent(
+            attTarget.date
+          )}`
+        );
+        return;
+      }
+      setSelectedNotifLog(log);
+    },
+    [navigate]
+  );
 
   const baseMenuItems = useMemo(() => {
     const items = [];
@@ -282,7 +313,7 @@ const Layout: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
             {getRoleBadge(userProfile?.role)}
             <div className="h-4 w-px bg-theme-border mx-1 hidden sm:block" />
             <div className="text-right hidden sm:block">
@@ -294,12 +325,18 @@ const Layout: React.FC = () => {
               </span>
             </div>
 
+            <NotificationBell
+              isOpen={notifDropdownOpen}
+              onToggle={() => setNotifDropdownOpen((prev) => !prev)}
+              buttonRef={bellButtonRef}
+            />
+
             <button
               type="button"
               onClick={toggleQuickMode}
               title={resolvedMode === 'dark' ? 'লাইট মোডে যান (Light Mode)' : 'ডার্ক মোডে যান (Dark Mode)'}
               aria-label={resolvedMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              className="p-2 text-theme-text-secondary hover:text-theme-primary hover:bg-theme-surface-hover rounded-xl border border-transparent hover:border-theme-border transition active:scale-95 cursor-pointer"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-theme-text-secondary hover:text-theme-primary hover:bg-theme-surface-hover rounded-xl border border-transparent hover:border-theme-border transition active:scale-95 cursor-pointer"
             >
               {resolvedMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -309,12 +346,15 @@ const Layout: React.FC = () => {
               onClick={() => signOut()}
               title="লগআউট"
               aria-label="লগআউট"
-              className="p-2 text-theme-text-secondary hover:text-theme-danger hover:bg-theme-danger-soft rounded-xl transition active:scale-95 cursor-pointer"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-theme-text-secondary hover:text-theme-danger hover:bg-theme-danger-soft rounded-xl transition active:scale-95 cursor-pointer"
             >
               <LogOut size={18} />
             </button>
           </div>
         </header>
+
+        {/* Once-per-open Notification Banner */}
+        <NotificationBanner onOpenNotifications={() => setNotifDropdownOpen(true)} />
 
         {/* Page Container */}
         <main
@@ -357,6 +397,37 @@ const Layout: React.FC = () => {
       <MobileMoreMenu
         isOpen={mobileMoreOpen}
         onClose={() => setMobileMoreOpen(false)}
+      />
+
+      {/* Notification Dropdown & Urgent Security Modal */}
+      <NotificationDropdown
+        isOpen={notifDropdownOpen}
+        onClose={() => setNotifDropdownOpen(false)}
+        onSelectNotification={handleSelectNotification}
+        triggerRef={bellButtonRef}
+      />
+
+      <UrgentNotificationModal onViewDetails={handleSelectNotification} />
+
+      {/* Read-only (or Admin) Detail Sheet triggered from Notification Dropdown/Modal */}
+      <AuditDetailSheet
+        log={selectedNotifLog}
+        isAdmin={userProfile?.role === 'Course Director' || isCourseDirector}
+        actor={
+          userProfile
+            ? {
+                userId: userProfile.id || '',
+                user: userProfile.name || 'User',
+                userRole: userProfile.role || '',
+              }
+            : undefined
+        }
+        onClose={() => setSelectedNotifLog(null)}
+        onActionSuccess={async () => {
+          setSelectedNotifLog(null);
+          await refreshNotifications();
+        }}
+        onNavigateToData={() => navigate('/settings#data')}
       />
     </div>
   );

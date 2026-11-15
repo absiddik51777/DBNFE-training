@@ -139,10 +139,12 @@ const Dashboard: React.FC = () => {
       setLastSyncTime(new Date());
     });
 
-    const unsubActivities = dataService.subscribeCollection<ActivityLog>('activityLogs', (logs) => {
-      setRecentActivities(logs.slice(0, 8));
-      setLastSyncTime(new Date());
-    });
+    const unsubActivities = isCourseDirector
+      ? dataService.subscribeCollection<ActivityLog>('activityLogs', (logs) => {
+          setRecentActivities(logs.slice(0, 8));
+          setLastSyncTime(new Date());
+        })
+      : () => {};
 
     return () => {
       unsubAttendance();
@@ -151,7 +153,7 @@ const Dashboard: React.FC = () => {
       unsubMarks();
       unsubActivities();
     };
-  }, [userProfile?.id]);
+  }, [userProfile?.id, isCourseDirector]);
 
   const fetchDashboardData = async (forceFresh: boolean = false) => {
     setLoading(true);
@@ -173,7 +175,9 @@ const Dashboard: React.FC = () => {
         dataService.getItems<AttendanceRecord>('attendance', forceFresh),
         dataService.getItems<Exam>('exams', forceFresh),
         dataService.getItems<ExamMark>('marks', forceFresh),
-        dataService.getItems<ActivityLog>('activityLogs', forceFresh)
+        isCourseDirector
+          ? dataService.getItems<ActivityLog>('activityLogs', forceFresh)
+          : Promise.resolve([] as ActivityLog[])
       ]);
 
       setInstitutes(institutesList);

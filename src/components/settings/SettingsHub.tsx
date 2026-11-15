@@ -219,14 +219,16 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
             isSelected={isRowSelected('data')}
             onSelect={onSelectSection}
           />
-          <HubRow
-            id="logs"
-            icon={<Clock size={17} />}
-            title="অডিট লগ"
-            status={`সর্বশেষ: ${latestLogTimeText}`}
-            isSelected={isRowSelected('logs')}
-            onSelect={onSelectSection}
-          />
+          {isAdmin && (
+            <HubRow
+              id="logs"
+              icon={<Clock size={17} />}
+              title="অডিট লগ"
+              status={`সর্বশেষ: ${latestLogTimeText}`}
+              isSelected={isRowSelected('logs')}
+              onSelect={onSelectSection}
+            />
+          )}
         </div>
       </section>
 
