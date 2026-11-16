@@ -46,13 +46,19 @@ const SUPER_ADMIN_EMAILS = [
   'absiddik5177@gmail.com',
 ];
 
+// Matches optional requireVerifiedEmail() switch in firestore.rules (OFF by default).
+const REQUIRE_VERIFIED_EMAIL = false;
+
+const SERVER_PROFILE_TIMEOUT_MS = 8000;
+
 export const isSuperAdminEmail = (email?: string | null): boolean => {
   if (!email) return false;
   return SUPER_ADMIN_EMAILS.includes(email.trim().toLowerCase());
 };
 
 export const isVerifiedSuperAdmin = (u?: User | null): boolean => {
-  return Boolean(u?.emailVerified && isSuperAdminEmail(u?.email));
+  if (!u) return false;
+  return isSuperAdminEmail(u.email) && (!REQUIRE_VERIFIED_EMAIL || Boolean(u.emailVerified));
 };
 
 export interface SessionToastData {
@@ -65,6 +71,8 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  profileLoadError: string | null;
+  retryProfileLoad: () => Promise<void>;
   signIn: (emailOrPhone: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   quickLoginAsRole: (
@@ -97,6 +105,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
+  profileLoadError: null,
+  retryProfileLoad: async () => {},
   signIn: async () => {},
   signInWithGoogle: async () => {},
   quickLoginAsRole: async () => {},
@@ -118,11 +128,14 @@ const MSG_INACTIVE_FORCED_LOGOUT =
   'আপনার অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে। প্রশাসকের সাথে যোগাযোগ করুন।';
 const MSG_ACCOUNT_NOT_FOUND = 'অ্যাকাউন্টটি পাওয়া যায়নি';
 const MSG_NO_ACTION_PERMISSION = 'আপনার এই কাজের অনুমতি নেই';
+const MSG_SERVER_PROFILE_TIMEOUT =
+  'সার্ভার থেকে প্রোফাইল যাচাই করা যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন।';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [permissionError, setPermissionError] = useState(false);
   const [sessionToast, setSessionToast] = useState<SessionToastData | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
@@ -130,13 +143,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isRegisteringRef = useRef(false);
   const isAuthTransitionRef = useRef(false);
   const isForcingLogoutRef = useRef(false);
-  const sessionEstablishedRef = useRef(false);
+  // Tracks whether users/{uid} existed at any point in the current session (never from cache)
+  const hadProfileRef = useRef(false);
+  // Global permission-denied handler stays gated until profile has loaded at least once
+  const profileLoadedOnceRef = useRef(false);
+  const activeUidRef = useRef<string | null>(null);
   const bootstrappingUidRef = useRef<string | null>(null);
   const prevRoleRef = useRef<string | null>(null);
   const userDocUnsubRef = useRef<(() => void) | null>(null);
   const activeListenerUidRef = useRef<string | null>(null);
-  const serverVerifyPromiseRef = useRef<Promise<'active' | 'pending' | 'logged_out' | 'skipped'> | null>(null);
+  const serverVerifyPromiseRef = useRef<
+    Promise<'active' | 'pending' | 'logged_out' | 'skipped'> | null
+  >(null);
   const toastTimerRef = useRef<number | null>(null);
+  const profileTimeoutRef = useRef<number | null>(null);
+
+  const clearProfileTimeout = useCallback(() => {
+    if (profileTimeoutRef.current !== null) {
+      window.clearTimeout(profileTimeoutRef.current);
+      profileTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startProfileTimeout = useCallback(
+    (uid: string) => {
+      clearProfileTimeout();
+      if (profileLoadedOnceRef.current) return;
+      profileTimeoutRef.current = window.setTimeout(() => {
+        profileTimeoutRef.current = null;
+        if (
+          auth.currentUser?.uid === uid &&
+          !profileLoadedOnceRef.current &&
+          !isForcingLogoutRef.current
+        ) {
+          setProfileLoadError(MSG_SERVER_PROFILE_TIMEOUT);
+          setLoading(false);
+        }
+      }, SERVER_PROFILE_TIMEOUT_MS);
+    },
+    [clearProfileTimeout]
+  );
 
   const dismissSessionToast = useCallback(() => {
     if (toastTimerRef.current !== null) {
@@ -169,8 +215,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (toastTimerRef.current !== null) {
         window.clearTimeout(toastTimerRef.current);
       }
+      clearProfileTimeout();
     };
-  }, []);
+  }, [clearProfileTimeout]);
 
   const detachUserDocListener = useCallback(() => {
     if (userDocUnsubRef.current) {
@@ -184,6 +231,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeListenerUidRef.current = null;
   }, []);
 
+  const resetSessionRefs = useCallback(() => {
+    clearProfileTimeout();
+    prevRoleRef.current = null;
+    hadProfileRef.current = false;
+    profileLoadedOnceRef.current = false;
+    activeUidRef.current = null;
+    bootstrappingUidRef.current = null;
+  }, [clearProfileTimeout]);
+
   const forceLogout = useCallback(
     async (noticeMessage: string) => {
       if (isForcingLogoutRef.current) return;
@@ -193,10 +249,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubscribeAllListeners();
         clearSessionAppCache();
         setLiveAuditActor(null);
-        prevRoleRef.current = null;
-        sessionEstablishedRef.current = false;
-        bootstrappingUidRef.current = null;
+        resetSessionRefs();
         setPermissionError(false);
+        setProfileLoadError(null);
         setSessionNotice(noticeMessage);
         setUser(null);
         setUserProfile(null);
@@ -210,12 +265,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isForcingLogoutRef.current = false;
       }
     },
-    [detachUserDocListener]
+    [detachUserDocListener, resetSessionRefs]
   );
 
   /**
    * Bootstraps a first-time authenticated user when users/{uid} does not exist yet
-   * (either adopting a pre-created email placeholder or creating a Pending / Verified Super Admin doc).
+   * (either adopting a pre-created email placeholder or creating a Pending / Super Admin doc).
+   * Never queries Active-only collections (like settings) before users/{uid} exists.
    */
   const bootstrapInitialUserProfile = useCallback(
     async (currentUser: User): Promise<UserProfile | null> => {
@@ -223,10 +279,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cleanEmail = currentUser.email?.trim().toLowerCase() || '';
       const isSuper = isVerifiedSuperAdmin(currentUser);
 
+      let preExistingPlaceholder: UserProfile | null = null;
+      let matchingDocId: string | null = null;
+
       // 1. Check if Course Director pre-created an account with this email under a placeholder ID
       if (cleanEmail) {
         try {
-          const emailQuery = query(collection(db, 'users'), where('email', '==', cleanEmail));
+          const emailQuery = query(
+            collection(db, 'users'),
+            where('email', '==', cleanEmail)
+          );
           const querySnap = await getDocs(emailQuery);
           const matchingDoc = querySnap.docs.find((d) => d.id !== uid);
 
@@ -238,40 +300,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               throw new Error(MSG_INACTIVE_FORCED_LOGOUT);
             }
 
-            const preExisting = { id: matchingDoc.id, ...raw } as UserProfile;
-            const adoptedProfile: UserProfile = {
-              ...preExisting,
-              id: uid,
-              name: preExisting.name || currentUser.displayName || 'ব্যবহারকারী',
-              email: cleanEmail,
-              phone: preExisting.phone || currentUser.phoneNumber || '',
-              status: preStatus as 'Active' | 'Pending Approval',
-              updatedAt: Date.now(),
-            };
+            matchingDocId = matchingDoc.id;
+            preExistingPlaceholder = { id: matchingDoc.id, ...raw } as UserProfile;
 
-            await setDoc(doc(db, 'users', uid), adoptedProfile);
-            try {
-              await deleteDoc(doc(db, 'users', matchingDoc.id));
-            } catch (delErr) {
-              console.warn('Could not remove old placeholder doc:', delErr);
+            // Rules allow direct adoption if super admin or if placeholder is Pending/Pending Approval
+            if (
+              isSuper ||
+              (preExistingPlaceholder.role === 'Pending' &&
+                preStatus === 'Pending Approval')
+            ) {
+              const adoptedProfile: UserProfile = {
+                ...preExistingPlaceholder,
+                id: uid,
+                name:
+                  preExistingPlaceholder.name ||
+                  currentUser.displayName ||
+                  'ব্যবহারকারী',
+                email: cleanEmail,
+                phone: preExistingPlaceholder.phone || currentUser.phoneNumber || '',
+                role: isSuper ? 'Course Director' : preExistingPlaceholder.role,
+                status: isSuper
+                  ? 'Active'
+                  : (preStatus as 'Active' | 'Pending Approval'),
+                updatedAt: Date.now(),
+              };
+
+              await setDoc(doc(db, 'users', uid), adoptedProfile);
+              if (matchingDocId) {
+                try {
+                  await deleteDoc(doc(db, 'users', matchingDocId));
+                } catch (delErr) {
+                  console.warn('Could not remove old placeholder doc:', delErr);
+                }
+              }
+
+              recordSimpleAuditLog({
+                action: 'update',
+                module: 'security',
+                collectionName: 'users',
+                targetId: uid,
+                targetLabel: adoptedProfile.name || cleanEmail,
+                title: `প্রাক-নিবন্ধিত অ্যাকাউন্ট সংযুক্ত: ${adoptedProfile.name || cleanEmail}`,
+                actor: {
+                  userId: uid,
+                  user: adoptedProfile.name || cleanEmail,
+                  userRole: adoptedProfile.role || '',
+                },
+              }).catch(() => {});
+
+              dataService.broadcastSync('users');
+              return adoptedProfile;
             }
-
-            recordSimpleAuditLog({
-              action: 'update',
-              module: 'security',
-              collectionName: 'users',
-              targetId: uid,
-              targetLabel: adoptedProfile.name || cleanEmail,
-              title: `প্রাক-নিবন্ধিত অ্যাকাউন্ট সংযুক্ত: ${adoptedProfile.name || cleanEmail}`,
-              actor: {
-                userId: uid,
-                user: adoptedProfile.name || cleanEmail,
-                userRole: adoptedProfile.role || '',
-              },
-            }).catch(() => {});
-
-            dataService.broadcastSync('users');
-            return adoptedProfile;
           }
         } catch (findErr: any) {
           if (findErr?.message === MSG_INACTIVE_FORCED_LOGOUT) {
@@ -281,23 +360,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 2. Check if Course Director permits new public self-registrations
-      try {
-        const settings = await dataService.getSystemSettings();
-        if (settings.allowPublicRegistration === false && !isSuper) {
-          const closedReason =
-            settings.registrationClosedReason ||
-            'কোর্স পরিচালক কর্তৃক নতুন উন্মুক্ত নিবন্ধন বর্তমানে বন্ধ রাখা হয়েছে। আপনার অনুমোদিত অ্যাকাউন্ট থাকলে পরিচালকের সাথে যোগাযোগ করুন।';
-          await forceLogout(closedReason);
-          throw new Error(closedReason);
-        }
-      } catch (settingsErr: any) {
-        if (settingsErr?.message && settingsErr.message.includes('বন্ধ')) {
-          throw settingsErr;
-        }
-      }
-
-      // 3. Verified super admin receives Course Director; all others receive Pending role & Pending Approval
+      // 2. Super admin receives Course Director + Active; all others receive Pending + Pending Approval
       const defaultRole: UserRole = isSuper ? 'Course Director' : 'Pending';
       const defaultStatus: 'Active' | 'Pending Approval' = isSuper
         ? 'Active'
@@ -306,11 +369,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const initialProfile: UserProfile = {
         id: uid,
         name:
+          preExistingPlaceholder?.name ||
           currentUser.displayName ||
           (cleanEmail ? cleanEmail.split('@')[0] : 'কর্মকর্তা'),
         email: cleanEmail,
-        phone: currentUser.phoneNumber || '',
+        phone: preExistingPlaceholder?.phone || currentUser.phoneNumber || '',
         role: defaultRole,
+        ...(preExistingPlaceholder?.instituteId
+          ? { instituteId: preExistingPlaceholder.instituteId }
+          : {}),
+        ...(preExistingPlaceholder?.batchId
+          ? { batchId: preExistingPlaceholder.batchId }
+          : {}),
         status: defaultStatus,
         createdAt: Date.now(),
       };
@@ -337,8 +407,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   /**
-   * Evaluates a Firestore snapshot of users/{uid} (strictly server-confirmed or pending local write).
-   * Enforces live status revocation, Pending Approval transition, and live role-change toast.
+   * Evaluates a Firestore snapshot of users/{uid} (strictly server-confirmed or local bootstrap write).
+   * Enforces live status revocation, Pending Approval transition, missing-doc safety, and live role-change toast.
    */
   const evaluateUserSnapshot = useCallback(
     async (
@@ -348,33 +418,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ): Promise<'active' | 'pending' | 'logged_out' | 'skipped'> => {
       if (isForcingLogoutRef.current) return 'logged_out';
 
-      // Ignore stale local cache snapshots until server confirms
+      // Ignore local cache snapshots until server confirms; NEVER grant access from cache.
       if (source === 'snapshot' && snap.metadata.fromCache && !snap.metadata.hasPendingWrites) {
         return 'skipped';
       }
 
+      clearProfileTimeout();
+      setProfileLoadError(null);
+
       if (!snap.exists()) {
-        if (isRegisteringRef.current || isAuthTransitionRef.current) {
+        // Never log out a user while registration, auth sign-in snapshot transition, or bootstrap is running
+        if (
+          isRegisteringRef.current ||
+          (source === 'snapshot' && isAuthTransitionRef.current) ||
+          bootstrappingUidRef.current === currentUser.uid
+        ) {
           return 'skipped';
         }
-        // If doc previously existed in this session and was deleted by an admin -> force logout
-        if (sessionEstablishedRef.current) {
+
+        // Force logout for missing doc ONLY if it existed earlier in this same session
+        if (hadProfileRef.current) {
           await forceLogout(MSG_ACCOUNT_NOT_FOUND);
           return 'logged_out';
         }
-        // First-time sign-in bootstrap
-        if (bootstrappingUidRef.current === currentUser.uid) {
-          return 'skipped';
-        }
+
+        // First-time user or bootstrapped super admin: keep loading and bootstrap profile
         bootstrappingUidRef.current = currentUser.uid;
         try {
           const bootstrapped = await bootstrapInitialUserProfile(currentUser);
           if (!bootstrapped) {
-            await forceLogout(MSG_ACCOUNT_NOT_FOUND);
-            return 'logged_out';
+            setProfileLoadError(MSG_SERVER_PROFILE_TIMEOUT);
+            setLoading(false);
+            return 'skipped';
           }
-          sessionEstablishedRef.current = true;
+
+          hadProfileRef.current = true;
+          profileLoadedOnceRef.current = true;
           prevRoleRef.current = bootstrapped.role;
+          setPermissionError(false);
+
           if (bootstrapped.status === 'Pending Approval' || bootstrapped.role === 'Pending') {
             unsubscribeAllListeners();
             setLiveAuditActor(null);
@@ -382,6 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
             return 'pending';
           }
+
           setLiveAuditActor({
             userId: bootstrapped.id,
             user: bootstrapped.name,
@@ -390,23 +473,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProfile(bootstrapped);
           setLoading(false);
           return 'active';
-        } catch (err) {
+        } catch (err: any) {
           console.warn('Initial user profile bootstrap failed:', err);
-          if (!isForcingLogoutRef.current) {
-            await forceLogout(MSG_ACCOUNT_NOT_FOUND);
+          if (isForcingLogoutRef.current || err?.message === MSG_INACTIVE_FORCED_LOGOUT) {
+            return 'logged_out';
           }
-          return 'logged_out';
+          if (isPermissionDeniedError(err)) {
+            await forceLogout(MSG_INACTIVE_FORCED_LOGOUT);
+            return 'logged_out';
+          }
+          setProfileLoadError(MSG_SERVER_PROFILE_TIMEOUT);
+          setLoading(false);
+          return 'skipped';
         } finally {
-          bootstrappingUidRef.current = null;
+          if (bootstrappingUidRef.current === currentUser.uid) {
+            bootstrappingUidRef.current = null;
+          }
         }
       }
+
+      // Server-confirmed profile exists
+      hadProfileRef.current = true;
+      profileLoadedOnceRef.current = true;
 
       const rawData = snap.data() as Record<string, any>;
       const isSuper = isVerifiedSuperAdmin(currentUser);
       let rawStatus = String(rawData.status || '').trim();
       let rawRole = String(rawData.role || 'Pending').trim() as UserRole;
 
-      // Only verified super-admin email retains guaranteed Course Director + Active recovery
+      // Super-admin bootstrap emails retain Course Director + Active recovery
       if (isSuper && (rawRole !== 'Course Director' || rawStatus !== 'Active')) {
         rawRole = 'Course Director';
         rawStatus = 'Active';
@@ -433,10 +528,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: rawStatus as 'Active' | 'Pending Approval',
       };
 
-      // Pending Approval or Pending role -> cancel all data listeners & show Pending screen without logging out
+      // Pending Approval or Pending role -> cancel all Active data listeners & show Pending screen
       if (liveProfile.status === 'Pending Approval' || liveProfile.role === 'Pending') {
         unsubscribeAllListeners();
-        sessionEstablishedRef.current = true;
         prevRoleRef.current = liveProfile.role;
         setLiveAuditActor(null);
         setPermissionError(false);
@@ -456,7 +550,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       prevRoleRef.current = liveProfile.role;
-      sessionEstablishedRef.current = true;
       setPermissionError(false);
       setLiveAuditActor({
         userId: liveProfile.id,
@@ -468,7 +561,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return 'active';
     },
-    [bootstrapInitialUserProfile, forceLogout, showSessionToast]
+    [bootstrapInitialUserProfile, clearProfileTimeout, forceLogout, showSessionToast]
   );
 
   /**
@@ -482,6 +575,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       detachUserDocListener();
       activeListenerUidRef.current = currentUser.uid;
+      if (!profileLoadedOnceRef.current) {
+        startProfileTimeout(currentUser.uid);
+      }
       const docRef = doc(db, 'users', currentUser.uid);
 
       userDocUnsubRef.current = onSnapshot(
@@ -492,28 +588,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         (err) => {
           console.warn('Live user session snapshot error:', err);
+          clearProfileTimeout();
           if (isPermissionDeniedError(err)) {
             setPermissionError(true);
             void forceLogout(MSG_INACTIVE_FORCED_LOGOUT);
           } else {
+            if (!profileLoadedOnceRef.current) {
+              setProfileLoadError(MSG_SERVER_PROFILE_TIMEOUT);
+            }
             setLoading(false);
           }
         }
       );
     },
-    [detachUserDocListener, evaluateUserSnapshot, forceLogout]
+    [
+      clearProfileTimeout,
+      detachUserDocListener,
+      evaluateUserSnapshot,
+      forceLogout,
+      startProfileTimeout,
+    ]
   );
 
   /**
    * Single-flight live server verification via getDocFromServer(doc(db, 'users', uid)).
-   * Called on: permission-denied errors, app resume (visibilitychange/online), and manual refreshProfile.
+   * Called on: permission-denied (once profileLoadedOnce), resume (visibilitychange/online), manual refresh, retry.
    */
   const verifyUserFromServer = useCallback(
     async (
-      reason: 'resume' | 'permission-denied' | 'manual'
+      reason: 'resume' | 'permission-denied' | 'manual' | 'retry'
     ): Promise<'active' | 'pending' | 'logged_out' | 'skipped'> => {
       const currentUser = auth.currentUser;
-      if (!currentUser || isRegisteringRef.current || isAuthTransitionRef.current || isForcingLogoutRef.current) {
+      if (
+        !currentUser ||
+        isRegisteringRef.current ||
+        isAuthTransitionRef.current ||
+        isForcingLogoutRef.current
+      ) {
         return 'skipped';
       }
 
@@ -527,8 +638,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const snap = await getDocFromServer(doc(db, 'users', currentUser.uid));
           if (!snap.exists()) {
-            await forceLogout(MSG_ACCOUNT_NOT_FOUND);
-            return 'logged_out';
+            if (hadProfileRef.current) {
+              await forceLogout(MSG_ACCOUNT_NOT_FOUND);
+              return 'logged_out';
+            }
+            // First-time doc does not exist yet -> delegate to evaluateUserSnapshot to bootstrap cleanly
+            return await evaluateUserSnapshot(currentUser, snap, 'server-verify');
           }
           const outcome = await evaluateUserSnapshot(currentUser, snap, 'server-verify');
           if (
@@ -546,6 +661,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return 'logged_out';
           }
           console.warn(`Server session verify notice (${reason}):`, err?.message || err);
+          if (reason === 'retry' && !profileLoadedOnceRef.current) {
+            setProfileLoadError(MSG_SERVER_PROFILE_TIMEOUT);
+            setLoading(false);
+          }
           return 'skipped';
         } finally {
           serverVerifyPromiseRef.current = null;
@@ -558,21 +677,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [evaluateUserSnapshot, forceLogout, showSessionToast]
   );
 
-  // Register global permission-denied handler + app resume listeners (visibilitychange & online)
+  const retryProfileLoad = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setProfileLoadError(null);
+      setLoading(false);
+      return;
+    }
+    setProfileLoadError(null);
+    setLoading(true);
+    startProfileTimeout(currentUser.uid);
+    attachUserDocListener(currentUser);
+    await verifyUserFromServer('retry');
+  }, [attachUserDocListener, startProfileTimeout, verifyUserFromServer]);
+
+  // Register global permission-denied handler (gated on profileLoadedOnce) + resume checks
   useEffect(() => {
     const unregisterPerm = registerPermissionDeniedHandler(() => {
+      if (!profileLoadedOnceRef.current) {
+        return;
+      }
       return verifyUserFromServer('permission-denied').then(() => undefined);
     });
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && auth.currentUser) {
+      if (document.visibilityState === 'visible' && auth.currentUser && profileLoadedOnceRef.current) {
         void verifyUserFromServer('resume');
       }
     };
 
     const handleOnline = () => {
       if (auth.currentUser) {
-        void verifyUserFromServer('resume');
+        if (profileLoadedOnceRef.current) {
+          void verifyUserFromServer('resume');
+        } else {
+          void retryProfileLoad();
+        }
       }
     };
 
@@ -584,13 +724,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
     };
-  }, [verifyUserFromServer]);
+  }, [retryProfileLoad, verifyUserFromServer]);
 
   // Primary Firebase Auth observer
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
+        if (activeUidRef.current !== currentUser.uid) {
+          resetSessionRefs();
+          activeUidRef.current = currentUser.uid;
+        }
         setUser(currentUser);
+        setProfileLoadError(null);
         if (isRegisteringRef.current || isAuthTransitionRef.current) {
           return;
         }
@@ -600,9 +745,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubscribeAllListeners();
         clearSessionAppCache();
         setLiveAuditActor(null);
-        prevRoleRef.current = null;
-        sessionEstablishedRef.current = false;
-        bootstrappingUidRef.current = null;
+        resetSessionRefs();
+        setProfileLoadError(null);
         setUser(null);
         setUserProfile(null);
         setLoading(false);
@@ -613,43 +757,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribe();
       detachUserDocListener();
     };
-  }, [attachUserDocListener, detachUserDocListener]);
+  }, [attachUserDocListener, detachUserDocListener, resetSessionRefs]);
 
   const signInWithGoogle = async () => {
     isAuthTransitionRef.current = true;
     setSessionNotice(null);
+    setProfileLoadError(null);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const cred = await signInWithPopup(auth, provider);
 
-      const snap = await getDocFromServer(doc(db, 'users', cred.user.uid)).catch(() => null);
-      if (snap && snap.exists()) {
+      resetSessionRefs();
+      activeUidRef.current = cred.user.uid;
+      setUser(cred.user);
+
+      try {
+        const snap = await getDocFromServer(doc(db, 'users', cred.user.uid));
         const outcome = await evaluateUserSnapshot(cred.user, snap, 'server-verify');
         if (outcome === 'logged_out') {
           throw new Error(MSG_INACTIVE_FORCED_LOGOUT);
         }
-      } else {
-        const bootstrapped = await bootstrapInitialUserProfile(cred.user);
-        if (bootstrapped) {
-          sessionEstablishedRef.current = true;
-          prevRoleRef.current = bootstrapped.role;
-          setUser(cred.user);
-          setUserProfile(bootstrapped);
-          if (bootstrapped.status === 'Active' && bootstrapped.role !== 'Pending') {
-            setLiveAuditActor({
-              userId: bootstrapped.id,
-              user: bootstrapped.name,
-              userRole: bootstrapped.role,
-            });
-          } else {
-            setLiveAuditActor(null);
-          }
+      } catch (serverErr: any) {
+        if (serverErr?.message === MSG_INACTIVE_FORCED_LOGOUT) {
+          throw serverErr;
         }
+        if (isPermissionDeniedError(serverErr)) {
+          await forceLogout(MSG_INACTIVE_FORCED_LOGOUT);
+          throw new Error(MSG_INACTIVE_FORCED_LOGOUT);
+        }
+        // Network/offline error during initial getDocFromServer -> let listener & 8s retry handle
+        startProfileTimeout(cred.user.uid);
+        attachUserDocListener(cred.user);
+        throw new Error(MSG_SERVER_PROFILE_TIMEOUT);
       }
 
-      setUser(cred.user);
-      setLoading(false);
       attachUserDocListener(cred.user);
     } catch (err: any) {
       if (
@@ -673,52 +815,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (emailOrPhone: string, password: string) => {
-    let emailToAuth = emailOrPhone.trim();
+    const emailToAuth = emailOrPhone.trim();
     setSessionNotice(null);
+    setProfileLoadError(null);
 
     if (!emailToAuth.includes('@')) {
-      const cleanPhone = emailToAuth.replace(/[^0-9]/g, '');
-      const allUsers = await dataService.getItems<UserProfile>('users');
-      const matched = allUsers.find(
-        (u) => u.phone && u.phone.replace(/[^0-9]/g, '') === cleanPhone
-      );
-      if (matched && matched.email) {
-        emailToAuth = matched.email;
-      } else {
-        throw new Error('প্রদত্ত মোবাইল নম্বরের সাথে সংযুক্ত কোনো অ্যাকাউন্ট পাওয়া যায়নি।');
-      }
+      throw new Error('লগইন করতে আপনার নিবন্ধিত ইমেইল ঠিকানা ব্যবহার করুন।');
     }
 
     isAuthTransitionRef.current = true;
     try {
       const cred = await signInWithEmailAndPassword(auth, emailToAuth, password);
-      const snap = await getDocFromServer(doc(db, 'users', cred.user.uid)).catch(() => null);
 
-      if (snap && snap.exists()) {
+      resetSessionRefs();
+      activeUidRef.current = cred.user.uid;
+      setUser(cred.user);
+
+      try {
+        const snap = await getDocFromServer(doc(db, 'users', cred.user.uid));
         const outcome = await evaluateUserSnapshot(cred.user, snap, 'server-verify');
         if (outcome === 'logged_out') {
           throw new Error(MSG_INACTIVE_FORCED_LOGOUT);
         }
-      } else {
-        const bootstrapped = await bootstrapInitialUserProfile(cred.user);
-        if (!bootstrapped) {
-          await forceLogout(MSG_ACCOUNT_NOT_FOUND);
-          throw new Error('ব্যবহারকারীর প্রোফাইল পাওয়া যায়নি।');
+      } catch (serverErr: any) {
+        if (serverErr?.message === MSG_INACTIVE_FORCED_LOGOUT) {
+          throw serverErr;
         }
-        sessionEstablishedRef.current = true;
-        prevRoleRef.current = bootstrapped.role;
-        setUserProfile(bootstrapped);
-        if (bootstrapped.status === 'Active' && bootstrapped.role !== 'Pending') {
-          setLiveAuditActor({
-            userId: bootstrapped.id,
-            user: bootstrapped.name,
-            userRole: bootstrapped.role,
-          });
+        if (isPermissionDeniedError(serverErr)) {
+          await forceLogout(MSG_INACTIVE_FORCED_LOGOUT);
+          throw new Error(MSG_INACTIVE_FORCED_LOGOUT);
         }
+        startProfileTimeout(cred.user.uid);
+        attachUserDocListener(cred.user);
+        throw new Error(MSG_SERVER_PROFILE_TIMEOUT);
       }
 
-      setUser(cred.user);
-      setLoading(false);
       attachUserDocListener(cred.user);
     } catch (err: any) {
       if (
@@ -746,17 +877,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }) => {
     isRegisteringRef.current = true;
     setSessionNotice(null);
+    setProfileLoadError(null);
     const cleanEmail = params.email.trim().toLowerCase();
 
     try {
-      const settings = await dataService.getSystemSettings();
-      if (settings.allowPublicRegistration === false && !isSuperAdminEmail(cleanEmail)) {
-        throw new Error(
-          settings.registrationClosedReason ||
-            'কোর্স পরিচালক কর্তৃক উন্মুক্ত নিবন্ধন সাময়িকভাবে বন্ধ রাখা হয়েছে। অ্যাকাউন্টের জন্য পরিচালকের সাথে যোগাযোগ করুন।'
-        );
-      }
-
       if (params.password.length < 6) {
         throw new Error('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।');
       }
@@ -786,7 +910,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await setDoc(doc(db, 'users', uid), newProfile);
       dataService.broadcastSync('users');
 
-      sessionEstablishedRef.current = true;
+      activeUidRef.current = uid;
+      hadProfileRef.current = true;
+      profileLoadedOnceRef.current = true;
       prevRoleRef.current = safeRole;
       setUser(cred.user);
       setUserProfile(newProfile);
@@ -832,9 +958,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unsubscribeAllListeners();
     clearSessionAppCache();
     setLiveAuditActor(null);
-    prevRoleRef.current = null;
-    sessionEstablishedRef.current = false;
-    bootstrappingUidRef.current = null;
+    resetSessionRefs();
+    setProfileLoadError(null);
     setSessionNotice(null);
     setPermissionError(false);
     try {
@@ -876,6 +1001,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       userProfile,
       loading,
+      profileLoadError,
+      retryProfileLoad,
       signIn,
       signInWithGoogle,
       quickLoginAsRole,
@@ -895,6 +1022,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       userProfile,
       loading,
+      profileLoadError,
       permissionError,
       sessionToast,
       sessionNotice,

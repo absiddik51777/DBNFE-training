@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SystemSettings } from '../types';
 import { dataService, DEFAULT_SYSTEM_SETTINGS } from '../lib/dataService';
-import { useAuth, isVerifiedSuperAdmin } from './AuthContext';
+import { useAuth } from './AuthContext';
 
 interface SystemSettingsContextType {
   settings: SystemSettings;
@@ -57,9 +57,7 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
   const { user, userProfile } = useAuth();
 
   const canReadSettings = Boolean(
-    user &&
-      (isVerifiedSuperAdmin(user) ||
-        (userProfile?.status === 'Active' && userProfile?.role !== 'Pending'))
+    user && userProfile && userProfile.status === 'Active' && userProfile.role !== 'Pending'
   );
 
   const getActor = () =>

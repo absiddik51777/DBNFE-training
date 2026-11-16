@@ -35,7 +35,7 @@ import { NotificationsProvider } from './hooks/useNotifications';
 import { PendingApproval } from './pages/PendingApproval';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, profileLoadError, retryProfileLoad, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -46,7 +46,38 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Strictly require authenticated Firebase user and profile
+  // If authenticated with Firebase Auth, wait/retry on server profile error without trusting cache
+  if (user && !userProfile && profileLoadError) {
+    return (
+      <div className="min-h-screen bg-theme-bg flex flex-col items-center justify-center p-4 text-theme-text-primary">
+        <div className="w-full max-w-md bg-theme-surface border border-theme-border rounded-2xl shadow-xl p-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-theme-warning-soft text-theme-warning border border-theme-warning-border flex items-center justify-center mx-auto font-bold text-lg">
+            !
+          </div>
+          <h2 className="text-lg font-bold">সার্ভার যাচাইকরণ ব্যর্থ</h2>
+          <p className="text-sm text-theme-text-secondary leading-relaxed">{profileLoadError}</p>
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={() => void retryProfileLoad()}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg font-semibold text-sm transition cursor-pointer"
+            >
+              পুনরায় চেষ্টা করুন
+            </button>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-theme-elevated border border-theme-border hover:bg-theme-surface-hover text-theme-text-primary font-semibold text-sm transition cursor-pointer"
+            >
+              লগআউট
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Strictly require authenticated Firebase user and server-confirmed profile
   if (!user || !userProfile) {
     return <Navigate to="/login" replace />;
   }

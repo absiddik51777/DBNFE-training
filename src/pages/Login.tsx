@@ -26,7 +26,11 @@ const Login: React.FC = () => {
     signInWithGoogle,
     signUp,
     sendPasswordReset,
+    user,
     userProfile,
+    profileLoadError,
+    retryProfileLoad,
+    signOut,
     sessionNotice,
     clearSessionNotice,
   } = useAuth();
@@ -64,8 +68,13 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Fetch institutes, batches, trades, and system settings
+  // Only load institutes/batches/trades/settings if the user is already an Active member;
+  // unauthenticated / Pending users must not fire canRead()-protected queries.
   useEffect(() => {
+    if (!user || !userProfile || userProfile.status !== 'Active' || userProfile.role === 'Pending') {
+      return;
+    }
+    let cancelled = false;
     const fetchData = async () => {
       try {
         const [instList, batchList, tradeList, settings] = await Promise.all([
@@ -74,6 +83,7 @@ const Login: React.FC = () => {
           dataService.getItems<Trade>('trades'),
           dataService.getSystemSettings()
         ]);
+        if (cancelled) return;
         setInstitutes(instList);
         setBatches(batchList);
         setTrades(tradeList);
@@ -87,14 +97,15 @@ const Login: React.FC = () => {
             setRegBatchId(matching[0].id);
           }
         }
-      } catch (err) {
-        setInstitutes([]);
-        setBatches([]);
-        setTrades([]);
+      } catch {
+        // ignore
       }
     };
-    fetchData();
-  }, []);
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, userProfile]);
 
   // Redirect if logged in with Active or Pending Approval status
   useEffect(() => {
@@ -303,6 +314,31 @@ const Login: React.FC = () => {
         </div>
 
         <div className="p-5 sm:p-6 pt-4">
+          {user && !userProfile && profileLoadError && !error && !sessionNotice && (
+            <div className="mb-4 p-3.5 rounded-xl border bg-theme-warning-soft border-theme-warning-border text-theme-warning text-xs sm:text-sm space-y-2.5">
+              <div className="flex items-start space-x-2.5">
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <p className="font-semibold flex-1">{profileLoadError}</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => void retryProfileLoad()}
+                  className="px-3 py-1.5 rounded-lg bg-theme-primary text-theme-primary-fg font-semibold text-xs cursor-pointer"
+                >
+                  পুনরায় চেষ্টা করুন
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void signOut()}
+                  className="px-3 py-1.5 rounded-lg bg-theme-elevated border border-theme-border text-theme-text-primary font-semibold text-xs cursor-pointer"
+                >
+                  লগআউট
+                </button>
+              </div>
+            </div>
+          )}
+
           {(error || sessionNotice) && (() => {
             const activeError = error || sessionNotice || '';
             const isOperationNotAllowed =
@@ -521,51 +557,59 @@ const Login: React.FC = () => {
 
               {regRole === 'Trainer' && (
                 <div className="p-3 bg-theme-primary-soft/50 rounded-xl border border-theme-primary-border space-y-2">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-theme-text-secondary mb-0.5">
-                      প্রশিক্ষণ কেন্দ্র (Training Center) *
-                    </label>
-                    <select
-                      value={regInstituteId}
-                      onChange={(e) => {
-                        const newInstId = e.target.value;
-                        setRegInstituteId(newInstId);
-                        const matching = batches.filter(b => b.instituteId === newInstId);
-                        if (matching.length > 0) {
-                          setRegBatchId(matching[0].id);
-                        } else {
-                          setRegBatchId('');
-                        }
-                      }}
-                      className="w-full px-2.5 py-1.5 bg-theme-elevated border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
-                    >
-                      {institutes.map(i => (
-                        <option key={i.id} value={i.id}>{i.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {institutes.length > 0 ? (
+                    <>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-theme-text-secondary mb-0.5">
+                          প্রশিক্ষণ কেন্দ্র (Training Center) *
+                        </label>
+                        <select
+                          value={regInstituteId}
+                          onChange={(e) => {
+                            const newInstId = e.target.value;
+                            setRegInstituteId(newInstId);
+                            const matching = batches.filter(b => b.instituteId === newInstId);
+                            if (matching.length > 0) {
+                              setRegBatchId(matching[0].id);
+                            } else {
+                              setRegBatchId('');
+                            }
+                          }}
+                          className="w-full px-2.5 py-1.5 bg-theme-elevated border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
+                        >
+                          {institutes.map(i => (
+                            <option key={i.id} value={i.id}>{i.name}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-theme-text-secondary mb-0.5">
-                      নির্ধারিত ব্যাচ (Assigned Batch) *
-                    </label>
-                    <select
-                      value={regBatchId}
-                      onChange={(e) => setRegBatchId(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-theme-elevated border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
-                    >
-                      {batches
-                        .filter(b => !regInstituteId || b.instituteId === regInstituteId)
-                        .map(b => {
-                          const tradeName = trades.find(t => t.id === b.tradeId)?.name;
-                          return (
-                            <option key={b.id} value={b.id}>
-                              {b.name} {tradeName ? `(${tradeName})` : ''}
-                            </option>
-                          );
-                        })}
-                    </select>
-                  </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-theme-text-secondary mb-0.5">
+                          নির্ধারিত ব্যাচ (Assigned Batch) *
+                        </label>
+                        <select
+                          value={regBatchId}
+                          onChange={(e) => setRegBatchId(e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-theme-elevated border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-theme-primary/30 text-xs"
+                        >
+                          {batches
+                            .filter(b => !regInstituteId || b.instituteId === regInstituteId)
+                            .map(b => {
+                              const tradeName = trades.find(t => t.id === b.tradeId)?.name;
+                              return (
+                                <option key={b.id} value={b.id}>
+                                  {b.name} {tradeName ? `(${tradeName})` : ''}
+                                </option>
+                              );
+                            })}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-theme-text-secondary leading-relaxed">
+                      অ্যাকাউন্ট অনুমোদনের পর কোর্স পরিচালক কর্তৃক আপনার প্রশিক্ষণ কেন্দ্র ও ব্যাচ নির্ধারণ করা হবে।
+                    </p>
+                  )}
                 </div>
               )}
 

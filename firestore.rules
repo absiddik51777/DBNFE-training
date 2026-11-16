@@ -16,15 +16,14 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128;
     }
 
-    // Recognized Bootstrapped Course Director Emails (must have verified email)
+    // Optional hardening. Set to true to require a verified email for the super-admin bootstrap.
+    function requireVerifiedEmail() { return false; }
+
     function isSuperAdmin() {
-      return isSignedIn() &&
-             request.auth.token.email != null &&
-             request.auth.token.email_verified == true &&
-             (
-               request.auth.token.email.lower() == 'unfeohaluaghat@gmail.com' ||
-               request.auth.token.email.lower() == 'absiddik5177@gmail.com'
-             );
+      return isSignedIn() && request.auth.token.email != null &&
+        (request.auth.token.email.lower() == 'unfeohaluaghat@gmail.com' ||
+         request.auth.token.email.lower() == 'absiddik5177@gmail.com') &&
+        (!requireVerifiedEmail() || request.auth.token.email_verified == true);
     }
 
     function hasUserDoc() {
@@ -74,7 +73,9 @@ service cloud.firestore {
         isCourseDirector() || 
         isFMA() || 
         resource.data.id == request.auth.uid ||
-        (request.auth.token.email != null && resource.data.email != null && resource.data.email.lower() == request.auth.token.email.lower())
+        (request.auth.token.email != null && resource.data.email != null &&
+          (resource.data.email == request.auth.token.email ||
+           resource.data.email == request.auth.token.email.lower()))
       );
 
       allow create: if isSignedIn() && isValidId(userId) && (
