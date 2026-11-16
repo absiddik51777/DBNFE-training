@@ -4,7 +4,8 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { db } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
+import { isPermissionDeniedError, reportPermissionDenied } from '../../lib/sessionGuard';
 import { dataService } from '../../lib/dataService';
 import { recordSimpleAuditLog } from '../../lib/auditLog';
 import { sortAuditLogsNewestFirst } from '../../lib/auditDate';
@@ -122,6 +123,9 @@ export function useSettingsData(isAdmin: boolean = true) {
       setLatestLog(sorted[0] ?? null);
     } catch (err) {
       console.warn('Could not fetch latest activity log:', err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     } finally {
       setLoadingLogs(false);
     }

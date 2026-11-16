@@ -28,6 +28,10 @@ import { dataService } from '../lib/dataService';
 import { useAuth } from '../contexts/AuthContext';
 import { toBn, toEnDigits } from '../lib/dateUtils';
 import { downloadCSV, saveFileToDevice, FileExportResult } from '../lib/exportUtils';
+import { TruncatedText } from './ui/TruncatedText';
+import { ActionStep, useActionRunner } from '../hooks/useActionRunner';
+import { ActionButton } from './ui/ActionButton';
+import { ActionMessageError } from '../lib/friendlyError';
 
 interface TraineeBulkImportModalProps {
   isOpen: boolean;
@@ -97,7 +101,6 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
   const [parsedRows, setParsedRows] = useState<ParsedTraineeRow[]>([]);
   const [filterTab, setFilterTab] = useState<'all' | 'valid' | 'invalid'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid'); // Grid view is primary
-  const [importing, setImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [downloadingExport, setDownloadingExport] = useState(false);
@@ -106,17 +109,21 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
   // Post-import summary modal state
   const [importSummary, setImportSummary] = useState<ImportSummaryData | null>(null);
   const [summaryFilterTab, setSummaryFilterTab] = useState<'all' | 'success' | 'failed'>('all');
+  const pendingSummaryRef = useRef<ImportSummaryData | null>(null);
 
   // Reset when dialog is closed
   React.useEffect(() => {
     if (!isOpen) {
       setImportSummary(null);
+      pendingSummaryRef.current = null;
       setSelectedFile(null);
       setParsedRows([]);
       setErrorMessage('');
       setFilterTab('all');
       setSummaryFilterTab('all');
+      importRunner.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Active batches map for quick lookup (supporting Bengali numerals and clean keys)
@@ -909,97 +916,133 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
     return parsedRows;
   }, [filterTab, parsedRows, validRows, invalidRows]);
 
-  // Execute Bulk Save to Firestore
-  const handleConfirmImport = async () => {
+  // Execute Bulk Save to Firestore via ActionRunner
+  const bulkImportSteps: ActionStep<{ count: number }>[] = useMemo(
+    () => [
+      {
+        id: 'bulk-save-trainees',
+        label:
+          validRows.length > 0
+            ? `${toBn(validRows.length)} জন শিক্ষার্থী ডাটাবেজে সংরক্ষণ করা হচ্ছে`
+            : 'শিক্ষার্থী ডাটাবেজে সংরক্ষণ করা হচ্ছে',
+        run: async () => {
+          if (validRows.length === 0) {
+            throw new ActionMessageError('আমদানি করার মতো কোনো বৈধ শিক্ষার্থী পাওয়া যায়নি।');
+          }
+
+          const traineesToSave: Trainee[] = validRows.map((r) => {
+            const targetBatch = batches.find((b) => b.id === r.resolvedBatchId);
+            return {
+              id: `TRN-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6)}`,
+              traineeId: r.traineeId,
+              registrationNumber: r.registrationNumber || '',
+              nameBn: r.nameBn,
+              nameEn: r.nameEn,
+              fatherNameBn: r.fatherNameBn,
+              fatherNameEn: r.fatherNameEn,
+              motherNameBn: r.motherNameBn,
+              motherNameEn: r.motherNameEn,
+              dateOfBirth: r.dateOfBirth,
+              gender: r.gender,
+              nidOrBirthRegistration: r.nidOrBirthRegistration,
+              mobileNumber: r.mobileNumber,
+              address: r.permanentAddress,
+              permanentAddress: r.permanentAddress,
+              presentAddress: r.presentAddress,
+              sameAsPermanentAddress: r.sameAsPermanentAddress,
+              lastClassCompleted: r.lastClassCompleted,
+              previousSchoolName: r.previousSchoolName,
+              yearOfDropout: r.yearOfDropout,
+              reasonForDropout: r.reasonForDropout,
+              batchId: r.resolvedBatchId,
+              tradeId: r.resolvedTradeId || targetBatch?.tradeId || '',
+              instituteId: r.resolvedInstituteId || targetBatch?.instituteId || '',
+              admissionDate: Date.now(),
+              trainingStartDate: targetBatch?.startDate
+                ? new Date(targetBatch.startDate).getTime()
+                : Date.now(),
+              trainingEndDate: targetBatch?.endDate
+                ? new Date(targetBatch.endDate).getTime()
+                : Date.now() + 180 * 86400000,
+              status: 'Active',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
+          });
+
+          const result = await dataService.saveTraineeBatch(traineesToSave, {
+            title: `বাল্ক এক্সেল/সিএসভি আপলোডের মাধ্যমে ${traineesToSave.length} জন শিক্ষার্থী নিবন্ধন`,
+            actor: userProfile
+              ? {
+                  userId: userProfile.id || '',
+                  user: userProfile.name || 'User',
+                  userRole: userProfile.role || '',
+                }
+              : undefined,
+          });
+
+          if (!result.success) {
+            if (result.errorCode) {
+              const batchErr = new Error(
+                result.error || 'বাল্ক ডাটাবেজ সংরক্ষণ ব্যর্থ হয়েছে।'
+              );
+              (batchErr as any).code = result.errorCode;
+              throw batchErr;
+            }
+            throw new ActionMessageError(
+              result.error || 'বাল্ক ডাটাবেজ সংরক্ষণ ব্যর্থ হয়েছে।'
+            );
+          }
+
+          onSuccess(result.count);
+
+          pendingSummaryRef.current = {
+            totalRows: parsedRows.length,
+            importedCount: result.count,
+            failedCount: invalidRows.length,
+            successfulRows: validRows,
+            failedRows: invalidRows,
+            timestamp: Date.now(),
+          };
+
+          return { count: result.count };
+        },
+        describe: (res) => `${toBn(res.count)} জন প্রশিক্ষণার্থী আমদানি সম্পন্ন`,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [batches, invalidRows, parsedRows.length, userProfile, validRows]
+  );
+
+  const importRunner = useActionRunner(bulkImportSteps);
+  const isImportingBusy =
+    importRunner.phase === 'running' || importRunner.phase === 'waiting';
+
+  const handleBeforeImport = (): boolean => {
+    setErrorMessage('');
     if (validRows.length === 0) {
       setErrorMessage('আমদানি করার মতো কোনো বৈধ শিক্ষার্থী পাওয়া যায়নি।');
-      return;
+      return false;
     }
+    return true;
+  };
 
-    setImporting(true);
-    setErrorMessage('');
-
-    try {
-      const traineesToSave: Trainee[] = validRows.map(r => {
-        const targetBatch = batches.find(b => b.id === r.resolvedBatchId);
-        return {
-          id: `TRN-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6)}`,
-          traineeId: r.traineeId,
-          registrationNumber: r.registrationNumber || '',
-          nameBn: r.nameBn,
-          nameEn: r.nameEn,
-          fatherNameBn: r.fatherNameBn,
-          fatherNameEn: r.fatherNameEn,
-          motherNameBn: r.motherNameBn,
-          motherNameEn: r.motherNameEn,
-          dateOfBirth: r.dateOfBirth,
-          gender: r.gender,
-          nidOrBirthRegistration: r.nidOrBirthRegistration,
-          mobileNumber: r.mobileNumber,
-          address: r.permanentAddress,
-          permanentAddress: r.permanentAddress,
-          presentAddress: r.presentAddress,
-          sameAsPermanentAddress: r.sameAsPermanentAddress,
-          lastClassCompleted: r.lastClassCompleted,
-          previousSchoolName: r.previousSchoolName,
-          yearOfDropout: r.yearOfDropout,
-          reasonForDropout: r.reasonForDropout,
-          batchId: r.resolvedBatchId,
-          tradeId: r.resolvedTradeId || targetBatch?.tradeId || '',
-          instituteId: r.resolvedInstituteId || targetBatch?.instituteId || '',
-          admissionDate: Date.now(),
-          trainingStartDate: targetBatch?.startDate ? new Date(targetBatch.startDate).getTime() : Date.now(),
-          trainingEndDate: targetBatch?.endDate ? new Date(targetBatch.endDate).getTime() : Date.now() + 180 * 86400000,
-          status: 'Active',
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        };
-      });
-
-      const result = await dataService.saveTraineeBatch(traineesToSave, {
-        title: `বাল্ক এক্সেল/সিএসভি আপলোডের মাধ্যমে ${traineesToSave.length} জন শিক্ষার্থী নিবন্ধন`,
-        actor: userProfile
-          ? {
-              userId: userProfile.id || '',
-              user: userProfile.name || 'User',
-              userRole: userProfile.role || '',
-            }
-          : undefined,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'বাল্ক ডাটাবেজ সংরক্ষণ ব্যর্থ হয়েছে।');
-      }
-
-      // Refresh parent list in background
-      onSuccess(result.count);
-
-      // Present Post-Import Summary Modal
-      setImportSummary({
-        totalRows: parsedRows.length,
-        importedCount: result.count,
-        failedCount: invalidRows.length,
-        successfulRows: validRows,
-        failedRows: invalidRows,
-        timestamp: Date.now()
-      });
-
-      // Default to failed tab if there are failed rows, otherwise all
-      setSummaryFilterTab(invalidRows.length > 0 ? 'failed' : 'all');
-    } catch (err: any) {
-      console.error('Bulk import error:', err);
-      setErrorMessage(err?.message || 'ডাটাবেজে সংরক্ষণ করার সময় ত্রুটি ঘটেছে।');
-    } finally {
-      setImporting(false);
-    }
+  const handleTransitionToSummary = () => {
+    const summary = pendingSummaryRef.current;
+    if (!summary) return;
+    pendingSummaryRef.current = null;
+    setImportSummary(summary);
+    setSummaryFilterTab(summary.failedCount > 0 ? 'failed' : 'all');
   };
 
   // Close summary modal and reset file import state
   const handleCloseSummary = () => {
     setImportSummary(null);
+    pendingSummaryRef.current = null;
     setSelectedFile(null);
     setParsedRows([]);
     setErrorMessage('');
+    importRunner.reset();
     onClose();
   };
 
@@ -1063,7 +1106,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-theme-elevated rounded-3xl shadow-2xl border border-theme-border w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-theme-elevated rounded-3xl shadow-2xl border border-theme-border w-full max-w-6xl max-h-[92vh] flex flex-col overflow-visible animate-in fade-in zoom-in-95 duration-200">
         
         {importSummary ? (
           /* ========================================================= */
@@ -1322,9 +1365,14 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                             {r.permanentAddress && (
                               <>
                                 <span>•</span>
-                                <span className="flex items-center space-x-1 truncate max-w-[260px]">
-                                  <MapPin size={12} className="text-theme-text-muted" />
-                                  <span className="truncate">{r.permanentAddress}</span>
+                                <span className="flex items-center space-x-1 min-w-0 max-w-[260px]">
+                                  <MapPin size={12} className="text-theme-text-muted shrink-0" />
+                                  <TruncatedText
+                                    text={r.permanentAddress}
+                                    mode="sheet"
+                                    title="স্থায়ী ঠিকানা"
+                                    className="min-w-0"
+                                  />
                                 </span>
                               </>
                             )}
@@ -1423,9 +1471,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
           /* ========================================================= */
           /* REGULAR UPLOAD & PREVIEW SCREEN                           */
           /* ========================================================= */
-          <div className="flex flex-col h-full max-h-[92vh] overflow-hidden">
+          <div className="flex flex-col h-full max-h-[92vh] overflow-visible">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
+            <div className="px-6 py-5 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle rounded-t-3xl">
               <div className="flex items-center space-x-3">
                 <div className="w-11 h-11 rounded-2xl bg-theme-primary text-theme-primary-fg flex items-center justify-center shadow-sm shadow-theme-primary/25">
                   <FileSpreadsheet size={22} />
@@ -1524,8 +1572,9 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
 
               <select
                 value={defaultBatchId}
+                disabled={isImportingBusy || importRunner.phase === 'success'}
                 onChange={(e) => setDefaultBatchId(e.target.value)}
-                className="w-full mt-2 px-3 py-2 text-xs font-semibold bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-hidden"
+                className="w-full mt-2 px-3 py-2 text-xs font-semibold bg-theme-surface-subtle border border-theme-border text-theme-text-primary rounded-xl focus:bg-theme-surface focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-hidden disabled:opacity-60"
               >
                 {batches.map(b => (
                   <option key={b.id} value={b.id}>
@@ -1750,49 +1799,72 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 text-[11px]">
-                            <div className="flex items-center space-x-1.5 text-theme-text-primary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                            <div className="flex items-center space-x-1.5 min-w-0 text-theme-text-primary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
                               <Phone size={12} className="text-theme-primary shrink-0" />
-                              <span className="font-mono font-semibold truncate tabular-nums">{toBn(r.mobileNumber)}</span>
+                              <TruncatedText
+                                text={toBn(r.mobileNumber)}
+                                mode="pop"
+                                className="font-mono font-semibold tabular-nums min-w-0"
+                              />
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-theme-text-primary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                            <div className="flex items-center space-x-1.5 min-w-0 text-theme-text-primary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
                               <Layers size={12} className="text-theme-accent shrink-0" />
-                              <span className="font-semibold truncate" title={r.resolvedBatchName}>
-                                {r.resolvedBatchName}
-                              </span>
+                              <TruncatedText
+                                text={r.resolvedBatchName}
+                                mode="pop"
+                                className="font-semibold min-w-0"
+                              />
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                            <div className="flex items-center space-x-1.5 min-w-0 text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
                               <Calendar size={12} className="text-theme-text-muted shrink-0" />
-                              <span className="truncate tabular-nums">
-                                {toBn(r.dateOfBirth)} ({r.gender === 'Female' ? 'নারী' : r.gender === 'Other' ? 'অন্যান্য' : 'পুরুষ'})
-                              </span>
+                              <TruncatedText
+                                text={`${toBn(r.dateOfBirth)} (${r.gender === 'Female' ? 'নারী' : r.gender === 'Other' ? 'অন্যান্য' : 'পুরুষ'})`}
+                                mode="pop"
+                                className="tabular-nums min-w-0"
+                              />
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
+                            <div className="flex items-center space-x-1.5 min-w-0 text-theme-text-secondary bg-theme-surface-subtle px-2.5 py-1.5 rounded-xl border border-theme-border">
                               <MapPin size={12} className="text-theme-text-muted shrink-0" />
-                              <span className="truncate" title={r.permanentAddress}>
-                                {r.permanentAddress || 'ঠিকানা নেই'}
-                              </span>
+                              <TruncatedText
+                                text={r.permanentAddress || 'ঠিকানা নেই'}
+                                mode={r.permanentAddress ? 'sheet' : 'pop'}
+                                title="স্থায়ী ঠিকানা"
+                                className="min-w-0"
+                              />
                             </div>
                           </div>
 
                           {/* Parents and additional info summary */}
                           {(r.fatherNameBn || r.motherNameBn) && (
-                            <div className="text-[10px] text-theme-text-secondary pt-0.5 truncate bg-theme-surface-subtle px-2 py-1 rounded-lg border border-theme-border/60">
+                            <TruncatedText
+                              as="div"
+                              text={[
+                                r.fatherNameBn ? `পিতা: ${r.fatherNameBn}` : '',
+                                r.motherNameBn ? `মাতা: ${r.motherNameBn}` : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')}
+                              mode="pop"
+                              className="text-[10px] text-theme-text-secondary pt-0.5 bg-theme-surface-subtle px-2 py-1 rounded-lg border border-theme-border/60"
+                            >
                               {r.fatherNameBn && <span>পিতা: {r.fatherNameBn}</span>}
                               {r.fatherNameBn && r.motherNameBn && <span className="mx-1">•</span>}
                               {r.motherNameBn && <span>মাতা: {r.motherNameBn}</span>}
-                            </div>
+                            </TruncatedText>
                           )}
 
                           {/* Last class / Dropout summary if present */}
                           {(r.lastClassCompleted || r.previousSchoolName) && (
-                            <div className="text-[10px] text-theme-text-secondary flex items-center space-x-1 truncate">
+                            <div className="text-[10px] text-theme-text-secondary flex items-center space-x-1 min-w-0">
                               <GraduationCap size={11} className="text-theme-text-muted shrink-0" />
-                              <span className="truncate">
-                                {r.lastClassCompleted} {r.previousSchoolName ? `• ${r.previousSchoolName}` : ''}
-                              </span>
+                              <TruncatedText
+                                text={`${r.lastClassCompleted || ''}${r.previousSchoolName ? ` • ${r.previousSchoolName}` : ''}`.trim()}
+                                mode="pop"
+                                className="min-w-0"
+                              />
                             </div>
                           )}
                         </div>
@@ -1832,21 +1904,21 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                 /* View 2: HORIZONTALLY SCROLLABLE TABLE VIEW */
                 <div className="border border-theme-border rounded-2xl overflow-hidden shadow-2xs">
                   <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-                    <table className="min-w-[1300px] w-full divide-y divide-theme-border text-xs">
+                    <table className="min-w-[1620px] w-full table-fixed divide-y divide-theme-border text-xs">
                       <thead className="bg-theme-surface-subtle sticky top-0 z-10 text-theme-text-secondary text-left font-bold border-b border-theme-border">
                         <tr>
-                          <th className="py-2.5 px-3 whitespace-nowrap">সারি</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap">স্ট্যাটাস</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap">আইডি</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap">রেজিস্ট্রেশন নং</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">নাম (বাংলা ও ইংরেজি)</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap">মোবাইল নম্বর</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[140px]">প্রশিক্ষণ ব্যাচ</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[140px]">লিঙ্গ ও জন্ম তারিখ</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">পিতা ও মাতার নাম</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[200px]">স্থায়ী ঠিকানা</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[160px]">শ্রেণি ও ড্রপআউট</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap min-w-[240px]">যাচাই ফলাফল ও ত্রুটি</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[64px]">সারি</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[88px]">স্ট্যাটাস</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[100px]">আইডি</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[130px]">রেজিস্ট্রেশন নং</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[180px]">নাম (বাংলা ও ইংরেজি)</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[120px]">মোবাইল নম্বর</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[140px]">প্রশিক্ষণ ব্যাচ</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[140px]">লিঙ্গ ও জন্ম তারিখ</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[180px]">পিতা ও মাতার নাম</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[220px]">স্থায়ী ঠিকানা</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[160px]">শ্রেণি ও ড্রপআউট</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap w-[240px]">যাচাই ফলাফল ও ত্রুটি</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-theme-border bg-theme-surface">
@@ -1902,8 +1974,13 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
                               {r.motherNameBn && <div className="text-[10px] text-theme-text-muted">মাতা: {r.motherNameBn}</div>}
                               {!r.fatherNameBn && !r.motherNameBn && <span className="text-theme-text-muted italic">-</span>}
                             </td>
-                            <td className="py-2.5 px-3 text-theme-text-secondary max-w-[240px] truncate" title={r.permanentAddress}>
-                              {r.permanentAddress}
+                            <td className="py-2.5 px-3 text-theme-text-secondary">
+                              <TruncatedText
+                                as="div"
+                                text={r.permanentAddress}
+                                mode="sheet"
+                                title="স্থায়ী ঠিকানা"
+                              />
                             </td>
                             <td className="py-2.5 px-3 text-theme-text-secondary">
                               <div>{r.lastClassCompleted}</div>
@@ -1947,7 +2024,7 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 bg-theme-surface-subtle border-t border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-theme-surface-subtle border-t border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-b-3xl overflow-visible">
           <div className="text-xs text-theme-text-secondary tabular-nums">
             {validRows.length > 0 ? (
               <span>
@@ -1963,29 +2040,30 @@ export const TraineeBulkImportModal: React.FC<TraineeBulkImportModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center space-x-2.5 self-end sm:self-auto">
+          <div className="flex items-center space-x-2.5 self-end sm:self-auto overflow-visible">
             <button
               type="button"
-              onClick={onClose}
-              disabled={importing}
-              className="px-4 py-2 border border-theme-border-strong bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-xs font-semibold transition cursor-pointer"
+              onClick={
+                importRunner.phase === 'success'
+                  ? handleTransitionToSummary
+                  : onClose
+              }
+              disabled={isImportingBusy}
+              className="px-4 py-2 border border-theme-border-strong bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50"
             >
-              বাতিল
+              {importRunner.phase === 'success' ? 'ফলাফল দেখুন' : 'বাতিল'}
             </button>
 
-            <button
-              type="button"
-              onClick={handleConfirmImport}
-              disabled={validRows.length === 0 || importing}
-              className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover disabled:opacity-50 text-theme-primary-fg rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm shadow-theme-primary/20 cursor-pointer tabular-nums"
-            >
-              <CheckCircle2 size={16} className={importing ? 'animate-spin' : ''} />
-              <span>
-                {importing 
-                  ? 'ডাটাবেজে সংরক্ষণ হচ্ছে...' 
-                  : `আমদানি সম্পন্ন করুন (${toBn(validRows.length)} জন)`}
-              </span>
-            </button>
+            <ActionButton
+              runner={importRunner}
+              idleLabel={`আমদানি সম্পন্ন করুন (${toBn(validRows.length)} জন)`}
+              idleIcon={<CheckCircle2 size={16} />}
+              popoverTitle="শিক্ষার্থী বাল্ক আমদানি"
+              disabled={validRows.length === 0}
+              onBeforeRun={handleBeforeImport}
+              onAutoHide={handleTransitionToSummary}
+              buttonClassName="px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-theme-primary/20 tabular-nums"
+            />
           </div>
         </div>
 

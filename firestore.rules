@@ -16,10 +16,11 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128;
     }
 
-    // Recognized Bootstrapped Course Director Emails
+    // Recognized Bootstrapped Course Director Emails (must have verified email)
     function isSuperAdmin() {
       return isSignedIn() &&
              request.auth.token.email != null &&
+             request.auth.token.email_verified == true &&
              (
                request.auth.token.email.lower() == 'unfeohaluaghat@gmail.com' ||
                request.auth.token.email.lower() == 'absiddik5177@gmail.com'
@@ -32,6 +33,14 @@ service cloud.firestore {
 
     function getUserDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActiveMember() {
+      return hasUserDoc() && getUserDoc().status == 'Active';
+    }
+
+    function canRead() {
+      return isSuperAdmin() || isActiveMember();
     }
 
     function isCourseDirector() {
@@ -103,22 +112,22 @@ service cloud.firestore {
 
     // --- 2. Institutes & Centers ---
     match /institutes/{instituteId} {
-      allow get: if isSignedIn() && isValidId(instituteId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(instituteId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(instituteId);
     }
 
     // --- 3. Vocational Trades ---
     match /trades/{tradeId} {
-      allow get: if isSignedIn() && isValidId(tradeId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(tradeId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(tradeId);
     }
 
     // --- 4. Training Batches ---
     match /batches/{batchId} {
-      allow get: if isSignedIn() && isValidId(batchId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(batchId);
+      allow list: if canRead();
       allow create, delete: if isCourseDirector() && isValidId(batchId);
       allow update: if isValidId(batchId) && (
         isCourseDirector() ||
@@ -128,8 +137,8 @@ service cloud.firestore {
 
     // --- 5. Trainees ---
     match /trainees/{traineeId} {
-      allow get: if isSignedIn() && isValidId(traineeId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(traineeId);
+      allow list: if canRead();
       allow create: if isValidId(traineeId) && (
         isCourseDirector() ||
         (isTrainer() && request.resource.data.batchId == getUserBatchId())
@@ -143,8 +152,8 @@ service cloud.firestore {
 
     // --- 6. Daily Attendance ---
     match /attendance/{attendanceId} {
-      allow get: if isSignedIn() && isValidId(attendanceId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(attendanceId);
+      allow list: if canRead();
       allow create: if isValidId(attendanceId) && (
         isCourseDirector() ||
         (isTrainer() && request.resource.data.batchId == getUserBatchId())
@@ -158,24 +167,24 @@ service cloud.firestore {
 
     // --- 7. Exams & Assessments ---
     match /exams/{examId} {
-      allow get: if isSignedIn() && isValidId(examId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(examId);
+      allow list: if canRead();
       allow create, update: if isValidId(examId) && (isCourseDirector() || isTrainer());
       allow delete: if isCourseDirector() && isValidId(examId);
     }
 
     // --- 8. Exam Marks ---
     match /marks/{markId} {
-      allow get: if isSignedIn() && isValidId(markId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(markId);
+      allow list: if canRead();
       allow create, update: if isValidId(markId) && (isCourseDirector() || isTrainer());
       allow delete: if isCourseDirector() && isValidId(markId);
     }
 
     // --- 9. RBAC Roles ---
     match /roles/{roleId} {
-      allow get: if isSignedIn() && isValidId(roleId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(roleId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(roleId);
     }
 
@@ -285,34 +294,34 @@ service cloud.firestore {
 
     // --- 11. System Settings ---
     match /settings/{settingId} {
-      allow get: if isSignedIn() && isValidId(settingId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(settingId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(settingId);
     }
 
     match /systemSettings/{settingId} {
-      allow get: if isSignedIn() && isValidId(settingId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(settingId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(settingId);
     }
 
     // --- 12. Shikhon Calendar Modules ---
     match /trade_skill_modules/{moduleId} {
-      allow get: if isSignedIn() && isValidId(moduleId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(moduleId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(moduleId);
     }
 
     match /trade_literacy_modules/{moduleId} {
-      allow get: if isSignedIn() && isValidId(moduleId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(moduleId);
+      allow list: if canRead();
       allow write: if isCourseDirector() && isValidId(moduleId);
     }
 
     // --- 13. Batch Calendar Progress ---
     match /batch_calendar_progress/{progressId} {
-      allow get: if isSignedIn() && isValidId(progressId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(progressId);
+      allow list: if canRead();
       allow create, update: if isValidId(progressId) && (
         isCourseDirector() ||
         (isTrainer() && (request.resource.data.batchId == getUserBatchId() || resource.data.batchId == getUserBatchId()))
@@ -321,8 +330,8 @@ service cloud.firestore {
     }
 
     match /calendar_progress_logs/{logId} {
-      allow get: if isSignedIn() && isValidId(logId);
-      allow list: if isSignedIn();
+      allow get: if canRead() && isValidId(logId);
+      allow list: if canRead();
       allow create, update: if isValidId(logId) && (
         isCourseDirector() ||
         (isTrainer() && (request.resource.data.batchId == getUserBatchId() || resource.data.batchId == getUserBatchId()))

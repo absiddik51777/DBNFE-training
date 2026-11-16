@@ -56,15 +56,23 @@ import { format } from 'date-fns';
 import ModuleBulkImportModal, { downloadDemoCSV } from '../components/ModuleBulkImportModal';
 import ModuleInputModal from '../components/ModuleInputModal';
 import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
+import { TruncatedText } from '../components/ui/TruncatedText';
+import { ActionStep, useActionRunner } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
+import { ActionMessageError } from '../lib/friendlyError';
 
 const ShikhonCalendar: React.FC = () => {
   const { userProfile } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isCourseDirector } = usePermissions();
 
   const isTrainer = userProfile?.role === 'Trainer';
   const trainerBatchId = userProfile?.batchId;
-  const isDirectorOrFMA = userProfile?.role === 'Course Director' || userProfile?.role === 'FMA' || !isTrainer;
-  const canUpdateCalendar = hasPermission('update_shikhon_calendar') || userProfile?.role === 'Course Director' || isDirectorOrFMA;
+  const isDirectorOrFMA =
+    isCourseDirector ||
+    userProfile?.role === 'FMA' ||
+    (!isTrainer && hasPermission('update_shikhon_calendar'));
+  const canUpdateCalendar =
+    isCourseDirector || hasPermission('update_shikhon_calendar');
 
   // Base Data State
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -122,7 +130,6 @@ const ShikhonCalendar: React.FC = () => {
     moduleName?: string;
     topic?: string;
   } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Notification Banner
   const [toastMsg, setToastMsg] = useState<string>('');
@@ -577,6 +584,7 @@ const ShikhonCalendar: React.FC = () => {
   // Request Delete Single Module
   const handleRequestDeleteModule = (item: BatchSkillModule | BatchLiteracyModule, type: 'skill' | 'literacy') => {
     if (!canUpdateCalendar) return;
+    deleteModuleRunner.reset();
     setDeletingModule({
       id: item.id,
       type,
@@ -586,28 +594,34 @@ const ShikhonCalendar: React.FC = () => {
     });
   };
 
-  // Confirm Delete Single Module
-  const handleConfirmDelete = async () => {
-    if (!deletingModule || !canUpdateCalendar) return;
-    setIsDeleting(true);
-    try {
-      if (deletingModule.type === 'skill') {
-        await dataService.deleteTradeSkillModule(deletingModule.id, activeTradeId);
-        if (selectedBatchId) await loadBatchModules(selectedBatchId);
-        showToast(`ক্লাস #${toBn(deletingModule.dayNumber)} স্কিল মডিউলটি অপসারণ করা হয়েছে।`);
-      } else {
-        await dataService.deleteTradeLiteracyModule(deletingModule.id, activeTradeId);
-        if (selectedBatchId) await loadBatchModules(selectedBatchId);
-        showToast(`ক্লাস #${toBn(deletingModule.dayNumber)} লিটারেসি মডিউলটি অপসারণ করা হয়েছে।`);
-      }
-      setDeletingModule(null);
-    } catch (e) {
-      console.error("Delete module error:", e);
-      showToast("মডিউল অপসারণ করতে সমস্যা হয়েছে।");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  const deleteModuleSteps: ActionStep<{ dayNumber: number; type: 'skill' | 'literacy' }>[] = useMemo(
+    () => [
+      {
+        id: 'delete-calendar-module',
+        label: 'মডিউল অপসারণ করা হচ্ছে',
+        run: async () => {
+          if (!deletingModule || !canUpdateCalendar) {
+            throw new ActionMessageError('মডিউল অপসারণের অনুমতি নেই বা মডিউল পাওয়া যায়নি।');
+          }
+          if (deletingModule.type === 'skill') {
+            await dataService.deleteTradeSkillModule(deletingModule.id, activeTradeId);
+          } else {
+            await dataService.deleteTradeLiteracyModule(deletingModule.id, activeTradeId);
+          }
+          if (selectedBatchId) await loadBatchModules(selectedBatchId);
+          return { dayNumber: deletingModule.dayNumber, type: deletingModule.type };
+        },
+        describe: (res) =>
+          `দিন #${toBn(res.dayNumber)} ${res.type === 'skill' ? 'স্কিল' : 'লিটারেসি'} মডিউল অপসারিত`,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTradeId, canUpdateCalendar, deletingModule, selectedBatchId]
+  );
+
+  const deleteModuleRunner = useActionRunner(deleteModuleSteps);
+  const isDeleteModuleBusy =
+    deleteModuleRunner.phase === 'running' || deleteModuleRunner.phase === 'waiting';
 
   // Bulk Save Callback
   const handleBulkSave = async (items: any[], replaceExisting: boolean) => {
@@ -628,30 +642,42 @@ const ShikhonCalendar: React.FC = () => {
     const existing = calendarProgress?.completedDays?.[day.dayNumber];
     setModalConductDate(existing?.completedAt || format(new Date(), 'yyyy-MM-dd'));
     setModalRemarks(existing?.remarks || '');
+    daySaveRunner.reset();
     setActiveDayModal(day);
   };
 
-  const handleSaveDayModal = async () => {
-    if (!activeDayModal || !selectedBatchId) return;
+  const daySaveSteps: ActionStep<{ dayBn: string }>[] = useMemo(
+    () => [
+      {
+        id: 'save-calendar-day-completion',
+        label: 'ক্লাস পরিচালনা তথ্য সংরক্ষণ করা হচ্ছে',
+        run: async () => {
+          if (!activeDayModal || !selectedBatchId) {
+            throw new ActionMessageError('সঠিক ক্লাস বা ব্যাচ নির্বাচন করা হয়নি।');
+          }
+          const updated = await dataService.updateDayCompletion(
+            selectedBatchId,
+            activeDayModal.dayNumber,
+            {
+              isCompleted: true,
+              completedAt: modalConductDate,
+              remarks: modalRemarks,
+              trainerName: userProfile?.name,
+              trainerId: userProfile?.id,
+            }
+          );
+          setCalendarProgress(updated);
+          return { dayBn: activeDayModal.dayBn };
+        },
+        describe: (res) => `ক্লাস #${res.dayBn} আপডেট ও সম্পন্ন হয়েছে`,
+      },
+    ],
+    [activeDayModal, modalConductDate, modalRemarks, selectedBatchId, userProfile?.id, userProfile?.name]
+  );
 
-    setSavingDay(activeDayModal.dayNumber);
-    try {
-      const updated = await dataService.updateDayCompletion(selectedBatchId, activeDayModal.dayNumber, {
-        isCompleted: true,
-        completedAt: modalConductDate,
-        remarks: modalRemarks,
-        trainerName: userProfile?.name,
-        trainerId: userProfile?.id,
-      });
-      setCalendarProgress(updated);
-      setActiveDayModal(null);
-      showToast(`ক্লাস #${activeDayModal.dayBn} আপডেট ও সম্পন্ন হয়েছে।`);
-    } catch (err) {
-      console.error("Error updating day details:", err);
-    } finally {
-      setSavingDay(null);
-    }
-  };
+  const daySaveRunner = useActionRunner(daySaveSteps);
+  const isDayModalBusy =
+    daySaveRunner.phase === 'running' || daySaveRunner.phase === 'waiting';
 
   const handlePrint = () => {
     printCurrentDocument({ jobName: `BNFE_Shikhon_Calendar_${selectedBatch?.name || 'Batch'}` });
@@ -764,17 +790,21 @@ const ShikhonCalendar: React.FC = () => {
             {/* Selected Batch Trainer Details */}
             {selectedBatch && (
               <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
-                <div className="p-2.5 rounded-xl bg-theme-primary-soft/70 border border-theme-primary-border">
+                <div className="p-2.5 rounded-xl bg-theme-primary-soft/70 border border-theme-primary-border min-w-0">
                   <span className="block text-[10px] font-bold text-theme-primary-soft-fg uppercase tracking-wider">স্কিল ট্রেইনার</span>
-                  <span className="font-bold text-theme-text-primary truncate block text-xs mt-0.5">
-                    {selectedBatch.skillTrainerName || 'নির্ধারিত নেই'}
-                  </span>
+                  <TruncatedText
+                    text={selectedBatch.skillTrainerName || 'নির্ধারিত নেই'}
+                    mode="pop"
+                    className="font-bold text-theme-text-primary block text-xs mt-0.5"
+                  />
                 </div>
-                <div className="p-2.5 rounded-xl bg-theme-info-soft/70 border border-theme-info/30">
+                <div className="p-2.5 rounded-xl bg-theme-info-soft/70 border border-theme-info/30 min-w-0">
                   <span className="block text-[10px] font-bold text-theme-info-fg uppercase tracking-wider">লিটারেসি ট্রেইনার</span>
-                  <span className="font-bold text-theme-text-primary truncate block text-xs mt-0.5">
-                    {selectedBatch.literacyTrainerName || 'নির্ধারিত নেই'}
-                  </span>
+                  <TruncatedText
+                    text={selectedBatch.literacyTrainerName || 'নির্ধারিত নেই'}
+                    mode="pop"
+                    className="font-bold text-theme-text-primary block text-xs mt-0.5"
+                  />
                 </div>
               </div>
             )}
@@ -1024,17 +1054,17 @@ const ShikhonCalendar: React.FC = () => {
           {viewMode === 'table' ? (
             <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden print:bg-white print:text-black print:border-black print:rounded-none">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="min-w-[1000px] w-full table-fixed text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-900 dark:bg-theme-surface-subtle text-white dark:text-theme-text-primary font-bold border-b border-theme-border print:bg-slate-200 print:text-black print:border-black">
                       <th className="py-3 px-3 w-14 text-center border-r border-slate-800 dark:border-theme-border print:border-black">ক্লাস নং</th>
-                      <th className="py-3 px-4 border-r border-slate-800 dark:border-theme-border print:border-black min-w-[200px]">
+                      <th className="py-3 px-4 w-[240px] border-r border-slate-800 dark:border-theme-border print:border-black">
                         স্কিল কার্যক্রম (ট্রেড ভিত্তিক)
                       </th>
                       <th className="py-3 px-3 w-36 text-center border-r border-slate-800 dark:border-theme-border print:border-black">
                         স্কিল ট্রেইনারের স্থিতি
                       </th>
-                      <th className="py-3 px-4 border-r border-slate-800 dark:border-theme-border print:border-black min-w-[200px]">
+                      <th className="py-3 px-4 w-[240px] border-r border-slate-800 dark:border-theme-border print:border-black">
                         লিটারেসি কার্যক্রম (জীবন দক্ষতা)
                       </th>
                       <th className="py-3 px-3 w-36 text-center border-r border-slate-800 dark:border-theme-border print:border-black">
@@ -1095,13 +1125,15 @@ const ShikhonCalendar: React.FC = () => {
                             {/* Skill Module details */}
                             <td className="py-3 px-4 border-r border-theme-border print:border-black">
                               <div className="space-y-0.5">
-                                <div className="flex items-center space-x-1.5">
-                                  <span className="bg-theme-primary-soft text-theme-primary-soft-fg text-[10px] font-bold px-1.5 py-0.5 rounded border border-theme-primary-border tabular-nums">
+                                <div className="flex items-center space-x-1.5 min-w-0">
+                                  <span className="bg-theme-primary-soft text-theme-primary-soft-fg text-[10px] font-bold px-1.5 py-0.5 rounded border border-theme-primary-border tabular-nums shrink-0">
                                     {day.skillTaskNo}
                                   </span>
-                                  <span className="text-[11px] text-theme-text-secondary font-medium truncate max-w-xs">
-                                    {day.skillModule}
-                                  </span>
+                                  <TruncatedText
+                                    text={day.skillModule}
+                                    mode="pop"
+                                    className="text-[11px] text-theme-text-secondary font-medium min-w-0"
+                                  />
                                 </div>
                                 <p className="font-semibold text-theme-text-primary print:text-black text-xs leading-snug">
                                   {day.skillTopic}
@@ -1123,9 +1155,12 @@ const ShikhonCalendar: React.FC = () => {
                                   <div className="text-[10px] text-theme-text-secondary font-semibold tabular-nums">
                                     তারিখ: {skillStatus.completedAt}
                                   </div>
-                                  <div className="text-[10px] text-theme-primary font-medium truncate max-w-[130px] mx-auto" title={skillStatus.trainerName || selectedBatch?.skillTrainerName}>
-                                    প্রশিক্ষক: {skillStatus.trainerName || selectedBatch?.skillTrainerName || 'স্কিল ট্রেইনার'}
-                                  </div>
+                                  <TruncatedText
+                                    as="div"
+                                    text={`প্রশিক্ষক: ${skillStatus.trainerName || selectedBatch?.skillTrainerName || 'স্কিল ট্রেইনার'}`}
+                                    mode="pop"
+                                    className="text-[10px] text-theme-primary font-medium max-w-[130px] mx-auto"
+                                  />
                                 </div>
                               ) : (
                                 <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-theme-surface-subtle text-theme-text-muted">
@@ -1165,9 +1200,12 @@ const ShikhonCalendar: React.FC = () => {
                                   <div className="text-[10px] text-theme-text-secondary font-semibold tabular-nums">
                                     তারিখ: {literacyStatus.completedAt}
                                   </div>
-                                  <div className="text-[10px] text-theme-info font-medium truncate max-w-[130px] mx-auto" title={literacyStatus.trainerName || selectedBatch?.literacyTrainerName}>
-                                    প্রশিক্ষক: {literacyStatus.trainerName || selectedBatch?.literacyTrainerName || 'লিটারেসি ট্রেইনার'}
-                                  </div>
+                                  <TruncatedText
+                                    as="div"
+                                    text={`প্রশিক্ষক: ${literacyStatus.trainerName || selectedBatch?.literacyTrainerName || 'লিটারেসি ট্রেইনার'}`}
+                                    mode="pop"
+                                    className="text-[10px] text-theme-info font-medium max-w-[130px] mx-auto"
+                                  />
                                 </div>
                               ) : (
                                 <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-theme-surface-subtle text-theme-text-muted">
@@ -1470,18 +1508,18 @@ const ShikhonCalendar: React.FC = () => {
           {/* Dedicated Table */}
           <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="min-w-[1040px] w-full table-fixed text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-900 dark:bg-theme-surface-subtle text-white dark:text-theme-text-primary font-bold border-b border-theme-border">
                     <th className="py-3 px-4 w-12 text-center">#</th>
-                    <th className="py-3 px-4">তারিখ</th>
-                    <th className="py-3 px-4">ক্লাস নং</th>
-                    <th className="py-3 px-4">মডিউলের ধরন</th>
-                    <th className="py-3 px-4">কাজ ও পঠিত বিষয়</th>
-                    <th className="py-3 px-4">দায়িত্বপ্রাপ্ত ট্রেইনার</th>
-                    <th className="py-3 px-4">ট্রেইনার আইডি</th>
-                    <th className="py-3 px-4 text-center">অবস্থা</th>
-                    <th className="py-3 px-4">মন্তব্য</th>
+                    <th className="py-3 px-4 w-[105px]">তারিখ</th>
+                    <th className="py-3 px-4 w-[95px]">ক্লাস নং</th>
+                    <th className="py-3 px-4 w-[135px]">মডিউলের ধরন</th>
+                    <th className="py-3 px-4 w-[200px]">কাজ ও পঠিত বিষয়</th>
+                    <th className="py-3 px-4 w-[160px]">দায়িত্বপ্রাপ্ত ট্রেইনার</th>
+                    <th className="py-3 px-4 w-[120px]">ট্রেইনার আইডি</th>
+                    <th className="py-3 px-4 w-[95px] text-center">অবস্থা</th>
+                    <th className="py-3 px-4 w-[180px]">মন্তব্য</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-theme-border">
@@ -1564,8 +1602,13 @@ const ShikhonCalendar: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-theme-text-secondary max-w-xs truncate" title={log.remarks}>
-                          {log.remarks || '-'}
+                        <td className="py-3 px-4 text-theme-text-secondary">
+                          <TruncatedText
+                            as="div"
+                            text={log.remarks || '-'}
+                            mode={log.remarks ? 'sheet' : 'pop'}
+                            title="মন্তব্য"
+                          />
                         </td>
                       </tr>
                     ))
@@ -1669,17 +1712,17 @@ const ShikhonCalendar: React.FC = () => {
           {/* Skill Modules Table */}
           <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="min-w-[980px] w-full table-fixed text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-900 dark:bg-theme-surface-subtle text-white dark:text-theme-text-primary font-bold border-b border-theme-border">
                     <th className="py-3 px-3 w-16 text-center">দিন #</th>
                     <th className="py-3 px-3 w-24 text-center">কাজ নং</th>
-                    <th className="py-3 px-4">মডিউলের নাম ও বিভাগ</th>
-                    <th className="py-3 px-4">পঠিত বিষয় / শিখন ফল (Topic)</th>
-                    <th className="py-3 px-3 text-center">তাত্ত্বিক</th>
-                    <th className="py-3 px-3 text-center">ব্যবহারিক</th>
-                    <th className="py-3 px-3 text-center">মোট সময়</th>
-                    <th className="py-3 px-3 text-center min-w-[140px]">স্থিতি ও ট্রেইনার মার্ক</th>
+                    <th className="py-3 px-4 w-[180px]">মডিউলের নাম ও বিভাগ</th>
+                    <th className="py-3 px-4 w-[220px]">পঠিত বিষয় / শিখন ফল (Topic)</th>
+                    <th className="py-3 px-3 w-[80px] text-center">তাত্ত্বিক</th>
+                    <th className="py-3 px-3 w-[85px] text-center">ব্যবহারিক</th>
+                    <th className="py-3 px-3 w-[90px] text-center">মোট সময়</th>
+                    <th className="py-3 px-3 w-[145px] text-center">স্থিতি ও ট্রেইনার মার্ক</th>
                     <th className="py-3 px-3 w-24 text-center">একশন</th>
                   </tr>
                 </thead>
@@ -1694,7 +1737,7 @@ const ShikhonCalendar: React.FC = () => {
                     filteredSkillModules.map((item) => {
                       const skillStatus = calendarProgress?.skillProgress?.[item.dayNumber] || calendarProgress?.completedDays?.[item.dayNumber];
                       const isDone = !!skillStatus?.isCompleted;
-                      const canMarkSkill = isSkillTrainer || isDirectorOrFMA;
+                      const canMarkSkill = canUpdateCalendar && (isSkillTrainer || isDirectorOrFMA);
 
                       return (
                         <tr key={item.id} className={`transition ${isDone ? 'bg-theme-primary-soft/25' : 'hover:bg-theme-surface-hover'}`}>
@@ -1731,9 +1774,12 @@ const ShikhonCalendar: React.FC = () => {
                                 <div className="text-[10px] text-theme-text-secondary font-semibold tabular-nums">
                                   তারিখ: {skillStatus.completedAt || '-'}
                                 </div>
-                                <div className="text-[10px] text-theme-primary font-medium truncate max-w-[130px] mx-auto" title={skillStatus.trainerName || selectedBatch?.skillTrainerName}>
-                                  প্রশিক্ষক: {skillStatus.trainerName || selectedBatch?.skillTrainerName || 'স্কিল ট্রেইনার'}
-                                </div>
+                                <TruncatedText
+                                  as="div"
+                                  text={`প্রশিক্ষক: ${skillStatus.trainerName || selectedBatch?.skillTrainerName || 'স্কিল ট্রেইনার'}`}
+                                  mode="pop"
+                                  className="text-[10px] text-theme-primary font-medium max-w-[130px] mx-auto"
+                                />
                                 {canMarkSkill && (
                                   <button
                                     onClick={() => handleToggleSkillCompletion(item.dayNumber, false)}
@@ -1887,16 +1933,16 @@ const ShikhonCalendar: React.FC = () => {
           {/* Literacy Modules Table */}
           <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="min-w-[920px] w-full table-fixed text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-900 dark:bg-theme-surface-subtle text-white dark:text-theme-text-primary font-bold border-b border-theme-border">
                     <th className="py-3 px-3 w-16 text-center">দিন #</th>
                     <th className="py-3 px-3 w-24 text-center">কাজ নং</th>
-                    <th className="py-3 px-4">মডিউল ও বিষয় বিভাগ</th>
-                    <th className="py-3 px-4">পঠিত বিষয় / পাঠ শিরোনাম (Topic)</th>
-                    <th className="py-3 px-3 text-center">শুরু - শেষ</th>
-                    <th className="py-3 px-3 text-center">মোট সময়</th>
-                    <th className="py-3 px-3 text-center min-w-[140px]">স্থিতি ও ট্রেইনার মার্ক</th>
+                    <th className="py-3 px-4 w-[180px]">মডিউল ও বিষয় বিভাগ</th>
+                    <th className="py-3 px-4 w-[240px]">পঠিত বিষয় / পাঠ শিরোনাম (Topic)</th>
+                    <th className="py-3 px-3 w-[115px] text-center">শুরু - শেষ</th>
+                    <th className="py-3 px-3 w-[95px] text-center">মোট সময়</th>
+                    <th className="py-3 px-3 w-[145px] text-center">স্থিতি ও ট্রেইনার মার্ক</th>
                     <th className="py-3 px-3 w-24 text-center">একশন</th>
                   </tr>
                 </thead>
@@ -1911,7 +1957,7 @@ const ShikhonCalendar: React.FC = () => {
                     filteredLiteracyModules.map((item) => {
                       const literacyStatus = calendarProgress?.literacyProgress?.[item.dayNumber];
                       const isDone = !!literacyStatus?.isCompleted;
-                      const canMarkLiteracy = isLiteracyTrainer || isDirectorOrFMA;
+                      const canMarkLiteracy = canUpdateCalendar && (isLiteracyTrainer || isDirectorOrFMA);
 
                       return (
                         <tr key={item.id} className={`transition ${isDone ? 'bg-theme-info-soft/25' : 'hover:bg-theme-surface-hover'}`}>
@@ -1947,9 +1993,12 @@ const ShikhonCalendar: React.FC = () => {
                                 <div className="text-[10px] text-theme-text-secondary font-semibold tabular-nums">
                                   তারিখ: {literacyStatus.completedAt || '-'}
                                 </div>
-                                <div className="text-[10px] text-theme-info font-medium truncate max-w-[130px] mx-auto" title={literacyStatus.trainerName || selectedBatch?.literacyTrainerName}>
-                                  প্রশিক্ষক: {literacyStatus.trainerName || selectedBatch?.literacyTrainerName || 'লিটারেসি ট্রেইনার'}
-                                </div>
+                                <TruncatedText
+                                  as="div"
+                                  text={`প্রশিক্ষক: ${literacyStatus.trainerName || selectedBatch?.literacyTrainerName || 'লিটারেসি ট্রেইনার'}`}
+                                  mode="pop"
+                                  className="text-[10px] text-theme-info font-medium max-w-[130px] mx-auto"
+                                />
                                 {canMarkLiteracy && (
                                   <button
                                     onClick={() => handleToggleLiteracyCompletion(item.dayNumber, false)}
@@ -2020,7 +2069,7 @@ const ShikhonCalendar: React.FC = () => {
       {/* ========================================================================= */}
       {deletingModule && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-theme-elevated rounded-3xl max-w-md w-full shadow-2xl border border-theme-border overflow-hidden transform animate-in zoom-in-95 duration-150">
+          <div className="bg-theme-elevated rounded-3xl max-w-md w-full shadow-2xl border border-theme-border overflow-visible transform animate-in zoom-in-95 duration-150">
             <div className="p-6">
               <div className="w-12 h-12 rounded-2xl bg-theme-danger-soft text-theme-danger flex items-center justify-center mb-4">
                 <Trash2 size={24} />
@@ -2057,24 +2106,24 @@ const ShikhonCalendar: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex items-center justify-end space-x-3">
+              <div className="flex items-center justify-end space-x-3 overflow-visible">
                 <button
                   type="button"
-                  disabled={isDeleting}
+                  disabled={isDeleteModuleBusy}
                   onClick={() => setDeletingModule(null)}
-                  className="px-4 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition disabled:opacity-50 cursor-pointer"
                 >
-                  বাতিল
+                  {deleteModuleRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={handleConfirmDelete}
-                  className="px-5 py-2.5 rounded-xl bg-theme-danger hover:opacity-90 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 inline-flex items-center space-x-1.5"
-                >
-                  <Trash2 size={14} />
-                  <span>{isDeleting ? 'মুছে ফেলা হচ্ছে...' : 'হ্যাঁ, মুছে ফেলুন'}</span>
-                </button>
+                <ActionButton
+                  runner={deleteModuleRunner}
+                  variant="danger"
+                  idleLabel="হ্যাঁ, মুছে ফেলুন"
+                  idleIcon={<Trash2 size={14} />}
+                  popoverTitle="মডিউল অপসারণ"
+                  onAutoHide={() => setDeletingModule(null)}
+                  buttonClassName="px-5 py-2.5 rounded-xl text-xs font-bold"
+                />
               </div>
             </div>
           </div>
@@ -2117,7 +2166,7 @@ const ShikhonCalendar: React.FC = () => {
       {/* ========================================================================= */}
       {activeDayModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-theme-elevated border border-theme-border rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+          <div className="bg-theme-elevated border border-theme-border rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 overflow-visible">
             <div className="flex items-center justify-between border-b border-theme-border pb-3">
               <div>
                 <h3 className="text-base font-bold text-theme-text-primary tabular-nums">
@@ -2128,14 +2177,19 @@ const ShikhonCalendar: React.FC = () => {
                 </p>
               </div>
               <button
+                type="button"
+                disabled={isDayModalBusy}
                 onClick={() => setActiveDayModal(null)}
-                className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg hover:bg-theme-surface-hover transition"
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg hover:bg-theme-surface-hover transition disabled:opacity-45"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <fieldset
+              disabled={isDayModalBusy || daySaveRunner.phase === 'success'}
+              className="space-y-3 text-xs min-w-0"
+            >
               <div className="p-3 bg-theme-primary-soft/50 rounded-xl border border-theme-primary-border">
                 <span className="font-bold text-theme-primary-soft-fg block mb-0.5">স্কিল বিষয়:</span>
                 <p className="text-theme-text-primary">{activeDayModal.skillTopic}</p>
@@ -2154,7 +2208,7 @@ const ShikhonCalendar: React.FC = () => {
                   type="date"
                   value={modalConductDate}
                   onChange={(e) => setModalConductDate(e.target.value)}
-                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
+                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary disabled:opacity-60"
                 />
               </div>
 
@@ -2167,7 +2221,7 @@ const ShikhonCalendar: React.FC = () => {
                   value={modalRemarks}
                   onChange={(e) => setModalRemarks(e.target.value)}
                   placeholder="ক্লাসের অংশগ্রহণ, ব্যবহারিক উপকরণের প্রাপ্যতা বা শিক্ষার্থীর ফিডব্যাক..."
-                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary"
+                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl p-2.5 text-xs text-theme-text-primary placeholder:text-theme-text-muted focus:outline-hidden focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary disabled:opacity-60"
                 />
               </div>
 
@@ -2180,22 +2234,24 @@ const ShikhonCalendar: React.FC = () => {
                   <span>এই ক্লাসের জন্য সরাসরি হাজিরা গ্রহণ পেজে যান</span>
                 </Link>
               </div>
-            </div>
+            </fieldset>
 
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-theme-border">
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-theme-border overflow-visible">
               <button
+                type="button"
+                disabled={isDayModalBusy}
                 onClick={() => setActiveDayModal(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition disabled:opacity-45"
               >
-                বন্ধ করুন
+                {daySaveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বন্ধ করুন'}
               </button>
-              <button
-                onClick={handleSaveDayModal}
-                disabled={savingDay !== null}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg transition shadow-sm"
-              >
-                সংরক্ষণ ও সম্পন্ন করুন
-              </button>
+              <ActionButton
+                runner={daySaveRunner}
+                idleLabel="সংরক্ষণ ও সম্পন্ন করুন"
+                popoverTitle="ক্লাস পরিচালনা সংরক্ষণ"
+                onAutoHide={() => setActiveDayModal(null)}
+                buttonClassName="px-4 py-2 rounded-xl text-xs font-bold"
+              />
             </div>
           </div>
         </div>

@@ -35,6 +35,7 @@ import {
   Search,
   ExternalLink
 } from 'lucide-react';
+import { TruncatedText } from '../components/ui/TruncatedText';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -1033,17 +1034,17 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full min-w-[880px] table-fixed text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-theme-surface-subtle border-b border-theme-border text-theme-text-secondary text-[11px] uppercase tracking-wider font-bold">
                   <th className="py-3 px-4 text-center w-12">#</th>
-                  <th className="py-3 px-4">প্রশিক্ষণার্থী</th>
-                  {!isTrainerView && <th className="py-3 px-4">ব্যাচ ও কেন্দ্র</th>}
-                  <th className="py-3 px-4">অভিভাবক ও যোগাযোগ</th>
-                  <th className="py-3 px-4 text-center">উপস্থিতি বিবরণ</th>
-                  <th className="py-3 px-4">উপস্থিতির হার</th>
-                  <th className="py-3 px-4 text-center">ঝুঁকির স্তর</th>
-                  <th className="py-3 px-4 text-right">পদক্ষেপ</th>
+                  <th className="py-3 px-4 w-[195px]">প্রশিক্ষণার্থী</th>
+                  {!isTrainerView && <th className="py-3 px-4 w-[195px]">ব্যাচ ও কেন্দ্র</th>}
+                  <th className="py-3 px-4 w-[175px]">অভিভাবক ও যোগাযোগ</th>
+                  <th className="py-3 px-4 text-center w-[115px]">উপস্থিতি বিবরণ</th>
+                  <th className="py-3 px-4 w-[115px]">উপস্থিতির হার</th>
+                  <th className="py-3 px-4 text-center w-[105px]">ঝুঁকির স্তর</th>
+                  <th className="py-3 px-4 text-right w-[95px]">পদক্ষেপ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-theme-border">
@@ -1079,8 +1080,13 @@ const Dashboard: React.FC = () => {
                               {item.nameBn ? item.nameBn.charAt(0) : 'শি'}
                             </div>
                           )}
-                          <div className="overflow-hidden">
-                            <p className="font-bold text-theme-text-primary truncate">{item.nameBn || item.nameEn}</p>
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <TruncatedText
+                              as="p"
+                              text={item.nameBn || item.nameEn}
+                              mode="pop"
+                              className="font-bold text-theme-text-primary"
+                            />
                             <div className="flex items-center space-x-1 mt-0.5">
                               <span className="font-mono text-[10px] text-theme-text-secondary bg-theme-surface-subtle border border-theme-border px-1.5 py-0.2 rounded tabular-nums">
                                 {item.registrationNumber}
@@ -1098,8 +1104,18 @@ const Dashboard: React.FC = () => {
                       {!isTrainerView && (
                         <td className="py-3.5 px-4">
                           <p className="font-semibold text-theme-text-primary leading-tight">{item.batchName}</p>
-                          <p className="text-[11px] text-theme-text-secondary mt-0.5 truncate">{item.tradeName}</p>
-                          <p className="text-[10px] text-theme-primary font-medium truncate">{item.instituteName}</p>
+                          <TruncatedText
+                            as="p"
+                            text={item.tradeName}
+                            mode="pop"
+                            className="text-[11px] text-theme-text-secondary mt-0.5"
+                          />
+                          <TruncatedText
+                            as="p"
+                            text={item.instituteName}
+                            mode="pop"
+                            className="text-[10px] text-theme-primary font-medium"
+                          />
                         </td>
                       )}
 
@@ -1354,13 +1370,17 @@ const Dashboard: React.FC = () => {
                     : 'bg-theme-info-soft border-theme-info-border text-theme-text-primary'
                 }`}
               >
-                <div>
-                  <div className="flex items-center justify-between text-xs font-bold mb-1">
-                    <span className="truncate">{alert.title}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between text-xs font-bold mb-1 min-w-0">
+                    <TruncatedText text={alert.title} mode="pop" className="min-w-0" />
                   </div>
-                  <p className="text-[11px] text-theme-text-secondary leading-relaxed line-clamp-2">
-                    {alert.desc}
-                  </p>
+                  <TruncatedText
+                    as="p"
+                    text={alert.desc}
+                    lines={2}
+                    mode="exp"
+                    className="text-[11px] text-theme-text-secondary leading-relaxed"
+                  />
                 </div>
 
                 <Link
@@ -1777,15 +1797,20 @@ const Dashboard: React.FC = () => {
                       </span>
                     )}
 
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-start justify-between gap-2 pr-14">
                         <h3 className="font-bold text-theme-text-primary text-sm leading-snug">
                           {item.batchName}
                         </h3>
                       </div>
-                      <p className="text-[11px] text-theme-text-secondary mt-0.5 truncate">
+                      <TruncatedText
+                        as="p"
+                        text={`${item.tradeName} • ${item.instituteName}`}
+                        mode="pop"
+                        className="text-[11px] text-theme-text-secondary mt-0.5"
+                      >
                         {item.tradeName} • <span className="text-theme-text-primary font-medium">{item.instituteName}</span>
-                      </p>
+                      </TruncatedText>
                     </div>
 
                     {/* Attendance Figures for Selected Date */}
@@ -1961,8 +1986,13 @@ const Dashboard: React.FC = () => {
                     <div className="w-8 h-8 rounded-lg bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border flex items-center justify-center shrink-0 mt-0.5">
                       <Clock size={15} />
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="font-bold text-theme-text-primary truncate">{log.action}</p>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <TruncatedText
+                        as="p"
+                        text={log.action}
+                        mode="pop"
+                        className="font-bold text-theme-text-primary"
+                      />
                       <p className="text-theme-text-secondary text-[11px] mt-0.5">
                         সম্পাদনকারী: <span className="font-semibold text-theme-text-primary">{log.userName}</span> • মডিউল: <span className="text-theme-primary font-medium">{log.module}</span>
                       </p>

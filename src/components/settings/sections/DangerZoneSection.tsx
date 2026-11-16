@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Lock, ShieldAlert, Trash2, Unlock } from 'lucide-react';
 import { useSystemSettings } from '../../../contexts/SystemSettingsContext';
 import { SettingsCounts, SettingsToastType } from '../types';
 import { SettingsConfirmDialog } from '../SettingsConfirmDialog';
+import { ActionStep, useActionRunner } from '../../../hooks/useActionRunner';
+import { ActionMessageError } from '../../../lib/friendlyError';
+import { toBn } from '../../../lib/dateUtils';
 
 type WipeEntityKey =
   | 'attendance'
@@ -43,7 +46,6 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
   const [pendingWipe, setPendingWipe] = useState<WipeEntityKey | null>(null);
   const [factoryResetOpen, setFactoryResetOpen] = useState(false);
   const [keepInstitutesAndTrades, setKeepInstitutesAndTrades] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!isAdmin) {
     return (
@@ -136,6 +138,77 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
 
   const activeWipeRow = wipeRows.find((r) => r.key === pendingWipe) || null;
 
+  const singleWipeSteps: ActionStep<{ msg: string }>[] = useMemo(
+    () => [
+      {
+        id: 'wipe-entity-data',
+        label: activeWipeRow ? `${activeWipeRow.label} মুছে ফেলা হচ্ছে` : 'ডাটা মুছে ফেলা হচ্ছে',
+        run: async () => {
+          if (!pendingWipe) {
+            throw new ActionMessageError('কোনো বিভাগ নির্বাচন করা হয়নি।');
+          }
+          let msg = '';
+          if (pendingWipe === 'attendance') {
+            const deleted = await deleteAllAttendance();
+            msg = `দৈনিক হাজিরা (${toBn(deleted)}টি) মুছে ফেলা হয়েছে`;
+          } else if (pendingWipe === 'trainees') {
+            const res = await deleteAllTrainees({ deleteAttendanceToo: true });
+            msg = `প্রশিক্ষণার্থী (${toBn(res.deletedTrainees)} জন) ও হাজিরা (${toBn(res.deletedAttendance)}টি) মুছে ফেলা হয়েছে`;
+          } else if (pendingWipe === 'exams') {
+            const res = await deleteAllExamsAndMarks();
+            msg = `পরীক্ষা (${toBn(res.deletedExams)}টি) ও মার্কস (${toBn(res.deletedMarks)}টি) মুছে ফেলা হয়েছে`;
+          } else if (pendingWipe === 'batches') {
+            const deleted = await deleteAllBatches();
+            msg = `সকল ব্যাচ (${toBn(deleted)}টি) মুছে ফেলা হয়েছে`;
+          } else if (pendingWipe === 'institutes') {
+            const deleted = await deleteAllInstitutes();
+            msg = `সকল প্রতিষ্ঠান (${toBn(deleted)}টি) মুছে ফেলা হয়েছে`;
+          } else if (pendingWipe === 'trades') {
+            const deleted = await deleteAllTrades();
+            msg = `সকল ট্রেড (${toBn(deleted)}টি) মুছে ফেলা হয়েছে`;
+          }
+          await Promise.all([onRefreshCounts(), onRefreshLogs()]);
+          return { msg };
+        },
+        describe: (res) => res.msg,
+      },
+    ],
+    [
+      activeWipeRow,
+      deleteAllAttendance,
+      deleteAllBatches,
+      deleteAllExamsAndMarks,
+      deleteAllInstitutes,
+      deleteAllTrades,
+      deleteAllTrainees,
+      onRefreshCounts,
+      onRefreshLogs,
+      pendingWipe,
+    ]
+  );
+
+  const singleWipeRunner = useActionRunner(singleWipeSteps);
+
+  const factoryResetSteps: ActionStep<void>[] = useMemo(
+    () => [
+      {
+        id: 'factory-reset-system',
+        label: 'ফ্যাক্টরি রিসেট সম্পন্ন করা হচ্ছে',
+        run: async () => {
+          await purgeAllSystemData({
+            keepInstitutesAndTrades,
+            keepLogs: true,
+          });
+          await Promise.all([onRefreshCounts(), onRefreshLogs()]);
+        },
+        describe: () => 'সম্পূর্ণ ফ্যাক্টরি রিসেট সম্পন্ন হয়েছে',
+      },
+    ],
+    [keepInstitutesAndTrades, onRefreshCounts, onRefreshLogs, purgeAllSystemData]
+  );
+
+  const factoryResetRunner = useActionRunner(factoryResetSteps);
+
   const handleRowDeleteClick = (row: (typeof wipeRows)[number]) => {
     if (isLocked) {
       showToast('warning', 'আগে ডিলিট আনলক করুন');
@@ -145,41 +218,8 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
       showToast('warning', `${row.label} বিভাগে কোনো রেকর্ড নেই।`);
       return;
     }
+    singleWipeRunner.reset();
     setPendingWipe(row.key);
-  };
-
-  const handleConfirmSingleWipe = async () => {
-    if (!pendingWipe || isDeleting) return;
-    setIsDeleting(true);
-    try {
-      let msg = '';
-      if (pendingWipe === 'attendance') {
-        const deleted = await deleteAllAttendance();
-        msg = `সকল দৈনিক হাজিরা (${deleted}টি) মুছে ফেলা হয়েছে।`;
-      } else if (pendingWipe === 'trainees') {
-        const res = await deleteAllTrainees({ deleteAttendanceToo: true });
-        msg = `প্রশিক্ষণার্থী (${res.deletedTrainees} জন) ও হাজিরা (${res.deletedAttendance}টি) মুছে ফেলা হয়েছে।`;
-      } else if (pendingWipe === 'exams') {
-        const res = await deleteAllExamsAndMarks();
-        msg = `পরীক্ষা (${res.deletedExams}টি) ও মার্কস (${res.deletedMarks}টি) মুছে ফেলা হয়েছে।`;
-      } else if (pendingWipe === 'batches') {
-        const deleted = await deleteAllBatches();
-        msg = `সকল ব্যাচ (${deleted}টি) মুছে ফেলা হয়েছে।`;
-      } else if (pendingWipe === 'institutes') {
-        const deleted = await deleteAllInstitutes();
-        msg = `সকল প্রতিষ্ঠান (${deleted}টি) মুছে ফেলা হয়েছে।`;
-      } else if (pendingWipe === 'trades') {
-        const deleted = await deleteAllTrades();
-        msg = `সকল ট্রেড (${deleted}টি) মুছে ফেলা হয়েছে।`;
-      }
-      setPendingWipe(null);
-      await Promise.all([onRefreshCounts(), onRefreshLogs()]);
-      showToast('success', msg);
-    } catch (err: any) {
-      showToast('error', err?.message || 'ডাটা মুছতে সমস্যা হয়েছে।');
-    } finally {
-      setIsDeleting(false);
-    }
   };
 
   const handleTriggerFactoryReset = () => {
@@ -187,25 +227,8 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
       showToast('warning', 'আগে ডিলিট আনলক করুন');
       return;
     }
+    factoryResetRunner.reset();
     setFactoryResetOpen(true);
-  };
-
-  const handleConfirmFactoryReset = async () => {
-    if (isDeleting) return;
-    setIsDeleting(true);
-    try {
-      await purgeAllSystemData({
-        keepInstitutesAndTrades,
-        keepLogs: true,
-      });
-      setFactoryResetOpen(false);
-      await Promise.all([onRefreshCounts(), onRefreshLogs()]);
-      showToast('success', 'সম্পূর্ণ ফ্যাক্টরি রিসেট সম্পন্ন হয়েছে।');
-    } catch (err: any) {
-      showToast('error', err?.message || 'ফ্যাক্টরি রিসেট ব্যর্থ হয়েছে।');
-    } finally {
-      setIsDeleting(false);
-    }
   };
 
   return (
@@ -349,10 +372,15 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
         confirmLabel="স্থায়ীভাবে মুছুন"
         requireKeyword="DELETE"
         tone="danger"
-        isProcessing={isDeleting}
-        onConfirm={handleConfirmSingleWipe}
+        runner={singleWipeRunner}
+        onAutoHide={() => {
+          setPendingWipe(null);
+        }}
+        onConfirm={() => Promise.resolve()}
         onClose={() => {
-          if (!isDeleting) setPendingWipe(null);
+          if (singleWipeRunner.phase !== 'running' && singleWipeRunner.phase !== 'waiting') {
+            setPendingWipe(null);
+          }
         }}
       />
 
@@ -365,10 +393,15 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
         confirmLabel="ফ্যাক্টরি রিসেট সম্পন্ন করুন"
         requireKeyword="RESET"
         tone="danger"
-        isProcessing={isDeleting}
-        onConfirm={handleConfirmFactoryReset}
+        runner={factoryResetRunner}
+        onAutoHide={() => {
+          setFactoryResetOpen(false);
+        }}
+        onConfirm={() => Promise.resolve()}
         onClose={() => {
-          if (!isDeleting) setFactoryResetOpen(false);
+          if (factoryResetRunner.phase !== 'running' && factoryResetRunner.phase !== 'waiting') {
+            setFactoryResetOpen(false);
+          }
         }}
       >
         <label className="min-h-[44px] px-3 py-2 rounded-[12px] border border-theme-border bg-theme-surface flex items-center gap-2.5 text-xs font-semibold text-theme-text-primary cursor-pointer">

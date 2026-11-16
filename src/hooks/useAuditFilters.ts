@@ -6,7 +6,8 @@ import {
   query,
 } from 'firebase/firestore';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
+import { isPermissionDeniedError, reportPermissionDenied } from '../lib/sessionGuard';
 import type { ActivityLog } from '../types';
 import {
   getLogDate,
@@ -208,6 +209,9 @@ export function useAuditFilters(isAdmin: boolean) {
     } catch (err) {
       if (gen !== fetchGenerationRef.current) return;
       console.warn('Could not fetch filtered activity logs:', err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
       setLogsError('অডিট লগ লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
     } finally {
       if (gen === fetchGenerationRef.current) {
@@ -411,7 +415,10 @@ export function useAuditFilters(isAdmin: boolean) {
         );
         setPendingCount(filtered.length);
         setPendingCountCapped(false);
-      } catch {
+      } catch (err) {
+        if (auth.currentUser && isPermissionDeniedError(err)) {
+          reportPermissionDenied();
+        }
         if (!cancelled) {
           setPendingCount(null);
           setPendingCountCapped(false);

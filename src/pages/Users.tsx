@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { recordSimpleAuditLog } from '../lib/auditLog';
 import { UserProfile, UserRole, Institute, Batch, Trade, TrainerType } from '../types';
@@ -31,6 +31,9 @@ import {
 } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { useConfirm } from '../contexts/ConfirmationContext';
+import { ActionStep, useActionRunner } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
+import { ActionMessageError } from '../lib/friendlyError';
 
 const UsersPage: React.FC = () => {
   const { userProfile, refreshProfile, sendPasswordReset } = useAuth();
@@ -50,6 +53,10 @@ const UsersPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editFormError, setEditFormError] = useState('');
+  const [addFormError, setAddFormError] = useState('');
+  const editFormRef = useRef<HTMLFormElement>(null);
+  const addFormRef = useRef<HTMLFormElement>(null);
 
   // Edit form state
   const [editFormData, setEditFormData] = useState({
@@ -307,6 +314,8 @@ const UsersPage: React.FC = () => {
       return;
     }
     setEditingUser(u);
+    setEditFormError('');
+    editUserRunner.reset();
     setEditFormData({
       name: u.name,
       email: u.email,
@@ -373,68 +382,100 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
+  const editUserSteps: ActionStep<void>[] = useMemo(
+    () => [
+      {
+        id: 'update-user-profile',
+        label: 'ব্যবহারকারীর তথ্য সংরক্ষণ করা হচ্ছে',
+        run: async () => {
+          if (!editingUser) {
+            throw new ActionMessageError('সম্পাদনার জন্য কোনো ব্যবহারকারী নির্বাচিত নেই।');
+          }
+          const isApproving =
+            editingUser.status === 'Pending Approval' && editFormData.status === 'Active';
+          const updatedUser: UserProfile = {
+            ...editingUser,
+            name: editFormData.name.trim(),
+            role: editFormData.role,
+            trainerType:
+              editFormData.role === 'Trainer' ? editFormData.trainerType : (null as any),
+            instituteId: editFormData.role === 'Trainer' ? editFormData.instituteId : '',
+            batchId: editFormData.role === 'Trainer' ? editFormData.batchId : '',
+            status: editFormData.status,
+            phone: editFormData.phone.trim(),
+            ...(isApproving
+              ? {
+                  approvedBy: userProfile?.id || userProfile?.email || 'admin',
+                  approvedAt: Date.now(),
+                }
+              : {}),
+          };
+
+          await dataService.saveItem('users', updatedUser, {
+            module: 'security',
+            title: `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name.trim()}`,
+            actor: userProfile
+              ? {
+                  userId: userProfile.id || '',
+                  user: userProfile.name || 'User',
+                  userRole: userProfile.role || '',
+                }
+              : undefined,
+          });
+
+          if (userProfile?.id === updatedUser.id) {
+            await refreshProfile();
+          }
+
+          await fetchData();
+        },
+        describe: () => `${editFormData.name.trim()} এর তথ্য আপডেট হয়েছে`,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editFormData, editingUser, userProfile]
+  );
+
+  const editUserRunner = useActionRunner(editUserSteps);
+  const isEditLocked =
+    editUserRunner.phase === 'running' || editUserRunner.phase === 'waiting';
+
+  const handleBeforeUpdate = (): boolean => {
+    setEditFormError('');
+    if (!editingUser) return false;
+    if (editFormRef.current && !editFormRef.current.reportValidity()) {
+      return false;
+    }
 
     // RBAC Security Guard: A user cannot modify their own role or status
     if (userProfile?.id === editingUser.id) {
-      if (editFormData.role !== editingUser.role || editFormData.status !== editingUser.status) {
-        showAlert({
-          title: 'নিরাপত্তা নিষেধাজ্ঞা',
-          message: 'নিরাপত্তা নীতি অনুযায়ী আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।',
-          variant: 'danger'
-        });
-        return;
+      if (
+        editFormData.role !== editingUser.role ||
+        editFormData.status !== editingUser.status
+      ) {
+        setEditFormError(
+          'নিরাপত্তা নীতি অনুযায়ী আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।'
+        );
+        return false;
       }
     }
 
     // RBAC Security Guard: Only Course Director can grant Course Director role
     if (!isCourseDirector && editFormData.role === 'Course Director') {
-      showAlert({
-        title: 'অনুমতি নেই',
-        message: 'কেবলমাত্র কোর্স পরিচালক অন্য কাউকে কোর্স পরিচালক পদবী প্রদান করতে পারেন।',
-        variant: 'danger'
-      });
-      return;
+      setEditFormError(
+        'কেবলমাত্র কোর্স পরিচালক অন্য কাউকে কোর্স পরিচালক পদবী প্রদান করতে পারেন।'
+      );
+      return false;
     }
 
-    try {
-      const isApproving = editingUser.status === 'Pending Approval' && editFormData.status === 'Active';
-      const updatedUser: UserProfile = {
-        ...editingUser,
-        name: editFormData.name.trim(),
-        role: editFormData.role,
-        trainerType: editFormData.role === 'Trainer' ? editFormData.trainerType : (null as any),
-        instituteId: editFormData.role === 'Trainer' ? editFormData.instituteId : '',
-        batchId: editFormData.role === 'Trainer' ? editFormData.batchId : '',
-        status: editFormData.status,
-        phone: editFormData.phone.trim(),
-        ...(isApproving ? {
-          approvedBy: userProfile?.id || userProfile?.email || 'admin',
-          approvedAt: Date.now()
-        } : {})
-      };
+    return true;
+  };
 
-      await dataService.saveItem('users', updatedUser, {
-        module: 'security',
-        title: `ব্যবহারকারী প্রোফাইল আপডেট: ${editFormData.name.trim()}`,
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      // If current user updated their own profile
-      if (userProfile?.id === updatedUser.id) {
-        localStorage.setItem(`bnfe_user_profile_${updatedUser.id}`, JSON.stringify(updatedUser));
-        await refreshProfile();
-      }
-
-      setIsEditModalOpen(false);
-      fetchData();
-    } catch (err) {
-      console.warn("Notice updating user:", err);
-      setIsEditModalOpen(false);
-      fetchData();
-    }
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditLocked || editUserRunner.phase === 'success') return;
+    if (!handleBeforeUpdate()) return;
+    await editUserRunner.run();
   };
 
   const handleQuickApprove = async (u: UserProfile) => {
@@ -515,70 +556,98 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleCreateNewUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addFormData.name.trim() || !addFormData.email.trim()) return;
+  const addUserSteps: ActionStep<{ name: string; email: string }>[] = useMemo(
+    () => [
+      {
+        id: 'create-user-profile',
+        label: 'নতুন ব্যবহারকারী নিবন্ধন করা হচ্ছে',
+        run: async () => {
+          const cleanEmail = addFormData.email.trim().toLowerCase();
+          const newId = `USR-${Date.now().toString().slice(-6)}`;
+          const newUser: UserProfile = {
+            id: newId,
+            name: addFormData.name.trim(),
+            email: cleanEmail,
+            phone: addFormData.phone.trim(),
+            role: addFormData.role,
+            trainerType:
+              addFormData.role === 'Trainer' ? addFormData.trainerType : undefined,
+            instituteId: addFormData.role === 'Trainer' ? addFormData.instituteId : '',
+            batchId: addFormData.role === 'Trainer' ? addFormData.batchId : '',
+            status: addFormData.status,
+            createdAt: Date.now(),
+          };
+
+          await dataService.saveItem('users', newUser, {
+            module: 'security',
+            title: `নতুন ব্যবহারকারী নিবন্ধন: ${newUser.name} (${addFormData.role})`,
+            actor: userProfile
+              ? {
+                  userId: userProfile.id || '',
+                  user: userProfile.name || 'User',
+                  userRole: userProfile.role || '',
+                }
+              : undefined,
+          });
+
+          await fetchData();
+          return { name: newUser.name, email: cleanEmail };
+        },
+        describe: (res) => `${res.name} নিবন্ধিত হয়েছে`,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [addFormData, userProfile]
+  );
+
+  const addUserRunner = useActionRunner(addUserSteps);
+  const isAddLocked =
+    addUserRunner.phase === 'running' || addUserRunner.phase === 'waiting';
+
+  const handleBeforeCreateUser = (): boolean => {
+    setAddFormError('');
+    if (addFormRef.current && !addFormRef.current.reportValidity()) {
+      return false;
+    }
+    if (!addFormData.name.trim() || !addFormData.email.trim()) {
+      setAddFormError('নাম ও ইমেইল ঠিকানা পূরণ করা আবশ্যক।');
+      return false;
+    }
 
     const cleanEmail = addFormData.email.trim().toLowerCase();
-    const existing = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+    const existing = users.find(
+      (u) => u.email && u.email.trim().toLowerCase() === cleanEmail
+    );
     if (existing) {
-      showAlert({
-        title: 'ইমেইল ইতোমধ্যে বিদ্যমান',
-        message: `এই ইমেইল (${cleanEmail}) ইতোমধ্যে ব্যবহারকারী তালিকায় রয়েছে। আপনি তালিকা থেকে তাকে সম্পাদন (Edit) করতে পারেন।`,
-        variant: 'warning'
-      });
-      return;
+      setAddFormError(
+        `এই ইমেইল (${cleanEmail}) ইতোমধ্যে ব্যবহারকারী তালিকায় রয়েছে। আপনি তালিকা থেকে তাকে সম্পাদন (Edit) করতে পারেন।`
+      );
+      return false;
     }
+    return true;
+  };
 
-    try {
-      const newId = `USR-${Date.now().toString().slice(-6)}`;
-      const newUser: UserProfile = {
-        id: newId,
-        name: addFormData.name.trim(),
-        email: cleanEmail,
-        phone: addFormData.phone.trim(),
-        role: addFormData.role,
-        trainerType: addFormData.role === 'Trainer' ? addFormData.trainerType : undefined,
-        instituteId: addFormData.role === 'Trainer' ? addFormData.instituteId : '',
-        batchId: addFormData.role === 'Trainer' ? addFormData.batchId : '',
-        status: addFormData.status,
-        createdAt: Date.now(),
-      };
+  const handleCreateNewUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAddLocked || addUserRunner.phase === 'success') return;
+    if (!handleBeforeCreateUser()) return;
+    await addUserRunner.run();
+  };
 
-      await dataService.saveItem('users', newUser, {
-        module: 'security',
-        title: `নতুন ব্যবহারকারী নিবন্ধন: ${newUser.name} (${addFormData.role})`,
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      showAlert({
-        title: 'ব্যবহারকারী সফলভাবে যুক্ত হয়েছে',
-        message: `${newUser.name} (${cleanEmail}) ডাটাবেজে সংরক্ষিত হয়েছে। তিনি লগইন করলে সরাসরি এই অ্যাকাউন্টে প্রবেশ করতে পারবেন।`,
-        variant: 'success'
-      });
-
-      setIsAddModalOpen(false);
-      setAddFormData({
-        name: '',
-        email: '',
-        phone: '',
-        role: 'Trainer',
-        trainerType: 'Skill Trainer',
-        instituteId: institutes[0]?.id || '',
-        batchId: '',
-        status: 'Active',
-      });
-      fetchData();
-    } catch (err: any) {
-      console.warn("Notice creating new user:", err);
-      showAlert({
-        title: 'ত্রুটি',
-        message: 'ব্যবহারকারী সংরক্ষণ করা যায়নি: ' + (err?.message || ''),
-        variant: 'danger'
-      });
-      setIsAddModalOpen(false);
-      fetchData();
-    }
+  const resetAndCloseAddModal = () => {
+    setIsAddModalOpen(false);
+    setAddFormError('');
+    setAddFormData({
+      name: '',
+      email: '',
+      phone: '',
+      role: 'Trainer',
+      trainerType: 'Skill Trainer',
+      instituteId: institutes[0]?.id || '',
+      batchId: '',
+      status: 'Active',
+    });
+    addUserRunner.reset();
   };
 
   const getInstituteName = (id?: string) => {
@@ -653,6 +722,8 @@ const UsersPage: React.FC = () => {
           {hasPermission('create_user') && (
             <button
               onClick={() => {
+                setAddFormError('');
+                addUserRunner.reset();
                 setAddFormData({
                   name: '',
                   email: '',
@@ -906,13 +977,15 @@ const UsersPage: React.FC = () => {
                             </button>
                           )}
 
-                          <button
-                            onClick={() => handleEditClick(u)}
-                            className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
-                            title="পদবী, প্রতিষ্ঠান বা ব্যাচ সম্পাদনা"
-                          >
-                            <Edit2 size={16} />
-                          </button>
+                          {hasPermission('edit_user') && (!isFMA || u.role === 'Trainer') && (
+                            <button
+                              onClick={() => handleEditClick(u)}
+                              className="p-1.5 text-theme-info hover:bg-theme-info-soft rounded-lg transition cursor-pointer"
+                              title="পদবী, প্রতিষ্ঠান বা ব্যাচ সম্পাদনা"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          )}
 
                           {isCourseDirector && u.id !== userProfile?.id && u.email?.toLowerCase() !== userProfile?.email?.toLowerCase() && (
                             <button
@@ -937,26 +1010,41 @@ const UsersPage: React.FC = () => {
       {/* Edit User Modal */}
       {isEditModalOpen && editingUser && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full shadow-xl border border-theme-border max-h-[90vh] flex flex-col overflow-visible">
+            <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-theme-border shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-theme-text-primary">ব্যবহারকারী ও ব্যাচ সম্পাদন</h2>
                 <p className="text-xs text-theme-text-secondary">প্রশিক্ষকের প্রতিষ্ঠান ও নির্ধারিত ব্যাচ আপডেট করুন</p>
               </div>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer">
+              <button
+                type="button"
+                disabled={isEditLocked}
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer disabled:opacity-45"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            {editingUser?.id === userProfile?.id && (
-              <div className="p-3 mb-3 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs text-theme-warning flex items-center space-x-2">
-                <AlertTriangle size={16} className="shrink-0 text-theme-warning" />
-                <span>নিরাপত্তা নীতি: আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।</span>
-              </div>
-            )}
+            <form ref={editFormRef} onSubmit={handleUpdate} className="flex flex-col min-h-0 flex-1 overflow-visible">
+              <fieldset
+                disabled={isEditLocked || editUserRunner.phase === 'success'}
+                className="px-6 py-4 space-y-3.5 overflow-y-auto min-w-0"
+              >
+                {editingUser?.id === userProfile?.id && (
+                  <div className="p-3 bg-theme-warning-soft border border-theme-warning-border rounded-xl text-xs text-theme-warning flex items-center space-x-2">
+                    <AlertTriangle size={16} className="shrink-0 text-theme-warning" />
+                    <span>নিরাপত্তা নীতি: আপনি নিজের পদবী বা অ্যাকাউন্ট স্ট্যাটাস পরিবর্তন করতে পারবেন না।</span>
+                  </div>
+                )}
 
-            <form onSubmit={handleUpdate} className="space-y-3.5">
-              <div>
+                {editFormError && (
+                  <div className="p-3 bg-theme-danger-soft border border-theme-danger-border rounded-xl text-xs text-theme-danger font-medium">
+                    {editFormError}
+                  </div>
+                )}
+
+                <div>
                 <label className="block text-xs font-semibold text-theme-text-secondary mb-1">নাম *</label>
                 <input
                   type="text"
@@ -1086,21 +1174,26 @@ const UsersPage: React.FC = () => {
                   <option value="Inactive">নিষ্ক্রিয় (Inactive)</option>
                 </select>
               </div>
+              </fieldset>
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
+              <div className="flex justify-end items-center space-x-2.5 px-6 py-4 border-t border-theme-border shrink-0 overflow-visible">
                 <button
                   type="button"
+                  disabled={isEditLocked}
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
+                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer disabled:opacity-45"
                 >
-                  বাতিল
+                  {editUserRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
+                <ActionButton
+                  runner={editUserRunner}
                   type="submit"
-                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs cursor-pointer"
-                >
-                  আপডেট সংরক্ষণ করুন
-                </button>
+                  idleLabel="আপডেট সংরক্ষণ করুন"
+                  popoverTitle="ব্যবহারকারী আপডেট"
+                  onBeforeRun={handleBeforeUpdate}
+                  onAutoHide={() => setIsEditModalOpen(false)}
+                  buttonClassName="px-4 py-2 text-sm font-semibold rounded-xl"
+                />
               </div>
             </form>
           </div>
@@ -1110,18 +1203,32 @@ const UsersPage: React.FC = () => {
       {/* Add New User Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full shadow-xl border border-theme-border max-h-[90vh] flex flex-col overflow-visible">
+            <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-theme-border shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-theme-text-primary">নতুন ব্যবহারকারী / প্রশিক্ষক নিবন্ধন</h2>
                 <p className="text-xs text-theme-text-secondary">প্রশিক্ষক হিসেবে প্রতিষ্ঠান ও ব্যাচে নিবন্ধন করুন</p>
               </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer">
+              <button
+                type="button"
+                disabled={isAddLocked}
+                onClick={resetAndCloseAddModal}
+                className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer disabled:opacity-45"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateNewUser} className="space-y-3.5">
+            <form ref={addFormRef} onSubmit={handleCreateNewUser} className="flex flex-col min-h-0 flex-1 overflow-visible">
+              <fieldset
+                disabled={isAddLocked || addUserRunner.phase === 'success'}
+                className="px-6 py-4 space-y-3.5 overflow-y-auto min-w-0"
+              >
+                {addFormError && (
+                  <div className="p-3 bg-theme-danger-soft border border-theme-danger-border rounded-xl text-xs text-theme-danger font-medium">
+                    {addFormError}
+                  </div>
+                )}
               <div>
                 <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পূর্ণ নাম *</label>
                 <input
@@ -1250,20 +1357,26 @@ const UsersPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
+              </fieldset>
+
+              <div className="flex justify-end items-center space-x-2.5 px-6 py-4 border-t border-theme-border shrink-0 overflow-visible">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
+                  disabled={isAddLocked}
+                  onClick={resetAndCloseAddModal}
+                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer disabled:opacity-45"
                 >
-                  বাতিল
+                  {addUserRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
+                <ActionButton
+                  runner={addUserRunner}
                   type="submit"
-                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs cursor-pointer"
-                >
-                  নিবন্ধন সম্পন্ন করুন
-                </button>
+                  idleLabel="নিবন্ধন সম্পন্ন করুন"
+                  popoverTitle="ব্যবহারকারী নিবন্ধন"
+                  onBeforeRun={handleBeforeCreateUser}
+                  onAutoHide={resetAndCloseAddModal}
+                  buttonClassName="px-4 py-2 text-sm font-semibold rounded-xl"
+                />
               </div>
             </form>
           </div>

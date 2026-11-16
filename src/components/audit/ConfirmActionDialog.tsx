@@ -1,5 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
-import { AlertTriangle, Lock, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { Lock, RotateCcw, X } from 'lucide-react';
+import { ActionStep, useActionRunner } from '../../hooks/useActionRunner';
+import { ActionButton } from '../ui/ActionButton';
 
 interface ConfirmActionDialogProps {
   open: boolean;
@@ -14,9 +16,9 @@ interface ConfirmActionDialogProps {
   maxNoteLength?: number;
   onNoteChange?: (value: string) => void;
   confirmLabel: string;
-  isProcessing: boolean;
-  errorMessage?: string | null;
-  onConfirm: () => Promise<void> | void;
+  popoverTitle?: string;
+  steps: ActionStep<any>[];
+  onSuccessClose?: () => void;
   onClose: () => void;
 }
 
@@ -33,13 +35,25 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
   maxNoteLength = 500,
   onNoteChange,
   confirmLabel,
-  isProcessing,
-  errorMessage,
-  onConfirm,
+  popoverTitle,
+  steps,
+  onSuccessClose,
   onClose,
 }) => {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const noteInputId = useId();
+  const runner = useActionRunner(steps);
+
+  const isBusy = runner.phase === 'running' || runner.phase === 'waiting';
+  const isSuccess = runner.phase === 'success';
+  const lockInputs = isBusy || isSuccess || runner.doneCount > 0;
+
+  useEffect(() => {
+    if (open) {
+      runner.reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -64,19 +78,32 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
       ? 'নিচের মুছে ফেলা তথ্য পুনরুদ্ধার করা হবে:'
       : 'নিষ্পন্ন করলে এই এন্ট্রির পরিবর্তন আর ফেরত বা পুনরুদ্ধার করা যাবে না। এটি স্থায়ী।';
 
+  const resolvedPopoverTitle =
+    popoverTitle ||
+    (isSettle ? 'নিষ্পত্তির ধাপ' : mode === 'undo' ? 'ফেরত নেওয়ার ধাপ' : 'পুনরুদ্ধারের ধাপ');
+
+  const handleDismiss = () => {
+    if (isBusy) return;
+    if (isSuccess && onSuccessClose) {
+      onSuccessClose();
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <dialog
       ref={dialogRef}
       onCancel={(e) => {
         e.preventDefault();
-        if (!isProcessing) onClose();
+        handleDismiss();
       }}
       onClick={(e) => {
-        if (e.target === dialogRef.current && !isProcessing) {
-          onClose();
+        if (e.target === dialogRef.current) {
+          handleDismiss();
         }
       }}
-      className="font-sans m-auto w-[calc(100%-2rem)] max-w-md rounded-[16px] border border-theme-border bg-theme-elevated text-theme-text-primary p-0 backdrop:bg-black/55 motion-reduce:transition-none"
+      className="font-sans m-auto w-[calc(100%-2rem)] max-w-md overflow-visible rounded-[16px] border border-theme-border bg-theme-elevated text-theme-text-primary p-0 backdrop:bg-black/55 motion-reduce:transition-none"
     >
       <div className="p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -102,9 +129,9 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
 
           <button
             type="button"
-            disabled={isProcessing}
-            onClick={onClose}
-            aria-label="বাতিল করুন"
+            disabled={isBusy}
+            onClick={handleDismiss}
+            aria-label={isSuccess ? 'বন্ধ করুন' : 'বাতিল করুন'}
             className="min-h-[44px] min-w-[44px] -mr-2 -mt-2 inline-flex items-center justify-center rounded-[12px] text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
           >
             <X size={18} />
@@ -139,7 +166,7 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
               id={noteInputId}
               rows={2}
               maxLength={maxNoteLength}
-              disabled={isProcessing}
+              disabled={lockInputs}
               value={noteValue}
               onChange={(e) => onNoteChange(e.target.value)}
               placeholder={notePlaceholder || 'মন্তব্য লিখুন...'}
@@ -154,49 +181,25 @@ export const ConfirmActionDialog: React.FC<ConfirmActionDialogProps> = ({
           </p>
         )}
 
-        {/* Conflict / error message */}
-        {errorMessage && (
-          <div
-            role="alert"
-            className="rounded-[12px] border border-theme-danger-border bg-theme-danger-soft px-3.5 py-2.5 flex items-start gap-2.5 text-xs text-theme-danger"
-          >
-            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-            <div className="whitespace-pre-line leading-relaxed break-words min-w-0 flex-1 font-medium">
-              {errorMessage}
-            </div>
-          </div>
-        )}
-
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-end gap-2 pt-1">
           <button
             type="button"
-            disabled={isProcessing}
-            onClick={onClose}
-            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-xs sm:text-sm font-medium text-theme-text-primary disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+            disabled={isBusy}
+            onClick={handleDismiss}
+            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-xs sm:text-sm font-medium text-theme-text-primary disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary shrink-0"
           >
-            বাতিল
+            {isSuccess ? 'বন্ধ করুন' : 'বাতিল'}
           </button>
 
-          <button
-            type="button"
-            disabled={isProcessing}
-            onClick={onConfirm}
-            className={`min-h-[44px] px-4 py-2 rounded-[12px] border text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
-              isSettle
-                ? 'border-theme-border-strong bg-theme-text-primary hover:opacity-90 text-theme-bg'
-                : 'border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg'
-            }`}
-          >
-            {isProcessing ? (
-              <RefreshCw size={15} className="animate-spin" />
-            ) : isSettle ? (
-              <Lock size={15} />
-            ) : (
-              <RotateCcw size={15} />
-            )}
-            <span>{isProcessing ? 'প্রক্রিয়াকরণ হচ্ছে...' : confirmLabel}</span>
-          </button>
+          <ActionButton
+            runner={runner}
+            idleLabel={confirmLabel}
+            idleIcon={isSettle ? <Lock size={15} /> : <RotateCcw size={15} />}
+            popoverTitle={resolvedPopoverTitle}
+            variant={isSettle ? 'neutral' : 'primary'}
+            className="w-full sm:flex-1 min-w-0"
+          />
         </div>
       </div>
     </dialog>

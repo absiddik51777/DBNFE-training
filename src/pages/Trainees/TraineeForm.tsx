@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Institute, Trade, Batch, Trainee } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +7,10 @@ import { ArrowLeft, Save, User, GraduationCap, Building2, Phone, Calendar, Alert
 import { format } from 'date-fns';
 import { dataService } from '../../lib/dataService';
 import { FormSkeleton } from '../../components/Skeleton';
+import { useActionRunner, type ActionStep } from '../../hooks/useActionRunner';
+import { ActionButton } from '../../components/ui/ActionButton';
+import { ActionMessageError } from '../../lib/friendlyError';
+import { toBn } from '../../lib/dateUtils';
 
 const TraineeForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,9 +30,9 @@ const TraineeForm: React.FC = () => {
   const canPerformAction = id ? hasPermission('edit_trainee') : hasPermission('create_trainee');
   
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [fieldWarnings, setFieldWarnings] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -258,194 +262,241 @@ const TraineeForm: React.FC = () => {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateBeforeSave = (): boolean => {
     setError('');
-
-    // Validation
-    const regNo = formData.registrationNumber?.trim() || '';
+    if (formRef.current && !formRef.current.reportValidity()) {
+      return false;
+    }
 
     const traineeIdVal = formData.traineeId?.trim() || '';
     if (!traineeIdVal) {
       setError('প্রশিক্ষণার্থী আইডি (Trainee ID) প্রদান করুন।');
-      return;
+      return false;
     }
 
     if (!formData.nameBn?.trim()) {
       setError('শিক্ষার্থীর নাম বাংলায় প্রদান করুন।');
-      return;
+      return false;
     }
     if (!formData.nameEn?.trim()) {
       setError('শিক্ষার্থীর নাম ইংরেজিতে প্রদান করুন।');
-      return;
+      return false;
     }
     if (hasEnglish(formData.nameBn)) {
       setError('শিক্ষার্থীর বাংলা নামের ফিল্ডে কোনো ইংরেজি অক্ষর থাকা যাবে না।');
-      return;
+      return false;
     }
     if (hasBengali(formData.nameEn)) {
       setError('শিক্ষার্থীর ইংরেজি নামের ফিল্ডে কোনো বাংলা অক্ষর থাকা যাবে না।');
-      return;
+      return false;
     }
 
     if (!formData.fatherNameBn?.trim()) {
       setError('পিতার নাম বাংলায় প্রদান করুন।');
-      return;
+      return false;
     }
     if (!formData.fatherNameEn?.trim()) {
       setError('পিতার নাম ইংরেজিতে প্রদান করুন।');
-      return;
+      return false;
     }
     if (hasEnglish(formData.fatherNameBn)) {
       setError('পিতার বাংলা নামের ফিল্ডে কোনো ইংরেজি অক্ষর থাকা যাবে না।');
-      return;
+      return false;
     }
     if (hasBengali(formData.fatherNameEn)) {
       setError('পিতার ইংরেজি নামের ফিল্ডে কোনো বাংলা অক্ষর থাকা যাবে না।');
-      return;
+      return false;
     }
 
     if (!formData.motherNameBn?.trim()) {
       setError('মাতার নাম বাংলায় প্রদান করুন।');
-      return;
+      return false;
     }
     if (!formData.motherNameEn?.trim()) {
       setError('মাতার নাম ইংরেজিতে প্রদান করুন।');
-      return;
+      return false;
     }
     if (hasEnglish(formData.motherNameBn)) {
       setError('মাতার বাংলা নামের ফিল্ডে কোনো ইংরেজি অক্ষর থাকা যাবে না।');
-      return;
+      return false;
     }
     if (hasBengali(formData.motherNameEn)) {
       setError('মাতার ইংরেজি নামের ফিল্ডে কোনো বাংলা অক্ষর থাকা যাবে না।');
-      return;
+      return false;
     }
 
     if (!formData.mobileNumber || formData.mobileNumber.length < 11) {
       setError('সঠিক ১১ ডিজিটের মোবাইল নম্বর প্রদান করুন।');
-      return;
+      return false;
     }
 
     if (!formData.batchId) {
       setError('প্রশিক্ষণার্থীর জন্য অবশ্যই একটি প্রশিক্ষণ ব্যাচ নির্বাচন করতে হবে।');
-      return;
+      return false;
     }
 
     if (userProfile?.role === 'Trainer' && userProfile.batchId && formData.batchId !== userProfile.batchId) {
       setError('অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচে প্রশিক্ষণার্থী যোগ বা সম্পাদনা করতে পারবেন।');
-      return;
+      return false;
     }
 
     const targetBatch = batches.find(b => b.id === formData.batchId);
     if (!targetBatch) {
       setError('নির্বাচিত ব্যাচটি ডাটাবেজে পাওয়া যায়নি। অনুগ্রহ করে একটি বৈধ ব্যাচ নির্বাচন করুন।');
-      return;
+      return false;
     }
-
-    // Automatically resolve instituteId and tradeId directly from the selected batch
-    const resolvedTradeId = targetBatch.tradeId || formData.tradeId || '';
-    const resolvedInstituteId = targetBatch.instituteId || formData.instituteId || '';
 
     if (!formData.permanentAddress?.trim() && !formData.address?.trim()) {
       setError('স্থায়ী ঠিকানা পূরণ করুন।');
-      return;
+      return false;
     }
 
     if (!formData.presentAddress?.trim() && !formData.sameAsPermanentAddress && !formData.address?.trim()) {
       setError('বর্তমান ঠিকানা পূরণ করুন অথবা "স্থায়ী ঠিকানার অনুরূপ" নির্বাচন করুন।');
-      return;
+      return false;
     }
 
-    setSaving(true);
-    try {
-      // 1. Uniqueness check for Registration Number (if provided)
-      if (regNo) {
-        const isRegTaken = await dataService.isRegistrationNumberTaken(regNo, id);
-        if (isRegTaken) {
-          setError(`রেজিস্ট্রেশন নম্বরটি ('${regNo}') ইতোমধ্যে অন্য শিক্ষার্থীর জন্য ব্যবহৃত হয়েছে। ভিন্ন বা ইউনিক রেজিস্ট্রেশন নম্বর প্রদান করুন।`);
-          setSaving(false);
-          return;
-        }
-      }
+    return true;
+  };
 
-      // 2. Uniqueness check for Trainee ID
-      const isIdTaken = await dataService.isTraineeIdTaken(traineeIdVal, id);
-      if (isIdTaken) {
-        setError(`প্রশিক্ষণার্থী আইডি ('${traineeIdVal}') ইতোমধ্যে ডাটাবেজে বিদ্যমান। ইউনিক আইডি ব্যবহার করুন।`);
-        setSaving(false);
-        return;
-      }
+  const traineeSteps: ActionStep<any>[] = useMemo(
+    () => [
+      {
+        id: 'validate-trainee-uniqueness',
+        label: 'আইডি ও ব্যাচ ধারণক্ষমতা যাচাই',
+        run: async (report) => {
+          const regNo = formData.registrationNumber?.trim() || '';
+          const traineeIdVal = formData.traineeId?.trim() || '';
+          const targetBatch = batches.find(b => b.id === formData.batchId);
 
-      // 3. Duplicate Enrollment check (NID / Birth Cert & Mobile)
-      const duplicateCheck = await dataService.checkDuplicateTrainee(
-        formData.nidOrBirthRegistration || '',
-        formData.mobileNumber || '',
-        id
-      );
-      if (duplicateCheck.isDuplicate) {
-        setError(duplicateCheck.reason || 'এই শিক্ষার্থীর তথ্য দিয়ে ইতোমধ্যে অন্য একটি ব্যাচে ভর্তি রয়েছে।');
-        setSaving(false);
-        return;
-      }
+          if (regNo) {
+            const isRegTaken = await dataService.isRegistrationNumberTaken(regNo, id);
+            if (isRegTaken) {
+              throw new ActionMessageError(
+                `রেজিস্ট্রেশন নম্বরটি ('${regNo}') ইতোমধ্যে অন্য শিক্ষার্থীর জন্য ব্যবহৃত হয়েছে। ভিন্ন বা ইউনিক রেজিস্ট্রেশন নম্বর প্রদান করুন।`
+              );
+            }
+          }
 
-      // 4. Batch Capacity check (enforce max capacity)
-      if (!id || (id && formData.batchId !== targetBatch?.id)) {
-        const capacityCheck = await dataService.checkBatchCapacity(formData.batchId, id);
-        if (capacityCheck.isFull) {
-          setError(`নির্বাচিত ব্যাচের ধারণক্ষমতা (${capacityCheck.maxCapacity} জন) পূর্ণ হয়ে গেছে। অন্য ব্যাচ নির্বাচন করুন।`);
-          setSaving(false);
-          return;
-        }
-      }
-      const traineeIdToSave = id || `TRN-${Date.now().toString().slice(-5)}`;
-      const permAddr = formData.permanentAddress?.trim() || formData.address?.trim() || '';
-      const presAddr = formData.sameAsPermanentAddress ? permAddr : (formData.presentAddress?.trim() || permAddr);
+          const isIdTaken = await dataService.isTraineeIdTaken(traineeIdVal, id);
+          if (isIdTaken) {
+            throw new ActionMessageError(
+              `প্রশিক্ষণার্থী আইডি ('${traineeIdVal}') ইতোমধ্যে ডাটাবেজে বিদ্যমান। ইউনিক আইডি ব্যবহার করুন।`
+            );
+          }
 
-      const savedTrainee: Trainee = {
-        id: traineeIdToSave,
-        traineeId: formData.traineeId || `TR-${Date.now().toString().slice(-4)}`,
-        registrationNumber: (formData.registrationNumber || '').trim(),
-        nameEn: formData.nameEn || '',
-        nameBn: formData.nameBn || '',
-        fatherNameEn: formData.fatherNameEn || '',
-        fatherNameBn: formData.fatherNameBn || '',
-        motherNameEn: formData.motherNameEn || '',
-        motherNameBn: formData.motherNameBn || '',
-        dateOfBirth: formData.dateOfBirth || '2008-01-01',
-        gender: (formData.gender as any) || 'Male',
-        nidOrBirthRegistration: formData.nidOrBirthRegistration || '',
-        mobileNumber: formData.mobileNumber || '',
-        address: presAddr || permAddr,
-        permanentAddress: permAddr,
-        presentAddress: presAddr,
-        sameAsPermanentAddress: !!formData.sameAsPermanentAddress,
-        photoUrl: formData.photoUrl || '',
-        lastClassCompleted: formData.lastClassCompleted || '',
-        previousSchoolName: formData.previousSchoolName || '',
-        yearOfDropout: formData.yearOfDropout || '',
-        reasonForDropout: formData.reasonForDropout || '',
-        instituteId: resolvedInstituteId,
-        tradeId: resolvedTradeId,
-        batchId: formData.batchId || '',
-        admissionDate: formData.admissionDate || Date.now(),
-        trainingStartDate: formData.trainingStartDate || (targetBatch?.startDate ? new Date(targetBatch.startDate).getTime() : Date.now()),
-        trainingEndDate: formData.trainingEndDate || (targetBatch?.endDate ? new Date(targetBatch.endDate).getTime() : (Date.now() + 180 * 86400000)),
-        status: (formData.status as any) || 'Active',
-        createdAt: id ? (formData.createdAt || Date.now()) : Date.now(),
-      };
+          report('আইডি ও রেজিস্ট্রেশন যাচাই হয়েছে');
 
-      await dataService.saveItem('trainees', savedTrainee, {
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
+          const duplicateCheck = await dataService.checkDuplicateTrainee(
+            formData.nidOrBirthRegistration || '',
+            formData.mobileNumber || '',
+            id
+          );
+          if (duplicateCheck.isDuplicate) {
+            throw new ActionMessageError(
+              duplicateCheck.reason || 'এই শিক্ষার্থীর তথ্য দিয়ে ইতোমধ্যে অন্য একটি ব্যাচে ভর্তি রয়েছে।'
+            );
+          }
 
-      handleReturn();
-    } catch (err: any) {
-      console.warn("Notice saving trainee:", err);
-      setError('তথ্য সংরক্ষণ সম্পন্ন করা যায়নি।');
-    } finally {
-      setSaving(false);
-    }
+          let capacityText = 'তথ্য যাচাই সম্পন্ন';
+          if (!id || (id && formData.batchId !== targetBatch?.id)) {
+            const capacityCheck = await dataService.checkBatchCapacity(formData.batchId || '', id);
+            if (capacityCheck.isFull) {
+              throw new ActionMessageError(
+                `নির্বাচিত ব্যাচের ধারণক্ষমতা (${toBn(capacityCheck.maxCapacity)} জন) পূর্ণ হয়ে গেছে। অন্য ব্যাচ নির্বাচন করুন।`
+              );
+            }
+            capacityText = `আসন ${toBn(capacityCheck.currentCount + 1)}/${toBn(capacityCheck.maxCapacity)}`;
+          }
+
+          return { capacityText };
+        },
+        describe: (res: { capacityText: string }) => res.capacityText,
+      },
+      {
+        id: 'save-trainee-doc',
+        label: id ? 'শিক্ষার্থীর তথ্য হালনাগাদ' : 'শিক্ষার্থী নিবন্ধন সংরক্ষণ',
+        run: async () => {
+          const targetBatch = batches.find(b => b.id === formData.batchId);
+          const resolvedTradeId = targetBatch?.tradeId || formData.tradeId || '';
+          const resolvedInstituteId = targetBatch?.instituteId || formData.instituteId || '';
+          const traineeIdToSave = id || `TRN-${Date.now().toString().slice(-5)}`;
+          const permAddr = formData.permanentAddress?.trim() || formData.address?.trim() || '';
+          const presAddr = formData.sameAsPermanentAddress
+            ? permAddr
+            : formData.presentAddress?.trim() || permAddr;
+
+          const savedTrainee: Trainee = {
+            id: traineeIdToSave,
+            traineeId: formData.traineeId || `TR-${Date.now().toString().slice(-4)}`,
+            registrationNumber: (formData.registrationNumber || '').trim(),
+            nameEn: formData.nameEn || '',
+            nameBn: formData.nameBn || '',
+            fatherNameEn: formData.fatherNameEn || '',
+            fatherNameBn: formData.fatherNameBn || '',
+            motherNameEn: formData.motherNameEn || '',
+            motherNameBn: formData.motherNameBn || '',
+            dateOfBirth: formData.dateOfBirth || '2008-01-01',
+            gender: (formData.gender as any) || 'Male',
+            nidOrBirthRegistration: formData.nidOrBirthRegistration || '',
+            mobileNumber: formData.mobileNumber || '',
+            address: presAddr || permAddr,
+            permanentAddress: permAddr,
+            presentAddress: presAddr,
+            sameAsPermanentAddress: !!formData.sameAsPermanentAddress,
+            photoUrl: formData.photoUrl || '',
+            lastClassCompleted: formData.lastClassCompleted || '',
+            previousSchoolName: formData.previousSchoolName || '',
+            yearOfDropout: formData.yearOfDropout || '',
+            reasonForDropout: formData.reasonForDropout || '',
+            instituteId: resolvedInstituteId,
+            tradeId: resolvedTradeId,
+            batchId: formData.batchId || '',
+            admissionDate: formData.admissionDate || Date.now(),
+            trainingStartDate:
+              formData.trainingStartDate ||
+              (targetBatch?.startDate ? new Date(targetBatch.startDate).getTime() : Date.now()),
+            trainingEndDate:
+              formData.trainingEndDate ||
+              (targetBatch?.endDate
+                ? new Date(targetBatch.endDate).getTime()
+                : Date.now() + 180 * 86400000),
+            status: (formData.status as any) || 'Active',
+            createdAt: id ? formData.createdAt || Date.now() : Date.now(),
+          };
+
+          await dataService.saveItem('trainees', savedTrainee, {
+            actor: userProfile
+              ? {
+                  userId: userProfile.id || '',
+                  user: userProfile.name || 'User',
+                  userRole: userProfile.role || '',
+                }
+              : undefined,
+          });
+
+          return {
+            displayName: savedTrainee.nameBn || savedTrainee.nameEn || savedTrainee.traineeId,
+            isEdit: Boolean(id),
+          };
+        },
+        describe: (res: { displayName: string; isEdit: boolean }) =>
+          res.isEdit ? `${res.displayName} হালনাগাদ হয়েছে` : `${res.displayName} নিবন্ধিত হয়েছে`,
+      },
+    ],
+    [batches, formData, id, userProfile]
+  );
+
+  const saveRunner = useActionRunner(traineeSteps);
+  const isFormLocked =
+    saveRunner.phase === 'running' ||
+    saveRunner.phase === 'waiting' ||
+    saveRunner.phase === 'success';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateBeforeSave()) return;
+    await saveRunner.run();
   };
 
   const availableBatches = useMemo(() => {
@@ -531,7 +582,8 @@ const TraineeForm: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+        <fieldset disabled={isFormLocked} className="space-y-6 disabled:opacity-90">
         {/* Section 1: Official & Training Details */}
         <div className="bg-theme-surface p-6 sm:p-7 rounded-2xl border border-theme-border shadow-xs space-y-5">
           <div className="flex items-center space-x-2.5 pb-3 border-b border-theme-border">
@@ -1049,23 +1101,27 @@ const TraineeForm: React.FC = () => {
           </div>
         </div>
 
+        </fieldset>
+
         {/* Form Submission Actions */}
-        <div className="flex items-center justify-end space-x-3 pt-4">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-end gap-3 pt-4">
           <button
             type="button"
+            disabled={saveRunner.phase === 'running' || saveRunner.phase === 'waiting'}
             onClick={handleReturn}
-            className="px-5 py-2.5 border border-theme-border bg-theme-surface rounded-xl text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
+            className="min-h-[44px] px-5 py-2.5 border border-theme-border bg-theme-surface rounded-xl text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer disabled:opacity-50 shrink-0"
           >
-            বাতিল
+            {saveRunner.phase === 'success' ? 'তালিকায় ফিরে যান' : 'বাতিল'}
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center space-x-2 transition disabled:opacity-50 cursor-pointer"
-          >
-            <Save size={18} />
-            <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ সম্পন্ন করুন'}</span>
-          </button>
+          <ActionButton
+            runner={saveRunner}
+            idleLabel="সংরক্ষণ সম্পন্ন করুন"
+            idleIcon={<Save size={18} />}
+            popoverTitle="শিক্ষার্থী নিবন্ধনের ধাপ"
+            onBeforeRun={validateBeforeSave}
+            onAutoHide={handleReturn}
+            className="w-full sm:w-auto sm:min-w-[230px]"
+          />
         </div>
       </form>
     </div>

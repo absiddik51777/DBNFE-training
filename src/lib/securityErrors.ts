@@ -2,6 +2,7 @@
  * Structured Firebase / Firestore security error handling and logging
  */
 import { recordSimpleAuditLog } from './auditLog';
+import { reportPermissionDenied } from './sessionGuard';
 
 export type SecurityOperationType = 'get' | 'list' | 'create' | 'update' | 'delete' | 'write';
 
@@ -56,6 +57,11 @@ export function handleFirestoreError(errorInfo: FirestoreErrorInfo): SanitizedSe
     rawCode,
     rawMsg
   });
+
+  // Trigger live session re-check from server on any permission-denied failure
+  if (isPermissionDenied) {
+    reportPermissionDenied();
+  }
 
   // If permission denied or security violation, write to security audit trail if user is identified
   if (isPermissionDenied && authInfo.userId) {

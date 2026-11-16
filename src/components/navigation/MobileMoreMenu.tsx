@@ -21,6 +21,7 @@ import {
   LayoutDashboard,
   ChevronRight,
 } from 'lucide-react';
+import { TruncatedText } from '../ui/TruncatedText';
 
 interface MobileMoreMenuProps {
   isOpen: boolean;
@@ -93,12 +94,22 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
         icon: <FileText size={19} className="text-theme-accent" />,
       },
       {
+        path: '/reports/weekly-signature',
+        name: 'সাপ্তাহিক স্বাক্ষর সিট',
+        sub: 'Weekly Signature Sheet',
+        icon: <CalendarDays size={19} className="text-theme-primary" />,
+      },
+      {
         path: '/certificates',
         name: 'সার্টিফিকেট',
         sub: 'Certificates Issue',
         icon: <Award size={19} className="text-theme-primary" />,
       },
-    ].filter((item) => canViewPage(item.path));
+    ].filter((item) =>
+      item.path === '/reports/weekly-signature'
+        ? canViewPage('/reports') || canViewPage('/attendance-sheet')
+        : canViewPage(item.path)
+    );
 
     if (academicItems.length > 0) {
       result.push({
@@ -236,9 +247,12 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
                     {userProfile?.role}
                   </span>
                 </div>
-                <p className="text-xs text-theme-text-secondary truncate mt-0.5">
-                  {userProfile?.phone || userProfile?.email || 'উপানুষ্ঠানিক শিক্ষা ব্যুরো'}
-                </p>
+                <TruncatedText
+                  as="p"
+                  text={userProfile?.phone || userProfile?.email || 'উপানুষ্ঠানিক শিক্ষা ব্যুরো'}
+                  mode="pop"
+                  className="text-xs text-theme-text-secondary mt-0.5"
+                />
               </div>
             </div>
 
@@ -263,8 +277,10 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {section.items.map((item) => {
                   const isActive =
-                    location.pathname === item.path ||
-                    (item.path !== '/' && location.pathname.startsWith(item.path));
+                    item.path === '/reports'
+                      ? location.pathname === '/reports'
+                      : location.pathname === item.path ||
+                        (item.path !== '/' && location.pathname.startsWith(item.path));
                   return (
                     <Link
                       key={item.path}
@@ -290,9 +306,12 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
                           <p className="font-medium text-xs sm:text-sm text-theme-text-primary leading-snug break-words">
                             {item.name}
                           </p>
-                          <p className="text-[10px] text-theme-text-secondary truncate">
-                            {item.sub}
-                          </p>
+                          <TruncatedText
+                            as="p"
+                            text={item.sub}
+                            mode="pop"
+                            className="text-[10px] text-theme-text-secondary"
+                          />
                         </div>
                       </div>
 

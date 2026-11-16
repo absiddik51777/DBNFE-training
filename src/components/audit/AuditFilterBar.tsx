@@ -2,6 +2,7 @@ import React from 'react';
 import { RefreshCw, Search, SlidersHorizontal, X } from 'lucide-react';
 import { AUDIT_MODULE_CHIPS } from '../../lib/auditQueryBuilder';
 import { FilterChip } from './FilterChip';
+import { TruncatedText } from '../ui/TruncatedText';
 
 interface AuditFilterBarProps {
   searchInput: string;
@@ -129,9 +130,11 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
           {activeSheetSummaryText && (
             <>
-              <span className="font-medium text-theme-text-primary truncate max-w-[240px] sm:max-w-none">
-                {activeSheetSummaryText}
-              </span>
+              <TruncatedText
+                text={activeSheetSummaryText}
+                mode="pop"
+                className="font-medium text-theme-text-primary max-w-[240px] sm:max-w-none"
+              />
               <span aria-hidden="true" className="text-theme-text-muted">
                 ·
               </span>

@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Check, BookOpen, Layers, Clock, Wrench } from 'lucide-react';
 import { BatchSkillModule, BatchLiteracyModule } from '../types/calendar';
 import { toBn } from '../lib/dateUtils';
+import { ActionMessageError } from '../lib/friendlyError';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from './ui/ActionButton';
 
 interface ModuleInputModalProps {
   isOpen: boolean;
@@ -30,7 +33,7 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
   const [taskNo, setTaskNo] = useState<string>('কাজ ০১');
   const [topic, setTopic] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [saving, setSaving] = useState<boolean>(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   // Skill-Specific Fields
   const [theoryMinutes, setTheoryMinutes] = useState<number>(50);
@@ -86,66 +89,114 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
     }
   }, [initialData, isSkill, isOpen]);
 
+  const moduleSaveSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-calendar-module',
+      label: initialData ? 'মডিউল আপডেট করা হচ্ছে' : 'নতুন মডিউল সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!topic.trim()) {
+          throw new ActionMessageError('পঠিত বিষয় বা টপিক অবশ্যই পূরণ করতে হবে।');
+        }
+        if (isSkill) {
+          const payload: BatchSkillModule = {
+            id: (initialData as BatchSkillModule)?.id || `tsm_${batchId}_${dayNumber}_${Date.now()}`,
+            batchId,
+            dayNumber: Number(dayNumber),
+            moduleName: moduleName.trim(),
+            taskNo: taskNo.trim(),
+            topic: topic.trim(),
+            theoryMinutes: Number(theoryMinutes),
+            practicalMinutes: Number(practicalMinutes),
+            totalMinutes: Number(theoryMinutes) + Number(practicalMinutes),
+            phaseGroup,
+            toolsRequired: toolsRequired.trim(),
+            notes: notes.trim(),
+            createdAt: (initialData as BatchSkillModule)?.createdAt || Date.now(),
+            updatedAt: Date.now()
+          };
+          await onSave(payload);
+          return payload.moduleName || payload.taskNo;
+        } else {
+          const payload: BatchLiteracyModule = {
+            id: (initialData as BatchLiteracyModule)?.id || `tlm_${batchId}_${dayNumber}_${Date.now()}`,
+            batchId,
+            dayNumber: Number(dayNumber),
+            moduleName: moduleName.trim(),
+            taskNo: taskNo.trim(),
+            topic: topic.trim(),
+            startTime: startTime.trim(),
+            endTime: endTime.trim(),
+            totalMinutes: Number(totalMinutes),
+            category,
+            notes: notes.trim(),
+            createdAt: (initialData as BatchLiteracyModule)?.createdAt || Date.now(),
+            updatedAt: Date.now()
+          };
+          await onSave(payload);
+          return payload.moduleName || payload.taskNo;
+        }
+      },
+      describe: (name: string) => `সংরক্ষিত: ${name}`,
+    },
+  ], [
+    initialData,
+    topic,
+    isSkill,
+    batchId,
+    dayNumber,
+    moduleName,
+    taskNo,
+    theoryMinutes,
+    practicalMinutes,
+    phaseGroup,
+    toolsRequired,
+    notes,
+    startTime,
+    endTime,
+    totalMinutes,
+    category,
+    onSave,
+  ]);
+
+  const saveRunner = useActionRunner(moduleSaveSteps);
+  const isModalLocked = saveRunner.phase === 'running' || saveRunner.phase === 'waiting';
+
+  useEffect(() => {
+    if (isOpen) {
+      saveRunner.reset();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    if (isModalLocked) return;
+    saveRunner.reset();
+    onClose();
+  };
+
+  const handleBeforeSave = () => {
+    setErrorMessage('');
+    if (formRef.current && !formRef.current.reportValidity()) {
+      return false;
+    }
+    if (!topic.trim()) {
+      setErrorMessage('পঠিত বিষয় বা টপিক অবশ্যই পূরণ করতে হবে।');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
-    if (!topic.trim()) {
-      setErrorMessage('পঠিত বিষয় বা টপিক অবশ্যই পূরণ করতে হবে।');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      if (isSkill) {
-        const payload: BatchSkillModule = {
-          id: (initialData as BatchSkillModule)?.id || `tsm_${batchId}_${dayNumber}_${Date.now()}`,
-          batchId,
-          dayNumber: Number(dayNumber),
-          moduleName: moduleName.trim(),
-          taskNo: taskNo.trim(),
-          topic: topic.trim(),
-          theoryMinutes: Number(theoryMinutes),
-          practicalMinutes: Number(practicalMinutes),
-          totalMinutes: Number(theoryMinutes) + Number(practicalMinutes),
-          phaseGroup,
-          toolsRequired: toolsRequired.trim(),
-          notes: notes.trim(),
-          createdAt: (initialData as BatchSkillModule)?.createdAt || Date.now(),
-          updatedAt: Date.now()
-        };
-        await onSave(payload);
-      } else {
-        const payload: BatchLiteracyModule = {
-          id: (initialData as BatchLiteracyModule)?.id || `tlm_${batchId}_${dayNumber}_${Date.now()}`,
-          batchId,
-          dayNumber: Number(dayNumber),
-          moduleName: moduleName.trim(),
-          taskNo: taskNo.trim(),
-          topic: topic.trim(),
-          startTime: startTime.trim(),
-          endTime: endTime.trim(),
-          totalMinutes: Number(totalMinutes),
-          category,
-          notes: notes.trim(),
-          createdAt: (initialData as BatchLiteracyModule)?.createdAt || Date.now(),
-          updatedAt: Date.now()
-        };
-        await onSave(payload);
-      }
-      onClose();
-    } catch (err: any) {
-      console.error("Save module error:", err);
-      setErrorMessage(err?.message || "মডিউল সংরক্ষণ ব্যাহত হয়েছে। পুনরায় চেষ্টা করুন।");
-    } finally {
-      setSaving(false);
-    }
+    if (isModalLocked || saveRunner.phase === 'success') return;
+    if (!handleBeforeSave()) return;
+    await saveRunner.run();
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-theme-elevated rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-theme-border space-y-4 animate-in fade-in zoom-in duration-150 my-auto">
+      <div className="bg-theme-elevated rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-theme-border space-y-4 animate-in fade-in zoom-in duration-150 my-auto overflow-visible">
         <div className="flex items-start justify-between border-b border-theme-border pb-3">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border">
@@ -160,8 +211,10 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
             </p>
           </div>
           <button
-            onClick={onClose}
-            className="p-1 rounded-xl text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover transition"
+            type="button"
+            disabled={isModalLocked}
+            onClick={handleClose}
+            className="p-1 rounded-xl text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-50 transition"
           >
             <X size={20} />
           </button>
@@ -173,7 +226,8 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <fieldset disabled={isModalLocked || saveRunner.phase === 'success'} className="space-y-4 min-w-0">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-theme-text-secondary font-bold mb-1">
@@ -378,28 +432,26 @@ const ModuleInputModal: React.FC<ModuleInputModalProps> = ({
             />
           </div>
 
-          <div className="flex items-center justify-end space-x-2 pt-3 border-t border-theme-border">
+          </fieldset>
+
+          <div className="flex items-start justify-end space-x-2 pt-3 border-t border-theme-border">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition"
+              disabled={isModalLocked}
+              onClick={handleClose}
+              className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 transition"
             >
-              বাতিল
+              {saveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {saving ? (
-                <span>সংরক্ষণ হচ্ছে...</span>
-              ) : (
-                <>
-                  <Check size={16} />
-                  <span>সংরক্ষণ নিশ্চিত করুন</span>
-                </>
-              )}
-            </button>
+            <ActionButton
+              runner={saveRunner}
+              idleLabel="সংরক্ষণ নিশ্চিত করুন"
+              idleIcon={<Check size={16} />}
+              popoverTitle="মডিউল সংরক্ষণ"
+              onBeforeRun={handleBeforeSave}
+              onAutoHide={handleClose}
+              className="min-w-[185px]"
+            />
           </div>
         </form>
       </div>

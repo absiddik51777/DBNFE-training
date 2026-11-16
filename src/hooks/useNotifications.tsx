@@ -23,8 +23,13 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  registerActiveListener,
+  isPermissionDeniedError,
+  reportPermissionDenied,
+} from '../lib/sessionGuard';
 import {
   getLogDate,
   parseAuditDateValue,
@@ -212,27 +217,28 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     const userRef = doc(db, 'users', uid);
-    const unsubUser = onSnapshot(
-      userRef,
-      (snap) => {
-        if (!snap.exists()) return;
-        const data = snap.data();
-        const seenDate = parseAuditDateValue(data.notificationsSeenAt);
-        const clearedDate = parseAuditDateValue(data.notificationsClearedAt);
-        setSeenAtMs((prev) => Math.max(prev, seenDate ? seenDate.getTime() : 0));
-        setClearedAtMs((prev) => Math.max(prev, clearedDate ? clearedDate.getTime() : 0));
-      },
-      (err) => {
-        console.warn('Notification user timestamp listener notice:', err?.message || err);
-      }
+    const unsubUser = registerActiveListener(
+      onSnapshot(
+        userRef,
+        (snap) => {
+          if (!snap.exists()) return;
+          const data = snap.data();
+          const seenDate = parseAuditDateValue(data.notificationsSeenAt);
+          const clearedDate = parseAuditDateValue(data.notificationsClearedAt);
+          setSeenAtMs((prev) => Math.max(prev, seenDate ? seenDate.getTime() : 0));
+          setClearedAtMs((prev) => Math.max(prev, clearedDate ? clearedDate.getTime() : 0));
+        },
+        (err) => {
+          console.warn('Notification user timestamp listener notice:', err?.message || err);
+          if (auth.currentUser && isPermissionDeniedError(err)) {
+            reportPermissionDenied();
+          }
+        }
+      )
     );
 
     return () => {
-      try {
-        unsubUser();
-      } catch {
-        // ignore
-      }
+      unsubUser();
     };
   }, [isActiveSession, uid]);
 
@@ -301,18 +307,20 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     const handleSnapshotError = (err: any) => {
       const code = String(err?.code || '');
       const msg = String(err?.message || '');
-      if (code === 'failed-precondition' || msg.toLowerCase().includes('index')) {
+      if (isPermissionDeniedError(err)) {
+        if (auth.currentUser) reportPermissionDenied();
+        setError('বিজ্ঞপ্তি দেখার প্রয়োজনীয় অনুমতি নেই।');
+      } else if (code === 'failed-precondition' || msg.toLowerCase().includes('index')) {
         setError(
           'বিজ্ঞপ্তি লোড করতে Firestore-এ Composite Index প্রয়োজন (notifyRoles/notifyUserIds + createdAt)।'
         );
-      } else if (code === 'permission-denied') {
-        setError('বিজ্ঞপ্তি দেখার প্রয়োজনীয় অনুমতি নেই।');
       } else {
         setError('বিজ্ঞপ্তি লোড করতে সমস্যা হয়েছে।');
       }
     };
 
-    const unsubRole = onSnapshot(
+    const unsubRole = registerActiveListener(
+      onSnapshot(
       roleQuery,
       (snap) => {
         const docs = snap.docs.map(docToActivityLog);
@@ -343,9 +351,11 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         handleSnapshotError(err);
         setLoadingRole(false);
       }
+    )
     );
 
-    const unsubUser = onSnapshot(
+    const unsubUser = registerActiveListener(
+      onSnapshot(
       userQuery,
       (snap) => {
         const docs = snap.docs.map(docToActivityLog);
@@ -376,19 +386,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         handleSnapshotError(err);
         setLoadingUser(false);
       }
+    )
     );
 
     return () => {
-      try {
-        unsubRole();
-      } catch {
-        // ignore
-      }
-      try {
-        unsubUser();
-      } catch {
-        // ignore
-      }
+      unsubRole();
+      unsubUser();
     };
   }, [isActiveSession, uid, userRole, cutoffTimestamp]); // soundEnabled intentionally read dynamically via ref-like closure? Wait: let's sync via ref!
 
@@ -482,6 +485,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     } catch (err) {
       console.warn('Could not update notificationsSeenAt:', err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     }
   }, [uid, isActiveSession]);
 
@@ -518,6 +524,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     } catch (err) {
       console.warn('Could not update notificationsClearedAt:', err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     }
   }, [uid, isActiveSession]);
 
@@ -586,6 +595,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (err) {
       console.warn('Error loading older notifications:', err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     } finally {
       setLoadingMore(false);
     }
@@ -636,6 +648,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       setHasMoreUserServer(userSnap.docs.length >= REALTIME_FETCH_LIMIT);
     } catch (err) {
       console.warn('Error refreshing notifications:', err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     }
   }, [isActiveSession, uid, userRole, cutoffTimestamp]);
 

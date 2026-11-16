@@ -17,6 +17,7 @@ import {
   getNotificationVisualType,
   NotificationIconTone,
 } from './notificationHelpers';
+import { TruncatedText } from '../ui/TruncatedText';
 
 interface NotificationItemProps {
   log: ActivityLog;
@@ -85,14 +86,21 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-medium text-theme-text-primary leading-snug line-clamp-2 break-words">
-          {title}
-        </p>
+        <TruncatedText
+          as="p"
+          text={title}
+          lines={2}
+          mode="exp"
+          className="text-[14px] font-medium text-theme-text-primary leading-snug break-words"
+        />
 
         {subtitle && (
-          <p className="text-xs text-theme-text-secondary leading-snug truncate mt-0.5">
-            {subtitle}
-          </p>
+          <TruncatedText
+            as="p"
+            text={subtitle}
+            mode="pop"
+            className="text-xs text-theme-text-secondary leading-snug mt-0.5"
+          />
         )}
 
         <div className="flex flex-wrap items-center gap-2 mt-1">

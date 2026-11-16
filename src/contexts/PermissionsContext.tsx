@@ -1,13 +1,25 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+} from 'react';
 import { Role } from '../types';
 import { useAuth } from './AuthContext';
 import { dataService } from '../lib/dataService';
-import { DEFAULT_ROLES, ALL_PERMISSION_KEYS, PATH_TO_PAGE_PERMISSION } from '../lib/permissions';
+import {
+  DEFAULT_ROLES,
+  ALL_PERMISSION_KEYS,
+  PATH_TO_PAGE_PERMISSION,
+} from '../lib/permissions';
 
 interface PermissionsContextType {
   roles: Role[];
   loading: boolean;
   hasPermission: (permissionKey: string) => boolean;
+  can: (permissionKey: string) => boolean;
   canViewPage: (path: string) => boolean;
   userPermissions: string[];
   currentRole: Role | null;
@@ -31,6 +43,7 @@ const PermissionsContext = createContext<PermissionsContextType>({
   roles: DEFAULT_ROLES,
   loading: true,
   hasPermission: () => false,
+  can: () => false,
   canViewPage: () => false,
   userPermissions: [],
   currentRole: null,
@@ -45,58 +58,96 @@ const PermissionsContext = createContext<PermissionsContextType>({
 
 export const usePermissions = () => useContext(PermissionsContext);
 
-export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { userProfile } = useAuth();
+export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { user, userProfile } = useAuth();
   const [roles, setRoles] = useState<Role[]>(DEFAULT_ROLES);
   const [loading, setLoading] = useState(true);
 
-  const isCourseDirector = userProfile?.role === 'Course Director';
+  const isActiveMember = Boolean(
+    user && userProfile && userProfile.status === 'Active' && userProfile.role !== 'Pending'
+  );
+  const isCourseDirector = isActiveMember && userProfile?.role === 'Course Director';
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
+    if (!isActiveMember) {
+      setRoles(DEFAULT_ROLES);
+      setLoading(false);
+      return;
+    }
     try {
-      const list = await dataService.getItems<Role>('roles');
+      const list = await dataService.getItems<Role>('roles', true);
       if (list && list.length > 0) {
         setRoles(list);
       } else {
         setRoles(DEFAULT_ROLES);
       }
     } catch (err) {
-      console.warn("Could not fetch roles:", err);
+      console.warn('Could not fetch roles:', err);
       setRoles(DEFAULT_ROLES);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isActiveMember]);
 
   useEffect(() => {
-    fetchRoles();
-  }, []);
+    if (!isActiveMember) {
+      setRoles(DEFAULT_ROLES);
+      setLoading(false);
+      return;
+    }
 
-  // Determine active user's role object
+    let cancelled = false;
+    setLoading(true);
+
+    void fetchRoles();
+
+    const unsub = dataService.subscribeCollection<Role>(
+      'roles',
+      (list) => {
+        if (cancelled) return;
+        setRoles(list && list.length > 0 ? list : DEFAULT_ROLES);
+        setLoading(false);
+      },
+      () => {
+        if (!cancelled) setLoading(false);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [isActiveMember, user?.uid, fetchRoles]);
+
+  // Determine active user's role object strictly from live userProfile.role
   const currentRole = useMemo(() => {
-    if (!userProfile?.role) return null;
+    if (!isActiveMember || !userProfile?.role) return null;
     const userRoleStr = userProfile.role.trim().toLowerCase();
     return (
       roles.find(
-        r =>
+        (r) =>
           r.name.trim().toLowerCase() === userRoleStr ||
           r.code.trim().toLowerCase() === userRoleStr ||
           r.nameBn.trim().toLowerCase() === userRoleStr
       ) || null
     );
-  }, [roles, userProfile?.role]);
+  }, [isActiveMember, roles, userProfile?.role]);
 
-  // Determine active user's permissions
+  // Determine active user's permissions strictly from live role + live roles list
   const userPermissions = useMemo<string[]>(() => {
+    if (!isActiveMember) {
+      return [];
+    }
     if (isCourseDirector) {
-      // Course Director is the ultimate super-admin with all permissions
       return [...ALL_PERMISSION_KEYS];
     }
     if (currentRole) {
-      // Filter out role-management permissions for non-Course Director roles as safeguard
-      return currentRole.permissions.filter(p => p !== 'view_roles' && p !== 'manage_roles');
+      return currentRole.permissions.filter(
+        (p) => p !== 'view_roles' && p !== 'manage_roles'
+      );
     }
-    // Fallback default for Trainer or other roles if not yet loaded
     if (userProfile?.role === 'Trainer') {
       return DEFAULT_ROLES[2].permissions;
     }
@@ -104,75 +155,94 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       return DEFAULT_ROLES[1].permissions;
     }
     return [];
-  }, [isCourseDirector, currentRole, userProfile?.role]);
+  }, [isActiveMember, isCourseDirector, currentRole, userProfile?.role]);
 
-  // Check if current user has permission
-  const hasPermission = useCallback((permissionKey: string): boolean => {
-    // Role and permission system strictly under Course Director only
-    if (permissionKey === 'view_roles' || permissionKey === 'manage_roles') {
-      return isCourseDirector;
-    }
-
-    if (isCourseDirector) return true;
-
-    return userPermissions.includes(permissionKey);
-  }, [isCourseDirector, userPermissions]);
-
-  // Check if current user can view a specific page route
-  const canViewPage = useCallback((path: string): boolean => {
-    // Normalise path (strip trailing slash or query)
-    const cleanPath = path.split('?')[0].replace(/\/+$/, '') || '/';
-    
-    // Roles page strictly under Course Director only
-    if (cleanPath === '/roles' || cleanPath.startsWith('/roles/')) {
-      return isCourseDirector;
-    }
-
-    // Match exact or prefix
-    const permKey = PATH_TO_PAGE_PERMISSION[cleanPath];
-    if (!permKey) {
-      // Find matching prefix if applicable
-      const matchedKey = Object.keys(PATH_TO_PAGE_PERMISSION).find(
-        p => p !== '/' && cleanPath.startsWith(p)
-      );
-      if (matchedKey) {
-        return hasPermission(PATH_TO_PAGE_PERMISSION[matchedKey]);
+  const hasPermission = useCallback(
+    (permissionKey: string): boolean => {
+      if (!isActiveMember) return false;
+      if (permissionKey === 'view_roles' || permissionKey === 'manage_roles') {
+        return isCourseDirector;
       }
-      return true;
-    }
+      if (isCourseDirector) return true;
+      return userPermissions.includes(permissionKey);
+    },
+    [isActiveMember, isCourseDirector, userPermissions]
+  );
 
-    return hasPermission(permKey);
-  }, [isCourseDirector, hasPermission]);
+  const canViewPage = useCallback(
+    (path: string): boolean => {
+      if (!isActiveMember) return false;
 
-  // Determine fallback landing route for the current user
-  const getDefaultLandingRoute = useCallback((targetAttemptedPath?: string): string => {
-    // 1. If attempted path is valid and accessible (and not generic root), stay there
-    if (targetAttemptedPath && targetAttemptedPath !== '/' && canViewPage(targetAttemptedPath)) {
-      return targetAttemptedPath;
-    }
+      const cleanPath = path.split('?')[0].replace(/\/+$/, '') || '/';
 
-    // 2. Trainers are always redirected to the dedicated Trainer Dashboard
-    if (userProfile?.role === 'Trainer' || currentRole?.code === 'trainer') {
-      return '/trainer-dashboard';
-    }
+      if (cleanPath === '/roles' || cleanPath.startsWith('/roles/')) {
+        return isCourseDirector;
+      }
 
-    // 3. For all other roles, the redirect URL is the main Dashboard ('/')
-    if (canViewPage('/')) {
-      return '/';
-    }
+      if (cleanPath === '/brn-verification' || cleanPath.startsWith('/brn-verification/')) {
+        return isCourseDirector && hasPermission('view_brn_verification');
+      }
 
-    // 4. Fallback if '/' is not permitted
-    const allRoutes = ['/attendance', '/batches', '/trainees', '/institutes'];
-    for (const route of allRoutes) {
-      if (canViewPage(route)) return route;
-    }
+      const permKey = PATH_TO_PAGE_PERMISSION[cleanPath];
+      if (!permKey) {
+        const matchedKey = Object.keys(PATH_TO_PAGE_PERMISSION).find(
+          (p) => p !== '/' && cleanPath.startsWith(p)
+        );
+        if (matchedKey) {
+          return hasPermission(PATH_TO_PAGE_PERMISSION[matchedKey]);
+        }
+        return true;
+      }
 
-    return '/attendance';
-  }, [canViewPage, currentRole, userProfile?.role]);
+      return hasPermission(permKey);
+    },
+    [isActiveMember, isCourseDirector, hasPermission]
+  );
 
-  // Configurable fallback landing route updater (Course Director or role customization)
+  const getDefaultLandingRoute = useCallback(
+    (targetAttemptedPath?: string): string => {
+      if (!isActiveMember) return '/login';
+
+      if (targetAttemptedPath && targetAttemptedPath !== '/' && canViewPage(targetAttemptedPath)) {
+        return targetAttemptedPath;
+      }
+
+      if (userProfile?.role === 'Trainer' || currentRole?.code === 'trainer') {
+        return '/trainer-dashboard';
+      }
+
+      if (currentRole?.defaultLandingRoute && currentRole.defaultLandingRoute !== '/' && canViewPage(currentRole.defaultLandingRoute)) {
+        return currentRole.defaultLandingRoute;
+      }
+
+      if (canViewPage('/')) {
+        return '/';
+      }
+
+      const allRoutes = [
+        '/attendance',
+        '/attendance-sheet',
+        '/batches',
+        '/trainees',
+        '/institutes',
+        '/trades',
+        '/exams',
+        '/results',
+        '/reports',
+        '/certificates',
+        '/settings',
+      ];
+      for (const route of allRoutes) {
+        if (canViewPage(route)) return route;
+      }
+
+      return '/notifications';
+    },
+    [isActiveMember, canViewPage, currentRole, userProfile?.role]
+  );
+
   const setRoleLandingRoute = async (roleId: string, route: string) => {
-    const targetRole = roles.find(r => r.id === roleId);
+    const targetRole = roles.find((r) => r.id === roleId);
     if (!targetRole) return;
 
     const updatedRole: Role = {
@@ -181,29 +251,27 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       updatedAt: Date.now(),
     };
 
-    try {
-      localStorage.setItem(`bnfe_landing_${targetRole.id}`, route);
-      localStorage.setItem(`bnfe_landing_${targetRole.code}`, route);
-    } catch (e) {}
-
     await dataService.saveItem<Role>('roles', updatedRole);
-    setRoles(prev => prev.map(r => (r.id === roleId ? updatedRole : r)));
+    setRoles((prev) => prev.map((r) => (r.id === roleId ? updatedRole : r)));
   };
 
-  // Update permissions for a role (Course Director only)
   const updateRolePermissions = async (roleId: string, permissions: string[]) => {
     if (!isCourseDirector) {
-      throw new Error('শুধুমাত্র কোর্স পরিচালক (Course Director) রোল ও পারমিশন পরিবর্তন করতে পারেন।');
+      throw new Error(
+        'শুধুমাত্র কোর্স পরিচালক (Course Director) রোল ও পারমিশন পরিবর্তন করতে পারেন।'
+      );
     }
 
-    const targetRole = roles.find(r => r.id === roleId);
+    const targetRole = roles.find((r) => r.id === roleId);
     if (!targetRole) {
       throw new Error('রোল পাওয়া যায়নি।');
     }
 
     let finalPerms = [...permissions];
-    // If it's Course Director role, ensure all permissions remain intact
-    if (targetRole.name === 'Course Director' || targetRole.code === 'course_director') {
+    if (
+      targetRole.name === 'Course Director' ||
+      targetRole.code === 'course_director'
+    ) {
       finalPerms = [...ALL_PERMISSION_KEYS];
     }
 
@@ -214,10 +282,9 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
 
     await dataService.saveItem<Role>('roles', updatedRole);
-    setRoles(prev => prev.map(r => (r.id === roleId ? updatedRole : r)));
+    setRoles((prev) => prev.map((r) => (r.id === roleId ? updatedRole : r)));
   };
 
-  // Create new role (Course Director only)
   const createRole = async (roleData: {
     name: string;
     nameBn?: string;
@@ -227,7 +294,9 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     defaultLandingRoute?: string;
   }): Promise<Role> => {
     if (!isCourseDirector) {
-      throw new Error('শুধুমাত্র কোর্স পরিচালক (Course Director) নতুন রোল তৈরি করতে পারেন।');
+      throw new Error(
+        'শুধুমাত্র কোর্স পরিচালক (Course Director) নতুন রোল তৈরি করতে পারেন।'
+      );
     }
 
     const cleanCode = (roleData.code || roleData.name)
@@ -248,17 +317,18 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
 
     await dataService.saveItem<Role>('roles', newRole);
-    setRoles(prev => [...prev, newRole]);
+    setRoles((prev) => [...prev, newRole]);
     return newRole;
   };
 
-  // Delete a custom role (Course Director only)
   const deleteRole = async (roleId: string) => {
     if (!isCourseDirector) {
-      throw new Error('শুধুমাত্র কোর্স পরিচালক (Course Director) রোল মুছে ফেলতে পারেন।');
+      throw new Error(
+        'শুধুমাত্র কোর্স পরিচালক (Course Director) রোল মুছে ফেলতে পারেন।'
+      );
     }
 
-    const targetRole = roles.find(r => r.id === roleId);
+    const targetRole = roles.find((r) => r.id === roleId);
     if (!targetRole) return;
 
     if (targetRole.isSystem) {
@@ -266,37 +336,41 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
 
     await dataService.deleteItem('roles', roleId);
-    setRoles(prev => prev.filter(r => r.id !== roleId));
+    setRoles((prev) => prev.filter((r) => r.id !== roleId));
   };
 
   const refreshRoles = async () => {
     await fetchRoles();
   };
 
-  const contextValue = useMemo(() => ({
-    roles,
-    loading,
-    hasPermission,
-    canViewPage,
-    userPermissions,
-    currentRole,
-    isCourseDirector,
-    getDefaultLandingRoute,
-    setRoleLandingRoute,
-    updateRolePermissions,
-    createRole,
-    deleteRole,
-    refreshRoles,
-  }), [
-    roles,
-    loading,
-    hasPermission,
-    canViewPage,
-    userPermissions,
-    currentRole,
-    isCourseDirector,
-    getDefaultLandingRoute,
-  ]);
+  const contextValue = useMemo(
+    () => ({
+      roles,
+      loading,
+      hasPermission,
+      can: hasPermission,
+      canViewPage,
+      userPermissions,
+      currentRole,
+      isCourseDirector,
+      getDefaultLandingRoute,
+      setRoleLandingRoute,
+      updateRolePermissions,
+      createRole,
+      deleteRole,
+      refreshRoles,
+    }),
+    [
+      roles,
+      loading,
+      hasPermission,
+      canViewPage,
+      userPermissions,
+      currentRole,
+      isCourseDirector,
+      getDefaultLandingRoute,
+    ]
+  );
 
   return (
     <PermissionsContext.Provider value={contextValue}>

@@ -19,6 +19,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { TruncatedText } from '../ui/TruncatedText';
 import {
   ThemeConfig,
   ThemeMode,
@@ -670,10 +671,12 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
                         </label>
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs font-medium text-theme-text-primary truncate">
-                              {tokenMeta.labelEn}
-                            </span>
+                          <div className="flex items-center space-x-1.5 min-w-0">
+                            <TruncatedText
+                              text={tokenMeta.labelEn}
+                              mode="pop"
+                              className="text-xs font-medium text-theme-text-primary min-w-0"
+                            />
                             {isModified && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-theme-primary-soft text-theme-primary-soft-fg font-medium whitespace-nowrap leading-snug shrink-0">
                                 পরিবর্তিত

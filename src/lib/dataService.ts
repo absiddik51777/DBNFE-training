@@ -1,5 +1,11 @@
 import { db, auth } from './firebase';
 import { handleFirestoreError } from './securityErrors';
+import {
+  registerActiveListener,
+  isPermissionDeniedError,
+  reportPermissionDenied,
+  clearSessionAppCache,
+} from './sessionGuard';
 import { 
   collection, 
   getDocs, 
@@ -234,6 +240,9 @@ export const dataService = {
       }
     } catch (err) {
       console.warn(`Cloud Firestore fetch notice for ${collectionName}:`, err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     }
 
     // Only fallback for roles to ensure security/RBAC never breaks offline
@@ -290,7 +299,9 @@ export const dataService = {
         }
       });
       console.warn(`Firestore saveItem error on ${collectionName}/${cleanItem.id}:`, sanitized.userMessage);
-      throw new Error(sanitized.userMessage);
+      const wrappedError = new Error(sanitized.userMessage);
+      (wrappedError as any).code = sanitized.code;
+      throw wrappedError;
     }
   },
 
@@ -394,7 +405,9 @@ export const dataService = {
         }
       });
       console.warn(`Firestore deleteItem error on ${collectionName}/${id}:`, sanitized.userMessage);
-      throw new Error(sanitized.userMessage);
+      const wrappedError = new Error(sanitized.userMessage);
+      (wrappedError as any).code = sanitized.code;
+      throw wrappedError;
     }
 
     this.broadcastSync(collectionName);
@@ -488,7 +501,7 @@ export const dataService = {
       batchName?: string;
       actor?: AuditActor;
     }
-  ): Promise<{ success: boolean; count: number; error?: string }> {
+  ): Promise<{ success: boolean; count: number; error?: string; errorCode?: string }> {
     if (!records || records.length === 0) return { success: true, count: 0 };
 
     try {
@@ -518,7 +531,10 @@ export const dataService = {
       return { success: true, count };
     } catch (firestoreErr: any) {
       console.error("Cloud Firestore batch attendance save error:", firestoreErr);
-      return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error' };
+      if (auth.currentUser && isPermissionDeniedError(firestoreErr)) {
+        reportPermissionDenied();
+      }
+      return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error', errorCode: firestoreErr?.code };
     }
   },
 
@@ -533,7 +549,7 @@ export const dataService = {
       traineeNamesMap?: Record<string, string>;
       actor?: AuditActor;
     }
-  ): Promise<{ success: boolean; count: number; error?: string }> {
+  ): Promise<{ success: boolean; count: number; error?: string; errorCode?: string }> {
     if (!marks || marks.length === 0) return { success: true, count: 0 };
     try {
       const cleanList = marks.map((m) => sanitizeForFirestore(m));
@@ -548,7 +564,10 @@ export const dataService = {
       return { success: true, count };
     } catch (err: any) {
       console.error("Cloud Firestore batch marks save error:", err);
-      return { success: false, count: 0, error: err?.message || 'Cloud write error' };
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
+      return { success: false, count: 0, error: err?.message || 'Cloud write error', errorCode: err?.code };
     }
   },
 
@@ -559,7 +578,7 @@ export const dataService = {
   async saveTraineeBatch(
     traineesList: Trainee[],
     auditMeta?: { title?: string; actor?: AuditActor }
-  ): Promise<{ success: boolean; count: number; error?: string }> {
+  ): Promise<{ success: boolean; count: number; error?: string; errorCode?: string }> {
     if (!traineesList || traineesList.length === 0) return { success: true, count: 0 };
 
     try {
@@ -603,7 +622,10 @@ export const dataService = {
       return { success: true, count: cleanList.length };
     } catch (firestoreErr: any) {
       console.error("Cloud Firestore batch trainee save error:", firestoreErr);
-      return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error' };
+      if (auth.currentUser && isPermissionDeniedError(firestoreErr)) {
+        reportPermissionDenied();
+      }
+      return { success: false, count: 0, error: firestoreErr?.message || 'Cloud write error', errorCode: firestoreErr?.code };
     }
   },
 
@@ -865,6 +887,9 @@ export const dataService = {
         },
         (err) => {
           console.warn(`Cloud Firestore realtime listener error for ${collectionName}:`, err);
+          if (auth.currentUser && isPermissionDeniedError(err)) {
+            reportPermissionDenied();
+          }
           if (onError) onError(err);
         }
       );
@@ -872,11 +897,11 @@ export const dataService = {
       console.warn(`Could not attach realtime listener for ${collectionName}:`, err);
     }
 
-    return () => {
+    return registerActiveListener(() => {
       isSubscribed = false;
       try { unsubscribeFirestore(); } catch (e) {}
       try { if (bc) bc.close(); } catch (e) {}
-    };
+    });
   },
 
   /**
@@ -989,6 +1014,7 @@ export const dataService = {
    * Clear local browser cache
    */
   clearAllLocalData(): void {
+    clearSessionAppCache();
     if (typeof window !== 'undefined') {
       try {
         const keysToRemove: string[] = [];
@@ -1029,6 +1055,9 @@ export const dataService = {
       }
     } catch (err) {
       console.warn("Could not fetch system settings from Firestore, using cached/default:", err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
     }
     return cachedSystemSettings;
   },
@@ -1090,7 +1119,7 @@ export const dataService = {
    */
   subscribeSystemSettings(callback: (settings: SystemSettings) => void): () => void {
     const docRef = doc(db, 'settings', 'system_config');
-    return onSnapshot(docRef, (snap) => {
+    const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         cachedSystemSettings = {
@@ -1108,8 +1137,12 @@ export const dataService = {
       callback(cachedSystemSettings);
     }, (err) => {
       console.warn("Error listening to system settings:", err);
+      if (auth.currentUser && isPermissionDeniedError(err)) {
+        reportPermissionDenied();
+      }
       callback(cachedSystemSettings);
     });
+    return registerActiveListener(unsub);
   },
 
   /**

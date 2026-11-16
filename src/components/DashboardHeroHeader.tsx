@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { toBn } from '../lib/dateUtils';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 interface DashboardHeroHeaderProps {
   userProfile: UserProfile | null;
@@ -38,6 +39,7 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
   syncSuccessMsg,
   batchInfoBadge,
 }) => {
+  const { can, canViewPage } = usePermissions();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -111,11 +113,18 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
     return name.slice(0, 2);
   };
 
-  const displayName = userProfile?.name || 'A.B. Siddik';
+  const displayName = userProfile?.name || 'ব্যবহারকারী';
   const roleName =
     userProfile?.role === 'Trainer'
       ? 'Course Trainer'
-      : userProfile?.role || 'Course Director';
+      : userProfile?.role || '';
+
+  const canGoAttendance = can('take_attendance') && canViewPage('/attendance');
+  const canGoNewTrainee = can('create_trainee') && canViewPage('/trainees');
+  const canSwitchDashboard = isTrainerDashboard
+    ? userProfile?.role !== 'Trainer' && canViewPage('/')
+    : canViewPage('/trainer-dashboard');
+  const hasQuickLinks = canGoAttendance || canGoNewTrainee || canSwitchDashboard;
 
   const getRoleBadgeClasses = () => {
     switch (userProfile?.role) {
@@ -208,46 +217,52 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
             {isMenuOpen && (
               <div className="absolute right-0 top-12 sm:top-13 z-50 w-64 bg-theme-elevated rounded-2xl shadow-xl border border-theme-border p-2 text-theme-text-primary animate-in fade-in zoom-in-95 duration-150">
                 <div className="space-y-1">
-                  <Link
-                    to="/attendance"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-theme-surface-hover transition group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0">
-                      <CalendarCheck size={18} />
-                    </div>
-                    <span className="text-sm font-medium text-theme-text-primary group-hover:text-theme-primary transition-colors">
-                      হাজিরা এন্ট্রি
-                    </span>
-                  </Link>
+                  {canGoAttendance && (
+                    <Link
+                      to="/attendance"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-theme-surface-hover transition group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0">
+                        <CalendarCheck size={18} />
+                      </div>
+                      <span className="text-sm font-medium text-theme-text-primary group-hover:text-theme-primary transition-colors">
+                        হাজিরা এন্ট্রি
+                      </span>
+                    </Link>
+                  )}
 
-                  <Link
-                    to="/trainees/add"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-theme-surface-hover transition group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-theme-surface-subtle text-theme-text-primary border border-theme-border flex items-center justify-center shrink-0">
-                      <Plus size={19} strokeWidth={2.5} />
-                    </div>
-                    <span className="text-sm font-medium text-theme-text-primary transition-colors">
-                      নতুন ভর্তি
-                    </span>
-                  </Link>
+                  {canGoNewTrainee && (
+                    <Link
+                      to="/trainees/add"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-theme-surface-hover transition group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-theme-surface-subtle text-theme-text-primary border border-theme-border flex items-center justify-center shrink-0">
+                        <Plus size={19} strokeWidth={2.5} />
+                      </div>
+                      <span className="text-sm font-medium text-theme-text-primary transition-colors">
+                        নতুন ভর্তি
+                      </span>
+                    </Link>
+                  )}
 
-                  <Link
-                    to={isTrainerDashboard ? '/' : '/trainer-dashboard'}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-theme-surface-hover transition group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-theme-accent-soft text-theme-accent border border-theme-accent-border flex items-center justify-center shrink-0">
-                      <UserCheck size={18} />
-                    </div>
-                    <span className="text-sm font-medium text-theme-text-primary group-hover:text-theme-accent transition-colors">
-                      {isTrainerDashboard ? 'সার্বিক ড্যাশবোর্ড' : 'প্রশিক্ষক ড্যাশবোর্ড'}
-                    </span>
-                  </Link>
+                  {canSwitchDashboard && (
+                    <Link
+                      to={isTrainerDashboard ? '/' : '/trainer-dashboard'}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-theme-surface-hover transition group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-theme-accent-soft text-theme-accent border border-theme-accent-border flex items-center justify-center shrink-0">
+                        <UserCheck size={18} />
+                      </div>
+                      <span className="text-sm font-medium text-theme-text-primary group-hover:text-theme-accent transition-colors">
+                        {isTrainerDashboard ? 'সার্বিক ড্যাশবোর্ড' : 'প্রশিক্ষক ড্যাশবোর্ড'}
+                      </span>
+                    </Link>
+                  )}
 
-                  <div className="border-t border-theme-border my-1" />
+                  {hasQuickLinks && <div className="border-t border-theme-border my-1" />}
 
                   <button
                     type="button"

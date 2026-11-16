@@ -9,6 +9,7 @@ import {
   hasLogDetails,
   isStructuredAuditLog,
 } from './auditFormatters';
+import { TruncatedText } from '../ui/TruncatedText';
 
 interface AuditLogRowProps {
   log: ActivityLog;
@@ -49,10 +50,15 @@ export const AuditLogRow: React.FC<AuditLogRowProps> = ({ log, onSelect }) => {
 
         {/* Line 2: User + right-aligned 12h Dhaka time */}
         <div className="flex items-center justify-between gap-2 text-xs text-theme-text-secondary">
-          <p className="min-w-0 truncate">
+          <TruncatedText
+            as="p"
+            text={`ব্যবহারকারী: ${actorName}`}
+            mode="pop"
+            className="min-w-0"
+          >
             ব্যবহারকারী:{' '}
             <span className="font-medium text-theme-text-primary">{actorName}</span>
-          </p>
+          </TruncatedText>
           {(formattedTime || hasGrantedLocation) && (
             <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-theme-text-muted">
               {hasGrantedLocation && (

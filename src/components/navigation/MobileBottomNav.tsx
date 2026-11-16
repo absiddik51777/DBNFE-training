@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import {
   Home,
   Layers,
@@ -19,24 +20,57 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   isMoreOpen,
 }) => {
   const { userProfile } = useAuth();
+  const { canViewPage } = usePermissions();
   const location = useLocation();
 
   const isTrainer = userProfile?.role === 'Trainer';
   const homePath = isTrainer ? '/trainer-dashboard' : '/';
+
+  const visibleTabs = useMemo(() => {
+    const items = [
+      {
+        key: 'home',
+        to: homePath,
+        label: 'হোম',
+        Icon: Home,
+        visible: canViewPage(homePath),
+      },
+      {
+        key: 'batches',
+        to: '/batches',
+        label: 'ব্যাচ',
+        Icon: Layers,
+        visible: canViewPage('/batches'),
+      },
+      {
+        key: 'trainees',
+        to: '/trainees',
+        label: 'শিক্ষার্থী',
+        Icon: Users,
+        visible: canViewPage('/trainees'),
+      },
+      {
+        key: 'attendance',
+        to: '/attendance',
+        label: 'হাজিরা',
+        Icon: CalendarCheck,
+        visible: canViewPage('/attendance'),
+      },
+    ];
+    return items.filter((item) => item.visible);
+  }, [canViewPage, homePath]);
 
   const activeTab = useMemo(() => {
     const p = location.pathname;
 
     if (isMoreOpen) return 'more';
 
-    // 1. Home tab
     if (isTrainer) {
       if (p === '/trainer-dashboard') return 'home';
     } else {
       if (p === '/') return 'home';
     }
 
-    // 2. Batches tab (Batches, Institutes, Trades, Calendars)
     if (
       p.startsWith('/batches') ||
       p.startsWith('/institutes') ||
@@ -47,17 +81,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       return 'batches';
     }
 
-    // 3. Trainees tab (Trainees, or Trainer Dashboard if inspected by non-trainer)
     if (p.startsWith('/trainees') || (!isTrainer && p === '/trainer-dashboard')) {
       return 'trainees';
     }
 
-    // 4. Attendance tab (Daily attendance and monthly sheet)
     if (p.startsWith('/attendance')) {
       return 'attendance';
     }
 
-    // 5. More menu modules
     const moreRoutes = [
       '/exams',
       '/results',
@@ -67,6 +98,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       '/brn-verification',
       '/roles',
       '/settings',
+      '/notifications',
     ];
     if (moreRoutes.some((route) => p.startsWith(route))) {
       return 'more';
@@ -84,74 +116,37 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         : 'text-theme-text-muted hover:text-theme-text-secondary'
     }`;
 
+  const totalColumns = visibleTabs.length + 1;
+
   return (
     <nav
       aria-label="মোবাইল নেভিগেশন বার"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 font-sans bg-theme-nav border-t border-theme-border shadow-[0_-1px_8px_rgba(15,23,42,0.05)] dark:shadow-[0_-1px_12px_rgba(0,0,0,0.35)] select-none"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 font-sans bg-theme-nav border-t border-theme-border shadow-[0_-1px_8px_rgba(15,23,42,0.05)] dark:shadow-[0_-1px_12px_rgba(0,0,0,0.35)] select-none print:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <div className="grid grid-cols-5 items-stretch min-h-16 max-w-lg mx-auto">
-        {/* 1. Home Tab */}
-        <Link to={homePath} className={tabClass('home')}>
-          {activeTab === 'home' && (
-            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
-          )}
-          <Home size={20} strokeWidth={activeTab === 'home' ? 2.15 : 1.85} />
-          <span
-            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
-              activeTab === 'home' ? 'text-theme-primary' : 'text-theme-text-secondary'
-            }`}
-          >
-            হোম
-          </span>
-        </Link>
+      <div
+        className="grid items-stretch min-h-16 max-w-lg mx-auto"
+        style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}
+      >
+        {visibleTabs.map(({ key, to, label, Icon }) => {
+          const active = activeTab === key;
+          return (
+            <Link key={key} to={to} className={tabClass(key)}>
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
+              )}
+              <Icon size={20} strokeWidth={active ? 2.15 : 1.85} />
+              <span
+                className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
+                  active ? 'text-theme-primary' : 'text-theme-text-secondary'
+                }`}
+              >
+                {label}
+              </span>
+            </Link>
+          );
+        })}
 
-        {/* 2. Batches Tab */}
-        <Link to="/batches" className={tabClass('batches')}>
-          {activeTab === 'batches' && (
-            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
-          )}
-          <Layers size={20} strokeWidth={activeTab === 'batches' ? 2.15 : 1.85} />
-          <span
-            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
-              activeTab === 'batches' ? 'text-theme-primary' : 'text-theme-text-secondary'
-            }`}
-          >
-            ব্যাচ
-          </span>
-        </Link>
-
-        {/* 3. Trainees Tab */}
-        <Link to="/trainees" className={tabClass('trainees')}>
-          {activeTab === 'trainees' && (
-            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
-          )}
-          <Users size={20} strokeWidth={activeTab === 'trainees' ? 2.15 : 1.85} />
-          <span
-            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
-              activeTab === 'trainees' ? 'text-theme-primary' : 'text-theme-text-secondary'
-            }`}
-          >
-            শিক্ষার্থী
-          </span>
-        </Link>
-
-        {/* 4. Attendance Tab */}
-        <Link to="/attendance" className={tabClass('attendance')}>
-          {activeTab === 'attendance' && (
-            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-theme-primary rounded-b-full transition-all" />
-          )}
-          <CalendarCheck size={20} strokeWidth={activeTab === 'attendance' ? 2.15 : 1.85} />
-          <span
-            className={`text-[11px] leading-snug mt-1 whitespace-nowrap text-center ${
-              activeTab === 'attendance' ? 'text-theme-primary' : 'text-theme-text-secondary'
-            }`}
-          >
-            হাজিরা
-          </span>
-        </Link>
-
-        {/* 5. More Tab */}
         <button
           type="button"
           onClick={onOpenMore}

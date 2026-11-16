@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SystemSettings } from '../types';
 import { dataService, DEFAULT_SYSTEM_SETTINGS } from '../lib/dataService';
-import { useAuth } from './AuthContext';
+import { useAuth, isVerifiedSuperAdmin } from './AuthContext';
 
 interface SystemSettingsContextType {
   settings: SystemSettings;
@@ -11,15 +11,23 @@ interface SystemSettingsContextType {
   toggleDataDeletion: (enabled?: boolean) => Promise<boolean>;
   deleteAttendanceForBatchAndDate: (batchId: string, date: string) => Promise<number>;
   deleteAllAttendance: (batchId?: string) => Promise<number>;
-  deleteAllTrainees: (options?: { batchId?: string; deleteAttendanceToo?: boolean }) => Promise<{ deletedTrainees: number; deletedAttendance: number }>;
-  deleteAllExamsAndMarks: (batchId?: string) => Promise<{ deletedExams: number; deletedMarks: number }>;
+  deleteAllTrainees: (options?: {
+    batchId?: string;
+    deleteAttendanceToo?: boolean;
+  }) => Promise<{ deletedTrainees: number; deletedAttendance: number }>;
+  deleteAllExamsAndMarks: (
+    batchId?: string
+  ) => Promise<{ deletedExams: number; deletedMarks: number }>;
   deleteAllInstitutes: () => Promise<number>;
   deleteAllTrades: () => Promise<number>;
   deleteAllBatches: () => Promise<number>;
   deleteInstitute: (id: string) => Promise<void>;
   deleteTrade: (id: string) => Promise<void>;
   deleteBatch: (id: string, cascade?: boolean) => Promise<void>;
-  purgeAllSystemData: (options?: { keepInstitutesAndTrades?: boolean; keepLogs?: boolean }) => Promise<Record<string, number>>;
+  purgeAllSystemData: (options?: {
+    keepInstitutesAndTrades?: boolean;
+    keepLogs?: boolean;
+  }) => Promise<Record<string, number>>;
 }
 
 const SystemSettingsContext = createContext<SystemSettingsContextType>({
@@ -38,19 +46,21 @@ const SystemSettingsContext = createContext<SystemSettingsContextType>({
   deleteInstitute: async () => {},
   deleteTrade: async () => {},
   deleteBatch: async () => {},
-  purgeAllSystemData: async () => ({})
+  purgeAllSystemData: async () => ({}),
 });
 
-export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<SystemSettings>(() => {
-    try {
-      const saved = localStorage.getItem('bnfe_system_settings');
-      if (saved) return { ...DEFAULT_SYSTEM_SETTINGS, ...JSON.parse(saved) };
-    } catch (e) {}
-    return DEFAULT_SYSTEM_SETTINGS;
-  });
+export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const [loading, setLoading] = useState(true);
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
+
+  const canReadSettings = Boolean(
+    user &&
+      (isVerifiedSuperAdmin(user) ||
+        (userProfile?.status === 'Active' && userProfile?.role !== 'Pending'))
+  );
 
   const getActor = () =>
     userProfile
@@ -62,36 +72,61 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
       : undefined;
 
   useEffect(() => {
-    // 1. Initial fetch from Firestore
-    dataService.getSystemSettings().then(s => {
-      setSettings(s);
+    if (!canReadSettings) {
+      setSettings(DEFAULT_SYSTEM_SETTINGS);
       setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+      return;
+    }
 
-    // 2. Real-time subscription to settings changes
+    let cancelled = false;
+    setLoading(true);
+
+    // 1. Initial fetch from Firestore only when user is an active member
+    dataService
+      .getSystemSettings()
+      .then((s) => {
+        if (!cancelled) {
+          setSettings(s);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    // 2. Real-time subscription to settings changes (registered in sessionGuard)
     const unsubscribe = dataService.subscribeSystemSettings((newSettings) => {
-      setSettings(newSettings);
-      setLoading(false);
+      if (!cancelled) {
+        setSettings(newSettings);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [canReadSettings, user?.uid]);
 
-  const updateSettings = async (updates: Partial<SystemSettings>): Promise<SystemSettings> => {
+  const updateSettings = async (
+    updates: Partial<SystemSettings>
+  ): Promise<SystemSettings> => {
     const updated = await dataService.saveSystemSettings(updates, getActor());
     setSettings(updated);
     return updated;
   };
 
   const toggleDataDeletion = async (explicitState?: boolean): Promise<boolean> => {
-    const nextState = explicitState !== undefined ? explicitState : !settings.allowDataDeletion;
+    const nextState =
+      explicitState !== undefined ? explicitState : !settings.allowDataDeletion;
     await updateSettings({ allowDataDeletion: nextState });
     return nextState;
   };
 
-  const deleteAttendanceForBatchAndDate = async (batchId: string, date: string): Promise<number> => {
+  const deleteAttendanceForBatchAndDate = async (
+    batchId: string,
+    date: string
+  ): Promise<number> => {
     return await dataService.deleteAttendance({ batchId, date }, getActor());
   };
 
@@ -99,12 +134,18 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
     return await dataService.deleteAttendance(batchId ? { batchId } : undefined, getActor());
   };
 
-  const deleteAllTrainees = async (options?: { batchId?: string; deleteAttendanceToo?: boolean }) => {
+  const deleteAllTrainees = async (options?: {
+    batchId?: string;
+    deleteAttendanceToo?: boolean;
+  }) => {
     return await dataService.deleteAllTrainees(options, getActor());
   };
 
   const deleteAllExamsAndMarks = async (batchId?: string) => {
-    return await dataService.deleteAllExamsAndMarks(batchId ? { batchId } : undefined, getActor());
+    return await dataService.deleteAllExamsAndMarks(
+      batchId ? { batchId } : undefined,
+      getActor()
+    );
   };
 
   const deleteAllInstitutes = async (): Promise<number> => {
@@ -131,8 +172,14 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
     await dataService.deleteBatch(id, cascade, true, getActor());
   };
 
-  const purgeAllSystemData = async (options?: { keepInstitutesAndTrades?: boolean; keepLogs?: boolean }) => {
-    return await dataService.purgeAllSystemData({ ...options, keepLogs: true }, getActor());
+  const purgeAllSystemData = async (options?: {
+    keepInstitutesAndTrades?: boolean;
+    keepLogs?: boolean;
+  }) => {
+    return await dataService.purgeAllSystemData(
+      { ...options, keepLogs: true },
+      getActor()
+    );
   };
 
   return (
@@ -153,7 +200,7 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
         deleteInstitute,
         deleteTrade,
         deleteBatch,
-        purgeAllSystemData
+        purgeAllSystemData,
       }}
     >
       {children}

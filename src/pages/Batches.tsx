@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, 
   Edit2, 
@@ -55,6 +55,10 @@ import { SHOW_CALENDAR_MODULES } from '../config/features';
 import { TableSkeleton } from '../components/Skeleton';
 import { DataTableToolbar, ColumnOption, GroupByOption, ActiveFilterChip } from '../components/TableToolbar/DataTableToolbar';
 import { downloadCSV } from '../lib/exportUtils';
+import { TruncatedText } from '../components/ui/TruncatedText';
+import { ActionMessageError } from '../lib/friendlyError';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
 
 const FISCAL_YEARS = ['২০২৫-২০২৬', '২০২৪-২০২৫', '২০২৬-২০২৭'];
 const ITEMS_PER_PAGE = 6;
@@ -117,7 +121,8 @@ const Batches: React.FC = () => {
     cancellationReason: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [lifecycleValidationError, setLifecycleValidationError] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   // Search, Filter, Sort, Pagination
@@ -509,8 +514,72 @@ const Batches: React.FC = () => {
     }
   };
 
+  const batchSaveSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-batch',
+      label: editingBatch ? 'ব্যাচের তথ্য আপডেট করা হচ্ছে' : 'নতুন ব্যাচ সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!canEdit) {
+          throw new ActionMessageError('আপনার ব্যাচ সংরক্ষণের অনুমতি নেই।');
+        }
+        const cleanCode = formData.batchCode.trim().toUpperCase();
+        const id = editingBatch ? editingBatch.id : `BAT-${cleanCode.replace(/[^A-Z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
+
+        const startMs = new Date(formData.startDate).getTime();
+        const endMs = new Date(formData.endDate).getTime();
+
+        let calculatedStatus = formData.status;
+        if (formData.status !== 'Archived' && formData.status !== 'Cancelled') {
+          const now = Date.now();
+          if (now < startMs) {
+            calculatedStatus = 'Upcoming';
+          } else if (now > endMs) {
+            calculatedStatus = 'Completed';
+          } else {
+            calculatedStatus = 'Active';
+          }
+        }
+
+        const skillTrainerObj = users.find(u => u.id === formData.skillTrainerId);
+        const literacyTrainerObj = users.find(u => u.id === formData.literacyTrainerId);
+
+        const savedBatch: Batch = {
+          id,
+          name: formData.name.trim(),
+          batchCode: cleanCode,
+          instituteId: formData.instituteId,
+          tradeId: formData.tradeId,
+          skillTrainerId: formData.skillTrainerId || '',
+          skillTrainerName: skillTrainerObj?.name || '',
+          literacyTrainerId: formData.literacyTrainerId || '',
+          literacyTrainerName: literacyTrainerObj?.name || '',
+          fiscalYear: formData.fiscalYear,
+          startDate: startMs,
+          endDate: endMs,
+          maxTrainees: Number(formData.maxTrainees),
+          status: calculatedStatus,
+          cancellationReason: calculatedStatus === 'Cancelled' ? (formData.cancellationReason?.trim() || '') : '',
+          createdAt: editingBatch?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        await dataService.saveItem('batches', savedBatch, {
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
+
+        await fetchBatchesData();
+        return savedBatch;
+      },
+      describe: (saved: Batch) => `সংরক্ষিত: ${saved.name}`,
+    },
+  ], [canEdit, editingBatch, formData, users, userProfile]);
+
+  const batchSaveRunner = useActionRunner(batchSaveSteps);
+  const isBatchModalLocked = batchSaveRunner.phase === 'running' || batchSaveRunner.phase === 'waiting';
+
   // Open Add / Edit Modal
   const handleOpenModal = (b?: Batch) => {
+    batchSaveRunner.reset();
     setFormErrors({});
     setDuplicateWarning(null);
     const availableInstitutes = institutes;
@@ -555,6 +624,12 @@ const Batches: React.FC = () => {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    if (isBatchModalLocked) return;
+    batchSaveRunner.reset();
+    setIsModalOpen(false);
   };
 
   // Form Validation
@@ -623,78 +698,17 @@ const Batches: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Submit Handler (Create / Edit)
+  const handleBeforeSaveBatch = async () => {
+    if (!canEdit) return false;
+    return validateForm();
+  };
+
+  // Submit Handler (Create / Edit via Enter key)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canEdit) return;
-
-    const isValid = await validateForm();
-    if (!isValid) return;
-
-    setSubmitting(true);
-    try {
-      const cleanCode = formData.batchCode.trim().toUpperCase();
-      const id = editingBatch ? editingBatch.id : `BAT-${cleanCode.replace(/[^A-Z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
-      
-      const startMs = new Date(formData.startDate).getTime();
-      const endMs = new Date(formData.endDate).getTime();
-
-      // Operational Status calculation:
-      // Preserve manual administrative choices (Archived / Cancelled)
-      let calculatedStatus = formData.status;
-      if (formData.status !== 'Archived' && formData.status !== 'Cancelled') {
-        const now = Date.now();
-        if (now < startMs) {
-          calculatedStatus = 'Upcoming';
-        } else if (now > endMs) {
-          calculatedStatus = 'Completed';
-        } else {
-          calculatedStatus = 'Active';
-        }
-      }
-
-      const skillTrainerObj = users.find(u => u.id === formData.skillTrainerId);
-      const literacyTrainerObj = users.find(u => u.id === formData.literacyTrainerId);
-
-      const savedBatch: Batch = {
-        id,
-        name: formData.name.trim(),
-        batchCode: cleanCode,
-        instituteId: formData.instituteId,
-        tradeId: formData.tradeId,
-        skillTrainerId: formData.skillTrainerId || '',
-        skillTrainerName: skillTrainerObj?.name || '',
-        literacyTrainerId: formData.literacyTrainerId || '',
-        literacyTrainerName: literacyTrainerObj?.name || '',
-        fiscalYear: formData.fiscalYear,
-        startDate: startMs,
-        endDate: endMs,
-        maxTrainees: Number(formData.maxTrainees),
-        status: calculatedStatus,
-        cancellationReason: calculatedStatus === 'Cancelled' ? (formData.cancellationReason?.trim() || '') : '',
-        createdAt: editingBatch?.createdAt || Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      await dataService.saveItem('batches', savedBatch, {
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      setActionSuccessMessage(editingBatch ? 'ব্যাচের তথ্য সফলভাবে আপডেট করা হয়েছে।' : 'নতুন প্রশিক্ষণ ব্যাচ সফলভাবে যুক্ত করা হয়েছে।');
-      setTimeout(() => setActionSuccessMessage(''), 3500);
-
-      setIsModalOpen(false);
-      await fetchBatchesData();
-    } catch (error) {
-      console.warn("Notice saving batch:", error);
-      await showAlert({
-        title: 'সংরক্ষণ ব্যর্থ',
-        message: 'ব্যাচ সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।',
-        variant: 'danger'
-      });
-    } finally {
-      setSubmitting(false);
-    }
+    if (isBatchModalLocked || batchSaveRunner.phase === 'success') return;
+    if (!(await handleBeforeSaveBatch())) return;
+    await batchSaveRunner.run();
   };
 
   // Safe Delete Request Handler: Checks for references
@@ -731,6 +745,8 @@ const Batches: React.FC = () => {
       
       if (usage.isReferenced) {
         // References exist! Open Safe Lifecycle Modal (Archive / Cancel)
+        lifecycleRunner.reset();
+        setLifecycleValidationError('');
         setSafeLifecycleBatch({
           batch,
           traineeCount: usage.traineeCount,
@@ -764,46 +780,46 @@ const Batches: React.FC = () => {
     }
   };
 
-  // Safe Lifecycle Submission (Archive or Cancel)
-  const handleConfirmLifecycleAction = async () => {
-    if (!safeLifecycleBatch || !canEdit) return;
-    const { batch } = safeLifecycleBatch;
+  const lifecycleSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'batch-lifecycle-update',
+      label: lifecycleAction === 'archive' ? 'ব্যাচ আর্কাইভ করা হচ্ছে' : 'ব্যাচ বাতিল হিসেবে সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!safeLifecycleBatch || !canEdit) {
+          throw new ActionMessageError('আপনার এই কাজের অনুমতি নেই।');
+        }
+        const { batch } = safeLifecycleBatch;
+        const newStatus: Batch['status'] = lifecycleAction === 'archive' ? 'Archived' : 'Cancelled';
+        const updated: Batch = {
+          ...batch,
+          status: newStatus,
+          cancellationReason: lifecycleAction === 'cancel' ? cancellationReason.trim() : '',
+          updatedAt: Date.now(),
+        };
 
+        await dataService.saveItem('batches', updated, {
+          title: lifecycleAction === 'archive' ? `ব্যাচ আর্কাইভকরণ: ${batch.name}` : `ব্যাচ বাতিলকরণ: ${batch.name}`,
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
+
+        await fetchBatchesData();
+        return `${batch.name} (${lifecycleAction === 'archive' ? 'আর্কাইভকৃত' : 'বাতিলকৃত'})`;
+      },
+      describe: (summaryText: string) => `আপডেট সম্পন্ন: ${summaryText}`,
+    },
+  ], [safeLifecycleBatch, canEdit, lifecycleAction, cancellationReason, userProfile]);
+
+  const lifecycleRunner = useActionRunner(lifecycleSteps);
+  const isLifecycleLocked = lifecycleRunner.phase === 'running' || lifecycleRunner.phase === 'waiting';
+
+  const handleBeforeLifecycleAction = () => {
+    if (!safeLifecycleBatch || !canEdit) return false;
     if (lifecycleAction === 'cancel' && !cancellationReason.trim()) {
-      await showAlert({
-        title: 'বাতিলের কারণ আবশ্যক',
-        message: "ব্যাচটি বাতিলের কারণ উল্লেখ করা আবশ্যক।",
-        variant: 'warning'
-      });
-      return;
+      setLifecycleValidationError('ব্যাচটি বাতিলের কারণ উল্লেখ করা আবশ্যক।');
+      return false;
     }
-
-    try {
-      const newStatus: Batch['status'] = lifecycleAction === 'archive' ? 'Archived' : 'Cancelled';
-      const updated: Batch = {
-        ...batch,
-        status: newStatus,
-        cancellationReason: lifecycleAction === 'cancel' ? cancellationReason.trim() : '',
-        updatedAt: Date.now(),
-      };
-
-      await dataService.saveItem('batches', updated, {
-        title: lifecycleAction === 'archive' ? `ব্যাচ আর্কাইভকরণ: ${batch.name}` : `ব্যাচ বাতিলকরণ: ${batch.name}`,
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      setActionSuccessMessage(
-        lifecycleAction === 'archive'
-          ? `"${batch.name}" ব্যাচটি সফলভাবে আর্কাইভ করা হয়েছে। সকল শিক্ষার্থী ও হাজিরার রেকর্ড অক্ষত রয়েছে।`
-          : `"${batch.name}" ব্যাচটি বাতিল তালিকাভুক্ত করা হয়েছে। কারণ অডিট লগে সংরক্ষিত হয়েছে।`
-      );
-      setTimeout(() => setActionSuccessMessage(''), 4000);
-
-      setSafeLifecycleBatch(null);
-      fetchBatchesData();
-    } catch (err) {
-      console.warn("Error archiving/cancelling batch:", err);
-    }
+    setLifecycleValidationError('');
+    return true;
   };
 
   // Force Hard Delete Handler for Batch (when referenced, user confirms cascade removal)
@@ -1072,17 +1088,20 @@ const Batches: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <h3 className="font-bold text-theme-text-primary text-base leading-snug line-clamp-1">
-              {b.name}
-            </h3>
-            <div className="flex items-center space-x-1.5 text-xs text-theme-primary font-semibold mt-1">
+          <div className="min-w-0">
+            <TruncatedText
+              as="h3"
+              text={b.name}
+              mode="pop"
+              className="font-bold text-theme-text-primary text-base leading-snug"
+            />
+            <div className="flex items-center space-x-1.5 text-xs text-theme-primary font-semibold mt-1 min-w-0">
               <Wrench size={13} className="shrink-0" />
-              <span className="truncate">{getTradeName(b.tradeId)}</span>
+              <TruncatedText text={getTradeName(b.tradeId)} mode="pop" className="min-w-0" />
             </div>
-            <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary mt-0.5">
+            <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary mt-0.5 min-w-0">
               <Building2 size={13} className="shrink-0 text-theme-text-muted" />
-              <span className="truncate">{getInstituteName(b.instituteId)}</span>
+              <TruncatedText text={getInstituteName(b.instituteId)} mode="pop" className="min-w-0" />
             </div>
           </div>
 
@@ -1130,17 +1149,21 @@ const Batches: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-theme-border grid grid-cols-2 gap-1.5 text-[11px]">
-            <div className="bg-theme-primary-soft/60 border border-theme-primary-border rounded-lg p-1.5">
+            <div className="min-w-0 bg-theme-primary-soft/60 border border-theme-primary-border rounded-lg p-1.5">
               <span className="text-[9px] font-bold text-theme-primary-soft-fg uppercase block">স্কিল ট্রেইনার</span>
-              <span className="font-semibold text-theme-text-primary truncate block" title={b.skillTrainerName || 'অনির্ধারিত'}>
-                {b.skillTrainerName || 'অনির্ধারিত'}
-              </span>
+              <TruncatedText
+                text={b.skillTrainerName || 'অনির্ধারিত'}
+                mode="pop"
+                className="font-semibold text-theme-text-primary block"
+              />
             </div>
-            <div className="bg-theme-info-soft/60 border border-theme-info-border rounded-lg p-1.5">
+            <div className="min-w-0 bg-theme-info-soft/60 border border-theme-info-border rounded-lg p-1.5">
               <span className="text-[9px] font-bold text-theme-info uppercase block">লিটারেসি ট্রেইনার</span>
-              <span className="font-semibold text-theme-text-primary truncate block" title={b.literacyTrainerName || 'অনির্ধারিত'}>
-                {b.literacyTrainerName || 'অনির্ধারিত'}
-              </span>
+              <TruncatedText
+                text={b.literacyTrainerName || 'অনির্ধারিত'}
+                mode="pop"
+                className="font-semibold text-theme-text-primary block"
+              />
             </div>
           </div>
 
@@ -1562,17 +1585,17 @@ const Batches: React.FC = () => {
       ) : viewMode === 'table' ? (
         <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-theme-border text-left">
+            <table className="min-w-[960px] w-full table-fixed divide-y divide-theme-border text-left">
               <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                 <tr>
-                  {isColVisible('batchCode') && <th className="px-4 py-3.5">ব্যাচ কোড</th>}
-                  {isColVisible('name') && <th className="px-4 py-3.5">ব্যাচের নাম</th>}
-                  {isColVisible('instituteTrade') && <th className="px-4 py-3.5">প্রতিষ্ঠান ও ট্রেড</th>}
-                  {isColVisible('dates') && <th className="px-4 py-3.5">মেয়াদ ও অর্থবছর</th>}
-                  {isColVisible('trainees') && <th className="px-4 py-3.5">ভর্তি / আসন</th>}
-                  {isColVisible('trainers') && <th className="px-4 py-3.5">প্রশিক্ষকগণ</th>}
-                  {isColVisible('status') && <th className="px-4 py-3.5 text-center">স্ট্যাটাস</th>}
-                  {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
+                  {isColVisible('batchCode') && <th className="px-4 py-3.5 w-[110px]">ব্যাচ কোড</th>}
+                  {isColVisible('name') && <th className="px-4 py-3.5 w-[170px]">ব্যাচের নাম</th>}
+                  {isColVisible('instituteTrade') && <th className="px-4 py-3.5 w-[210px]">প্রতিষ্ঠান ও ট্রেড</th>}
+                  {isColVisible('dates') && <th className="px-4 py-3.5 w-[145px]">মেয়াদ ও অর্থবছর</th>}
+                  {isColVisible('trainees') && <th className="px-4 py-3.5 w-[115px]">ভর্তি / আসন</th>}
+                  {isColVisible('trainers') && <th className="px-4 py-3.5 w-[160px]">প্রশিক্ষকগণ</th>}
+                  {isColVisible('status') && <th className="px-4 py-3.5 w-[110px] text-center">স্ট্যাটাস</th>}
+                  {isColVisible('actions') && <th className="px-4 py-3.5 w-[120px] text-right">পদক্ষেপ</th>}
                 </tr>
               </thead>
               <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
@@ -1638,8 +1661,18 @@ const Batches: React.FC = () => {
                               )}
                               {isColVisible('trainers') && (
                                 <td className="px-4 py-3.5 text-theme-text-secondary">
-                                  <div className="truncate max-w-[140px] text-[11px]">{b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}</div>
-                                  <div className="truncate max-w-[140px] text-[10px] text-theme-text-muted">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
+                                  <TruncatedText
+                                    as="div"
+                                    text={b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}
+                                    mode="pop"
+                                    className="text-[11px]"
+                                  />
+                                  <TruncatedText
+                                    as="div"
+                                    text={b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}
+                                    mode="pop"
+                                    className="text-[10px] text-theme-text-muted"
+                                  />
                                 </td>
                               )}
                               {isColVisible('status') && (
@@ -1721,8 +1754,18 @@ const Batches: React.FC = () => {
                         )}
                         {isColVisible('trainers') && (
                           <td className="px-4 py-3.5 text-theme-text-secondary">
-                            <div className="truncate max-w-[140px] text-[11px]">{b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}</div>
-                            <div className="truncate max-w-[140px] text-[10px] text-theme-text-muted">{b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}</div>
+                            <TruncatedText
+                              as="div"
+                              text={b.skillTrainerName || 'স্কিল ট্রেইনার নেই'}
+                              mode="pop"
+                              className="text-[11px]"
+                            />
+                            <TruncatedText
+                              as="div"
+                              text={b.literacyTrainerName || 'লিটারেসি ট্রেইনার নেই'}
+                              mode="pop"
+                              className="text-[10px] text-theme-text-muted"
+                            />
                           </td>
                         )}
                         {isColVisible('status') && (
@@ -2078,16 +2121,16 @@ const Batches: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[980px] table-fixed text-left border-collapse">
                   <thead>
                     <tr className="bg-theme-surface-subtle border-b border-theme-border text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
-                      <th className="py-3 px-4">তারিখ ও সময়</th>
-                      <th className="py-3 px-4">ব্যাচ ও ট্রেড</th>
-                      <th className="py-3 px-4">প্রশিক্ষক (Trainer)</th>
-                      <th className="py-3 px-4">কার্যদিবস ও কাজ</th>
-                      <th className="py-3 px-4">পাঠের বিষয় / শিরোনাম</th>
-                      <th className="py-3 px-4 text-center">স্থিতি</th>
-                      <th className="py-3 px-4">মন্তব্য ও পর্যবেক্ষণ</th>
+                      <th className="py-3 px-4 w-[135px]">তারিখ ও সময়</th>
+                      <th className="py-3 px-4 w-[190px]">ব্যাচ ও ট্রেড</th>
+                      <th className="py-3 px-4 w-[155px]">প্রশিক্ষক (Trainer)</th>
+                      <th className="py-3 px-4 w-[125px]">কার্যদিবস ও কাজ</th>
+                      <th className="py-3 px-4 w-[200px]">পাঠের বিষয় / শিরোনাম</th>
+                      <th className="py-3 px-4 w-[95px] text-center">স্থিতি</th>
+                      <th className="py-3 px-4 w-[210px]">মন্তব্য ও পর্যবেক্ষণ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-theme-border text-xs text-theme-text-secondary">
@@ -2109,15 +2152,21 @@ const Batches: React.FC = () => {
 
                           {/* 2. Batch & Trade */}
                           <td className="py-3.5 px-4">
-                            <div className="flex items-center space-x-1.5">
-                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums">
+                            <div className="flex items-center space-x-1.5 min-w-0">
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-theme-accent-soft text-theme-accent border border-theme-accent-border tabular-nums shrink-0">
                                 {batches.find(b => b.id === log.batchId)?.batchCode || log.batchId}
                               </span>
-                              <span className="font-semibold text-theme-text-primary line-clamp-1">{log.batchName}</span>
+                              <TruncatedText
+                                text={log.batchName}
+                                mode="pop"
+                                className="font-semibold text-theme-text-primary min-w-0"
+                              />
                             </div>
-                            <span className="text-[11px] text-theme-primary block mt-0.5 font-medium line-clamp-1">
-                              {log.tradeName || 'ট্রেড'}
-                            </span>
+                            <TruncatedText
+                              text={log.tradeName || 'ট্রেড'}
+                              mode="pop"
+                              className="text-[11px] text-theme-primary block mt-0.5 font-medium"
+                            />
                           </td>
 
                           {/* 3. Trainer */}
@@ -2152,10 +2201,14 @@ const Batches: React.FC = () => {
                           </td>
 
                           {/* 5. Topic */}
-                          <td className="py-3.5 px-4 max-w-xs">
-                            <p className="font-semibold text-theme-text-primary line-clamp-2" title={log.topic}>
-                              {log.topic || 'মডিউল পাঠ'}
-                            </p>
+                          <td className="py-3.5 px-4">
+                            <TruncatedText
+                              as="p"
+                              text={log.topic || 'মডিউল পাঠ'}
+                              lines={2}
+                              mode="exp"
+                              className="font-semibold text-theme-text-primary"
+                            />
                           </td>
 
                           {/* 6. Status */}
@@ -2174,11 +2227,15 @@ const Batches: React.FC = () => {
                           </td>
 
                           {/* 7. Remarks */}
-                          <td className="py-3.5 px-4 max-w-sm">
+                          <td className="py-3.5 px-4">
                             {log.remarks ? (
-                              <span className="text-theme-text-secondary italic block line-clamp-2" title={log.remarks}>
-                                "{log.remarks}"
-                              </span>
+                              <TruncatedText
+                                text={`"${log.remarks}"`}
+                                lines={2}
+                                mode="sheet"
+                                title="মন্তব্য ও পর্যবেক্ষণ"
+                                className="text-theme-text-secondary italic block"
+                              />
                             ) : (
                               <span className="text-theme-text-muted italic">কোনো মন্তব্য নেই</span>
                             )}
@@ -2476,22 +2533,29 @@ const Batches: React.FC = () => {
                     required
                     placeholder="যেমন: বাজেট বরাদ্দ স্থগিত / পর্যাপ্ত শিক্ষার্থী না থাকায় স্থগিত..."
                     value={cancellationReason}
-                    onChange={e => setCancellationReason(e.target.value)}
-                    className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-danger-border rounded-xl text-xs focus:ring-2 focus:ring-theme-danger focus:outline-none"
+                    disabled={isLifecycleLocked || lifecycleRunner.phase === 'success'}
+                    onChange={e => {
+                      setCancellationReason(e.target.value);
+                      if (lifecycleValidationError) setLifecycleValidationError('');
+                    }}
+                    className="w-full px-3 py-2 bg-theme-surface text-theme-text-primary border border-theme-danger-border rounded-xl text-xs focus:ring-2 focus:ring-theme-danger focus:outline-none disabled:opacity-60"
                   />
+                  {lifecycleValidationError && (
+                    <p className="text-[11px] font-semibold text-theme-danger mt-1">{lifecycleValidationError}</p>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-theme-border">
+            <div className="flex flex-wrap items-start justify-between gap-2 pt-3 border-t border-theme-border">
               <button
                 type="button"
                 onClick={handleForceDeleteBatch}
-                disabled={!isDeletionAllowed}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 ${
+                disabled={!isDeletionAllowed || isLifecycleLocked || lifecycleRunner.phase === 'success'}
+                className={`min-h-[44px] px-3.5 py-2 rounded-[12px] text-xs font-bold shadow-xs transition flex items-center space-x-1.5 ${
                   !isDeletionAllowed
                     ? 'bg-theme-surface-subtle text-theme-text-muted border border-theme-border cursor-not-allowed'
-                    : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer'
+                    : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer disabled:opacity-50'
                 }`}
                 title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে 🔒' : 'ব্যাচ ও সকল ডাটা স্থায়ীভাবে মুছে ফেলুন'}
               >
@@ -2499,25 +2563,32 @@ const Batches: React.FC = () => {
                 <span>{isDeletionAllowed ? 'স্থায়ীভাবে ব্যাচ ও সকল ডাটা মুছুন (Hard Delete)' : 'ডিলিট লক 🔒'}</span>
               </button>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <button
                   type="button"
-                  onClick={() => setSafeLifecycleBatch(null)}
-                  className="px-4 py-2 border border-theme-border rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
+                  disabled={isLifecycleLocked}
+                  onClick={() => {
+                    lifecycleRunner.reset();
+                    setLifecycleValidationError('');
+                    setSafeLifecycleBatch(null);
+                  }}
+                  className="min-h-[44px] px-4 py-2 border border-theme-border rounded-[12px] text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 cursor-pointer"
                 >
-                  ফিরে যান
+                  {lifecycleRunner.phase === 'success' ? 'বন্ধ করুন' : 'ফিরে যান'}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmLifecycleAction}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer ${
-                    lifecycleAction === 'archive'
-                      ? 'bg-theme-accent hover:opacity-90 text-theme-accent-fg'
-                      : 'bg-theme-warning hover:opacity-90 text-theme-warning-fg'
-                  }`}
-                >
-                  {lifecycleAction === 'archive' ? 'আর্কাইভ নিশ্চিত করুন' : 'বাতিল নিশ্চিত করুন'}
-                </button>
+                <ActionButton
+                  runner={lifecycleRunner}
+                  idleLabel={lifecycleAction === 'archive' ? 'আর্কাইভ নিশ্চিত করুন' : 'বাতিল নিশ্চিত করুন'}
+                  popoverTitle={lifecycleAction === 'archive' ? 'ব্যাচ আর্কাইভকরণ' : 'ব্যাচ বাতিলকরণ'}
+                  variant={lifecycleAction === 'cancel' ? 'danger' : 'primary'}
+                  onBeforeRun={handleBeforeLifecycleAction}
+                  onAutoHide={() => {
+                    lifecycleRunner.reset();
+                    setLifecycleValidationError('');
+                    setSafeLifecycleBatch(null);
+                  }}
+                  className="min-w-[175px]"
+                />
               </div>
             </div>
           </div>
@@ -2539,7 +2610,12 @@ const Batches: React.FC = () => {
                   BNFE কেন্দ্র ও ট্রেড অনুযায়ী ব্যাচের সময়সূচি ও আসন নির্ধারণ করুন
                 </p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer">
+              <button
+                type="button"
+                disabled={isBatchModalLocked}
+                onClick={handleCloseModal}
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 disabled:opacity-50 cursor-pointer"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -2551,7 +2627,8 @@ const Batches: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+              <fieldset disabled={isBatchModalLocked || batchSaveRunner.phase === 'success'} className="space-y-4 min-w-0">
               {/* Batch Name */}
               <div>
                 <label className="block text-xs font-bold text-theme-text-secondary mb-1">
@@ -2847,22 +2924,29 @@ const Batches: React.FC = () => {
                 </div>
               </div>
 
+              </fieldset>
+
               {/* Modal Action Buttons */}
-              <div className="flex items-center justify-end space-x-2.5 pt-4 border-t border-theme-border">
+              <div className="flex items-start justify-end gap-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 border border-theme-border rounded-xl text-xs sm:text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
+                  disabled={isBatchModalLocked}
+                  onClick={handleCloseModal}
+                  className="min-h-[44px] px-4 py-2.5 border border-theme-border rounded-[12px] text-xs sm:text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 transition cursor-pointer"
                 >
-                  বাতিল
+                  {batchSaveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
-                >
-                  {submitting ? 'সংরক্ষণ হচ্ছে...' : editingBatch ? 'আপডেট সংরক্ষণ করুন' : 'ব্যাচ তৈরি করুন'}
-                </button>
+                <ActionButton
+                  runner={batchSaveRunner}
+                  idleLabel={editingBatch ? 'আপডেট সংরক্ষণ করুন' : 'ব্যাচ তৈরি করুন'}
+                  popoverTitle={editingBatch ? 'ব্যাচ আপডেট' : 'নতুন ব্যাচ'}
+                  onBeforeRun={handleBeforeSaveBatch}
+                  onAutoHide={() => {
+                    batchSaveRunner.reset();
+                    setIsModalOpen(false);
+                  }}
+                  className="min-w-[185px]"
+                />
               </div>
             </form>
           </div>

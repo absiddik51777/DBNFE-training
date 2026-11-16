@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Institute, Trade, Batch, Exam, Trainee, ExamMark } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -16,6 +16,10 @@ import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { dataService } from '../lib/dataService';
 import { printCurrentDocument } from '../lib/fileExportService';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
+import { ActionMessageError } from '../lib/friendlyError';
+import { toBn } from '../lib/dateUtils';
 
 const Results: React.FC = () => {
   const { userProfile } = useAuth();
@@ -37,9 +41,7 @@ const Results: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [fetchingTrainees, setFetchingTrainees] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'entry' | 'sheet'>('entry');
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
@@ -104,7 +106,6 @@ const Results: React.FC = () => {
 
   const fetchTraineesAndMarks = async () => {
     setFetchingTrainees(true);
-    setSaveSuccess(false);
     try {
       const allTrainees = await dataService.getItems<Trainee>('trainees');
       const tData = allTrainees.filter(t => t.batchId === selectedBatch && t.status === 'Active');
@@ -196,66 +197,98 @@ const Results: React.FC = () => {
     }));
   };
 
-  const handleSave = async () => {
+  const saveMarksSteps: ActionStep<{ count: number }>[] = useMemo(
+    () => [
+      {
+        id: 'save-marks-batch',
+        label: 'পরীক্ষার নম্বর সংরক্ষণ করা হচ্ছে',
+        run: async () => {
+          const marksList: ExamMark[] = [];
+          const traineeNamesMap: Record<string, string> = {};
+
+          for (const t of trainees) {
+            traineeNamesMap[t.id] = t.nameBn || t.nameEn || t.traineeId || t.id;
+            const record = marksData[t.id];
+            if (!record) continue;
+
+            const markId = record.id || `MRK-${selectedExam}_${t.id}`;
+            marksList.push({
+              id: markId,
+              examId: selectedExam,
+              traineeId: t.id,
+              batchId: selectedBatch,
+              marksObtained: record.marksObtained || 0,
+              percentage: record.percentage || 0,
+              grade: record.grade || '-',
+              result: (record.result as any) || 'Absent',
+              enteredBy: userProfile?.name || 'User',
+              createdAt: record.createdAt || Date.now(),
+              updatedAt: Date.now(),
+            });
+          }
+
+          const examObj = exams.find((e) => e.id === selectedExam);
+          const result = await dataService.saveMarksBatch(
+            selectedExam,
+            examObj?.name || selectedExam,
+            marksList,
+            {
+              traineeNamesMap,
+              actor: userProfile
+                ? {
+                    userId: userProfile.id || '',
+                    user: userProfile.name || 'User',
+                    userRole: userProfile.role || '',
+                  }
+                : undefined,
+            }
+          );
+
+          if (!result.success) {
+            if (result.errorCode) {
+              const batchErr = new Error(
+                result.error || 'নম্বর সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+              );
+              (batchErr as any).code = result.errorCode;
+              throw batchErr;
+            }
+            throw new ActionMessageError(
+              result.error || 'নম্বর সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+            );
+          }
+
+          await fetchTraineesAndMarks();
+          return { count: marksList.length };
+        },
+        describe: (res) => `${toBn(res.count)} জন শিক্ষার্থীর নম্বর সংরক্ষিত`,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [exams, marksData, selectedBatch, selectedExam, trainees, userProfile]
+  );
+
+  const marksRunner = useActionRunner(saveMarksSteps);
+  const isMarksBusy = marksRunner.phase === 'running' || marksRunner.phase === 'waiting';
+
+  const handleBeforeSaveMarks = (): boolean => {
     setSaveError('');
-    if (userProfile?.role === 'Trainer' && userProfile.batchId && selectedBatch !== userProfile.batchId) {
-      setSaveError("অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের পরীক্ষার নম্বর সংরক্ষণ করতে পারেন।");
-      return;
-    }
-
-    setSaving(true);
-    setSaveSuccess(false);
-    try {
-      const marksList: ExamMark[] = [];
-      const traineeNamesMap: Record<string, string> = {};
-
-      for (const t of trainees) {
-        traineeNamesMap[t.id] = t.nameBn || t.nameEn || t.traineeId || t.id;
-        const record = marksData[t.id];
-        if (!record) continue;
-
-        const markId = record.id || `MRK-${selectedExam}_${t.id}`;
-        marksList.push({
-          id: markId,
-          examId: selectedExam,
-          traineeId: t.id,
-          batchId: selectedBatch,
-          marksObtained: record.marksObtained || 0,
-          percentage: record.percentage || 0,
-          grade: record.grade || '-',
-          result: (record.result as any) || 'Absent',
-          enteredBy: userProfile?.name || 'User',
-          createdAt: record.createdAt || Date.now(),
-          updatedAt: Date.now()
-        });
-      }
-
-      const examObj = exams.find(e => e.id === selectedExam);
-      await dataService.saveMarksBatch(
-        selectedExam,
-        examObj?.name || selectedExam,
-        marksList,
-        {
-          traineeNamesMap,
-          actor: userProfile
-            ? {
-                userId: userProfile.id || '',
-                user: userProfile.name || 'User',
-                userRole: userProfile.role || '',
-              }
-            : undefined,
-        }
+    if (
+      userProfile?.role === 'Trainer' &&
+      userProfile.batchId &&
+      selectedBatch !== userProfile.batchId
+    ) {
+      setSaveError(
+        'অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের পরীক্ষার নম্বর সংরক্ষণ করতে পারেন।'
       );
-
-      setSaveSuccess(true);
-      fetchTraineesAndMarks();
-    } catch (error) {
-      console.warn("Notice saving marks:", error);
-      setSaveError("নম্বর সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।");
-    } finally {
-      setSaving(false);
+      return false;
     }
+    return true;
   };
+
+  useEffect(() => {
+    marksRunner.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBatch, selectedExam]);
 
   const currentExam = exams.find(e => e.id === selectedExam);
   const currentBatch = batches.find(b => b.id === selectedBatch);
@@ -308,14 +341,15 @@ const Results: React.FC = () => {
           </div>
 
           {trainees.length > 0 && activeTab === 'entry' && canEnterMarks && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center space-x-2 transition disabled:opacity-50 cursor-pointer"
-            >
-              <Save size={18} />
-              <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}</span>
-            </button>
+            <ActionButton
+              runner={marksRunner}
+              idleLabel="সংরক্ষণ করুন"
+              idleIcon={<Save size={18} />}
+              popoverTitle="নম্বর সংরক্ষণের ধাপ"
+              onBeforeRun={handleBeforeSaveMarks}
+              onAutoHide={() => marksRunner.reset()}
+              className="w-full sm:w-auto min-w-[180px]"
+            />
           )}
 
           {activeTab === 'sheet' && (
@@ -330,13 +364,6 @@ const Results: React.FC = () => {
           )}
         </div>
       </div>
-
-      {saveSuccess && (
-        <div className="p-4 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-sm flex items-center space-x-2.5 print:hidden">
-          <CheckCircle2 size={18} className="text-theme-success shrink-0" />
-          <span>সকল শিক্ষার্থীর পরীক্ষার নম্বর সফলভাবে সংরক্ষিত হয়েছে!</span>
-        </div>
-      )}
 
       {saveError && (
         <div className="p-4 rounded-xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-sm flex items-center space-x-2.5 print:hidden">
@@ -443,8 +470,8 @@ const Results: React.FC = () => {
       ) : trainees.length > 0 && currentExam ? (
         activeTab === 'entry' ? (
           /* Marks Entry Table */
-          <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
-            <div className="p-4 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between">
+          <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-visible">
+            <div className="p-4 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between rounded-t-2xl">
               <span className="text-xs font-bold text-theme-text-primary tabular-nums">
                 পরীক্ষা: {currentExam.name} • বিষয়: {currentExam.subject} • মোট নম্বর: {currentExam.totalMarks} • পাস নম্বর: {currentExam.passMarks}
               </span>
@@ -485,10 +512,11 @@ const Results: React.FC = () => {
                             type="number"
                             min="0"
                             max={currentExam.totalMarks}
+                            disabled={isMarksBusy}
                             value={record?.marksObtained || ''}
                             onChange={(e) => handleMarkChange(t.id, e.target.value)}
                             placeholder="0"
-                            className="w-24 px-3 py-1.5 bg-theme-surface border border-theme-border-strong text-theme-text-primary rounded-xl text-center font-bold text-sm tabular-nums focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none"
+                            className="w-24 px-3 py-1.5 bg-theme-surface border border-theme-border-strong text-theme-text-primary rounded-xl text-center font-bold text-sm tabular-nums focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary focus:outline-none disabled:opacity-60"
                           />
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap text-center text-xs font-medium text-theme-text-secondary tabular-nums">
@@ -515,15 +543,16 @@ const Results: React.FC = () => {
             </div>
 
             {canEnterMarks && (
-              <div className="p-4 bg-theme-surface-subtle border-t border-theme-border flex justify-end">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-6 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-sm flex items-center space-x-2 transition disabled:opacity-50 cursor-pointer"
-                >
-                  <Save size={18} />
-                  <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'ফলাফল সংরক্ষণ করুন'}</span>
-                </button>
+              <div className="p-4 bg-theme-surface-subtle border-t border-theme-border flex justify-end rounded-b-2xl overflow-visible">
+                <ActionButton
+                  runner={marksRunner}
+                  idleLabel="ফলাফল সংরক্ষণ করুন"
+                  idleIcon={<Save size={18} />}
+                  popoverTitle="নম্বর সংরক্ষণের ধাপ"
+                  onBeforeRun={handleBeforeSaveMarks}
+                  onAutoHide={() => marksRunner.reset()}
+                  className="w-full sm:w-auto min-w-[200px]"
+                />
               </div>
             )}
           </div>

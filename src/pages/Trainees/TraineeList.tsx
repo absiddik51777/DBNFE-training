@@ -50,6 +50,7 @@ import { DataTableToolbar, ColumnOption, GroupByOption, ActiveFilterChip } from 
 import { TraineeBulkImportModal } from '../../components/TraineeBulkImportModal';
 import { TableSkeleton } from '../../components/Skeleton';
 import { downloadCSV, downloadExcel, generateTraineesPDF, downloadPdfBlob } from '../../lib/exportUtils';
+import { TruncatedText } from '../../components/ui/TruncatedText';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -1149,7 +1150,12 @@ const TraineeList: React.FC = () => {
                         <span className="font-bold text-theme-text-primary group-hover:text-theme-danger">পিডিএফ (.pdf) ফাইল</span>
                         <span className="text-[9px] bg-theme-danger-soft text-theme-danger border border-theme-danger-border px-1.5 py-0.2 rounded font-bold shrink-0">সরাসরি ডাউনলোড</span>
                       </div>
-                      <div className="text-[10px] text-theme-text-secondary truncate">টেবিল অনুযায়ী পূর্ণাঙ্গ তালিকা ও APK বান্ধব</div>
+                      <TruncatedText
+                        as="div"
+                        text="টেবিল অনুযায়ী পূর্ণাঙ্গ তালিকা ও APK বান্ধব"
+                        mode="pop"
+                        className="text-[10px] text-theme-text-secondary"
+                      />
                     </div>
                   </button>
 
@@ -1520,9 +1526,8 @@ const TraineeList: React.FC = () => {
                     ? 'bg-theme-surface shadow-xs border border-theme-primary text-theme-primary font-bold ring-2 ring-theme-primary/20'
                     : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
                 }`}
-                title={batch.name}
               >
-                <span className="truncate max-w-[170px] sm:max-w-[220px]">{batch.name}</span>
+                <TruncatedText text={batch.name} mode="pop" className="max-w-[170px] sm:max-w-[220px]" />
                 <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border tabular-nums transition ${
                   isSelected
                     ? 'bg-theme-primary text-theme-primary-fg border-theme-primary shadow-2xs'
@@ -1647,7 +1652,7 @@ const TraineeList: React.FC = () => {
       ) : viewMode === 'table' ? (
         <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-theme-border text-left">
+            <table className="min-w-[1160px] w-full table-fixed divide-y divide-theme-border text-left">
               <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3.5 w-10 text-center">
@@ -1664,16 +1669,16 @@ const TraineeList: React.FC = () => {
                       )}
                     </button>
                   </th>
-                  {isColVisible('id_reg_status') && <th className="px-4 py-3.5">আইডি</th>}
-                  {isColVisible('trainee_info') && <th className="px-4 py-3.5">প্রশিক্ষণার্থী</th>}
-                  {isColVisible('batch_info') && <th className="px-4 py-3.5">ব্যাচ</th>}
-                  {isColVisible('id_doc_info') && <th className="px-4 py-3.5 whitespace-nowrap min-w-[170px]">পরিচয়পত্র</th>}
-                  {isColVisible('present_address') && <th className="px-4 py-3.5">বর্তমান ঠিকানা</th>}
-                  {isColVisible('prev_education') && <th className="px-4 py-3.5">পূর্ববর্তী শিক্ষাগত তথ্য</th>}
-                  {isColVisible('guardian_info') && <th className="px-4 py-3.5">অভিভাবক</th>}
-                  {isColVisible('permanent_address') && <th className="px-4 py-3.5">স্থায়ী ঠিকানা</th>}
-                  {isColVisible('attendance_marks') && <th className="px-4 py-3.5">মূল্যায়ন</th>}
-                  {isColVisible('actions') && <th className="px-4 py-3.5 text-right">অ্যাকশন</th>}
+                  {isColVisible('id_reg_status') && <th className="px-4 py-3.5 w-[115px]">আইডি</th>}
+                  {isColVisible('trainee_info') && <th className="px-4 py-3.5 w-[185px]">প্রশিক্ষণার্থী</th>}
+                  {isColVisible('batch_info') && <th className="px-4 py-3.5 w-[185px]">ব্যাচ</th>}
+                  {isColVisible('id_doc_info') && <th className="px-4 py-3.5 w-[170px] whitespace-nowrap">পরিচয়পত্র</th>}
+                  {isColVisible('present_address') && <th className="px-4 py-3.5 w-[190px]">বর্তমান ঠিকানা</th>}
+                  {isColVisible('prev_education') && <th className="px-4 py-3.5 w-[175px]">পূর্ববর্তী শিক্ষাগত তথ্য</th>}
+                  {isColVisible('guardian_info') && <th className="px-4 py-3.5 w-[140px]">অভিভাবক</th>}
+                  {isColVisible('permanent_address') && <th className="px-4 py-3.5 w-[190px]">স্থায়ী ঠিকানা</th>}
+                  {isColVisible('attendance_marks') && <th className="px-4 py-3.5 w-[100px]">মূল্যায়ন</th>}
+                  {isColVisible('actions') && <th className="px-4 py-3.5 w-[125px] text-right">অ্যাকশন</th>}
                 </tr>
               </thead>
               <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
@@ -1801,16 +1806,24 @@ const TraineeList: React.FC = () => {
                               {/* 3. Batch, Institute & Trade */}
                               {isColVisible('batch_info') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="font-semibold text-theme-text-primary truncate max-w-[170px]" title={getInstituteName(t.instituteId)}>
-                                    {getInstituteName(t.instituteId)}
-                                  </div>
-                                  <div className="text-[11px] text-theme-primary font-medium truncate max-w-[170px] mt-0.5" title={getTradeName(t.tradeId)}>
-                                    {getTradeName(t.tradeId)}
-                                  </div>
+                                  <TruncatedText
+                                    as="div"
+                                    text={getInstituteName(t.instituteId)}
+                                    mode="pop"
+                                    className="font-semibold text-theme-text-primary"
+                                  />
+                                  <TruncatedText
+                                    as="div"
+                                    text={getTradeName(t.tradeId)}
+                                    mode="pop"
+                                    className="text-[11px] text-theme-primary font-medium mt-0.5"
+                                  />
                                   <div className="mt-1">
-                                    <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-semibold text-[11px] inline-block">
-                                      {getBatchName(t.batchId)}
-                                    </span>
+                                    <TruncatedText
+                                      text={getBatchName(t.batchId)}
+                                      mode="pop"
+                                      className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-semibold text-[11px] max-w-full"
+                                    />
                                   </div>
                                 </td>
                               )}
@@ -1839,9 +1852,14 @@ const TraineeList: React.FC = () => {
                               {/* 5. Present Address */}
                               {isColVisible('present_address') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.presentAddress || t.address || '-'}>
-                                    {t.presentAddress || t.address || '-'}
-                                  </div>
+                                  <TruncatedText
+                                    as="div"
+                                    text={t.presentAddress || t.address || '-'}
+                                    lines={2}
+                                    mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
+                                    title="বর্তমান ঠিকানা"
+                                    className="text-xs text-theme-text-secondary break-words"
+                                  />
                                 </td>
                               )}
 
@@ -1859,14 +1877,21 @@ const TraineeList: React.FC = () => {
                                     )}
                                   </div>
                                   {t.previousSchoolName && (
-                                    <div className="text-[11px] text-theme-text-secondary truncate max-w-[160px] mt-0.5" title={t.previousSchoolName}>
-                                      বিদ্যালয়: {t.previousSchoolName}
-                                    </div>
+                                    <TruncatedText
+                                      as="div"
+                                      text={`বিদ্যালয়: ${t.previousSchoolName}`}
+                                      mode="pop"
+                                      className="text-[11px] text-theme-text-secondary mt-0.5"
+                                    />
                                   )}
                                   {t.reasonForDropout && (
-                                    <div className="text-[10.5px] text-theme-text-muted italic truncate max-w-[160px] mt-0.5" title={t.reasonForDropout}>
-                                      কারণ: {t.reasonForDropout}
-                                    </div>
+                                    <TruncatedText
+                                      as="div"
+                                      text={`কারণ: ${t.reasonForDropout}`}
+                                      mode="sheet"
+                                      title="ঝরে পড়ার কারণ"
+                                      className="text-[10.5px] text-theme-text-muted italic mt-0.5"
+                                    />
                                   )}
                                 </td>
                               )}
@@ -1883,9 +1908,14 @@ const TraineeList: React.FC = () => {
                               {/* 8. Permanent Address (Hideable, default hidden) */}
                               {isColVisible('permanent_address') && (
                                 <td className="px-4 py-3.5">
-                                  <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.permanentAddress || t.address || '-'}>
-                                    {t.permanentAddress || t.address || '-'}
-                                  </div>
+                                  <TruncatedText
+                                    as="div"
+                                    text={t.permanentAddress || t.address || '-'}
+                                    lines={2}
+                                    mode={(t.permanentAddress || t.address) ? 'sheet' : 'pop'}
+                                    title="স্থায়ী ঠিকানা"
+                                    className="text-xs text-theme-text-secondary break-words"
+                                  />
                                 </td>
                               )}
 
@@ -2016,16 +2046,24 @@ const TraineeList: React.FC = () => {
                         {/* 3. Batch, Institute & Trade */}
                         {isColVisible('batch_info') && (
                           <td className="px-4 py-3.5">
-                            <div className="font-semibold text-theme-text-primary truncate max-w-[170px]" title={getInstituteName(t.instituteId)}>
-                              {getInstituteName(t.instituteId)}
-                            </div>
-                            <div className="text-[11px] text-theme-primary font-medium truncate max-w-[170px] mt-0.5" title={getTradeName(t.tradeId)}>
-                              {getTradeName(t.tradeId)}
-                            </div>
+                            <TruncatedText
+                              as="div"
+                              text={getInstituteName(t.instituteId)}
+                              mode="pop"
+                              className="font-semibold text-theme-text-primary"
+                            />
+                            <TruncatedText
+                              as="div"
+                              text={getTradeName(t.tradeId)}
+                              mode="pop"
+                              className="text-[11px] text-theme-primary font-medium mt-0.5"
+                            />
                             <div className="mt-1">
-                              <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-semibold text-[11px] inline-block">
-                                {getBatchName(t.batchId)}
-                              </span>
+                              <TruncatedText
+                                text={getBatchName(t.batchId)}
+                                mode="pop"
+                                className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-semibold text-[11px] max-w-full"
+                              />
                             </div>
                           </td>
                         )}
@@ -2054,9 +2092,14 @@ const TraineeList: React.FC = () => {
                         {/* 5. Present Address */}
                         {isColVisible('present_address') && (
                           <td className="px-4 py-3.5">
-                            <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.presentAddress || t.address || '-'}>
-                              {t.presentAddress || t.address || '-'}
-                            </div>
+                            <TruncatedText
+                              as="div"
+                              text={t.presentAddress || t.address || '-'}
+                              lines={2}
+                              mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
+                              title="বর্তমান ঠিকানা"
+                              className="text-xs text-theme-text-secondary break-words"
+                            />
                           </td>
                         )}
 
@@ -2074,14 +2117,21 @@ const TraineeList: React.FC = () => {
                               )}
                             </div>
                             {t.previousSchoolName && (
-                              <div className="text-[11px] text-theme-text-secondary truncate max-w-[160px] mt-0.5" title={t.previousSchoolName}>
-                                বিদ্যালয়: {t.previousSchoolName}
-                              </div>
+                              <TruncatedText
+                                as="div"
+                                text={`বিদ্যালয়: ${t.previousSchoolName}`}
+                                mode="pop"
+                                className="text-[11px] text-theme-text-secondary mt-0.5"
+                              />
                             )}
                             {t.reasonForDropout && (
-                              <div className="text-[10.5px] text-theme-text-muted italic truncate max-w-[160px] mt-0.5" title={t.reasonForDropout}>
-                                কারণ: {t.reasonForDropout}
-                              </div>
+                              <TruncatedText
+                                as="div"
+                                text={`কারণ: ${t.reasonForDropout}`}
+                                mode="sheet"
+                                title="ঝরে পড়ার কারণ"
+                                className="text-[10.5px] text-theme-text-muted italic mt-0.5"
+                              />
                             )}
                           </td>
                         )}
@@ -2098,9 +2148,14 @@ const TraineeList: React.FC = () => {
                         {/* 8. Permanent Address (Hideable, default hidden) */}
                         {isColVisible('permanent_address') && (
                           <td className="px-4 py-3.5">
-                            <div className="text-xs text-theme-text-secondary max-w-[180px] break-words line-clamp-2" title={t.permanentAddress || t.address || '-'}>
-                              {t.permanentAddress || t.address || '-'}
-                            </div>
+                            <TruncatedText
+                              as="div"
+                              text={t.permanentAddress || t.address || '-'}
+                              lines={2}
+                              mode={(t.permanentAddress || t.address) ? 'sheet' : 'pop'}
+                              title="স্থায়ী ঠিকানা"
+                              className="text-xs text-theme-text-secondary break-words"
+                            />
                           </td>
                         )}
 
@@ -2258,18 +2313,22 @@ const TraineeList: React.FC = () => {
                               )}
 
                               {isColVisible('batch_info') && (
-                                <div className="space-y-1 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
-                                  <div className="flex items-center space-x-1.5 truncate">
+                                <div className="space-y-1 text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
+                                  <div className="flex items-center space-x-1.5 min-w-0">
                                     <Layers size={13} className="text-purple-500 dark:text-purple-400 shrink-0" />
-                                    <span className="truncate font-semibold text-purple-600 dark:text-purple-300">{getBatchName(t.batchId)}</span>
+                                    <TruncatedText
+                                      text={getBatchName(t.batchId)}
+                                      mode="pop"
+                                      className="min-w-0 font-semibold text-purple-600 dark:text-purple-300"
+                                    />
                                   </div>
-                                  <div className="flex items-center space-x-1.5 truncate">
+                                  <div className="flex items-center space-x-1.5 min-w-0">
                                     <Wrench size={13} className="text-theme-primary shrink-0" />
-                                    <span className="truncate">{getTradeName(t.tradeId)}</span>
+                                    <TruncatedText text={getTradeName(t.tradeId)} mode="pop" className="min-w-0" />
                                   </div>
-                                  <div className="flex items-center space-x-1.5 truncate">
+                                  <div className="flex items-center space-x-1.5 min-w-0">
                                     <Building2 size={13} className="text-theme-text-muted shrink-0" />
-                                    <span className="truncate">{getInstituteName(t.instituteId)}</span>
+                                    <TruncatedText text={getInstituteName(t.instituteId)} mode="pop" className="min-w-0" />
                                   </div>
                                 </div>
                               )}
@@ -2293,14 +2352,20 @@ const TraineeList: React.FC = () => {
                               )}
 
                               {isColVisible('present_address') && (
-                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
                                   <span className="text-[10px] text-theme-text-muted block">বর্তমান ঠিকানা:</span>
-                                  <span className="text-theme-text-primary line-clamp-2">{t.presentAddress || t.address || '-'}</span>
+                                  <TruncatedText
+                                    text={t.presentAddress || t.address || '-'}
+                                    lines={2}
+                                    mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
+                                    title="বর্তমান ঠিকানা"
+                                    className="text-theme-text-primary block"
+                                  />
                                 </div>
                               )}
 
                               {isColVisible('prev_education') && (
-                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                                <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
                                   <span className="text-[10px] text-theme-text-muted block">পূর্ববর্তী শিক্ষা:</span>
                                   <span className="font-medium text-theme-text-primary">{t.lastClassCompleted || '-'}</span>
                                   {t.yearOfDropout && (
@@ -2309,7 +2374,12 @@ const TraineeList: React.FC = () => {
                                     </span>
                                   )}
                                   {t.previousSchoolName && (
-                                    <div className="text-[11px] text-theme-text-secondary truncate mt-0.5">{t.previousSchoolName}</div>
+                                    <TruncatedText
+                                      as="div"
+                                      text={t.previousSchoolName}
+                                      mode="pop"
+                                      className="text-[11px] text-theme-text-secondary mt-0.5"
+                                    />
                                   )}
                                 </div>
                               )}
@@ -2439,18 +2509,22 @@ const TraineeList: React.FC = () => {
                       )}
 
                       {isColVisible('batch_info') && (
-                        <div className="space-y-1 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
-                          <div className="flex items-center space-x-1.5 truncate">
+                        <div className="space-y-1 text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
+                          <div className="flex items-center space-x-1.5 min-w-0">
                             <Layers size={13} className="text-purple-500 dark:text-purple-400 shrink-0" />
-                            <span className="truncate font-semibold text-purple-600 dark:text-purple-300">{getBatchName(t.batchId)}</span>
+                            <TruncatedText
+                              text={getBatchName(t.batchId)}
+                              mode="pop"
+                              className="min-w-0 font-semibold text-purple-600 dark:text-purple-300"
+                            />
                           </div>
-                          <div className="flex items-center space-x-1.5 truncate">
+                          <div className="flex items-center space-x-1.5 min-w-0">
                             <Wrench size={13} className="text-theme-primary shrink-0" />
-                            <span className="truncate">{getTradeName(t.tradeId)}</span>
+                            <TruncatedText text={getTradeName(t.tradeId)} mode="pop" className="min-w-0" />
                           </div>
-                          <div className="flex items-center space-x-1.5 truncate">
+                          <div className="flex items-center space-x-1.5 min-w-0">
                             <Building2 size={13} className="text-theme-text-muted shrink-0" />
-                            <span className="truncate">{getInstituteName(t.instituteId)}</span>
+                            <TruncatedText text={getInstituteName(t.instituteId)} mode="pop" className="min-w-0" />
                           </div>
                         </div>
                       )}
@@ -2474,14 +2548,20 @@ const TraineeList: React.FC = () => {
                       )}
 
                       {isColVisible('present_address') && (
-                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
                           <span className="text-[10px] text-theme-text-muted block">বর্তমান ঠিকানা:</span>
-                          <span className="text-theme-text-primary line-clamp-2">{t.presentAddress || t.address || '-'}</span>
+                          <TruncatedText
+                            text={t.presentAddress || t.address || '-'}
+                            lines={2}
+                            mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
+                            title="বর্তমান ঠিকানা"
+                            className="text-theme-text-primary block"
+                          />
                         </div>
                       )}
 
                       {isColVisible('prev_education') && (
-                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
+                        <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
                           <span className="text-[10px] text-theme-text-muted block">পূর্ববর্তী শিক্ষা:</span>
                           <span className="font-medium text-theme-text-primary">{t.lastClassCompleted || '-'}</span>
                           {t.yearOfDropout && (
@@ -2490,7 +2570,12 @@ const TraineeList: React.FC = () => {
                             </span>
                           )}
                           {t.previousSchoolName && (
-                            <div className="text-[11px] text-theme-text-secondary truncate mt-0.5">{t.previousSchoolName}</div>
+                            <TruncatedText
+                              as="div"
+                              text={t.previousSchoolName}
+                              mode="pop"
+                              className="text-[11px] text-theme-text-secondary mt-0.5"
+                            />
                           )}
                         </div>
                       )}

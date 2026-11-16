@@ -4,7 +4,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PermissionsProvider, usePermissions } from './contexts/PermissionsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SystemSettingsProvider } from './contexts/SystemSettingsContext';
+import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import Layout from './components/Layout';
+import { TruncatedTextProvider } from './components/ui/TruncatedText';
+import { RequireRole } from './components/auth/RequireRole';
+import { SessionToast } from './components/SessionToast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TrainerDashboard from './pages/TrainerDashboard';
@@ -19,6 +23,7 @@ import AttendanceSheet from './pages/AttendanceSheet';
 import Exams from './pages/Exams';
 import Results from './pages/Results';
 import Reports from './pages/Reports';
+import WeeklySignatureSheet from './pages/WeeklySignatureSheet';
 import Certificates from './pages/Certificates';
 import UsersPage from './pages/Users';
 import RolesPage from './pages/Roles';
@@ -27,7 +32,6 @@ import ThemeSettings from './pages/ThemeSettings';
 import BrnVerification from './pages/BrnVerification';
 import NotificationsPage from './pages/NotificationsPage';
 import { NotificationsProvider } from './hooks/useNotifications';
-
 import { PendingApproval } from './pages/PendingApproval';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -47,13 +51,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (userProfile.status === 'Inactive') {
-    return <Navigate to="/login" replace />;
+  // Render dedicated pending approval experience for unapproved or Pending-role users
+  if (userProfile.status === 'Pending Approval' || userProfile.role === 'Pending') {
+    return <PendingApproval />;
   }
 
-  // Render dedicated pending approval experience for unapproved users
-  if (userProfile.status === 'Pending Approval') {
-    return <PendingApproval />;
+  if (userProfile.status !== 'Active') {
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -72,69 +76,21 @@ const RootRouteHandler = () => {
     );
   }
 
-  // If user is a Trainer, render the dedicated Trainer Dashboard
+  // Trainers always land on the dedicated Trainer Dashboard
   if (userProfile?.role === 'Trainer') {
-    return <TrainerDashboard />;
+    return <Navigate to="/trainer-dashboard" replace />;
   }
 
-  // If user has permission to view root Dashboard, render it
   if (canViewPage('/')) {
     return <Dashboard />;
   }
 
-  // Otherwise, automatically redirect to the role's configured or first accessible landing page (e.g. /attendance)
   const fallback = getDefaultLandingRoute('/');
   if (fallback && fallback !== '/') {
     return <Navigate to={fallback} replace />;
   }
 
-  // Graceful universal fallback
-  return <Navigate to="/attendance" replace />;
-};
-
-const PageGuard = ({ path, children }: { path: string; children: React.ReactNode }) => {
-  const { canViewPage, getDefaultLandingRoute, loading } = usePermissions();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
-        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
-        <span className="text-sm">যাচাই করা হচ্ছে...</span>
-      </div>
-    );
-  }
-
-  if (!canViewPage(path)) {
-    const fallback = getDefaultLandingRoute(path);
-    if (fallback && fallback !== path) {
-      return <Navigate to={fallback} replace />;
-    }
-    return <Navigate to="/attendance" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const CourseDirectorRoute = ({ children }: { children: React.ReactNode }) => {
-  const { userProfile } = useAuth();
-  const { isCourseDirector, getDefaultLandingRoute, loading } = usePermissions();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh] text-theme-text-secondary">
-        <div className="w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full animate-spin mr-3"></div>
-        <span className="text-sm">যাচাই করা হচ্ছে...</span>
-      </div>
-    );
-  }
-
-  const isAdmin = userProfile?.role === 'Course Director' || isCourseDirector;
-  if (!isAdmin) {
-    const fallback = getDefaultLandingRoute('/settings/logs');
-    return <Navigate to={fallback || '/settings'} replace />;
-  }
-
-  return <>{children}</>;
+  return <Navigate to="/notifications" replace />;
 };
 
 const CatchAllRedirect = () => {
@@ -147,29 +103,197 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<RootRouteHandler />} />
-        <Route path="trainer-dashboard" element={<PageGuard path="/trainer-dashboard"><TrainerDashboard /></PageGuard>} />
-        <Route path="institutes" element={<PageGuard path="/institutes"><Institutes /></PageGuard>} />
-        <Route path="trades" element={<PageGuard path="/trades"><Trades /></PageGuard>} />
-        <Route path="batches" element={<PageGuard path="/batches"><Batches /></PageGuard>} />
-        <Route path="trainees/*" element={<PageGuard path="/trainees"><Trainees /></PageGuard>} />
-        <Route path="brn-verification" element={<PageGuard path="/brn-verification"><BrnVerification /></PageGuard>} />
-        <Route path="shikhon-calendar" element={<PageGuard path="/shikhon-calendar"><ShikhonCalendar /></PageGuard>} />
-        <Route path="trade-calendar" element={<PageGuard path="/trade-calendar"><TradeCalendar /></PageGuard>} />
-        <Route path="attendance" element={<PageGuard path="/attendance"><Attendance /></PageGuard>} />
-        <Route path="attendance-sheet" element={<PageGuard path="/attendance-sheet"><AttendanceSheet /></PageGuard>} />
-        <Route path="exams" element={<PageGuard path="/exams"><Exams /></PageGuard>} />
-        <Route path="results" element={<PageGuard path="/results"><Results /></PageGuard>} />
-        <Route path="reports" element={<PageGuard path="/reports"><Reports /></PageGuard>} />
-        <Route path="certificates" element={<PageGuard path="/certificates"><Certificates /></PageGuard>} />
-        <Route path="users" element={<PageGuard path="/users"><UsersPage /></PageGuard>} />
-        <Route path="roles" element={<RolesPage />} />
-        <Route path="settings" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
-        <Route path="settings/access" element={<PageGuard path="/settings"><Settings /></PageGuard>} />
-        <Route path="settings/logs" element={<CourseDirectorRoute><PageGuard path="/settings"><Settings /></PageGuard></CourseDirectorRoute>} />
-        <Route path="settings/theme" element={<PageGuard path="/settings"><ThemeSettings /></PageGuard>} />
+        <Route
+          path="trainer-dashboard"
+          element={
+            <RequireRole path="/trainer-dashboard" permission="view_dashboard">
+              <TrainerDashboard />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="institutes"
+          element={
+            <RequireRole path="/institutes" permission="view_institutes">
+              <Institutes />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="trades"
+          element={
+            <RequireRole path="/trades" permission="view_trades">
+              <Trades />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="batches"
+          element={
+            <RequireRole path="/batches" permission="view_batches">
+              <Batches />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="trainees/*"
+          element={
+            <RequireRole path="/trainees" permission="view_trainees">
+              <Trainees />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="brn-verification"
+          element={
+            <RequireRole
+              roles={['Course Director']}
+              path="/brn-verification"
+              permission="view_brn_verification"
+            >
+              <BrnVerification />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="shikhon-calendar"
+          element={
+            <RequireRole path="/shikhon-calendar" permission="view_shikhon_calendar">
+              <ShikhonCalendar />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="trade-calendar"
+          element={
+            <RequireRole path="/trade-calendar" permission="view_trades">
+              <TradeCalendar />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="attendance"
+          element={
+            <RequireRole path="/attendance" permission="view_attendance">
+              <Attendance />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="attendance-sheet"
+          element={
+            <RequireRole path="/attendance-sheet" permission="view_attendance_sheet">
+              <AttendanceSheet />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="exams"
+          element={
+            <RequireRole path="/exams" permission="view_exams">
+              <Exams />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="results"
+          element={
+            <RequireRole path="/results" permission="view_results">
+              <Results />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <RequireRole path="/reports" permission="view_reports">
+              <Reports />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="reports/weekly-signature"
+          element={
+            <RequireRole permission={['view_reports', 'view_attendance_sheet']}>
+              <WeeklySignatureSheet />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="certificates"
+          element={
+            <RequireRole path="/certificates" permission="view_certificates">
+              <Certificates />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="users"
+          element={
+            <RequireRole path="/users" permission="view_users">
+              <UsersPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="roles"
+          element={
+            <RequireRole
+              roles={['Course Director']}
+              path="/roles"
+              permission="view_roles"
+            >
+              <RolesPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <RequireRole path="/settings" permission="view_settings">
+              <Settings />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="settings/access"
+          element={
+            <RequireRole path="/settings" permission="view_settings">
+              <Settings />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="settings/logs"
+          element={
+            <RequireRole
+              roles={['Course Director']}
+              path="/settings"
+              permission="view_settings"
+              redirectTo="/settings"
+            >
+              <Settings />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="settings/theme"
+          element={
+            <RequireRole path="/settings" permission="view_settings">
+              <ThemeSettings />
+            </RequireRole>
+          }
+        />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="theme-settings" element={<Navigate to="/settings/theme" replace />} />
         <Route path="*" element={<CatchAllRedirect />} />
@@ -177,8 +301,6 @@ const AppRoutes = () => {
     </Routes>
   );
 };
-
-import { ConfirmationProvider } from './contexts/ConfirmationContext';
 
 export default function App() {
   return (
@@ -188,9 +310,12 @@ export default function App() {
           <PermissionsProvider>
             <SystemSettingsProvider>
               <ConfirmationProvider>
-                <BrowserRouter>
-                  <AppRoutes />
-                </BrowserRouter>
+                <TruncatedTextProvider>
+                  <BrowserRouter>
+                    <SessionToast />
+                    <AppRoutes />
+                  </BrowserRouter>
+                </TruncatedTextProvider>
               </ConfirmationProvider>
             </SystemSettingsProvider>
           </PermissionsProvider>

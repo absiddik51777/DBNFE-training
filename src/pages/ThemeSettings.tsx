@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronRight, Sun, Moon, Monitor } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { THEME_PRESETS } from '../lib/theme';
 import { ThemeSettingsSection } from '../components/settings/ThemeSettingsSection';
+import { TruncatedText } from '../components/ui/TruncatedText';
 
 const ThemeSettings: React.FC = () => {
   const { config, resolvedMode } = useTheme();
@@ -22,17 +23,19 @@ const ThemeSettings: React.FC = () => {
       {/* Top Breadcrumb & Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 min-w-0">
-          <nav aria-label="Breadcrumb" className="flex items-center space-x-1.5 text-xs text-theme-text-muted">
+          <nav aria-label="Breadcrumb" className="flex items-center space-x-1.5 text-xs text-theme-text-muted min-w-0">
             <Link
               to="/settings"
-              className="hover:text-theme-primary font-medium transition-colors whitespace-nowrap"
+              className="hover:text-theme-primary font-medium transition-colors whitespace-nowrap shrink-0"
             >
               সেটিংস (Settings)
             </Link>
             <ChevronRight size={13} aria-hidden="true" className="shrink-0" />
-            <span className="text-theme-text-primary font-semibold truncate">
-              থিম ও অ্যাপিয়ারেন্স (Theme Settings)
-            </span>
+            <TruncatedText
+              text="থিম ও অ্যাপিয়ারেন্স (Theme Settings)"
+              mode="pop"
+              className="text-theme-text-primary font-semibold min-w-0"
+            />
           </nav>
 
           <h1 className="text-xl sm:text-2xl font-bold text-theme-text-primary">

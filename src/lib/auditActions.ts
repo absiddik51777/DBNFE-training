@@ -7,10 +7,12 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { ActionMessageError } from './friendlyError';
 import {
   AuditActor,
   buildBaseLogPayload,
@@ -67,16 +69,16 @@ export async function undoChange(
   actorInput?: AuditActor
 ): Promise<{ revertedFields: number }> {
   if (!log || log.action !== 'update') {
-    throw new Error('শুধুমাত্র পরিবর্তন (Update) লগ ফেরত নেওয়া যায়।');
+    throw new ActionMessageError('শুধুমাত্র পরিবর্তন (Update) লগ ফেরত নেওয়া যায়।');
   }
   if (log.reverted) {
-    throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+    throw new ActionMessageError('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
   }
   if (log.settled) {
-    throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+    throw new ActionMessageError('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
   }
   if (!log.collection || !log.targetId || !Array.isArray(log.changes) || log.changes.length === 0) {
-    throw new Error('এই লগে ফেরত নেওয়ার মতো পর্যাপ্ত পরিবর্তনের তথ্য নেই।');
+    throw new ActionMessageError('এই লগে ফেরত নেওয়ার মতো পর্যাপ্ত পরিবর্তনের তথ্য নেই।');
   }
 
   const auditLocation = await captureAuditLocationForAction('undo');
@@ -92,7 +94,7 @@ export async function undoChange(
   if (isBatchAttendance) {
     const lastUnderscore = log.targetId.lastIndexOf('_');
     if (lastUnderscore <= 0) {
-      throw new Error('হাজিরা ব্যাচ ও তারিখ শনাক্ত করা যায়নি।');
+      throw new ActionMessageError('হাজিরা ব্যাচ ও তারিখ শনাক্ত করা যায়নি।');
     }
     const batchId = log.targetId.slice(0, lastUnderscore);
     const date = log.targetId.slice(lastUnderscore + 1);
@@ -117,13 +119,13 @@ export async function undoChange(
     await runTransaction(db, async (tx) => {
       const liveLogSnap = await tx.get(logRef);
       if (!liveLogSnap.exists()) {
-        throw new Error('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+        throw new ActionMessageError('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
       }
       if (liveLogSnap.data().reverted === true) {
-        throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+        throw new ActionMessageError('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
       }
       if (liveLogSnap.data().settled === true) {
-        throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+        throw new ActionMessageError('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
       }
 
       const targetRefs = traineeIds.map((tid) => {
@@ -145,7 +147,7 @@ export async function undoChange(
       });
 
       if (conflicts.length > 0) {
-        throw new Error(
+        throw new ActionMessageError(
           `অন্য কেউ ইতোমধ্যে নিচের হাজিরা তথ্য পরিবর্তন করেছেন, তাই স্বয়ংক্রিয়ভাবে ফেরত নেওয়া হয়নি:\n• ${conflicts.join('\n• ')}`
         );
       }
@@ -236,13 +238,13 @@ export async function undoChange(
     await runTransaction(db, async (tx) => {
       const liveLogSnap = await tx.get(logRef);
       if (!liveLogSnap.exists()) {
-        throw new Error('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+        throw new ActionMessageError('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
       }
       if (liveLogSnap.data().reverted === true) {
-        throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+        throw new ActionMessageError('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
       }
       if (liveLogSnap.data().settled === true) {
-        throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+        throw new ActionMessageError('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
       }
 
       const examRef = doc(db, 'exams', examId);
@@ -270,7 +272,7 @@ export async function undoChange(
       });
 
       if (conflicts.length > 0) {
-        throw new Error(
+        throw new ActionMessageError(
           `অন্য কেউ ইতোমধ্যে নিচের নম্বরগুলো পরিবর্তন করেছেন, তাই ফেরত নেওয়া হয়নি:\n• ${conflicts.join('\n• ')}`
         );
       }
@@ -285,7 +287,7 @@ export async function undoChange(
         }
         const match = String(change.before).match(/^(\d+(?:\.\d+)?)\s*\(([^)]+)\)$/);
         if (!match) {
-          throw new Error(`নম্বরের পূর্ববর্তী ফরম্যাট পার্স করা যায়নি (${change.label})।`);
+          throw new ActionMessageError(`নম্বরের পূর্ববর্তী ফরম্যাট পার্স করা যায়নি (${change.label})।`);
         }
         const marksObtained = Number(match[1]);
         const resultStr = match[2];
@@ -370,16 +372,16 @@ export async function undoChange(
     ]);
 
     if (!liveLogSnap.exists()) {
-      throw new Error('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+      throw new ActionMessageError('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
     }
     if (liveLogSnap.data().reverted === true) {
-      throw new Error('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
+      throw new ActionMessageError('এই পরিবর্তনটি ইতোমধ্যে ফেরত নেওয়া হয়েছে।');
     }
     if (liveLogSnap.data().settled === true) {
-      throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+      throw new ActionMessageError('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
     }
     if (!targetSnap.exists()) {
-      throw new Error(
+      throw new ActionMessageError(
         'মূল রেকর্ডটি আর ডাটাবেজে বিদ্যমান নেই। আগে রেকর্ডটি পুনরুদ্ধার করুন বা তালিকা রিফ্রেশ করুন।'
       );
     }
@@ -398,7 +400,7 @@ export async function undoChange(
     }
 
     if (conflicts.length > 0) {
-      throw new Error(
+      throw new ActionMessageError(
         `অন্য কেউ ইতোমধ্যে নিচের ক্ষেত্রগুলো পরিবর্তন করেছেন, তাই ওভাররাইট করা হয়নি:\n• ${conflicts.join('\n• ')}`
       );
     }
@@ -473,16 +475,16 @@ export async function restoreRecord(
   actorInput?: AuditActor
 ): Promise<RestoreResult> {
   if (!log || (log.action !== 'delete' && log.action !== 'bulk_delete')) {
-    throw new Error('শুধুমাত্র মুছে ফেলা (Delete / Bulk Delete) লগ পুনরুদ্ধার করা যায়।');
+    throw new ActionMessageError('শুধুমাত্র মুছে ফেলা (Delete / Bulk Delete) লগ পুনরুদ্ধার করা যায়।');
   }
   if (log.reverted) {
-    throw new Error('এই রেকর্ডটি ইতোমধ্যে পুনরুদ্ধার করা হয়েছে।');
+    throw new ActionMessageError('এই রেকর্ডটি ইতোমধ্যে পুনরুদ্ধার করা হয়েছে।');
   }
   if (log.settled) {
-    throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+    throw new ActionMessageError('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
   }
   if (log.snapshotComplete === false) {
-    throw new Error(
+    throw new ActionMessageError(
       'এই লগে সম্পূর্ণ স্ন্যাপশট সংরক্ষিত নেই। অনুগ্রহ করে ব্যাকআপ থেকে পুনরুদ্ধার করুন।'
     );
   }
@@ -492,13 +494,13 @@ export async function restoreRecord(
   const logRef = doc(db, 'activityLogs', log.id);
   const liveLogSnap = await getDoc(logRef);
   if (!liveLogSnap.exists()) {
-    throw new Error('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+    throw new ActionMessageError('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
   }
   if (liveLogSnap.data().reverted === true) {
-    throw new Error('এই রেকর্ডটি ইতোমধ্যে পুনরুদ্ধার করা হয়েছে।');
+    throw new ActionMessageError('এই রেকর্ডটি ইতোমধ্যে পুনরুদ্ধার করা হয়েছে।');
   }
   if (liveLogSnap.data().settled === true) {
-    throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+    throw new ActionMessageError('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
   }
 
   // Assemble all records from main snapshot + inline related + chunked subcollection
@@ -551,7 +553,7 @@ export async function restoreRecord(
   const candidates = Array.from(uniqueMap.values());
 
   if (candidates.length === 0) {
-    throw new Error('পুনরুদ্ধার করার মতো কোনো সংরক্ষিত স্ন্যাপশট পাওয়া যায়নি।');
+    throw new ActionMessageError('পুনরুদ্ধার করার মতো কোনো সংরক্ষিত স্ন্যাপশট পাওয়া যায়নি।');
   }
 
   // Check existence before writing (never overwrite existing doc IDs)
@@ -658,32 +660,41 @@ export async function restoreRecord(
   };
 }
 
+export interface SettleStepMeta {
+  cleanLogId: string;
+  cleanNote: string | null;
+  targetId: string;
+  targetLabel: string;
+  moduleName: AuditModule;
+  collectionName: string;
+  origActorUserId: string;
+  origActorRole: string;
+  origTitle: string;
+}
+
 /**
- * Permanently settle an active audit log entry (`update`, `delete`, or `bulk_delete`)
- * inside a Firestore transaction so it can never be undone or restored.
+ * Step 1 of Settlement: Permanently mark the original activity log entry as `settled: true`
+ * inside a Firestore transaction. Safe and idempotent if retried by the same actor.
  */
-export async function settleEntry(
+export async function settleEntryStatusStep(
   logId: string,
   note?: string,
   actorInput?: AuditActor
-): Promise<void> {
+): Promise<SettleStepMeta> {
   const cleanLogId = (logId || '').trim();
   if (!cleanLogId) {
-    throw new Error('অডিট লগ আইডি পাওয়া যায়নি।');
+    throw new ActionMessageError('অডিট লগ আইডি পাওয়া যায়নি।');
   }
 
-  const auditLocation = await captureAuditLocationForAction('settle');
   const actor = resolveAuditActor(actorInput);
   const trimmedNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
   const cleanNote = trimmedNote.length > 0 ? trimmedNote : null;
-
   const logRef = doc(db, 'activityLogs', cleanLogId);
-  const newSettleLogRef = doc(collection(db, 'activityLogs'));
 
-  await runTransaction(db, async (tx) => {
+  return runTransaction(db, async (tx) => {
     const liveLogSnap = await tx.get(logRef);
     if (!liveLogSnap.exists()) {
-      throw new Error('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+      throw new ActionMessageError('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
     }
 
     const orig = liveLogSnap.data() as Record<string, unknown>;
@@ -693,13 +704,10 @@ export async function settleEntry(
       origAction !== 'delete' &&
       origAction !== 'bulk_delete'
     ) {
-      throw new Error('শুধুমাত্র পরিবর্তন বা মুছে ফেলা এন্ট্রি নিষ্পন্ন করা যায়।');
+      throw new ActionMessageError('শুধুমাত্র পরিবর্তন বা মুছে ফেলা এন্ট্রি নিষ্পন্ন করা যায়।');
     }
     if (orig.reverted === true) {
-      throw new Error('এই এন্ট্রিটি ইতোমধ্যে ফেরত নেওয়া বা পুনরুদ্ধার করা হয়েছে।');
-    }
-    if (orig.settled === true) {
-      throw new Error('এই এন্ট্রি নিষ্পন্ন হয়ে গেছে।');
+      throw new ActionMessageError('এই এন্ট্রিটি ইতোমধ্যে ফেরত নেওয়া বা পুনরুদ্ধার করা হয়েছে।');
     }
 
     const targetId = String(orig.targetId || orig.recordId || cleanLogId);
@@ -708,9 +716,24 @@ export async function settleEntry(
     const collectionName = String(orig.collection || moduleName || 'settings');
     const origActorUserId = String(orig.userId || '');
     const origActorRole = String(orig.userRole || '');
-    const isCdSettlingFma =
-      actor.userRole === 'Course Director' && origActorRole === 'FMA' && Boolean(origActorUserId);
-    const baseTitle = String(orig.title || targetLabel);
+    const origTitle = String(orig.title || targetLabel);
+
+    if (orig.settled === true) {
+      if (orig.settledBy === actor.userId) {
+        return {
+          cleanLogId,
+          cleanNote: typeof orig.settleNote === 'string' ? orig.settleNote : cleanNote,
+          targetId,
+          targetLabel,
+          moduleName,
+          collectionName,
+          origActorUserId,
+          origActorRole,
+          origTitle,
+        };
+      }
+      throw new ActionMessageError('এই এন্ট্রি ইতোমধ্যে নিষ্পন্ন হয়ে গেছে।');
+    }
 
     tx.update(logRef, {
       settled: true,
@@ -720,26 +743,116 @@ export async function settleEntry(
       settleNote: cleanNote,
     });
 
-    tx.set(
-      newSettleLogRef,
+    return {
+      cleanLogId,
+      cleanNote,
+      targetId,
+      targetLabel,
+      moduleName,
+      collectionName,
+      origActorUserId,
+      origActorRole,
+      origTitle,
+    };
+  });
+}
+
+/**
+ * Step 2 of Settlement: Record the permanent `settle` audit entry idempotently.
+ */
+export async function settleEntryAuditLogStep(
+  logId: string,
+  meta?: SettleStepMeta | null,
+  note?: string,
+  actorInput?: AuditActor
+): Promise<{ settleLogId: string; hadNote: boolean }> {
+  const cleanLogId = (logId || '').trim();
+  if (!cleanLogId) {
+    throw new ActionMessageError('অডিট লগ আইডি পাওয়া যায়নি।');
+  }
+
+  const auditLocation = await captureAuditLocationForAction('settle');
+  const actor = resolveAuditActor(actorInput);
+  const settleLogId = `settle_${cleanLogId}`.slice(0, 128);
+  const settleLogRef = doc(db, 'activityLogs', settleLogId);
+
+  let resolvedMeta = meta ?? null;
+  if (!resolvedMeta) {
+    const origSnap = await getDoc(doc(db, 'activityLogs', cleanLogId));
+    if (!origSnap.exists()) {
+      throw new ActionMessageError('মূল অডিট লগটি খুঁজে পাওয়া যায়নি।');
+    }
+    const orig = origSnap.data() as Record<string, unknown>;
+    const origAction = String(orig.action || '');
+    const targetId = String(orig.targetId || orig.recordId || cleanLogId);
+    const targetLabel = String(orig.targetLabel || orig.title || origAction || cleanLogId);
+    const moduleName = (String(orig.module || 'settings') || 'settings') as AuditModule;
+    const collectionName = String(orig.collection || moduleName || 'settings');
+    const trimmedNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+    const cleanNote =
+      typeof orig.settleNote === 'string' && orig.settleNote.trim()
+        ? orig.settleNote.trim()
+        : trimmedNote.length > 0
+        ? trimmedNote
+        : null;
+    resolvedMeta = {
+      cleanLogId,
+      cleanNote,
+      targetId,
+      targetLabel,
+      moduleName,
+      collectionName,
+      origActorUserId: String(orig.userId || ''),
+      origActorRole: String(orig.userRole || ''),
+      origTitle: String(orig.title || targetLabel),
+    };
+  }
+
+  const existingSnap = await getDoc(settleLogRef);
+  if (!existingSnap.exists()) {
+    const isCdSettlingFma =
+      actor.userRole === 'Course Director' &&
+      resolvedMeta.origActorRole === 'FMA' &&
+      Boolean(resolvedMeta.origActorUserId);
+
+    await setDoc(
+      settleLogRef,
       buildBaseLogPayload({
         action: 'settle',
-        module: moduleName,
-        collection: collectionName,
-        targetId,
-        targetLabel,
+        module: resolvedMeta.moduleName,
+        collection: resolvedMeta.collectionName,
+        targetId: resolvedMeta.targetId,
+        targetLabel: resolvedMeta.targetLabel,
         title: isCdSettlingFma
-          ? `আপনার কাজ নিষ্পন্ন (চূড়ান্ত) করা হয়েছে: ${baseTitle}`
-          : `নিষ্পন্ন: ${orig.title || targetLabel}`,
+          ? `আপনার কাজ নিষ্পন্ন (চূড়ান্ত) করা হয়েছে: ${resolvedMeta.origTitle}`
+          : `নিষ্পন্ন: ${resolvedMeta.origTitle}`,
         actor,
         changes: [],
         snapshot: null,
         related: [],
         refLogId: cleanLogId,
         location: auditLocation,
-        details: cleanNote || `অডিট লগ ${cleanLogId} স্থায়ীভাবে নিষ্পন্ন করা হয়েছে`,
-        targetOriginalActor: { userId: origActorUserId, userRole: origActorRole },
+        details:
+          resolvedMeta.cleanNote || `অডিট লগ ${cleanLogId} স্থায়ীভাবে নিষ্পন্ন করা হয়েছে`,
+        targetOriginalActor: {
+          userId: resolvedMeta.origActorUserId,
+          userRole: resolvedMeta.origActorRole,
+        },
       })
     );
-  });
+  }
+
+  return { settleLogId, hadNote: Boolean(resolvedMeta.cleanNote) };
+}
+
+/**
+ * Permanently settle an active audit log entry (`update`, `delete`, or `bulk_delete`).
+ */
+export async function settleEntry(
+  logId: string,
+  note?: string,
+  actorInput?: AuditActor
+): Promise<void> {
+  const meta = await settleEntryStatusStep(logId, note, actorInput);
+  await settleEntryAuditLogStep(logId, meta, note, actorInput);
 }

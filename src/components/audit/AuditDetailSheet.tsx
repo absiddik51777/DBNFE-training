@@ -1,8 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArchiveRestore, CheckCircle2, DatabaseBackup, Lock, RotateCcw, X } from 'lucide-react';
 import type { ActivityLog } from '../../types';
-import { undoChange, restoreRecord, settleEntry } from '../../lib/auditActions';
+import {
+  restoreRecord,
+  settleEntryAuditLogStep,
+  settleEntryStatusStep,
+  type SettleStepMeta,
+  undoChange,
+} from '../../lib/auditActions';
 import type { AuditActor } from '../../lib/auditLog';
+import type { ActionStep } from '../../hooks/useActionRunner';
+import { toBn } from '../../lib/dateUtils';
 import {
   formatAuditTimestamp,
   formatAuditValue,
@@ -44,15 +52,15 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
 
   const [confirmMode, setConfirmMode] = useState<'undo' | 'restore' | 'settle' | null>(null);
   const [settleNote, setSettleNote] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const settleMetaRef = useRef<SettleStepMeta | null>(null);
+  const successMessageRef = useRef<string>('');
 
   // Reset confirmation dialog whenever selected log changes
   useEffect(() => {
     setConfirmMode(null);
     setSettleNote('');
-    setActionError(null);
-    setIsProcessing(false);
+    settleMetaRef.current = null;
+    successMessageRef.current = '';
   }, [log?.id]);
 
   useEffect(() => {
@@ -178,21 +186,91 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
       lines.push(`মূল রেকর্ড: ${log.targetLabel}`);
     } else if (log.action === 'bulk_delete') {
       const total = log.count ?? log.related?.length ?? 0;
-      lines.push(`মোট রেকর্ড: ${total} টি`);
+      lines.push(`মোট রেকর্ড: ${toBn(total)} টি`);
       (log.targetNames || []).slice(0, 5).forEach((name) => {
         lines.push(name);
       });
       if ((log.count ?? 0) > 5) {
-        lines.push(`এবং আরও ${(log.count ?? 0) - 5} টি রেকর্ড`);
+        lines.push(`এবং আরও ${toBn((log.count ?? 0) - 5)} টি রেকর্ড`);
       }
     }
     if ((log.related?.length ?? 0) > 0 && log.action === 'delete') {
-      lines.push(`সংশ্লিষ্ট রেকর্ড: ${log.related!.length} টি`);
+      lines.push(`সংশ্লিষ্ট রেকর্ড: ${toBn(log.related!.length)} টি`);
     } else if ((log.snapshotChunkCount ?? 0) > 0) {
-      lines.push(`স্ন্যাপশট খণ্ড: ${log.snapshotChunkCount} টি`);
+      lines.push(`স্ন্যাপশট খণ্ড: ${toBn(log.snapshotChunkCount)} টি`);
     }
     return lines;
   }, [confirmMode, isAdmin, log]);
+
+  const activeSteps: ActionStep<any>[] = useMemo(() => {
+    if (!log || !confirmMode) return [];
+
+    if (confirmMode === 'settle') {
+      return [
+        {
+          id: 'commit-settlement',
+          label: 'নিষ্পত্তি সংরক্ষণ করা হচ্ছে',
+          run: async () => {
+            const meta = await settleEntryStatusStep(log.id, settleNote, actor);
+            settleMetaRef.current = meta;
+            return meta;
+          },
+          describe: (meta: SettleStepMeta) =>
+            meta.cleanNote ? 'স্ট্যাটাস: নিষ্পন্ন (মন্তব্যসহ)' : 'স্ট্যাটাস: নিষ্পন্ন',
+        },
+        {
+          id: 'write-settle-audit',
+          label: 'অডিট লগ লেখা হচ্ছে',
+          run: async () => {
+            const res = await settleEntryAuditLogStep(
+              log.id,
+              settleMetaRef.current,
+              settleNote,
+              actor
+            );
+            successMessageRef.current = 'এন্ট্রিটি স্থায়ীভাবে নিষ্পন্ন করা হয়েছে।';
+            return res;
+          },
+          describe: () => 'অডিট লগ সংরক্ষিত',
+        },
+      ];
+    }
+
+    if (confirmMode === 'undo') {
+      return [
+        {
+          id: 'undo-transaction',
+          label: 'পূর্বের অবস্থায় ফিরিয়ে নেওয়া হচ্ছে',
+          run: async () => {
+            const res = await undoChange(log, actor);
+            successMessageRef.current = `${toBn(res.revertedFields)} টি ক্ষেত্রের পরিবর্তন সফলভাবে পূর্বাবস্থায় ফেরত নেওয়া হয়েছে।`;
+            return res;
+          },
+          describe: (res: { revertedFields: number }) =>
+            `${toBn(res.revertedFields)} টি ক্ষেত্র পূর্বাবস্থায় ফেরত নেওয়া হয়েছে`,
+        },
+      ];
+    }
+
+    return [
+      {
+        id: 'restore-records',
+        label: 'মুছে ফেলা রেকর্ড পুনরুদ্ধার করা হচ্ছে',
+        run: async () => {
+          const res = await restoreRecord(log, actor);
+          successMessageRef.current =
+            res.skippedCount > 0
+              ? `${toBn(res.restoredCount)} টি রেকর্ড পুনরুদ্ধার করা হয়েছে (${toBn(res.skippedCount)} টি ইতোমধ্যে বিদ্যমান থাকায় স্কিপ করা হয়েছে)।`
+              : `${toBn(res.restoredCount)} টি রেকর্ড সফলভাবে পুনরুদ্ধার করা হয়েছে।`;
+          return res;
+        },
+        describe: (res: { restoredCount: number; skippedCount: number }) =>
+          res.skippedCount > 0
+            ? `${toBn(res.restoredCount)} টি পুনরুদ্ধার, ${toBn(res.skippedCount)} টি স্কিপ`
+            : `${toBn(res.restoredCount)} টি রেকর্ড পুনরুদ্ধার হয়েছে`,
+      },
+    ];
+  }, [actor, confirmMode, log, settleNote]);
 
   if (!log) return null;
 
@@ -205,34 +283,14 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
   const settledActorName = log.settledByName || log.settledBy || '';
   const settledTime = formatAuditTimestamp(log.settledAt);
 
-  const handleConfirmExecute = async () => {
-    if (!confirmMode || isProcessing) return;
-    setIsProcessing(true);
-    setActionError(null);
-    try {
-      let msg = '';
-      if (confirmMode === 'undo') {
-        const res = await undoChange(log, actor);
-        msg = `${res.revertedFields} টি ক্ষেত্রের পরিবর্তন সফলভাবে পূর্বাবস্থায় ফেরত নেওয়া হয়েছে।`;
-      } else if (confirmMode === 'restore') {
-        const res = await restoreRecord(log, actor);
-        msg =
-          res.skippedCount > 0
-            ? `${res.restoredCount} টি রেকর্ড পুনরুদ্ধার করা হয়েছে (${res.skippedCount} টি ইতোমধ্যে বিদ্যমান থাকায় স্কিপ করা হয়েছে)।`
-            : `${res.restoredCount} টি রেকর্ড সফলভাবে পুনরুদ্ধার করা হয়েছে।`;
-      } else {
-        await settleEntry(log.id, settleNote, actor);
-        msg = 'এন্ট্রিটি স্থায়ীভাবে নিষ্পন্ন করা হয়েছে।';
-      }
-      setConfirmMode(null);
-      setSettleNote('');
-      if (onActionSuccess) {
-        await onActionSuccess(msg);
-      }
-    } catch (err: any) {
-      setActionError(err?.message || 'অপারেশনটি সম্পন্ন করা যায়নি।');
-    } finally {
-      setIsProcessing(false);
+  const handleSuccessClose = async () => {
+    const msg = successMessageRef.current || 'সম্পন্ন হয়েছে।';
+    setConfirmMode(null);
+    setSettleNote('');
+    settleMetaRef.current = null;
+    successMessageRef.current = '';
+    if (onActionSuccess) {
+      await onActionSuccess(msg);
     }
   };
 
@@ -388,7 +446,8 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setActionError(null);
+                        settleMetaRef.current = null;
+                        successMessageRef.current = '';
                         setConfirmMode('undo');
                       }}
                       className="min-h-[44px] flex-1 px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-medium text-theme-primary-fg inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
@@ -402,7 +461,8 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setActionError(null);
+                        settleMetaRef.current = null;
+                        successMessageRef.current = '';
                         setConfirmMode('restore');
                       }}
                       className="min-h-[44px] flex-1 px-4 py-2 rounded-[12px] border border-theme-primary bg-theme-primary hover:bg-theme-primary-hover text-xs sm:text-sm font-medium text-theme-primary-fg inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
@@ -416,7 +476,8 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setActionError(null);
+                        settleMetaRef.current = null;
+                        successMessageRef.current = '';
                         setSettleNote('');
                         setConfirmMode('settle');
                       }}
@@ -489,20 +550,24 @@ export const AuditDetailSheet: React.FC<AuditDetailSheetProps> = ({
             ? 'হ্যাঁ, ফেরত নিন'
             : confirmMode === 'restore'
             ? 'হ্যাঁ, পুনরুদ্ধার করুন'
-            : 'নিষ্পন্ন করুন'
+            : 'নিষ্পত্তি করুন'
         }
-        isProcessing={isProcessing}
-        errorMessage={actionError}
-        onConfirm={handleConfirmExecute}
+        popoverTitle={
+          confirmMode === 'settle'
+            ? 'নিষ্পত্তির ধাপ'
+            : confirmMode === 'undo'
+            ? 'ফেরত নেওয়ার ধাপ'
+            : 'পুনরুদ্ধারের ধাপ'
+        }
+        steps={activeSteps}
+        onSuccessClose={handleSuccessClose}
         onClose={() => {
-          if (!isProcessing) {
-            setConfirmMode(null);
-            setSettleNote('');
-            setActionError(null);
-          }
+          setConfirmMode(null);
+          setSettleNote('');
+          settleMetaRef.current = null;
+          successMessageRef.current = '';
         }}
       />
     </>
   );
 };
-

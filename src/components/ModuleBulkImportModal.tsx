@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Upload, 
   Download, 
@@ -15,6 +15,10 @@ import {
 import { BatchSkillModule, BatchLiteracyModule } from '../types/calendar';
 import { toBn } from '../lib/dateUtils';
 import { saveCsvFile, FileExportResult } from '../lib/fileExportService';
+import { TruncatedText } from './ui/TruncatedText';
+import { ActionMessageError } from '../lib/friendlyError';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from './ui/ActionButton';
 
 interface ModuleBulkImportModalProps {
   isOpen: boolean;
@@ -68,12 +72,42 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
   const [replaceExisting, setReplaceExisting] = useState<boolean>(false);
   const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [copiedDemo, setCopiedDemo] = useState<boolean>(false);
   const [downloadingDemo, setDownloadingDemo] = useState<boolean>(false);
   const [demoDownloadNotice, setDemoDownloadNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const importSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'bulk-save-modules',
+      label: `${toBn(parsedRows.length)}টি মডিউল ব্যাচে সংরক্ষণ করা হচ্ছে`,
+      run: async () => {
+        if (parsedRows.length === 0) {
+          throw new ActionMessageError('সংরক্ষণের জন্য কোনো মডিউল নেই।');
+        }
+        const count = await onBulkSave(parsedRows, replaceExisting);
+        onImportSuccess(count);
+        return count;
+      },
+      describe: (count: number) => `${toBn(count)}টি মডিউল সংরক্ষিত হয়েছে`,
+    },
+  ], [parsedRows, replaceExisting, onBulkSave, onImportSuccess]);
+
+  const importRunner = useActionRunner(importSteps);
+  const isBusy = importRunner.phase === 'running' || importRunner.phase === 'waiting';
+
+  useEffect(() => {
+    if (isOpen) {
+      importRunner.reset();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    if (isBusy) return;
+    importRunner.reset();
+    onClose();
+  };
 
   const isSkill = moduleType === 'skill';
   const typeLabelBn = isSkill ? 'স্কিল ফোকাসড মডিউল' : 'লিটারেসি ফোকাসড মডিউল';
@@ -219,41 +253,30 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
     setTimeout(() => setCopiedDemo(false), 2000);
   };
 
-  const handleExecuteImport = async () => {
-    if (parsedRows.length === 0) return;
-    setLoading(true);
-    try {
-      const count = await onBulkSave(parsedRows, replaceExisting);
-      onImportSuccess(count);
-      onClose();
-    } catch (err) {
-      console.error("Bulk save error:", err);
-      setParseErrors(['ডাটা সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট ও পারমিশন পরীক্ষা করুন।']);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-theme-elevated border border-theme-border rounded-3xl max-w-4xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150 my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="bg-theme-elevated rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-theme-border space-y-5 overflow-visible animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="flex items-start justify-between border-b border-theme-border pb-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border">
-              <Layers size={13} className="text-theme-primary" />
-              <span>ব্যাচ: {batchName}</span>
+        <div className="flex items-start justify-between gap-3 border-b border-theme-border pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-theme-primary-soft text-theme-primary border border-theme-primary-border flex items-center justify-center shrink-0">
+              <Layers size={20} />
             </div>
-            <h2 className="text-lg sm:text-xl font-black text-theme-text-primary tracking-tight">
-              {typeLabelBn} বাল্ক ইনপুট (Bulk Module Import)
-            </h2>
-            <p className="text-xs text-theme-text-secondary">
-              CSV ফাইল আপলোড বা সরাসরি টেক্সট পেস্ট করে একসাথে একাধিক স্বতন্ত্র মডিউল যুক্ত করুন।
-            </p>
+            <div>
+              <h2 className="text-base font-bold text-theme-text-primary">
+                {typeLabelBn} — বাল্ক ইনপুট
+              </h2>
+              <p className="text-xs text-theme-text-secondary mt-0.5">
+                ব্যাচ: <span className="font-semibold text-theme-text-primary">{batchName}</span> ({batchId})
+              </p>
+            </div>
           </div>
+
           <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover transition"
+            type="button"
+            disabled={isBusy}
+            onClick={handleClose}
+            className="p-1.5 rounded-xl text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-50 transition"
           >
             <X size={20} />
           </button>
@@ -408,22 +431,22 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
             </div>
 
             <div className="overflow-x-auto border border-theme-border rounded-xl max-h-36 overflow-y-auto text-xs">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full min-w-[640px] table-fixed text-left border-collapse">
                 <thead className="bg-theme-surface-subtle text-theme-text-primary font-bold sticky top-0 border-b border-theme-border">
                   <tr>
-                    <th className="p-2 border-b border-theme-border">দিন</th>
-                    <th className="p-2 border-b border-theme-border">মডিউল</th>
-                    <th className="p-2 border-b border-theme-border">কাজ নং</th>
-                    <th className="p-2 border-b border-theme-border">পঠিত বিষয় / টপিক</th>
+                    <th className="p-2 w-12 border-b border-theme-border">দিন</th>
+                    <th className="p-2 w-44 border-b border-theme-border">মডিউল</th>
+                    <th className="p-2 w-20 border-b border-theme-border">কাজ নং</th>
+                    <th className="p-2 w-52 border-b border-theme-border">পঠিত বিষয় / টপিক</th>
                     {isSkill ? (
                       <>
-                        <th className="p-2 border-b border-theme-border text-center">তাত্ত্বিক</th>
-                        <th className="p-2 border-b border-theme-border text-center">ব্যবহারিক</th>
+                        <th className="p-2 w-20 border-b border-theme-border text-center">তাত্ত্বিক</th>
+                        <th className="p-2 w-20 border-b border-theme-border text-center">ব্যবহারিক</th>
                       </>
                     ) : (
                       <>
-                        <th className="p-2 border-b border-theme-border text-center">সময়</th>
-                        <th className="p-2 border-b border-theme-border text-center">বিভাগ</th>
+                        <th className="p-2 w-24 border-b border-theme-border text-center">সময়</th>
+                        <th className="p-2 w-24 border-b border-theme-border text-center">বিভাগ</th>
                       </>
                     )}
                   </tr>
@@ -432,9 +455,13 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
                   {parsedRows.slice(0, 5).map((row, idx) => (
                     <tr key={idx} className="hover:bg-theme-surface-hover">
                       <td className="p-2 font-bold tabular-nums">{toBn(row.dayNumber)}</td>
-                      <td className="p-2 truncate max-w-xs">{row.moduleName}</td>
+                      <td className="p-2">
+                        <TruncatedText as="div" text={row.moduleName} mode="pop" />
+                      </td>
                       <td className="p-2 font-semibold text-theme-primary tabular-nums">{row.taskNo}</td>
-                      <td className="p-2 truncate max-w-xs">{row.topic}</td>
+                      <td className="p-2">
+                        <TruncatedText as="div" text={row.topic} mode="pop" />
+                      </td>
                       {isSkill ? (
                         <>
                           <td className="p-2 text-center tabular-nums">{toBn(row.theoryMinutes)}মি</td>
@@ -469,30 +496,25 @@ const ModuleBulkImportModal: React.FC<ModuleBulkImportModalProps> = ({
         )}
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-theme-border shrink-0">
+        <div className="flex items-start justify-between gap-3 pt-4 border-t border-theme-border shrink-0 overflow-visible">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover transition"
+            disabled={isBusy}
+            onClick={handleClose}
+            className="min-h-[44px] px-4 py-2 rounded-[12px] border border-theme-border text-xs font-semibold text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover disabled:opacity-50 transition"
           >
-            বাতিল
+            {importRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
           </button>
 
-          <button
-            type="button"
-            disabled={parsedRows.length === 0 || loading}
-            onClick={handleExecuteImport}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 tabular-nums"
-          >
-            {loading ? (
-              <span>সংরক্ষণ হচ্ছে...</span>
-            ) : (
-              <>
-                <Check size={16} />
-                <span>{toBn(parsedRows.length)}টি মডিউল ব্যাচে ইনপুট নিশ্চিত করুন</span>
-              </>
-            )}
-          </button>
+          <ActionButton
+            runner={importRunner}
+            idleLabel={`${toBn(parsedRows.length)}টি মডিউল ব্যাচে ইনপুট নিশ্চিত করুন`}
+            idleIcon={<Check size={16} />}
+            popoverTitle="মডিউল বাল্ক ইনপুট"
+            disabled={parsedRows.length === 0}
+            onAutoHide={handleClose}
+            className="min-w-[235px]"
+          />
         </div>
       </div>
     </div>

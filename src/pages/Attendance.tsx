@@ -1,64 +1,103 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Institute, Trade, Batch, Trainee, AttendanceRecord, AttendanceStatus } from '../types';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
+import {
+  GraduationCap,
+  Sun,
+  Moon,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Search,
+  X,
+  CheckCheck,
+  XCircle,
+  RotateCcw,
+  CalendarDays,
+  AlertCircle,
+  CheckCircle2,
+  UserCheck,
+} from 'lucide-react';
+import type {
+  AttendanceRecord,
+  AttendanceStatus,
+  Batch,
+  Institute,
+  Trade,
+  Trainee,
+} from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
-import { format } from 'date-fns';
-import { 
-  Check, 
-  X, 
-  Calendar as CalendarIcon, 
-  CalendarDays,
-  Save, 
-  CheckCheck, 
-  Clock, 
-  CheckCircle2, 
-  Building2, 
-  Layers, 
-  AlertCircle, 
-  AlertTriangle, 
-  Lock, 
-  Search, 
-  RotateCcw,
-  ShieldAlert,
-  Info,
-  Trash2,
-  ChevronDown,
-  MoreVertical,
-  LayoutGrid,
-  List
-} from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 import { dataService } from '../lib/dataService';
-import { toBn, formatBengaliDate, safeFormatDate } from '../lib/dateUtils';
-import { useSystemSettings } from '../contexts/SystemSettingsContext';
-import { useConfirm } from '../contexts/ConfirmationContext';
-import { TableSkeleton } from '../components/Skeleton';
+import { recordSimpleAuditLog } from '../lib/auditLog';
+import { formatBengaliDate, safeFormatDate, toBn } from '../lib/dateUtils';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
+import { ActionMessageError } from '../lib/friendlyError';
+import { StudentAttendanceCard } from '../components/attendance/StudentAttendanceCard';
+import { TruncatedText } from '../components/ui/TruncatedText';
+import {
+  BatchPickerSheet,
+  EditUnlockReasonSheet,
+  LeaveReasonSheet,
+  MonthlyHeatmapSheet,
+  StudentDetailSheet,
+} from '../components/attendance/AttendanceSheets';
+import {
+  BN_MONTHS,
+  BN_WEEKDAYS,
+  addDaysIso,
+  getDisplayName,
+  triggerHaptic,
+  type AttendanceFilterTab,
+  type AttendanceSortOption,
+  type DayDotItem,
+  type ExtendedAttendanceStatus,
+  type SevenDaySummary,
+  type TraineeAttendanceItem,
+} from '../components/attendance/types';
 
-type ExtendedAttendanceStatus = AttendanceStatus | 'Unmarked';
-
-interface TraineeAttendanceItem {
-  id: string; // traineeId
-  trainee: Trainee;
-  status: ExtendedAttendanceStatus;
-  initialStatus: ExtendedAttendanceStatus;
-  isSavedInDb: boolean;
-  dbRecordId?: string;
+interface DraftPayload {
+  marks: Record<string, { status: ExtendedAttendanceStatus; leaveReason?: string }>;
+  updatedAt: number;
 }
+
+const getDraftStorageKey = (batchId: string, dateStr: string) =>
+  `bnfe_att_draft_${batchId}_${dateStr}`;
+
+const getEditReasonStorageKey = (batchId: string, dateStr: string) =>
+  `bnfe_att_edit_reason_${batchId}_${dateStr}`;
+
+const getUnlockedStorageKey = (batchId: string, dateStr: string) =>
+  `bnfe_att_unlocked_${batchId}_${dateStr}`;
+
+const formatSwitcherDateLabel = (dateStr: string, isToday: boolean): string => {
+  const [yStr, mStr, dStr] = dateStr.split('-');
+  const y = parseInt(yStr || '', 10);
+  const m = parseInt(mStr || '', 10);
+  const d = parseInt(dStr || '', 10);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d);
+  const datePart = `${toBn(d)} ${BN_MONTHS[m - 1] || ''} ${toBn(y)}`;
+  const dayPart = BN_WEEKDAYS[dt.getDay()] || '';
+  return `${datePart} / ${dayPart}${isToday ? ' · আজ' : ''}`;
+};
 
 const Attendance: React.FC = () => {
   const { userProfile } = useAuth();
   const { hasPermission } = usePermissions();
+  const { resolvedMode, setMode } = useTheme();
   const [searchParams] = useSearchParams();
   const paramBatchId = searchParams.get('batchId') || '';
   const paramDate = searchParams.get('date') || '';
 
   const canTakeAttendance = hasPermission('take_attendance');
   const canEditAttendance = hasPermission('edit_attendance');
-  const { isDeletionAllowed, deleteAttendanceForBatchAndDate } = useSystemSettings();
-  const { confirm } = useConfirm();
   const isTrainer = userProfile?.role === 'Trainer';
 
-  // Master Data
+  // Master data
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -71,61 +110,133 @@ const Attendance: React.FC = () => {
     /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : format(new Date(), 'yyyy-MM-dd')
   );
 
-  // Pending selector change target (when unsaved changes prompt is shown)
+  // Pending date/batch switch when unsaved changes exist
   const [pendingChange, setPendingChange] = useState<{
-    type: 'batch' | 'date' | 'institute';
+    type: 'batch' | 'date';
     value: string;
   } | null>(null);
 
-  // Trainee Attendance Map
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, TraineeAttendanceItem>>({});
+  // Batch trainees, daily attendance map, and full batch attendance history
   const [allTraineesInBatch, setAllTraineesInBatch] = useState<Trainee[]>([]);
+  const [attendanceMap, setAttendanceMap] = useState<
+    Record<string, TraineeAttendanceItem>
+  >({});
+  const [allBatchAttendance, setAllBatchAttendance] = useState<AttendanceRecord[]>([]);
 
-  // UI States
+  // Lock & edit reason state keyed by `${batchId}_${date}`
+  const [unlockedDays, setUnlockedDays] = useState<Record<string, boolean>>({});
+  const [lastEditReason, setLastEditReason] = useState<string>('');
+
+  // UI states
   const [loading, setLoading] = useState(true);
   const [fetchingTrainees, setFetchingTrainees] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
-  const [saveErrorMessage, setSaveErrorMessage] = useState('');
-  const [permissionNotice, setPermissionNotice] = useState('');
-
-  // Quick Filters & Search
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'present' | 'absent' | 'leave' | 'unmarked' | 'dirty'>('all');
-
-  // Bulk action confirmation modal
-  const [bulkConfirmModal, setBulkConfirmModal] = useState<{
-    status: ExtendedAttendanceStatus;
-    title: string;
-    description: string;
+  const [feedbackMsg, setFeedbackMsg] = useState<{
+    type: 'success' | 'error';
+    text: string;
   } | null>(null);
 
-  // Selected batch info & start date validation
-  const currentBatch = useMemo(() => {
-    return batches.find(b => b.id === selectedBatch);
-  }, [batches, selectedBatch]);
+  // Search, sort, filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<AttendanceSortOption>('default');
+  const [activeFilterTab, setActiveFilterTab] = useState<AttendanceFilterTab>('all');
+
+  // Menus & Bottom Sheets
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [leaveTargetTrainee, setLeaveTargetTrainee] = useState<Trainee | null>(null);
+  const [unlockSheetOpen, setUnlockSheetOpen] = useState(false);
+  const [detailTrainee, setDetailTrainee] = useState<Trainee | null>(null);
+  const [monthlySheetOpen, setMonthlySheetOpen] = useState(false);
+  const [batchPickerOpen, setBatchPickerOpen] = useState(false);
+
+  const todayDateStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+  const currentBatch = useMemo(
+    () => batches.find((b) => b.id === selectedBatch),
+    [batches, selectedBatch]
+  );
 
   const batchStartDateIso = useMemo(() => {
     if (!currentBatch?.startDate) return '';
     return safeFormatDate(currentBatch.startDate, 'yyyy-MM-dd');
   }, [currentBatch]);
 
-  // Validate attendance date: Attendance cannot be taken before batch start date
-  const isBeforeBatchStart = Boolean(batchStartDateIso && selectedDate < batchStartDateIso);
+  const monthStartStr = useMemo(() => `${todayDateStr.slice(0, 7)}-01`, [todayDateStr]);
+  const minNavDateStr = useMemo(() => {
+    if (
+      batchStartDateIso &&
+      /^\d{4}-\d{2}-\d{2}$/.test(batchStartDateIso) &&
+      batchStartDateIso > monthStartStr &&
+      batchStartDateIso <= todayDateStr
+    ) {
+      return batchStartDateIso;
+    }
+    return monthStartStr;
+  }, [batchStartDateIso, monthStartStr, todayDateStr]);
 
-  // Today's date string for future validation
-  const todayDateStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
-  const isFutureDate = selectedDate > todayDateStr;
+  const isBeforeBatchStart = Boolean(
+    batchStartDateIso &&
+      /^\d{4}-\d{2}-\d{2}$/.test(batchStartDateIso) &&
+      selectedDate < batchStartDateIso
+  );
+  const isPastDate = selectedDate < todayDateStr;
+  const isTodayDate = selectedDate === todayDateStr;
 
-  // Unsaved changes check
-  const dirtyItems = useMemo(() => {
-    return Object.values(attendanceMap).filter(item => item.status !== item.initialStatus);
-  }, [attendanceMap]);
+  const dayKey = `${selectedBatch}_${selectedDate}`;
+  const hasSavedInDb = useMemo(
+    () => Object.values(attendanceMap).some((item) => item.isSavedInDb),
+    [attendanceMap]
+  );
 
+  const isDayLocked = useMemo(() => {
+    if (isBeforeBatchStart) return true;
+    if (unlockedDays[dayKey]) return false;
+    if (isPastDate) return true;
+    return hasSavedInDb;
+  }, [isBeforeBatchStart, unlockedDays, dayKey, isPastDate, hasSavedInDb]);
+
+  // Dirty changes
+  const dirtyItems = useMemo(
+    () =>
+      Object.values(attendanceMap).filter(
+        (item) =>
+          item.status !== item.initialStatus ||
+          (item.leaveReason || '') !== (item.initialLeaveReason || '')
+      ),
+    [attendanceMap]
+  );
   const hasUnsavedChanges = dirtyItems.length > 0;
 
-  // Window beforeunload warning
+  // Show temporary feedback helper
+  const showFeedback = useCallback((type: 'success' | 'error', text: string) => {
+    setFeedbackMsg({ type, text });
+  }, []);
+
+  useEffect(() => {
+    if (!feedbackMsg) return;
+    const t = window.setTimeout(() => setFeedbackMsg(null), 3500);
+    return () => window.clearTimeout(t);
+  }, [feedbackMsg]);
+
+  // Close overflow menu on outside click / Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [menuOpen]);
+
+  // Browser unload warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -137,9 +248,10 @@ const Attendance: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Load initial institutes, trades, batches
+  // Initial master data fetch
   useEffect(() => {
     fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.id]);
 
   const fetchInitialData = async () => {
@@ -148,7 +260,7 @@ const Attendance: React.FC = () => {
       const [instData, trdData, btcData] = await Promise.all([
         dataService.getItems<Institute>('institutes'),
         dataService.getItems<Trade>('trades'),
-        dataService.getItems<Batch>('batches')
+        dataService.getItems<Batch>('batches'),
       ]);
 
       setInstitutes(instData);
@@ -160,28 +272,31 @@ const Attendance: React.FC = () => {
       let targetTrade = '';
 
       if (userProfile?.role === 'Trainer') {
-        targetInst = userProfile.instituteId || (instData[0]?.id || '');
-
+        targetInst = userProfile.instituteId || instData[0]?.id || '';
         if (userProfile.batchId) {
           targetBatch = userProfile.batchId;
-          const assignedBatch = btcData.find(b => b.id === userProfile.batchId);
+          const assignedBatch = btcData.find((b) => b.id === userProfile.batchId);
           if (assignedBatch) {
             targetInst = assignedBatch.instituteId || targetInst;
             targetTrade = assignedBatch.tradeId || '';
           }
         } else {
-          const matching = btcData.filter(b => b.instituteId === targetInst);
+          const matching = btcData.filter((b) => b.instituteId === targetInst);
           if (matching.length > 0) {
             targetBatch = matching[0].id;
             targetTrade = matching[0].tradeId || '';
           }
         }
       } else {
-        targetInst = userProfile?.instituteId || (instData[0]?.id || '');
-        const matching = btcData.filter(b => b.instituteId === targetInst);
+        targetInst = userProfile?.instituteId || instData[0]?.id || '';
+        const matching = btcData.filter((b) => b.instituteId === targetInst);
         if (matching.length > 0) {
           targetBatch = matching[0].id;
           targetTrade = matching[0].tradeId || '';
+        } else if (btcData.length > 0) {
+          targetBatch = btcData[0].id;
+          targetInst = btcData[0].instituteId || targetInst;
+          targetTrade = btcData[0].tradeId || '';
         }
       }
 
@@ -189,10 +304,14 @@ const Attendance: React.FC = () => {
         targetTrade = trdData[0].id;
       }
 
-      // Honor URL ?batchId & ?date when navigable from notification links
       if (paramBatchId) {
         const requestedBatch = btcData.find((b) => b.id === paramBatchId);
-        if (requestedBatch && (userProfile?.role !== 'Trainer' || !userProfile.batchId || userProfile.batchId === requestedBatch.id)) {
+        if (
+          requestedBatch &&
+          (userProfile?.role !== 'Trainer' ||
+            !userProfile.batchId ||
+            userProfile.batchId === requestedBatch.id)
+        ) {
           targetBatch = requestedBatch.id;
           targetInst = requestedBatch.instituteId || targetInst;
           targetTrade = requestedBatch.tradeId || targetTrade;
@@ -206,15 +325,14 @@ const Attendance: React.FC = () => {
       setSelectedInstitute(targetInst);
       setSelectedBatch(targetBatch);
       setSelectedTrade(targetTrade);
-
     } catch (error) {
-      console.warn("Notice fetching initial data in Attendance:", error);
+      console.warn('Notice fetching initial data in Attendance:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Sync URL ?batchId & ?date if user navigates from another notification while already on /attendance
+  // Sync URL ?batchId & ?date when triggered from notifications
   useEffect(() => {
     if (batches.length === 0) return;
     if (paramBatchId) {
@@ -239,107 +357,157 @@ const Attendance: React.FC = () => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(paramDate) && paramDate !== selectedDate) {
       setSelectedDate(paramDate);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramBatchId, paramDate, batches, userProfile?.role, userProfile?.batchId]);
 
-  // When batch or date changes, fetch trainees and attendance
+  // Fetch trainees and attendance for selected batch + date
   useEffect(() => {
     if (selectedBatch && selectedDate) {
       fetchTraineesAndAttendance();
     } else {
       setAttendanceMap({});
       setAllTraineesInBatch([]);
+      setAllBatchAttendance([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBatch, selectedDate]);
 
   const fetchTraineesAndAttendance = async () => {
     setFetchingTrainees(true);
-    setSaveSuccessMessage('');
-    setSaveErrorMessage('');
-    setPermissionNotice('');
+    setFeedbackMsg(null);
 
     try {
-      // 1. Fetch active trainees for this batch
-      const allTrainees = await dataService.getItems<Trainee>('trainees');
+      const [allTrainees, allAttendance] = await Promise.all([
+        dataService.getItems<Trainee>('trainees'),
+        dataService.getItems<AttendanceRecord>('attendance'),
+      ]);
+
       const batchTrainees = allTrainees
-        .filter(t => t.batchId === selectedBatch && (!t.status || t.status === 'Active'))
-        .sort((a, b) => (a.traineeId || a.id).localeCompare(b.traineeId || b.id, undefined, { numeric: true }));
+        .filter((t) => t.batchId === selectedBatch && (!t.status || t.status === 'Active'))
+        .sort((a, b) =>
+          (a.traineeId || a.id).localeCompare(b.traineeId || b.id, undefined, {
+            numeric: true,
+          })
+        );
 
+      const batchAttendance = allAttendance.filter((a) => a.batchId === selectedBatch);
       setAllTraineesInBatch(batchTrainees);
+      setAllBatchAttendance(batchAttendance);
 
-      // 2. Fetch existing attendance records for this batch and date
-      const batchDateAttendance = await dataService.getBatchAttendanceForDate(selectedBatch, selectedDate);
-      
       const recordByTraineeId = new Map<string, AttendanceRecord>();
-      batchDateAttendance.forEach(a => recordByTraineeId.set(a.traineeId, a));
+      batchAttendance
+        .filter((a) => a.date === selectedDate)
+        .forEach((a) => recordByTraineeId.set(a.traineeId, a));
 
-      // 3. Populate state map
-      const newMap: Record<string, TraineeAttendanceItem> = {};
-      batchTrainees.forEach(t => {
-        const existingRecord = recordByTraineeId.get(t.id);
-        if (existingRecord) {
-          newMap[t.id] = {
-            id: t.id,
-            trainee: t,
-            status: existingRecord.status,
-            initialStatus: existingRecord.status,
-            isSavedInDb: true,
-            dbRecordId: existingRecord.id
-          };
-        } else {
-          // If no record exists, keep as 'Unmarked' so user explicitly marks them
-          newMap[t.id] = {
-            id: t.id,
-            trainee: t,
-            status: 'Unmarked',
-            initialStatus: 'Unmarked',
-            isSavedInDb: false
-          };
+      // Load saved edit reason & unlock state from localStorage
+      try {
+        const storedReason =
+          localStorage.getItem(getEditReasonStorageKey(selectedBatch, selectedDate)) || '';
+        setLastEditReason(storedReason);
+
+        const storedUnlocked =
+          localStorage.getItem(getUnlockedStorageKey(selectedBatch, selectedDate)) === '1';
+        if (storedUnlocked) {
+          setUnlockedDays((prev) => ({
+            ...prev,
+            [`${selectedBatch}_${selectedDate}`]: true,
+          }));
         }
+      } catch {
+        setLastEditReason('');
+      }
+
+      // Load local draft for today (if present)
+      let parsedDraft: DraftPayload | null = null;
+      if (selectedDate === todayDateStr) {
+        try {
+          const rawDraft = localStorage.getItem(
+            getDraftStorageKey(selectedBatch, selectedDate)
+          );
+          if (rawDraft) {
+            parsedDraft = JSON.parse(rawDraft) as DraftPayload;
+          }
+        } catch {
+          parsedDraft = null;
+        }
+      }
+
+      const newMap: Record<string, TraineeAttendanceItem> = {};
+      batchTrainees.forEach((t) => {
+        const existingRecord = recordByTraineeId.get(t.id);
+        const initialStatus: ExtendedAttendanceStatus = existingRecord
+          ? existingRecord.status
+          : 'Unmarked';
+        const initialReason =
+          existingRecord && existingRecord.status === 'Leave'
+            ? existingRecord.remarks || ''
+            : '';
+
+        const draftEntry = parsedDraft?.marks?.[t.id];
+        const status = draftEntry ? draftEntry.status : initialStatus;
+        const leaveReason = draftEntry
+          ? draftEntry.status === 'Leave'
+            ? draftEntry.leaveReason || ''
+            : ''
+          : initialReason;
+
+        newMap[t.id] = {
+          id: t.id,
+          trainee: t,
+          status,
+          initialStatus,
+          leaveReason,
+          initialLeaveReason: initialReason,
+          isSavedInDb: Boolean(existingRecord),
+          dbRecordId: existingRecord?.id,
+        };
       });
 
       setAttendanceMap(newMap);
     } catch (error) {
-      console.warn("Notice fetching trainees/attendance:", error);
-      setSaveErrorMessage("হাজিরা তথ্য লোড করতে সমস্যা হয়েছে।");
+      console.warn('Notice fetching trainees/attendance:', error);
+      showFeedback('error', 'হাজিরা তথ্য লোড করতে সমস্যা হয়েছে।');
     } finally {
       setFetchingTrainees(false);
     }
   };
 
-  // Safe Selector Change with Unsaved Confirmation
-  const requestSelectorChange = (type: 'batch' | 'date' | 'institute', value: string) => {
-    if (isTrainer && (type === 'batch' || type === 'institute')) {
-      setPermissionNotice("প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা পরিচালনা করতে পারবেন।");
-      return;
-    }
-    if (type === 'date' && batchStartDateIso && value < batchStartDateIso) {
-      setSaveErrorMessage(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা নেওয়া যাবে না।`);
-      setTimeout(() => setSaveErrorMessage(''), 5000);
-      return;
-    }
-    if (hasUnsavedChanges) {
-      setPendingChange({ type, value });
-    } else {
-      applySelectorChange(type, value);
-    }
-  };
-
-  const applySelectorChange = (type: 'batch' | 'date' | 'institute', value: string) => {
-    if (isTrainer && (type === 'batch' || type === 'institute')) {
-      return;
-    }
-    if (type === 'institute') {
-      setSelectedInstitute(value);
-      const firstBatch = batches.find(b => b.instituteId === value);
-      if (firstBatch) {
-        setSelectedBatch(firstBatch.id);
-        if (firstBatch.tradeId) setSelectedTrade(firstBatch.tradeId);
+  // Persist localStorage draft automatically whenever today's attendanceMap has unsaved marks
+  useEffect(() => {
+    if (!selectedBatch || !selectedDate || !isTodayDate || fetchingTrainees) return;
+    const key = getDraftStorageKey(selectedBatch, selectedDate);
+    try {
+      const changed: DraftPayload['marks'] = {};
+      let count = 0;
+      Object.values(attendanceMap).forEach((item) => {
+        if (
+          item.status !== item.initialStatus ||
+          (item.leaveReason || '') !== (item.initialLeaveReason || '')
+        ) {
+          changed[item.id] = {
+            status: item.status,
+            leaveReason: item.leaveReason,
+          };
+          count++;
+        }
+      });
+      if (count > 0) {
+        const payload: DraftPayload = { marks: changed, updatedAt: Date.now() };
+        localStorage.setItem(key, JSON.stringify(payload));
       } else {
-        setSelectedBatch('');
+        localStorage.removeItem(key);
       }
-    } else if (type === 'batch') {
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [attendanceMap, selectedBatch, selectedDate, isTodayDate, fetchingTrainees]);
+
+  // Safe selector change with unsaved check
+  const applySelectorChange = (type: 'batch' | 'date', value: string) => {
+    if (type === 'batch') {
+      if (isTrainer) return;
       setSelectedBatch(value);
-      const b = batches.find(x => x.id === value);
+      const b = batches.find((x) => x.id === value);
       if (b?.tradeId) setSelectedTrade(b.tradeId);
       if (b?.instituteId) setSelectedInstitute(b.instituteId);
     } else if (type === 'date') {
@@ -348,1148 +516,1178 @@ const Attendance: React.FC = () => {
     setPendingChange(null);
   };
 
-  const handleDiscardAndProceed = () => {
-    if (pendingChange) {
-      applySelectorChange(pendingChange.type, pendingChange.value);
+  const requestSelectorChange = (type: 'batch' | 'date', value: string) => {
+    if (type === 'batch' && isTrainer) return;
+    if (type === 'date') {
+      if (value < minNavDateStr || value > todayDateStr) return;
+    }
+    if (hasUnsavedChanges) {
+      setPendingChange({ type, value });
+    } else {
+      applySelectorChange(type, value);
     }
   };
 
-  const handleSaveAndProceed = async () => {
-    const success = await executeSave();
-    if (success && pendingChange) {
-      applySelectorChange(pendingChange.type, pendingChange.value);
-    }
+  const handleStepDate = (delta: number) => {
+    const nextDate = addDaysIso(selectedDate, delta);
+    if (nextDate < minNavDateStr || nextDate > todayDateStr) return;
+    triggerHaptic(8);
+    requestSelectorChange('date', nextDate);
   };
 
-  // Individual trainee status click with PROPER edit_attendance check
-  const setStatus = (traineeId: string, newStatus: AttendanceStatus) => {
+  // Status click / swipe handler
+  const handleSelectStatus = (traineeId: string, targetStatus: AttendanceStatus) => {
     const item = attendanceMap[traineeId];
     if (!item) return;
 
-    // Check batch start date constraint
-    if (isBeforeBatchStart) {
-      setPermissionNotice(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা নেওয়া যাবে না।`);
-      setTimeout(() => setPermissionNotice(''), 4500);
+    if (isDayLocked) {
+      showFeedback('error', 'এই দিনের হাজিরা লক করা। পরিবর্তন করতে "সম্পাদনা" চাপুন।');
       return;
     }
 
-    // Check basic take permission
-    if (!canTakeAttendance) {
-      setPermissionNotice('আপনার হাজিরা গ্রহণের অনুমতি নেই।');
-      setTimeout(() => setPermissionNotice(''), 3000);
+    if (!canTakeAttendance && !canEditAttendance) {
+      showFeedback('error', 'আপনার হাজিরা গ্রহণের অনুমতি নেই।');
       return;
     }
 
-    // STRICT edit_attendance PERMISSION CHECK:
-    // If the trainee record was already saved in the database and user lacks edit_attendance permission, block!
-    if (item.isSavedInDb && !canEditAttendance) {
-      setPermissionNotice(`"${item.trainee.nameBn || item.trainee.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। সংরক্ষিত রেকর্ড পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
-      setTimeout(() => setPermissionNotice(''), 4500);
+    if (targetStatus === 'Leave') {
+      if (item.status === 'Leave') {
+        setAttendanceMap((prev) => {
+          const cur = prev[traineeId];
+          if (!cur) return prev;
+          return {
+            ...prev,
+            [traineeId]: { ...cur, status: 'Unmarked', leaveReason: '' },
+          };
+        });
+      } else {
+        setLeaveTargetTrainee(item.trainee);
+      }
       return;
     }
 
-    setAttendanceMap(prev => {
-      const current = prev[traineeId];
-      if (!current) return prev;
+    setAttendanceMap((prev) => {
+      const cur = prev[traineeId];
+      if (!cur) return prev;
+      const nextStatus: ExtendedAttendanceStatus =
+        cur.status === targetStatus ? 'Unmarked' : targetStatus;
       return {
         ...prev,
         [traineeId]: {
-          ...current,
-          status: current.status === newStatus ? 'Unmarked' : newStatus
-        }
+          ...cur,
+          status: nextStatus,
+          leaveReason: '',
+        },
       };
     });
   };
 
-  // Bulk actions trigger with edit_attendance awareness
-  const handleBulkActionClick = (status: ExtendedAttendanceStatus) => {
-    if (isBeforeBatchStart) {
-      setPermissionNotice(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা নেওয়া যাবে না।`);
-      setTimeout(() => setPermissionNotice(''), 4500);
-      return;
-    }
-
-    if (!canTakeAttendance) {
-      setPermissionNotice('আপনার হাজিরা গ্রহণের অনুমতি নেই।');
-      setTimeout(() => setPermissionNotice(''), 3000);
-      return;
-    }
-
-    const savedCount = Object.values(attendanceMap).filter(i => i.isSavedInDb).length;
-    
-    // If user doesn't have edit_attendance and all are already saved, inform and block
-    if (!canEditAttendance && savedCount === allTraineesInBatch.length && allTraineesInBatch.length > 0) {
-      setPermissionNotice("সকল শিক্ষার্থীর হাজিরা ইতিমধ্যে সংরক্ষিত। সংরক্ষিত হাজিরা পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।");
-      setTimeout(() => setPermissionNotice(''), 4500);
-      return;
-    }
-
-    let title = '';
-    let description = '';
-
-    if (status === 'Present') {
-      title = 'সকল শিক্ষার্থীকে "উপস্থিত" চিহ্নিতকরণ';
-      description = canEditAttendance 
-        ? 'সকল সক্রিয় শিক্ষার্থীর আজকের হাজিরা "উপস্থিত" হিসেবে নির্ধারণ করা হবে।' 
-        : 'শুধুমাত্র অসংরক্ষিত ও অনির্ধারিত শিক্ষার্থীদের "উপস্থিত" করা হবে (সংরক্ষিত রেকর্ড অপরিবর্তিত থাকবে)।';
-    } else if (status === 'Absent') {
-      title = 'সকল শিক্ষার্থীকে "অনুপস্থিত" চিহ্নিতকরণ';
-      description = canEditAttendance 
-        ? 'সকল শিক্ষার্থীর আজকের হাজিরা "অনুপস্থিত" হিসেবে নির্ধারণ করা হবে।' 
-        : 'শুধুমাত্র অসংরক্ষিত শিক্ষার্থীদের "অনুপস্থিত" করা হবে।';
-    }
-
-    setBulkConfirmModal({ status, title, description });
+  const handleSwipeStatus = (traineeId: string, targetStatus: 'Present' | 'Absent') => {
+    if (isDayLocked || (!canTakeAttendance && !canEditAttendance)) return;
+    setAttendanceMap((prev) => {
+      const cur = prev[traineeId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [traineeId]: {
+          ...cur,
+          status: targetStatus,
+          leaveReason: '',
+        },
+      };
+    });
   };
 
-  const applyBulkAction = (status: ExtendedAttendanceStatus) => {
-    setAttendanceMap(prev => {
+  const handlePickLeaveReason = (reason: string) => {
+    if (!leaveTargetTrainee) return;
+    const tid = leaveTargetTrainee.id;
+    triggerHaptic(10);
+    setAttendanceMap((prev) => {
+      const cur = prev[tid];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [tid]: {
+          ...cur,
+          status: 'Leave',
+          leaveReason: reason,
+        },
+      };
+    });
+    setLeaveTargetTrainee(null);
+  };
+
+  // Fill remaining unmarked students as Present
+  const handleFillRemaining = () => {
+    if (isDayLocked || (!canTakeAttendance && !canEditAttendance)) return;
+    triggerHaptic(12);
+    setAttendanceMap((prev) => {
       const next = { ...prev };
-      Object.keys(next).forEach(tid => {
-        const item = next[tid];
-        // If user lacks edit_attendance, DO NOT modify already saved records!
-        if (item.isSavedInDb && !canEditAttendance) {
-          return;
+      Object.keys(next).forEach((tid) => {
+        if (next[tid].status === 'Unmarked') {
+          next[tid] = { ...next[tid], status: 'Present', leaveReason: '' };
         }
-        next[tid] = { ...item, status };
       });
       return next;
     });
-
-    if (!canEditAttendance) {
-      setPermissionNotice("যেহেতু সংরক্ষিত হাজিরা পরিবর্তনের অনুমতি নেই, তাই শুধুমাত্র অসংরক্ষিত শিক্ষার্থীদের হাজিরা চিহ্নিত করা হয়েছে।");
-      setTimeout(() => setPermissionNotice(''), 4000);
-    }
-
-    setBulkConfirmModal(null);
   };
 
-  // Revert unsaved changes
-  const handleResetToSaved = () => {
-    setAttendanceMap(prev => {
+  // Bulk menu actions: সবাই উপস্থিত / সবাই অনুপস্থিত / রিসেট
+  const handleBulkMenuAction = (action: 'Present' | 'Absent' | 'Reset') => {
+    setMenuOpen(false);
+    if (isDayLocked) {
+      showFeedback('error', 'দিনটি লক করা। পরিবর্তনের আগে "সম্পাদনা" চাপুন।');
+      return;
+    }
+    if (!canTakeAttendance && !canEditAttendance) {
+      showFeedback('error', 'আপনার হাজিরা গ্রহণের অনুমতি নেই।');
+      return;
+    }
+    triggerHaptic(12);
+
+    const targetStatus: ExtendedAttendanceStatus =
+      action === 'Reset' ? 'Unmarked' : action;
+
+    setAttendanceMap((prev) => {
       const next = { ...prev };
-      Object.keys(next).forEach(tid => {
-        next[tid] = { ...next[tid], status: next[tid].initialStatus };
+      Object.keys(next).forEach((tid) => {
+        next[tid] = {
+          ...next[tid],
+          status: targetStatus,
+          leaveReason: '',
+        };
       });
       return next;
     });
   };
 
-  // Delete attendance records for this selected batch and date
-  const handleDeleteDateAttendance = async () => {
-    if (!isDeletionAllowed) {
-      setPermissionNotice("সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে। ডাটা মুছতে চাইলে সেটিংস পেজ থেকে 'ডাটা ডিলিট অনুমতি' চালু করুন।");
-      setTimeout(() => setPermissionNotice(''), 4500);
-      return;
-    }
-
-    if (!selectedBatch || !selectedDate) return;
-
-    if (isTrainer && userProfile?.batchId && selectedBatch !== userProfile.batchId) {
-      setPermissionNotice("অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা রেকর্ড মুছতে পারেন।");
-      setTimeout(() => setPermissionNotice(''), 4000);
-      return;
-    }
-
-    const savedCount = Object.values(attendanceMap).filter(item => item.isSavedInDb).length;
-    if (savedCount === 0) {
-      setPermissionNotice("এই তারিখে মোছার মতো কোনো সংরক্ষিত হাজিরা রেকর্ড নেই।");
-      setTimeout(() => setPermissionNotice(''), 3000);
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: 'হাজিরা রেকর্ড মুছে ফেলার নিশ্চিতকরণ',
-      message: `আপনি কি নিশ্চিতভাবে "${formatBengaliDate(selectedDate)}" তারিখের সংরক্ষিত সকল (${toBn(savedCount)}টি) হাজিরা রেকর্ড ডাটাবেজ থেকে মুছে ফেলতে চান?`,
-      detail: 'এই তারিখের সংরক্ষিত হাজিরা ডাটাবেজ থেকে স্থায়ীভাবে মুছে যাবে। প্রয়োজন হলে পুনরায় হাজিরা প্রদান করতে পারবেন।',
-      confirmText: 'হ্যাঁ, হাজিরা রেকর্ড মুছুন',
-      cancelText: 'বাতিল',
-      variant: 'danger'
+  // Discard unsaved changes (বাতিল)
+  const handleDiscardChanges = () => {
+    triggerHaptic(8);
+    setAttendanceMap((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((tid) => {
+        next[tid] = {
+          ...next[tid],
+          status: next[tid].initialStatus,
+          leaveReason: next[tid].initialLeaveReason || '',
+        };
+      });
+      return next;
     });
-    if (!confirmed) return;
-
     try {
-      setSaving(true);
-      const count = await deleteAttendanceForBatchAndDate(selectedBatch, selectedDate);
-      
-      // Reset local state to unmarked and unsaved
-      setAttendanceMap(prev => {
-        const next = { ...prev };
-        Object.keys(next).forEach(tid => {
-          next[tid] = {
-            ...next[tid],
-            status: 'Unmarked',
-            initialStatus: 'Unmarked',
-            isSavedInDb: false,
-            dbRecordId: undefined
-          };
-        });
-        return next;
-      });
-
-      setSaveSuccessMessage(`${selectedDate} তারিখের ${count}টি হাজিরা রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।`);
-      setTimeout(() => setSaveSuccessMessage(''), 4000);
-    } catch (err: any) {
-      setSaveErrorMessage("হাজিরা রেকর্ড মুছতে সমস্যা হয়েছে: " + err.message);
-    } finally {
-      setSaving(false);
+      localStorage.removeItem(getDraftStorageKey(selectedBatch, selectedDate));
+    } catch {
+      // ignore
     }
   };
 
-  // Core Save logic
-  const executeSave = async (): Promise<boolean> => {
+  // Unlock locked day with audited reason (throws on error so EditUnlockReasonSheet runner reflects reality)
+  const handleConfirmUnlockReason = async (reason: string) => {
+    if (!selectedBatch || !selectedDate) {
+      throw new ActionMessageError('ব্যাচ বা তারিখ নির্বাচিত নেই।');
+    }
+    const actor = userProfile
+      ? {
+          userId: userProfile.id || '',
+          user: userProfile.name || 'User',
+          userRole: userProfile.role || '',
+        }
+      : undefined;
+
+    await recordSimpleAuditLog({
+      action: 'update',
+      module: 'attendance',
+      collectionName: 'attendance',
+      targetId: `${selectedBatch}_${selectedDate}`,
+      targetLabel: `${currentBatch?.name || selectedBatch} (${selectedDate})`,
+      title: `হাজিরা সম্পাদনা আনলক: ${currentBatch?.name || selectedBatch} (${formatBengaliDate(
+        selectedDate
+      )})`,
+      details: `আনলকের কারণ: ${reason}`,
+      actor,
+    });
+
+    setLastEditReason(reason);
+    setUnlockedDays((prev) => ({ ...prev, [dayKey]: true }));
+    try {
+      localStorage.setItem(getEditReasonStorageKey(selectedBatch, selectedDate), reason);
+      localStorage.setItem(getUnlockedStorageKey(selectedBatch, selectedDate), '1');
+    } catch {
+      // ignore
+    }
+    triggerHaptic(14);
+  };
+
+  // Core batch attendance save operation (throws on validation or backend failure)
+  const validateAttendanceSave = (): boolean => {
     if (allTraineesInBatch.length === 0) return false;
-    
-    // Validate attendance date: Attendance cannot be saved before batch start date
     if (isBeforeBatchStart) {
-      setSaveErrorMessage(`ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর পূর্বের কোনো তারিখে হাজিরা সংরক্ষণ সম্ভব নয়।`);
+      showFeedback(
+        'error',
+        `ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর আগে হাজিরা নেওয়া যাবে না।`
+      );
       return false;
     }
 
-    const markedItems = Object.values(attendanceMap).filter(item => item.status !== 'Unmarked');
+    const markedItems = Object.values(attendanceMap).filter(
+      (item) => item.status !== 'Unmarked'
+    );
     if (markedItems.length === 0) {
-      setSaveErrorMessage("অনুগ্রহ করে অন্তত একজন শিক্ষার্থীর হাজিরা নির্বাচন করুন অথবা 'সবাই উপস্থিত' দিন।");
+      showFeedback('error', 'অনুগ্রহ করে অন্তত একজন শিক্ষার্থীর হাজিরা চিহ্নিত করুন।');
       return false;
     }
 
-    // Double-check permission for dirty items
-    for (const item of dirtyItems) {
-      if (item.isSavedInDb && !canEditAttendance) {
-        setSaveErrorMessage(`সংরক্ষিত হাজিরা পরিবর্তনের অনুমতি আপনার নেই (${item.trainee.nameBn})।`);
-        return false;
-      }
-    }
-
-    // Strict Trainer Batch Guard
     if (isTrainer && userProfile?.batchId && selectedBatch !== userProfile.batchId) {
-      setSaveErrorMessage("অননুমোদিত পদক্ষেপ: প্রশিক্ষক শুধুমাত্র তাঁর নির্ধারিত ব্যাচের হাজিরা সংরক্ষণ করতে পারবেন।");
+      showFeedback('error', 'প্রশিক্ষক শুধুমাত্র নির্ধারিত ব্যাচের হাজিরা সংরক্ষণ করতে পারেন।');
       return false;
     }
 
-    setSaving(true);
-    setSaveSuccessMessage('');
-    setSaveErrorMessage('');
-
-    try {
-      const recordsToSave: AttendanceRecord[] = [];
-
-      markedItems.forEach(item => {
-        const compositeId = item.dbRecordId || `ATT_${selectedBatch}_${selectedDate}_${item.id}`;
-        recordsToSave.push({
-          id: compositeId,
-          batchId: selectedBatch,
-          instituteId: selectedInstitute,
-          tradeId: selectedTrade,
-          date: selectedDate,
-          traineeId: item.id,
-          status: item.status as AttendanceStatus,
-          remarks: item.status === 'Leave' ? 'ছুটি' : undefined,
-          recordedBy: userProfile?.name || 'User',
-          createdAt: item.isSavedInDb ? Date.now() : Date.now(),
-          updatedAt: Date.now()
-        });
-      });
-
-      const traineeNamesMap: Record<string, string> = {};
-      markedItems.forEach(item => {
-        traineeNamesMap[item.id] = item.trainee.nameBn || item.trainee.nameEn || item.id;
-      });
-
-      const result = await dataService.saveAttendanceBatch(recordsToSave, {
-        traineeNamesMap,
-        batchName: currentBatch?.name || selectedBatch,
-        actor: userProfile
-          ? {
-              userId: userProfile.id || '',
-              user: userProfile.name || 'User',
-              userRole: userProfile.role || '',
-            }
-          : undefined,
-      });
-
-      if (!result.success && result.error) {
-        setSaveErrorMessage(`হাজিরা সংরক্ষণে সমস্যা হয়েছে: ${result.error}`);
-        return false;
-      }
-
-      // Update local state to mark as saved
-      setAttendanceMap(prev => {
-        const next = { ...prev };
-        recordsToSave.forEach(rec => {
-          if (next[rec.traineeId]) {
-            next[rec.traineeId] = {
-              ...next[rec.traineeId],
-              status: rec.status,
-              initialStatus: rec.status,
-              isSavedInDb: true,
-              dbRecordId: rec.id
-            };
-          }
-        });
-        return next;
-      });
-
-      setSaveSuccessMessage(`${toBn(recordsToSave.length)} জন শিক্ষার্থীর হাজিরা সফলভাবে সংরক্ষিত হয়েছে।`);
-      setTimeout(() => setSaveSuccessMessage(''), 3500);
-      return true;
-
-    } catch (err: any) {
-      console.warn("Error saving attendance batch:", err);
-      setSaveErrorMessage("সংরক্ষণে ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।");
-      return false;
-    } finally {
-      setSaving(false);
-    }
+    return true;
   };
 
-  // Calculations & Metrics
+  const performSaveBatch = async (): Promise<{ count: number }> => {
+    if (allTraineesInBatch.length === 0) {
+      throw new ActionMessageError('এই ব্যাচে কোনো শিক্ষার্থী নেই।');
+    }
+    if (isBeforeBatchStart) {
+      throw new ActionMessageError(
+        `ব্যাচ শুরুর তারিখ (${formatBengaliDate(batchStartDateIso)}) এর আগে হাজিরা নেওয়া যাবে না।`
+      );
+    }
+
+    const markedItems = Object.values(attendanceMap).filter(
+      (item) => item.status !== 'Unmarked'
+    );
+    if (markedItems.length === 0) {
+      throw new ActionMessageError('অনুগ্রহ করে অন্তত একজন শিক্ষার্থীর হাজিরা চিহ্নিত করুন।');
+    }
+
+    if (isTrainer && userProfile?.batchId && selectedBatch !== userProfile.batchId) {
+      throw new ActionMessageError('প্রশিক্ষক শুধুমাত্র নির্ধারিত ব্যাচের হাজিরা সংরক্ষণ করতে পারেন।');
+    }
+
+    const now = Date.now();
+    const recordsToSave: AttendanceRecord[] = markedItems.map((item) => {
+      const compositeId =
+        item.dbRecordId || `ATT_${selectedBatch}_${selectedDate}_${item.id}`;
+      return {
+        id: compositeId,
+        batchId: selectedBatch,
+        instituteId: selectedInstitute,
+        tradeId: selectedTrade,
+        date: selectedDate,
+        traineeId: item.id,
+        status: item.status as AttendanceStatus,
+        remarks:
+          item.status === 'Leave' ? item.leaveReason || 'অন্যান্য' : undefined,
+        recordedBy: userProfile?.name || 'User',
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+
+    const traineeNamesMap: Record<string, string> = {};
+    markedItems.forEach((item) => {
+      traineeNamesMap[item.id] = getDisplayName(item.trainee);
+    });
+
+    const result = await dataService.saveAttendanceBatch(recordsToSave, {
+      traineeNamesMap,
+      batchName: currentBatch?.name || selectedBatch,
+      actor: userProfile
+        ? {
+            userId: userProfile.id || '',
+            user: userProfile.name || 'User',
+            userRole: userProfile.role || '',
+          }
+        : undefined,
+    });
+
+    if (!result.success) {
+      const batchErr = new Error(result.error || 'হাজিরা সংরক্ষণে সমস্যা হয়েছে');
+      (batchErr as any).code = result.errorCode;
+      throw batchErr;
+    }
+
+    // Sync local state & lock the day
+    setAttendanceMap((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((tid) => {
+        const cur = next[tid];
+        const savedRec = recordsToSave.find((r) => r.traineeId === tid);
+        if (savedRec) {
+          next[tid] = {
+            ...cur,
+            status: savedRec.status,
+            initialStatus: savedRec.status,
+            leaveReason: savedRec.status === 'Leave' ? savedRec.remarks || '' : '',
+            initialLeaveReason:
+              savedRec.status === 'Leave' ? savedRec.remarks || '' : '',
+            isSavedInDb: true,
+            dbRecordId: savedRec.id,
+          };
+        } else {
+          next[tid] = {
+            ...cur,
+            initialStatus: cur.status,
+            initialLeaveReason: cur.leaveReason || '',
+          };
+        }
+      });
+      return next;
+    });
+
+    // Merge saved records into local allBatchAttendance so 7-day dots & sheets update instantly
+    setAllBatchAttendance((prev) => {
+      const filtered = prev.filter(
+        (r) => !(r.batchId === selectedBatch && r.date === selectedDate)
+      );
+      return [...filtered, ...recordsToSave];
+    });
+
+    // Re-lock the day and clear localStorage draft + unlock flag
+    setUnlockedDays((prev) => {
+      const copy = { ...prev };
+      delete copy[dayKey];
+      return copy;
+    });
+    try {
+      localStorage.removeItem(getDraftStorageKey(selectedBatch, selectedDate));
+      localStorage.removeItem(getUnlockedStorageKey(selectedBatch, selectedDate));
+    } catch {
+      // ignore
+    }
+
+    triggerHaptic(16);
+    showFeedback(
+      'success',
+      `${toBn(recordsToSave.length)} জন শিক্ষার্থীর হাজিরা সংরক্ষিত ও লক করা হয়েছে।`
+    );
+    return { count: recordsToSave.length };
+  };
+
+  const attendanceSaveSteps: ActionStep<{ count: number }>[] = useMemo(
+    () => [
+      {
+        id: 'save-attendance-batch',
+        label: 'দৈনিক হাজিরা সংরক্ষণ করা হচ্ছে',
+        run: () => performSaveBatch(),
+        describe: (res) => `${toBn(res.count)} জন শিক্ষার্থীর হাজিরা সংরক্ষিত`,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      allTraineesInBatch.length,
+      attendanceMap,
+      batchStartDateIso,
+      currentBatch?.name,
+      dayKey,
+      isBeforeBatchStart,
+      isTrainer,
+      selectedBatch,
+      selectedDate,
+      selectedInstitute,
+      selectedTrade,
+      userProfile,
+    ]
+  );
+
+  const saveRunner = useActionRunner(attendanceSaveSteps);
+  const pendingSaveRunner = useActionRunner(attendanceSaveSteps);
+  const isAnySaveBusy =
+    saveRunner.phase === 'running' ||
+    saveRunner.phase === 'waiting' ||
+    pendingSaveRunner.phase === 'running' ||
+    pendingSaveRunner.phase === 'waiting';
+
+  // Reset saveRunner when user modifies marks again after a completed save or switches batch/date
+  useEffect(() => {
+    saveRunner.reset();
+    pendingSaveRunner.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBatch, selectedDate]);
+
+  useEffect(() => {
+    if (hasUnsavedChanges && saveRunner.phase === 'success') {
+      saveRunner.reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedChanges]);
+
+  // Compute 7-day history summary per trainee (last 7 days ending on selectedDate)
+  const sevenDayDates = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => addDaysIso(selectedDate, i - 6));
+  }, [selectedDate]);
+
+  const sevenDaySummaryByTrainee = useMemo(() => {
+    const recordLookup = new Map<string, AttendanceStatus>();
+    allBatchAttendance.forEach((rec) => {
+      recordLookup.set(`${rec.traineeId}_${rec.date}`, rec.status);
+    });
+
+    const map: Record<string, SevenDaySummary> = {};
+    allTraineesInBatch.forEach((t) => {
+      let present = 0;
+      let marked = 0;
+
+      const dots: DayDotItem[] = sevenDayDates.map((iso) => {
+        const liveItem = iso === selectedDate ? attendanceMap[t.id] : undefined;
+        const status: ExtendedAttendanceStatus = liveItem
+          ? liveItem.status
+          : recordLookup.get(`${t.id}_${iso}`) || 'Unmarked';
+
+        if (status !== 'Unmarked') {
+          marked++;
+          if (status === 'Present') present++;
+        }
+        const dayNum = parseInt(iso.split('-')[2] || '0', 10);
+        return { date: iso, dayNumber: dayNum, status };
+      });
+
+      const ratePercent = marked > 0 ? Math.round((present / marked) * 100) : null;
+      const isLow = ratePercent !== null && ratePercent < 70;
+      map[t.id] = {
+        dots,
+        presentCount: present,
+        markedCount: marked,
+        ratePercent,
+        isLow,
+      };
+    });
+
+    return map;
+  }, [allTraineesInBatch, allBatchAttendance, sevenDayDates, selectedDate, attendanceMap]);
+
+  // Summary Metrics
   const totalCount = allTraineesInBatch.length;
-  const presentCount = Object.values(attendanceMap).filter(a => a.status === 'Present').length;
-  const absentCount = Object.values(attendanceMap).filter(a => a.status === 'Absent').length;
-  const leaveCount = Object.values(attendanceMap).filter(a => a.status === 'Leave').length;
-  const unmarkedCount = Object.values(attendanceMap).filter(a => a.status === 'Unmarked').length;
-  const savedInDbCount = Object.values(attendanceMap).filter(a => a.isSavedInDb).length;
-  const dirtyCount = dirtyItems.length;
+  const presentCount = useMemo(
+    () => Object.values(attendanceMap).filter((a) => a.status === 'Present').length,
+    [attendanceMap]
+  );
+  const absentCount = useMemo(
+    () => Object.values(attendanceMap).filter((a) => a.status === 'Absent').length,
+    [attendanceMap]
+  );
+  const leaveCount = useMemo(
+    () => Object.values(attendanceMap).filter((a) => a.status === 'Leave').length,
+    [attendanceMap]
+  );
+  const unmarkedCount = useMemo(
+    () => Object.values(attendanceMap).filter((a) => a.status === 'Unmarked').length,
+    [attendanceMap]
+  );
+  const lowAttendanceCount = useMemo(
+    () =>
+      allTraineesInBatch.filter((t) => sevenDaySummaryByTrainee[t.id]?.isLow).length,
+    [allTraineesInBatch, sevenDaySummaryByTrainee]
+  );
 
-  const presentPercent = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
-  const absentPercent = totalCount > 0 ? Math.round((absentCount / totalCount) * 100) : 0;
-  const leavePercent = totalCount > 0 ? Math.round((leaveCount / totalCount) * 100) : 0;
+  const presentPercent =
+    totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
-  const currentInstitute = institutes.find(i => i.id === selectedInstitute);
-  const currentTrade = trades.find(t => t.id === selectedTrade);
-
-  // Filtered and Searched Trainee List
+  // Filtered & sorted list (search by name only)
   const displayedTrainees = useMemo(() => {
-    return allTraineesInBatch.filter(t => {
+    const filtered = allTraineesInBatch.filter((t) => {
       const item = attendanceMap[t.id];
       if (!item) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchNameBn = (t.nameBn || '').includes(q);
-        const matchNameEn = (t.nameEn || '').toLowerCase().includes(q);
-        const matchId = (t.traineeId || t.id).toLowerCase().includes(q);
-        const matchReg = (t.registrationNumber || '').toLowerCase().includes(q);
-        if (!matchNameBn && !matchNameEn && !matchId && !matchReg) return false;
+        const matchBn = (t.nameBn || '').toLowerCase().includes(q);
+        const matchEn = (t.nameEn || '').toLowerCase().includes(q);
+        if (!matchBn && !matchEn) return false;
       }
 
-      if (activeFilterTab === 'dirty') return item.status !== item.initialStatus;
-      if (activeFilterTab === 'unmarked') return item.status === 'Unmarked';
       if (activeFilterTab === 'present') return item.status === 'Present';
       if (activeFilterTab === 'absent') return item.status === 'Absent';
       if (activeFilterTab === 'leave') return item.status === 'Leave';
+      if (activeFilterTab === 'unmarked') return item.status === 'Unmarked';
+      if (activeFilterTab === 'low') return Boolean(sevenDaySummaryByTrainee[t.id]?.isLow);
 
       return true;
     });
-  }, [allTraineesInBatch, attendanceMap, searchQuery, activeFilterTab]);
+
+    if (sortOption === 'name') {
+      return [...filtered].sort((a, b) =>
+        getDisplayName(a).localeCompare(getDisplayName(b), 'bn')
+      );
+    }
+
+    if (sortOption === 'unmarked_first') {
+      return [...filtered].sort((a, b) => {
+        const aUnmarked = attendanceMap[a.id]?.status === 'Unmarked' ? 0 : 1;
+        const bUnmarked = attendanceMap[b.id]?.status === 'Unmarked' ? 0 : 1;
+        return aUnmarked - bUnmarked;
+      });
+    }
+
+    return filtered;
+  }, [
+    allTraineesInBatch,
+    attendanceMap,
+    searchQuery,
+    activeFilterTab,
+    sortOption,
+    sevenDaySummaryByTrainee,
+  ]);
+
+  // Month range for detail & heatmap sheets (days 1 to today/selected month end)
+  const activeMonthPrefix = selectedDate.slice(0, 7);
+  const maxDayInSheet = useMemo(() => {
+    if (activeMonthPrefix === todayDateStr.slice(0, 7)) {
+      return Math.max(1, parseInt(todayDateStr.split('-')[2] || '15', 10));
+    }
+    const [y, m] = activeMonthPrefix.split('-').map((n) => parseInt(n, 10));
+    if (y && m) {
+      return new Date(y, m, 0).getDate();
+    }
+    return 15;
+  }, [activeMonthPrefix, todayDateStr]);
+
+  const liveStatusByTraineeId = useMemo(() => {
+    const out: Record<string, ExtendedAttendanceStatus> = {};
+    Object.values(attendanceMap).forEach((item) => {
+      out[item.id] = item.status;
+    });
+    return out;
+  }, [attendanceMap]);
+
+  const canGoPrevDate = selectedDate > minNavDateStr;
+  const canGoNextDate = selectedDate < todayDateStr;
+  const canUnlockOrEdit = canTakeAttendance || canEditAttendance;
+
+  const currentInstitute = institutes.find((i) => i.id === selectedInstitute);
+  const currentTrade = trades.find((t) => t.id === selectedTrade);
+  void currentInstitute;
+  void currentTrade;
+
+  const progressDeg = Math.round((presentPercent / 100) * 360);
 
   if (loading) {
     return (
-      <div className="space-y-4 pb-20 max-w-7xl mx-auto">
-        <div className="h-6 w-48 bg-theme-surface-subtle rounded animate-pulse" />
-        <TableSkeleton rows={8} cols={6} />
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+        <div className="max-w-[560px] mx-auto px-3.5 py-4 space-y-3">
+          <div className="h-14 rounded-2xl bg-[var(--surface)] border border-[var(--border)] animate-pulse" />
+          <div className="h-12 rounded-2xl bg-[var(--surface)] border border-[var(--border)] animate-pulse" />
+          <div className="h-36 rounded-2xl bg-[var(--surface)] border border-[var(--border)] animate-pulse" />
+          <div className="space-y-2.5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-16 rounded-2xl bg-[var(--surface)] border border-[var(--border)] animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 pb-32 max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-      {/* ======================================================== */}
-      {/* 1. PAGE HEADER (RESPONSIVE)                              */}
-      {/* ======================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-black text-theme-text-primary tracking-tight">
-            দৈনিক হাজিরা
-          </h1>
-          <p className="text-xs sm:text-sm text-theme-text-secondary font-medium">
-            {formatBengaliDate(selectedDate)}
-            {currentBatch ? ` • ${currentBatch.name}` : ''}
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-2.5 shrink-0">
-          {/* View Mode Switcher (Grid Cards vs Table) */}
-          <div className="inline-flex items-center p-1 bg-theme-surface-subtle rounded-2xl border border-theme-border shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-theme-surface text-theme-text-primary shadow-2xs border border-theme-border'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary'
-              }`}
-              title="কার্ড গ্রিড ভিউ"
-            >
-              <LayoutGrid size={15} />
-              <span className="hidden sm:inline">কার্ড ভিউ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-theme-surface text-theme-text-primary shadow-2xs border border-theme-border'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary'
-              }`}
-              title="টেবিল স্প্রেডশিট ভিউ"
-            >
-              <List size={15} />
-              <span className="hidden sm:inline">টেবিল ভিউ</span>
-            </button>
-          </div>
-
-          <Link
-            to="/attendance-sheet"
-            className="px-3.5 py-2 bg-theme-surface hover:bg-theme-surface-hover text-theme-text-primary rounded-2xl text-xs font-bold border border-theme-border shadow-2xs flex items-center space-x-1.5 transition shrink-0"
-          >
-            <CalendarDays size={16} className="text-theme-primary" />
-            <span>মাসিক শিট</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Inline Feedback Alerts */}
-      {saveSuccessMessage && (
-        <div className="p-3.5 rounded-2xl bg-theme-success-soft border border-theme-success-border text-theme-success text-xs font-semibold flex items-center space-x-2 shadow-2xs">
-          <CheckCircle2 size={16} className="shrink-0" />
-          <span>{saveSuccessMessage}</span>
-        </div>
-      )}
-
-      {saveErrorMessage && (
-        <div className="p-3.5 rounded-2xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
-          <div className="flex items-center space-x-2">
-            <AlertCircle size={16} className="shrink-0" />
-            <span>{saveErrorMessage}</span>
-          </div>
-          <button
-            onClick={() => executeSave()}
-            className="px-2.5 py-1 bg-theme-danger text-theme-danger-fg rounded-lg text-[11px] font-bold cursor-pointer"
-          >
-            পুনরায় চেষ্টা
-          </button>
-        </div>
-      )}
-
-      {permissionNotice && (
-        <div className="p-3.5 rounded-2xl bg-theme-warning-soft border border-theme-warning-border text-theme-warning text-xs font-medium flex items-center space-x-2 shadow-2xs animate-fadeIn">
-          <ShieldAlert size={16} className="shrink-0" />
-          <span>{permissionNotice}</span>
-        </div>
-      )}
-
-      {isBeforeBatchStart && (
-        <div className="p-3.5 rounded-2xl bg-theme-danger-soft border border-theme-danger-border text-theme-danger text-xs flex items-center space-x-2">
-          <AlertTriangle size={15} className="shrink-0" />
-          <span>
-            নির্বাচিত তারিখটি ({formatBengaliDate(selectedDate)}) ব্যাচ শুরুর তারিখের ({formatBengaliDate(batchStartDateIso)}) পূর্বের। ব্যাচ শুরুর আগের তারিখে হাজিরা গ্রহণ সম্ভব নয়।
-          </span>
-        </div>
-      )}
-
-      {isFutureDate && (
-        <div className="p-3.5 rounded-2xl bg-theme-warning-soft border border-theme-warning-border text-theme-warning text-xs flex items-center space-x-2">
-          <AlertTriangle size={15} className="shrink-0" />
-          <span>ভবিষ্যতের তারিখের জন্য হাজিরা গ্রহণ স্থগিত। আজকের বা অতীতের তারিখ নির্বাচন করুন।</span>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* 2. RESPONSIVE DASHBOARD: HERO CARD & CONTROLS DECK       */}
-      {/* ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
-        {/* Left: Hero Stats Card (5 cols on lg, 4 cols on xl) */}
-        <div className="lg:col-span-5 xl:col-span-4 bg-theme-surface rounded-3xl p-5 sm:p-6 text-theme-text-primary border border-theme-border shadow-xs flex flex-col justify-between space-y-4 transition-colors tabular-nums">
-          <div className="flex items-center space-x-4 sm:space-x-5">
-            {/* Circular Progress Gauge */}
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                <circle
-                  cx="32"
-                  cy="32"
-                  r="26"
-                  className="stroke-theme-border"
-                  strokeWidth="6"
-                  fill="transparent"
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans">
+      <div className="max-w-[560px] mx-auto pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] lg:pb-24">
+        {/* ============================================================ */}
+        {/* 1. STICKY HEADER                                             */}
+        {/* ============================================================ */}
+        <header className="sticky top-0 lg:top-16 z-20 bg-[var(--surface)]/95 backdrop-blur-md border-b border-[var(--border)] px-3.5 pt-[calc(0.625rem+env(safe-area-inset-top,0px))] lg:pt-2.5 pb-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-[var(--green)] text-white dark:text-slate-950 flex items-center justify-center shrink-0 shadow-xs">
+                <GraduationCap size={21} />
+              </div>
+              <div className="min-w-0">
+                <TruncatedText
+                  as="h1"
+                  text="দৈনিক হাজিরা"
+                  mode="pop"
+                  className="text-[18px] font-medium text-[var(--text)] leading-tight"
                 />
-                <circle
-                  cx="32"
-                  cy="32"
-                  r="26"
-                  className="stroke-theme-primary transition-all duration-500 ease-out"
-                  strokeWidth="6"
-                  strokeDasharray={163.36}
-                  strokeDashoffset={163.36 - (163.36 * presentPercent) / 100}
-                  strokeLinecap="round"
-                  fill="transparent"
+                <TruncatedText
+                  as="p"
+                  text="BNFE ট্রেইনিং · প্রশিক্ষক"
+                  mode="pop"
+                  className="text-[12px] text-[var(--muted)] leading-tight mt-0.5"
                 />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm sm:text-base font-bold text-theme-text-primary font-mono">
-                  {toBn(presentPercent)}%
-                </span>
               </div>
             </div>
 
-            {/* Stats Info */}
-            <div>
-              <span className="text-xs text-theme-text-secondary font-medium block">আজকের উপস্থিতি</span>
-              <div className="text-xl sm:text-2xl font-bold text-theme-text-primary tracking-tight mt-0.5">
-                {toBn(presentCount)} জন উপস্থিত
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMode(resolvedMode === 'dark' ? 'light' : 'dark')}
+                aria-label={resolvedMode === 'dark' ? 'লাইট থিম' : 'ডার্ক থিম'}
+                className="w-10 h-10 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] flex items-center justify-center cursor-pointer active:scale-95 transition"
+              >
+                {resolvedMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  aria-label="আরও বিকল্প"
+                  aria-expanded={menuOpen}
+                  className="w-10 h-10 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] flex items-center justify-center cursor-pointer active:scale-95 transition"
+                >
+                  <MoreVertical size={18} />
+                </button>
+
+                {menuOpen && (
+                  <div className="absolute right-0 mt-1.5 w-48 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-xl py-1.5 z-30">
+                    <button
+                      type="button"
+                      disabled={isDayLocked || !canUnlockOrEdit}
+                      onClick={() => handleBulkMenuAction('Present')}
+                      className="w-full px-3.5 py-2.5 text-left text-[14.5px] text-[var(--text)] hover:bg-[var(--surface2)] flex items-center gap-2.5 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <CheckCheck size={16} className="text-[var(--green)] shrink-0" />
+                      <span>সবাই উপস্থিত</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isDayLocked || !canUnlockOrEdit}
+                      onClick={() => handleBulkMenuAction('Absent')}
+                      className="w-full px-3.5 py-2.5 text-left text-[14.5px] text-[var(--text)] hover:bg-[var(--surface2)] flex items-center gap-2.5 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <XCircle size={16} className="text-[var(--red)] shrink-0" />
+                      <span>সবাই অনুপস্থিত</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isDayLocked || !canUnlockOrEdit}
+                      onClick={() => handleBulkMenuAction('Reset')}
+                      className="w-full px-3.5 py-2.5 text-left text-[14.5px] text-[var(--text)] hover:bg-[var(--surface2)] flex items-center gap-2.5 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <RotateCcw size={16} className="text-[var(--amber)] shrink-0" />
+                      <span>রিসেট</span>
+                    </button>
+
+                    <div className="my-1 border-t border-[var(--border)]" />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setMonthlySheetOpen(true);
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-[14.5px] text-[var(--text)] hover:bg-[var(--surface2)] flex items-center gap-2.5 cursor-pointer"
+                    >
+                      <CalendarDays size={16} className="text-[var(--green)] shrink-0" />
+                      <span>মাসিক শিট</span>
+                    </button>
+                  </div>
+                )}
               </div>
-              <span className="text-xs text-theme-text-muted block mt-0.5">
-                বাকি {toBn(Math.max(0, totalCount - presentCount))} জনের হাজিরা
+            </div>
+          </div>
+        </header>
+
+        <div className="px-3.5 pt-3 space-y-2.5">
+          {/* Status feedback banner (inline, no undo bar or snackbar) */}
+          {feedbackMsg && (
+            <div
+              className={`rounded-2xl border px-3.5 py-2.5 text-[13.5px] flex items-center gap-2 ${
+                feedbackMsg.type === 'success'
+                  ? 'bg-[var(--green)]/10 border-[var(--green)]/35 text-[var(--green)]'
+                  : 'bg-[var(--red)]/10 border-[var(--red)]/35 text-[var(--red)]'
+              }`}
+            >
+              {feedbackMsg.type === 'success' ? (
+                <CheckCircle2 size={16} className="shrink-0" />
+              ) : (
+                <AlertCircle size={16} className="shrink-0" />
+              )}
+              <span className="leading-snug">{feedbackMsg.text}</span>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* 2. DATE SWITCHER CARD                                        */}
+          {/* ============================================================ */}
+          <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] px-2 py-1.5 flex items-center justify-between gap-2 shadow-2xs">
+            <button
+              type="button"
+              disabled={!canGoPrevDate}
+              onClick={() => handleStepDate(-1)}
+              aria-label="আগের দিন"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+                canGoPrevDate
+                  ? 'text-[var(--text)] hover:bg-[var(--surface2)] cursor-pointer active:scale-95'
+                  : 'text-[var(--muted)] opacity-30 cursor-not-allowed'
+              }`}
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            <TruncatedText
+              as="div"
+              text={formatSwitcherDateLabel(selectedDate, isTodayDate)}
+              mode="pop"
+              className="text-center text-[15px] font-medium text-[var(--text)] tabular-nums min-w-0 flex-1 px-1"
+            />
+
+            <button
+              type="button"
+              disabled={!canGoNextDate}
+              onClick={() => handleStepDate(1)}
+              aria-label="পরের দিন"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+                canGoNextDate
+                  ? 'text-[var(--text)] hover:bg-[var(--surface2)] cursor-pointer active:scale-95'
+                  : 'text-[var(--muted)] opacity-30 cursor-not-allowed'
+              }`}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          {/* ============================================================ */}
+          {/* 3. BATCH LINE                                                */}
+          {/* ============================================================ */}
+          <div className="px-1 flex items-center justify-between gap-2">
+            <TruncatedText
+              as="p"
+              text={`ব্যাচ: ${currentBatch?.name || 'নির্বাচিত ব্যাচ নেই'}`}
+              mode="pop"
+              className="text-[14px] text-[var(--muted)] min-w-0 flex-1"
+            >
+              ব্যাচ:{' '}
+              <span className="text-[var(--text)] font-medium">
+                {currentBatch?.name || 'নির্বাচিত ব্যাচ নেই'}
               </span>
-            </div>
+            </TruncatedText>
+            {!isTrainer && batches.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setBatchPickerOpen(true)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-[var(--green)] px-2 py-1 rounded-lg bg-[var(--green)]/10 border border-[var(--green)]/25 shrink-0 cursor-pointer active:scale-95"
+              >
+                <span>পরিবর্তন</span>
+                <ChevronDown size={13} />
+              </button>
+            )}
           </div>
 
-          {/* Multi-Segmented Progress Bar */}
-          <div className="space-y-2">
-            <div className="h-2.5 w-full bg-theme-surface-subtle rounded-full overflow-hidden flex">
-              {presentPercent > 0 && (
-                <div
-                  style={{ width: `${(presentCount / (totalCount || 1)) * 100}%` }}
-                  className="bg-theme-success h-full transition-all duration-300"
-                />
-              )}
-              {absentPercent > 0 && (
-                <div
-                  style={{ width: `${(absentCount / (totalCount || 1)) * 100}%` }}
-                  className="bg-theme-danger h-full transition-all duration-300"
-                />
-              )}
-              {leavePercent > 0 && (
-                <div
-                  style={{ width: `${(leaveCount / (totalCount || 1)) * 100}%` }}
-                  className="bg-theme-warning h-full transition-all duration-300"
-                />
-              )}
-            </div>
-
-            {/* Legend Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-theme-text-secondary pt-1">
-              <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-theme-success inline-block shrink-0" />
-                <span>উপস্থিত: {toBn(presentCount)}</span>
-              </div>
-              <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-theme-danger inline-block shrink-0" />
-                <span>অনুপস্থিত: {toBn(absentCount)}</span>
-              </div>
-              <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-theme-warning inline-block shrink-0" />
-                <span>ছুটি: {toBn(leaveCount)}</span>
-              </div>
-              <div className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-theme-text-muted inline-block shrink-0" />
-                <span>বাকি: {toBn(unmarkedCount)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Controls & Actions Deck (7 cols on lg, 8 cols on xl) */}
-        <div className="lg:col-span-7 xl:col-span-8 bg-theme-surface rounded-3xl p-4 sm:p-5 border border-theme-border shadow-xs flex flex-col justify-between space-y-3.5 transition-colors">
-          {/* Selectors Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Institute Selector */}
-            {!isTrainer ? (
-              <div className="relative">
-                <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রতিষ্ঠান</label>
-                <div className="relative">
-                  <select
-                    value={selectedInstitute}
-                    onChange={(e) => requestSelectorChange('institute', e.target.value)}
-                    className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl px-3.5 py-2.5 pr-8 text-theme-text-primary text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs appearance-none transition cursor-pointer truncate"
-                  >
-                    <option value="">সকল প্রতিষ্ঠান</option>
-                    {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
+          {/* ============================================================ */}
+          {/* 4. SUMMARY CARD                                              */}
+          {/* ============================================================ */}
+          <section className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 shadow-2xs space-y-3.5">
+            <div className="flex items-center gap-4">
+              {/* Conic-gradient progress ring */}
+              <div
+                className="w-[74px] h-[74px] rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: `conic-gradient(var(--green) ${progressDeg}deg, var(--surface2) ${progressDeg}deg 360deg)`,
+                }}
+              >
+                <div className="w-[56px] h-[56px] rounded-full bg-[var(--surface)] flex items-center justify-center border border-[var(--border)]/60">
+                  <span className="text-[15.5px] font-medium text-[var(--text)] tabular-nums">
+                    {toBn(presentPercent)}%
+                  </span>
                 </div>
               </div>
-            ) : null}
 
-            {/* Batch Selector */}
-            <div className={`relative ${isTrainer ? 'sm:col-span-2' : ''}`}>
-              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">প্রশিক্ষণ ব্যাচ</label>
-              <div className="relative">
-                <select
-                  value={selectedBatch}
-                  disabled={isTrainer}
-                  onChange={(e) => requestSelectorChange('batch', e.target.value)}
-                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl px-3.5 py-2.5 pr-8 text-theme-text-primary text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs appearance-none transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed truncate"
-                >
-                  <option value="">ব্যাচ নির্বাচন করুন</option>
-                  {batches
-                    .filter(b => (!selectedInstitute || b.instituteId === selectedInstitute))
-                    .map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[19px] font-medium text-[var(--text)] leading-snug tabular-nums">
+                  {toBn(presentCount)} জন উপস্থিত
+                </h2>
+                <p className="text-[13.5px] text-[var(--muted)] mt-0.5 tabular-nums">
+                  মোট {toBn(totalCount)} জনের মধ্যে, বাকি {toBn(unmarkedCount)} জন
+                </p>
               </div>
             </div>
 
-            {/* Date Selector */}
-            <div className="relative">
-              <label className="block text-[11px] font-bold text-theme-text-secondary mb-1">হাজিরার তারিখ</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  min={batchStartDateIso || undefined}
-                  max={todayDateStr}
-                  value={selectedDate}
-                  onChange={(e) => requestSelectorChange('date', e.target.value)}
-                  className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl px-3.5 py-2.5 pr-8 text-theme-text-primary text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs transition cursor-pointer font-mono tabular-nums"
-                />
-                <CalendarIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
+            {/* 4-column legend */}
+            <div className="grid grid-cols-4 gap-2 pt-1 border-t border-[var(--border)]/70">
+              <div className="space-y-1">
+                <div className="h-1 w-full rounded-full bg-[var(--green)]" />
+                <div className="text-[15px] font-medium text-[var(--text)] tabular-nums leading-tight">
+                  {toBn(presentCount)}
+                </div>
+                <div className="text-[11.5px] text-[var(--muted)] leading-none">উপস্থিত</div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="h-1 w-full rounded-full bg-[var(--red)]" />
+                <div className="text-[15px] font-medium text-[var(--text)] tabular-nums leading-tight">
+                  {toBn(absentCount)}
+                </div>
+                <div className="text-[11.5px] text-[var(--muted)] leading-none">অনুপস্থিত</div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="h-1 w-full rounded-full bg-[var(--amber)]" />
+                <div className="text-[15px] font-medium text-[var(--text)] tabular-nums leading-tight">
+                  {toBn(leaveCount)}
+                </div>
+                <div className="text-[11.5px] text-[var(--muted)] leading-none">ছুটি</div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="h-1 w-full rounded-full bg-[var(--gray)]" />
+                <div className="text-[15px] font-medium text-[var(--text)] tabular-nums leading-tight">
+                  {toBn(unmarkedCount)}
+                </div>
+                <div className="text-[11.5px] text-[var(--muted)] leading-none">বাকি</div>
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Middle Row: Search and Quick Action Buttons */}
-          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-            {/* Search Field */}
-            <div className="relative flex-1">
+          {/* ============================================================ */}
+          {/* 5. FILL REMAINING BUTTON                                     */}
+          {/* ============================================================ */}
+          {!isDayLocked && canUnlockOrEdit && unmarkedCount > 0 && (
+            <button
+              type="button"
+              onClick={handleFillRemaining}
+              className="w-full min-h-[44px] px-4 py-2.5 rounded-2xl border border-dashed border-[var(--green)] bg-[var(--green)]/[0.06] hover:bg-[var(--green)]/[0.11] text-[var(--green)] text-[14.5px] font-medium flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer"
+            >
+              <UserCheck size={17} />
+              <span className="tabular-nums">
+                বাকি {toBn(unmarkedCount)} জনকে উপস্থিত করুন
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* ============================================================ */}
+        {/* 6. STICKY TOOLS (SEARCH + SORT + FILTER CHIPS)               */}
+        {/* ============================================================ */}
+        <div className="sticky top-[calc(62px+env(safe-area-inset-top,0px))] lg:top-[124px] z-10 bg-[var(--bg)]/95 backdrop-blur-md px-3.5 pt-2.5 pb-2 border-b border-[var(--border)]/60 space-y-2 mt-1">
+          <div className="flex items-center gap-2">
+            {/* Name-only search */}
+            <div className="relative flex-1 min-w-0">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+              />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="শিক্ষার্থীর নাম বা রোল দিয়ে খুঁজুন..."
-                className="w-full bg-theme-surface-subtle border border-theme-border rounded-xl pl-9 pr-8 py-2 text-theme-text-primary placeholder:text-theme-text-muted text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary shadow-2xs transition"
+                placeholder="নাম দিয়ে খুঁজুন..."
+                aria-label="নাম দিয়ে খুঁজুন"
+                className="w-full h-[42px] pl-9 pr-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[14.5px] text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--green)]"
               />
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted hover:text-theme-text-primary cursor-pointer"
+                  aria-label="অনুসন্ধান মুছুন"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-[var(--muted)] hover:text-[var(--text)] flex items-center justify-center cursor-pointer"
                 >
-                  <X size={15} />
+                  <X size={14} />
                 </button>
               )}
             </div>
 
-            {/* Quick Actions Buttons */}
-            {allTraineesInBatch.length > 0 && canTakeAttendance && !isFutureDate && (
-              <div className="flex items-center space-x-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleBulkActionClick('Present')}
-                  className="px-3 py-2 bg-theme-success-soft hover:opacity-90 text-theme-success border border-theme-success-border rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98 cursor-pointer"
-                  title="সকল শিক্ষার্থীকে উপস্থিত হিসেবে চিহ্নিত করুন"
-                >
-                  <Check size={14} />
-                  <span>সবাই উপস্থিত</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleBulkActionClick('Absent')}
-                  className="px-3 py-2 bg-theme-danger-soft hover:opacity-90 text-theme-danger border border-theme-danger-border rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-2xs transition active:scale-98 cursor-pointer"
-                  title="সকল শিক্ষার্থীকে অনুপস্থিত হিসেবে চিহ্নিত করুন"
-                >
-                  <X size={14} />
-                  <span>সবাই অনুপস্থিত</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!hasUnsavedChanges}
-                  onClick={handleResetToSaved}
-                  className="p-2 bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border rounded-xl flex items-center justify-center shadow-2xs transition active:scale-98 disabled:opacity-40 cursor-pointer"
-                  title="পরিবর্তন রিসেট করুন"
-                >
-                  <RotateCcw size={15} />
-                </button>
-              </div>
-            )}
+            {/* Sort select */}
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as AttendanceSortOption)}
+              aria-label="ক্রম নির্বাচন"
+              className="h-[42px] px-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[13.5px] text-[var(--text)] focus:outline-none focus:border-[var(--green)] shrink-0 cursor-pointer"
+            >
+              <option value="default">ডিফল্ট</option>
+              <option value="name">নাম</option>
+              <option value="unmarked_first">বাকি আগে</option>
+            </select>
           </div>
 
-          {/* Filter Tabs Row */}
-          {allTraineesInBatch.length > 0 && (
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-0.5 pt-2 scrollbar-none border-t border-theme-border">
-              <span className="text-[11px] font-bold text-theme-text-muted mr-1 hidden sm:inline">ফিল্টার:</span>
-              <button
-                type="button"
-                onClick={() => setActiveFilterTab('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
-                  activeFilterTab === 'all'
-                    ? 'bg-theme-text-primary text-theme-surface shadow-2xs'
-                    : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
-                }`}
-              >
-                সবাই ({toBn(totalCount)})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveFilterTab('present')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
-                  activeFilterTab === 'present'
-                    ? 'bg-theme-success text-theme-success-fg shadow-2xs'
-                    : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
-                }`}
-              >
-                উপস্থিত ({toBn(presentCount)})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveFilterTab('absent')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
-                  activeFilterTab === 'absent'
-                    ? 'bg-theme-danger text-theme-danger-fg shadow-2xs'
-                    : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
-                }`}
-              >
-                অনুপস্থিত ({toBn(absentCount)})
-              </button>
-
-              {leaveCount > 0 && (
+          {/* Horizontally scrollable filter chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+            {(
+              [
+                { key: 'all', label: 'সবাই', count: totalCount },
+                { key: 'present', label: 'উপস্থিত', count: presentCount },
+                { key: 'absent', label: 'অনুপস্থিত', count: absentCount },
+                { key: 'leave', label: 'ছুটি', count: leaveCount },
+                { key: 'unmarked', label: 'বাকি', count: unmarkedCount },
+                { key: 'low', label: 'কম উপস্থিতি', count: lowAttendanceCount },
+              ] as Array<{ key: AttendanceFilterTab; label: string; count: number }>
+            ).map((chip) => {
+              const active = activeFilterTab === chip.key;
+              return (
                 <button
+                  key={chip.key}
                   type="button"
-                  onClick={() => setActiveFilterTab('leave')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
-                    activeFilterTab === 'leave'
-                      ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
-                      : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
+                  onClick={() => setActiveFilterTab(chip.key)}
+                  className={`h-8 px-3 rounded-full text-[13px] font-medium whitespace-nowrap shrink-0 border transition cursor-pointer active:scale-95 tabular-nums ${
+                    active
+                      ? 'bg-[var(--text)] text-[var(--bg)] border-[var(--text)]'
+                      : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--border)] hover:text-[var(--text)]'
                   }`}
                 >
-                  ছুটি ({toBn(leaveCount)})
+                  {chip.label} ({toBn(chip.count)})
                 </button>
-              )}
+              );
+            })}
+          </div>
+        </div>
 
-              {unmarkedCount > 0 && (
+        <div className="px-3.5 pt-2.5 space-y-2.5">
+          {/* ============================================================ */}
+          {/* 7. LOCK BANNER                                               */}
+          {/* ============================================================ */}
+          {isDayLocked && (
+            <div className="rounded-2xl bg-[var(--surface)] border border-[var(--amber)]/45 px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="min-w-0">
+                <div className="text-[14px] font-medium text-[var(--text)] leading-snug">
+                  🔒 হাজিরা সংরক্ষিত ও লক করা
+                </div>
+                {isBeforeBatchStart ? (
+                  <div className="text-[12px] text-[var(--red)] mt-0.5 leading-snug">
+                    ব্যাচ শুরুর ({formatBengaliDate(batchStartDateIso)}) আগের তারিখ
+                  </div>
+                ) : (
+                  lastEditReason && (
+                    <TruncatedText
+                      as="div"
+                      text={`সর্বশেষ সম্পাদনা: ${lastEditReason}`}
+                      mode="sheet"
+                      title="সর্বশেষ সম্পাদনার কারণ"
+                      className="text-[12px] text-[var(--muted)] mt-0.5 leading-snug"
+                    />
+                  )
+                )}
+              </div>
+
+              {!isBeforeBatchStart && canUnlockOrEdit && (
                 <button
                   type="button"
-                  onClick={() => setActiveFilterTab('unmarked')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
-                    activeFilterTab === 'unmarked'
-                      ? 'bg-theme-text-secondary text-theme-surface shadow-2xs'
-                      : 'bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-secondary border border-theme-border'
-                  }`}
+                  onClick={() => setUnlockSheetOpen(true)}
+                  className="min-h-[36px] px-3 rounded-xl bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/35 text-[13px] font-medium shrink-0 cursor-pointer active:scale-95 transition"
                 >
-                  চিহ্নিত নয় ({toBn(unmarkedCount)})
+                  সম্পাদনা
                 </button>
               )}
+            </div>
+          )}
 
-              {dirtyCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setActiveFilterTab('dirty')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer tabular-nums ${
-                    activeFilterTab === 'dirty'
-                      ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
-                      : 'bg-theme-warning-soft hover:bg-theme-warning-soft/80 text-theme-warning border border-theme-warning-border'
-                  }`}
-                >
-                  অসংরক্ষিত ({toBn(dirtyCount)})
-                </button>
-              )}
+          {/* ============================================================ */}
+          {/* 8. HINT LINE                                                 */}
+          {/* ============================================================ */}
+          <p className="text-[12px] text-[var(--muted)] text-center px-1 leading-snug">
+            কার্ড ডানে সোয়াইপ = উপস্থিত · বামে = অনুপস্থিত · নামে ট্যাপ = বিস্তারিত
+          </p>
+
+          {/* ============================================================ */}
+          {/* 9. STUDENT LIST                                              */}
+          {/* ============================================================ */}
+          {fetchingTrainees ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div
+                  key={n}
+                  className="h-[68px] rounded-2xl bg-[var(--surface)] border border-[var(--border)] animate-pulse"
+                />
+              ))}
+            </div>
+          ) : displayedTrainees.length === 0 ? (
+            <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] py-10 px-4 text-center text-[var(--muted)] text-sm">
+              {allTraineesInBatch.length === 0
+                ? 'এই ব্যাচে কোনো সক্রিয় শিক্ষার্থী নেই।'
+                : 'ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী পাওয়া যায়নি।'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {displayedTrainees.map((trainee) => {
+                const item = attendanceMap[trainee.id];
+                if (!item) return null;
+                const summary = sevenDaySummaryByTrainee[trainee.id] || {
+                  dots: [],
+                  presentCount: 0,
+                  markedCount: 0,
+                  ratePercent: null,
+                  isLow: false,
+                };
+
+                return (
+                  <StudentAttendanceCard
+                    key={trainee.id}
+                    item={item}
+                    summary={summary}
+                    isLocked={isDayLocked || isAnySaveBusy}
+                    canInteract={canUnlockOrEdit}
+                    onSelectStatus={handleSelectStatus}
+                    onSwipeStatus={handleSwipeStatus}
+                    onOpenDetail={setDetailTrainee}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 3. TRAINEE LIST: RESPONSIVE GRID OR TABLE VIEW           */}
-      {/* ======================================================== */}
-      {fetchingTrainees ? (
-        <TableSkeleton rows={6} cols={3} showHeader={false} showToolbar={false} />
-      ) : allTraineesInBatch.length === 0 ? (
-        <div className="bg-theme-surface p-12 text-center text-theme-text-muted rounded-3xl border border-dashed border-theme-border text-xs">
-          কোনো সক্রিয় শিক্ষার্থী পাওয়া যায়নি।
-        </div>
-      ) : displayedTrainees.length === 0 ? (
-        <div className="bg-theme-surface p-12 text-center text-theme-text-muted rounded-3xl border border-dashed border-theme-border text-xs">
-          কোনো শিক্ষার্থী এই তালিকায় নেই।
-        </div>
-      ) : viewMode === 'table' ? (
-        /* TABLE VIEW (DESKTOP OPTIMIZED) */
-        <div className="bg-theme-surface rounded-3xl border border-theme-border shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-theme-surface-subtle border-b border-theme-border text-theme-text-secondary font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="py-3.5 px-4 w-14 text-center">ক্র.</th>
-                  <th className="py-3.5 px-4 w-36">আইডি ও রোল</th>
-                  <th className="py-3.5 px-4">প্রশিক্ষণার্থীর নাম ও অভিভাবক</th>
-                  <th className="py-3.5 px-4 text-center w-72">হাজিরা স্ট্যাটাস</th>
-                  <th className="py-3.5 px-4 text-center w-28">অবস্থা</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-theme-border">
-                {displayedTrainees.map((t, idx) => {
-                  const item = attendanceMap[t.id];
-                  const status = item?.status || 'Unmarked';
-                  const isDirty = item?.status !== item?.initialStatus;
-                  const isSaved = item?.isSavedInDb && !isDirty;
-                  const isLocked = item?.isSavedInDb && !canEditAttendance;
-
-                  return (
-                    <tr
-                      key={t.id}
-                      className={`hover:bg-theme-surface-hover transition-colors ${
-                        status === 'Present'
-                          ? 'bg-theme-success-soft/30'
-                          : status === 'Absent'
-                          ? 'bg-theme-danger-soft/30'
-                          : status === 'Leave'
-                          ? 'bg-theme-warning-soft/30'
-                          : ''
-                      }`}
-                    >
-                      <td className="py-3 px-4 text-center font-bold text-theme-text-secondary tabular-nums">
-                        {toBn(idx + 1)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-theme-text-primary text-xs block tabular-nums">
-                          {t.traineeId || t.id}
-                        </span>
-                        {t.registrationNumber && (
-                          <span className="text-[11px] text-theme-text-muted font-mono block tabular-nums">
-                            {t.registrationNumber}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2.5">
-                          <div className="w-8 h-8 rounded-full bg-theme-surface-subtle text-theme-text-primary font-bold flex items-center justify-center text-xs shrink-0 border border-theme-border">
-                            {(t.nameBn || t.nameEn || 'শ').trim().charAt(0)}
-                          </div>
-                          <div>
-                            <span className="font-bold text-theme-text-primary block text-sm">
-                              {t.nameBn || t.nameEn}
-                            </span>
-                            <span className="text-[11px] text-theme-text-secondary block">
-                              পিতা: {t.fatherNameBn || t.fatherNameEn || '—'}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {isLocked ? (
-                          <div
-                            onClick={() => {
-                              setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
-                              setTimeout(() => setPermissionNotice(''), 4500);
-                            }}
-                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-theme-surface-subtle rounded-xl text-xs font-semibold text-theme-text-secondary border border-theme-border cursor-pointer"
-                          >
-                            <Lock size={12} className="text-theme-text-muted" />
-                            <span className={status === 'Present' ? 'text-theme-success font-bold' : status === 'Absent' ? 'text-theme-danger font-bold' : 'text-theme-warning font-bold'}>
-                              {status === 'Present' ? 'উপস্থিত (লকড)' : status === 'Absent' ? 'অনুপস্থিত (লকড)' : status === 'Leave' ? 'ছুটি (লকড)' : 'চিহ্নিত নয়'}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex bg-theme-surface-subtle p-1 rounded-xl items-center gap-1 border border-theme-border">
-                            <button
-                              type="button"
-                              disabled={!canTakeAttendance || isFutureDate}
-                              onClick={() => setStatus(t.id, 'Present')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'Present'
-                                  ? 'bg-theme-success text-theme-success-fg shadow-2xs'
-                                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
-                              }`}
-                            >
-                              উপস্থিত
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!canTakeAttendance || isFutureDate}
-                              onClick={() => setStatus(t.id, 'Absent')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'Absent'
-                                  ? 'bg-theme-danger text-theme-danger-fg shadow-2xs'
-                                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
-                              }`}
-                            >
-                              অনুপস্থিত
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!canTakeAttendance || isFutureDate}
-                              onClick={() => setStatus(t.id, 'Leave')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'Leave'
-                                  ? 'bg-theme-warning text-theme-warning-fg shadow-2xs'
-                                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
-                              }`}
-                            >
-                              ছুটি
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {isDirty ? (
-                          <span className="inline-block bg-theme-warning-soft text-theme-warning text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-theme-warning-border shadow-2xs">
-                            অসংরক্ষিত
-                          </span>
-                        ) : isSaved ? (
-                          <span className="inline-flex items-center space-x-1 bg-theme-success-soft text-theme-success text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-theme-success-border">
-                            {isLocked && <Lock size={10} className="text-theme-text-muted" />}
-                            <span>সংরক্ষিত</span>
-                          </span>
-                        ) : (
-                          <span className="text-theme-text-muted text-xs">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* GRID VIEW (RESPONSIVE MULTI-COLUMN CARDS: 1 col on mobile, 2 cols on tablet, 3 cols on desktop, 4 cols on ultrawide) */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4">
-          {displayedTrainees.map((t, idx) => {
-            const item = attendanceMap[t.id];
-            const status = item?.status || 'Unmarked';
-            const isDirty = item?.status !== item?.initialStatus;
-            const isSaved = item?.isSavedInDb && !isDirty;
-            const isLocked = item?.isSavedInDb && !canEditAttendance;
-
-            return (
-              <div
-                key={t.id}
-                className="bg-theme-surface rounded-3xl border border-theme-border shadow-xs p-4 sm:p-5 relative overflow-hidden transition-all duration-200 hover:shadow-md flex flex-col justify-between"
-              >
-                {/* Left Colored Vertical Accent Strip */}
-                <div
-                  className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-3xl transition-colors duration-200 ${
-                    status === 'Present'
-                      ? 'bg-theme-success'
-                      : status === 'Absent'
-                      ? 'bg-theme-danger'
-                      : status === 'Leave'
-                      ? 'bg-theme-warning'
-                      : 'bg-theme-border-strong'
-                  }`}
-                />
-
-                {/* Card Top Row: Avatar, Name, Roll/Serial, Status Badge */}
-                <div className="flex items-start justify-between pl-1.5 gap-2">
-                  <div className="flex items-center space-x-3 min-w-0">
-                    {/* Avatar Circle with Initial */}
-                    <div className="w-11 h-11 rounded-full bg-theme-surface-subtle text-theme-text-primary font-bold flex items-center justify-center text-base shrink-0 border border-theme-border shadow-2xs">
-                      {(t.nameBn || t.nameEn || 'শ').trim().charAt(0)}
-                    </div>
-
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-theme-text-primary text-base sm:text-lg leading-snug truncate">
-                        {t.nameBn || t.nameEn}
-                      </h4>
-                      <div className="flex items-center space-x-2 text-xs text-theme-text-secondary font-medium mt-0.5 tabular-nums">
-                        <span>ক্র. {toBn(idx + 1)}</span>
-                        {t.traineeId && (
-                          <>
-                            <span>•</span>
-                            <span className="font-mono">{t.traineeId}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status Badges */}
-                  <div className="shrink-0">
-                    {isDirty ? (
-                      <span className="inline-block bg-theme-warning-soft text-theme-warning text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-theme-warning-border shadow-2xs">
-                        অসংরক্ষিত
-                      </span>
-                    ) : isSaved ? (
-                      <span className="inline-flex items-center space-x-1 bg-theme-success-soft text-theme-success text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-theme-success-border">
-                        {isLocked && <Lock size={10} className="text-theme-text-muted" />}
-                        <span>সংরক্ষিত</span>
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* Card Bottom Row: 3-Segmented Toggle Buttons */}
-                <div className="mt-4 pl-1.5">
-                  {isLocked ? (
-                    <div
-                      onClick={() => {
-                        setPermissionNotice(`"${t.nameBn || t.nameEn}" এর হাজিরা ইতোমধ্যে সংরক্ষিত। সংরক্ষিত রেকর্ড পরিবর্তনের জন্য 'edit_attendance' অনুমতি প্রয়োজন।`);
-                        setTimeout(() => setPermissionNotice(''), 4500);
-                      }}
-                      className="bg-theme-surface-subtle p-2.5 rounded-2xl flex items-center justify-center space-x-2 text-xs font-semibold text-theme-text-secondary border border-theme-border cursor-pointer"
-                    >
-                      <Lock size={14} className="text-theme-text-muted" />
-                      <span className={status === 'Present' ? 'text-theme-success font-bold' : status === 'Absent' ? 'text-theme-danger font-bold' : 'text-theme-warning font-bold'}>
-                        {status === 'Present' ? 'উপস্থিত (সংরক্ষিত ও লকড)' : status === 'Absent' ? 'অনুপস্থিত (সংরক্ষিত ও লকড)' : status === 'Leave' ? 'ছুটি (সংরক্ষিত ও লকড)' : 'চিহ্নিত নয়'}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="bg-theme-surface-subtle p-1 rounded-2xl flex items-center justify-between gap-1 border border-theme-border">
-                      {/* উপস্থিত (Present) */}
-                      <button
-                        type="button"
-                        disabled={!canTakeAttendance || isFutureDate}
-                        onClick={() => setStatus(t.id, 'Present')}
-                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
-                          status === 'Present'
-                            ? 'bg-theme-success text-theme-success-fg shadow-xs'
-                            : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
-                        }`}
-                      >
-                        উপস্থিত
-                      </button>
-
-                      {/* অনুপস্থিত (Absent) */}
-                      <button
-                        type="button"
-                        disabled={!canTakeAttendance || isFutureDate}
-                        onClick={() => setStatus(t.id, 'Absent')}
-                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
-                          status === 'Absent'
-                            ? 'bg-theme-danger text-theme-danger-fg shadow-xs'
-                            : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
-                        }`}
-                      >
-                        অনুপস্থিত
-                      </button>
-
-                      {/* ছুটি (Leave) */}
-                      <button
-                        type="button"
-                        disabled={!canTakeAttendance || isFutureDate}
-                        onClick={() => setStatus(t.id, 'Leave')}
-                        className={`flex-1 py-2.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
-                          status === 'Leave'
-                            ? 'bg-theme-warning text-theme-warning-fg shadow-xs'
-                            : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-surface-hover'
-                        }`}
-                      >
-                        ছুটি
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* 4. FLOATING STICKY SAVE BAR (RESPONSIVE)                 */}
-      {/* ======================================================== */}
-      {allTraineesInBatch.length > 0 && hasUnsavedChanges && (
-        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-40 bg-theme-elevated/95 backdrop-blur-md text-theme-text-primary rounded-2xl shadow-2xl px-5 sm:px-6 py-3.5 border border-theme-border-strong flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
-          <div className="text-xs sm:text-sm font-medium flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-theme-warning inline-block shrink-0" />
-            <span>
-              <span className="text-theme-warning font-black tabular-nums">{toBn(dirtyCount)}</span> জনের অসংরক্ষিত পরিবর্তন
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <button
-              type="button"
-              onClick={handleResetToSaved}
-              className="text-xs sm:text-sm text-theme-text-secondary hover:text-theme-text-primary font-medium px-2.5 py-1.5 transition cursor-pointer"
-            >
-              বাতিল
-            </button>
-
-            <button
-              type="button"
-              onClick={() => executeSave()}
-              disabled={saving}
-              className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold shadow-md transition active:scale-95 flex items-center space-x-1.5 cursor-pointer disabled:opacity-60"
-            >
-              <Save size={16} />
-              <span>{saving ? 'সংরক্ষণ...' : 'সংরক্ষণ করুন'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* 5. BULK ACTION CONFIRMATION MODAL                        */}
-      {/* ======================================================== */}
-      {bulkConfirmModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-theme-elevated rounded-2xl max-w-sm w-full p-5 shadow-xl border border-theme-border space-y-3 text-theme-text-primary">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-theme-primary-soft text-theme-primary flex items-center justify-center shrink-0">
-                <CheckCheck size={20} />
-              </div>
-              <h3 className="text-sm font-bold text-theme-text-primary">{bulkConfirmModal.title}</h3>
+      {/* ============================================================ */}
+      {/* 10. FLOATING SAVE BAR (UNSAVED CHANGES OR ACTIVE SAVE STATE) */}
+      {/* ============================================================ */}
+      {(hasUnsavedChanges || saveRunner.phase !== 'idle') && (
+        <div className="fixed left-0 right-0 z-30 px-3 pointer-events-none bottom-[calc(4.6rem+env(safe-area-inset-bottom,0px))] lg:bottom-5">
+          <div className="max-w-[560px] mx-auto pointer-events-auto rounded-2xl bg-[var(--surface)] border border-[var(--amber)]/55 shadow-xl px-3.5 py-2.5 flex items-center justify-between gap-2.5 overflow-visible">
+            <div className="min-w-0">
+              <TruncatedText
+                as="div"
+                text={
+                  saveRunner.phase === 'success'
+                    ? 'হাজিরা সফলভাবে সংরক্ষিত হয়েছে'
+                    : `${toBn(dirtyItems.length)} জনের অসংরক্ষিত পরিবর্তন`
+                }
+                mode="pop"
+                className="text-[14px] font-medium text-[var(--text)] tabular-nums"
+              />
             </div>
 
-            <p className="text-xs text-theme-text-secondary">{bulkConfirmModal.description}</p>
-
-            <div className="flex items-center justify-end space-x-2 pt-2 text-xs">
+            <div className="flex items-start gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setBulkConfirmModal(null)}
-                className="px-3 py-1.5 border border-theme-border text-theme-text-secondary rounded-lg hover:bg-theme-surface-hover font-medium cursor-pointer"
+                disabled={isAnySaveBusy}
+                onClick={() => {
+                  if (saveRunner.phase === 'success') {
+                    saveRunner.reset();
+                  } else {
+                    saveRunner.reset();
+                    handleDiscardChanges();
+                  }
+                }}
+                className="min-h-[44px] px-3.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] text-[14px] font-medium cursor-pointer active:scale-95 disabled:opacity-50"
               >
-                বাতিল
+                {saveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
               </button>
-              <button
-                type="button"
-                onClick={() => applyBulkAction(bulkConfirmModal.status)}
-                className="px-4 py-1.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-lg font-bold shadow-xs transition cursor-pointer"
-              >
-                নিশ্চিত করুন
-              </button>
+              <ActionButton
+                runner={saveRunner}
+                idleLabel="সংরক্ষণ"
+                popoverTitle="হাজিরা সংরক্ষণের ধাপ"
+                onBeforeRun={validateAttendanceSave}
+                onAutoHide={() => saveRunner.reset()}
+                className="min-w-[140px]"
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 6. UNSAVED CHANGES NAVIGATION WARNING MODAL              */}
-      {/* ======================================================== */}
+      {/* ============================================================ */}
+      {/* PENDING CHANGE CONFIRMATION MODAL (UNSAVED PROTECTION)       */}
+      {/* ============================================================ */}
       {pendingChange && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-theme-elevated rounded-2xl max-w-sm w-full p-5 shadow-xl border border-theme-border space-y-3 text-theme-text-primary">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-theme-warning-soft text-theme-warning flex items-center justify-center shrink-0">
-                <AlertCircle size={20} />
-              </div>
-              <h3 className="text-sm font-bold text-theme-text-primary">অসংরক্ষিত পরিবর্তন রয়েছে</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-[420px] rounded-3xl bg-[var(--surface)] border border-[var(--border)] p-5 shadow-2xl space-y-4 overflow-visible">
+            <div>
+              <h3 className="text-[17px] font-medium text-[var(--text)]">
+                অসংরক্ষিত পরিবর্তন রয়েছে
+              </h3>
+              <p className="text-[13.5px] text-[var(--muted)] mt-1 leading-relaxed">
+                {toBn(dirtyItems.length)} জন শিক্ষার্থীর হাজিরা এখনো সংরক্ষণ করা হয়নি। এগিয়ে
+                যাওয়ার আগে সংরক্ষণ করতে চান?
+              </p>
             </div>
 
-            <p className="text-xs text-theme-text-secondary">
-              আপনার <span className="tabular-nums font-bold">{toBn(dirtyCount)}</span> জন শিক্ষার্থীর পরিবর্তিত হাজিরা রয়েছে। আপনি কি সংরক্ষণ না করে অন্য ব্যাচ/তারিখে যেতে চান?
-            </p>
+            <div className="space-y-2">
+              <ActionButton
+                runner={pendingSaveRunner}
+                idleLabel="সংরক্ষণ করে এগিয়ে যান"
+                popoverTitle="হাজিরা সংরক্ষণের ধাপ"
+                onBeforeRun={validateAttendanceSave}
+                onAutoHide={() => {
+                  if (pendingChange) {
+                    applySelectorChange(pendingChange.type, pendingChange.value);
+                    pendingSaveRunner.reset();
+                  }
+                }}
+                className="w-full"
+              />
 
-            <div className="flex items-center justify-end space-x-2 pt-2 text-xs">
               <button
                 type="button"
-                onClick={() => setPendingChange(null)}
-                className="px-3 py-1.5 border border-theme-border text-theme-text-secondary rounded-lg hover:bg-theme-surface-hover cursor-pointer"
+                disabled={isAnySaveBusy}
+                onClick={() => {
+                  pendingSaveRunner.reset();
+                  if (pendingChange) {
+                    applySelectorChange(pendingChange.type, pendingChange.value);
+                  }
+                }}
+                className="w-full min-h-[44px] rounded-2xl bg-[var(--red)]/12 border border-[var(--red)]/35 text-[var(--red)] text-[14.5px] font-medium cursor-pointer active:scale-[0.99] disabled:opacity-50"
+              >
+                {pendingSaveRunner.phase === 'success' ? 'এখনই এগিয়ে যান' : 'বাতিল করে এগিয়ে যান'}
+              </button>
+
+              <button
+                type="button"
+                disabled={isAnySaveBusy}
+                onClick={() => {
+                  pendingSaveRunner.reset();
+                  setPendingChange(null);
+                }}
+                className="w-full min-h-[44px] rounded-2xl bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] text-[14.5px] font-medium cursor-pointer disabled:opacity-50"
               >
                 থাকুন
               </button>
-              <button
-                type="button"
-                onClick={handleDiscardAndProceed}
-                className="px-3 py-1.5 bg-theme-danger-soft text-theme-danger border border-theme-danger-border rounded-lg font-bold hover:opacity-90 cursor-pointer"
-              >
-                বাতিল করে যান
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAndProceed}
-                className="px-4 py-1.5 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-lg font-bold cursor-pointer"
-              >
-                সংরক্ষণ করুন
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/* BOTTOM SHEETS                                                */}
+      {/* ============================================================ */}
+      <LeaveReasonSheet
+        trainee={leaveTargetTrainee}
+        currentReason={
+          leaveTargetTrainee
+            ? attendanceMap[leaveTargetTrainee.id]?.leaveReason
+            : undefined
+        }
+        onSelectReason={handlePickLeaveReason}
+        onClose={() => setLeaveTargetTrainee(null)}
+      />
+
+      <EditUnlockReasonSheet
+        open={unlockSheetOpen}
+        dateLabel={formatSwitcherDateLabel(selectedDate, isTodayDate)}
+        onConfirmReason={handleConfirmUnlockReason}
+        onClose={() => setUnlockSheetOpen(false)}
+      />
+
+      <StudentDetailSheet
+        trainee={detailTrainee}
+        monthPrefix={activeMonthPrefix}
+        maxDayInMonth={maxDayInSheet}
+        batchAttendanceRecords={allBatchAttendance}
+        liveSelectedDate={selectedDate}
+        liveStatusForSelectedDate={
+          detailTrainee ? attendanceMap[detailTrainee.id]?.status : undefined
+        }
+        onClose={() => setDetailTrainee(null)}
+      />
+
+      <MonthlyHeatmapSheet
+        open={monthlySheetOpen}
+        batchName={currentBatch?.name || ''}
+        monthPrefix={activeMonthPrefix}
+        maxDayInMonth={maxDayInSheet}
+        trainees={allTraineesInBatch}
+        batchAttendanceRecords={allBatchAttendance}
+        liveSelectedDate={selectedDate}
+        liveStatusByTraineeId={liveStatusByTraineeId}
+        onClose={() => setMonthlySheetOpen(false)}
+      />
+
+      <BatchPickerSheet
+        open={batchPickerOpen}
+        batches={batches}
+        selectedBatchId={selectedBatch}
+        onSelectBatch={(bid) => requestSelectorChange('batch', bid)}
+        onClose={() => setBatchPickerOpen(false)}
+      />
     </div>
   );
 };

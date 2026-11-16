@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, 
   Edit2, 
@@ -24,6 +24,9 @@ import { dataService } from '../lib/dataService';
 import { TableSkeleton } from '../components/Skeleton';
 import { toBn } from '../lib/dateUtils';
 import DataTableToolbar, { ColumnOption, GroupByOption } from '../components/TableToolbar/DataTableToolbar';
+import { TruncatedText } from '../components/ui/TruncatedText';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
 
 const DEFAULT_INSTITUTE_COLUMNS: ColumnOption[] = [
   { id: 'code', label: 'প্রতিষ্ঠান কোড (Code)', visible: true },
@@ -212,7 +215,39 @@ const Institutes: React.FC = () => {
     }
   };
 
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  const instituteSaveSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-institute',
+      label: editingInstitute ? 'প্রতিষ্ঠানের তথ্য আপডেট করা হচ্ছে' : 'নতুন প্রতিষ্ঠান সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!canEdit) {
+          throw new Error('আপনার প্রতিষ্ঠান সংরক্ষণের অনুমতি নেই।');
+        }
+        const id = editingInstitute ? editingInstitute.id : `INS-${Date.now().toString().slice(-4)}`;
+        const savedInst: Institute = {
+          id,
+          ...formData,
+          createdAt: editingInstitute?.createdAt || Date.now(),
+        };
+
+        await dataService.saveItem('institutes', savedInst, {
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
+
+        await fetchInstitutes();
+        return savedInst;
+      },
+      describe: (saved: Institute) => `সংরক্ষিত: ${saved.name}`,
+    },
+  ], [canEdit, editingInstitute, formData, userProfile]);
+
+  const saveRunner = useActionRunner(instituteSaveSteps);
+  const isModalLocked = saveRunner.phase === 'running' || saveRunner.phase === 'waiting';
+
   const handleOpenModal = (inst?: Institute) => {
+    saveRunner.reset();
     if (inst) {
       setEditingInstitute(inst);
       setFormData({
@@ -239,28 +274,22 @@ const Institutes: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleCloseModal = () => {
+    if (isModalLocked) return;
+    saveRunner.reset();
+    setIsModalOpen(false);
+  };
+
+  const handleBeforeSave = () => {
+    if (!canEdit) return false;
+    return formRef.current ? formRef.current.reportValidity() : true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canEdit) return;
-
-    try {
-      const id = editingInstitute ? editingInstitute.id : `INS-${Date.now().toString().slice(-4)}`;
-      const savedInst: Institute = {
-        id,
-        ...formData,
-        createdAt: editingInstitute?.createdAt || Date.now(),
-      };
-
-      await dataService.saveItem('institutes', savedInst, {
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      setIsModalOpen(false);
-      fetchInstitutes();
-    } catch (error: any) {
-      console.warn("Notice saving institute:", error);
-      setErrorMessage("তথ্য সংরক্ষণে সমস্যা হয়েছে: " + (error?.message || error));
-    }
+    if (isModalLocked || saveRunner.phase === 'success') return;
+    if (!handleBeforeSave()) return;
+    await saveRunner.run();
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -477,15 +506,15 @@ const Institutes: React.FC = () => {
           ) : viewMode === 'table' ? (
             <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-theme-border text-left">
+                <table className="min-w-[780px] w-full table-fixed divide-y divide-theme-border text-left">
                   <thead className="bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider">
                     <tr>
-                      {isColVisible('code') && <th className="px-4 py-3.5">কোড</th>}
-                      {isColVisible('name') && <th className="px-4 py-3.5">প্রতিষ্ঠানের নাম</th>}
-                      {isColVisible('address') && <th className="px-4 py-3.5">ঠিকানা</th>}
-                      {isColVisible('contact') && <th className="px-4 py-3.5">যোগাযোগ</th>}
-                      {isColVisible('status') && <th className="px-4 py-3.5 text-center">স্ট্যাটাস</th>}
-                      {isColVisible('actions') && <th className="px-4 py-3.5 text-right">পদক্ষেপ</th>}
+                      {isColVisible('code') && <th className="px-4 py-3.5 w-[105px]">কোড</th>}
+                      {isColVisible('name') && <th className="px-4 py-3.5 w-[195px]">প্রতিষ্ঠানের নাম</th>}
+                      {isColVisible('address') && <th className="px-4 py-3.5 w-[210px]">ঠিকানা</th>}
+                      {isColVisible('contact') && <th className="px-4 py-3.5 w-[160px]">যোগাযোগ</th>}
+                      {isColVisible('status') && <th className="px-4 py-3.5 w-[100px] text-center">স্ট্যাটাস</th>}
+                      {isColVisible('actions') && <th className="px-4 py-3.5 w-[100px] text-right">পদক্ষেপ</th>}
                     </tr>
                   </thead>
                   <tbody className="bg-theme-surface divide-y divide-theme-border text-xs">
@@ -527,8 +556,13 @@ const Institutes: React.FC = () => {
                                   </td>
                                 )}
                                 {isColVisible('address') && (
-                                  <td className="px-4 py-3.5 text-theme-text-secondary max-w-xs truncate">
-                                    {inst.address}
+                                  <td className="px-4 py-3.5 text-theme-text-secondary">
+                                    <TruncatedText
+                                      as="div"
+                                      text={inst.address}
+                                      mode="sheet"
+                                      title="প্রতিষ্ঠানের ঠিকানা"
+                                    />
                                   </td>
                                 )}
                                 {isColVisible('contact') && (
@@ -591,8 +625,13 @@ const Institutes: React.FC = () => {
                             </td>
                           )}
                           {isColVisible('address') && (
-                            <td className="px-4 py-3.5 text-theme-text-secondary max-w-xs truncate">
-                              {inst.address}
+                            <td className="px-4 py-3.5 text-theme-text-secondary">
+                              <TruncatedText
+                                as="div"
+                                text={inst.address}
+                                mode="sheet"
+                                title="প্রতিষ্ঠানের ঠিকানা"
+                              />
                             </td>
                           )}
                           {isColVisible('contact') && (
@@ -691,9 +730,14 @@ const Institutes: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-2 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-2 min-w-0">
                                     <MapPin size={15} className="text-theme-text-muted shrink-0" />
-                                    <span className="truncate">{inst.address}</span>
+                                    <TruncatedText
+                                      text={inst.address}
+                                      mode="sheet"
+                                      title="প্রতিষ্ঠানের ঠিকানা"
+                                      className="min-w-0"
+                                    />
                                   </div>
                                   <div className="flex items-center space-x-2">
                                     <Phone size={15} className="text-theme-text-muted shrink-0" />
@@ -763,9 +807,14 @@ const Institutes: React.FC = () => {
                       </div>
 
                       <div className="space-y-2 text-xs text-theme-text-secondary pt-2 border-t border-theme-border">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 min-w-0">
                           <MapPin size={15} className="text-theme-text-muted shrink-0" />
-                          <span className="truncate">{inst.address}</span>
+                          <TruncatedText
+                            text={inst.address}
+                            mode="sheet"
+                            title="প্রতিষ্ঠানের ঠিকানা"
+                            className="min-w-0"
+                          />
                         </div>
                         <div className="flex items-center space-x-2">
                           <Phone size={15} className="text-theme-text-muted shrink-0" />
@@ -813,17 +862,23 @@ const Institutes: React.FC = () => {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border text-theme-text-primary">
+          <div className="bg-theme-elevated rounded-2xl max-w-md w-full p-6 shadow-xl border border-theme-border text-theme-text-primary overflow-visible">
             <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
               <h2 className="text-lg font-bold text-theme-text-primary">
                 {editingInstitute ? 'প্রতিষ্ঠান সম্পাদন' : 'নতুন প্রতিষ্ঠান তৈরি'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary cursor-pointer">
+              <button
+                type="button"
+                disabled={isModalLocked}
+                onClick={handleCloseModal}
+                className="text-theme-text-muted hover:text-theme-text-primary disabled:opacity-50 cursor-pointer"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-3.5">
+              <fieldset disabled={isModalLocked || saveRunner.phase === 'success'} className="space-y-3.5 min-w-0">
               <div>
                 <label className="block text-xs font-semibold text-theme-text-secondary mb-1">প্রতিষ্ঠানের নাম *</label>
                 <input
@@ -900,20 +955,28 @@ const Institutes: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
+              </fieldset>
+
+              <div className="flex items-start justify-end gap-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
+                  disabled={isModalLocked}
+                  onClick={handleCloseModal}
+                  className="min-h-[44px] px-4 py-2 border border-theme-border rounded-[12px] text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 cursor-pointer"
                 >
-                  বাতিল
+                  {saveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs cursor-pointer"
-                >
-                  সংরক্ষণ করুন
-                </button>
+                <ActionButton
+                  runner={saveRunner}
+                  idleLabel="সংরক্ষণ করুন"
+                  popoverTitle={editingInstitute ? 'প্রতিষ্ঠান আপডেট' : 'নতুন প্রতিষ্ঠান'}
+                  onBeforeRun={handleBeforeSave}
+                  onAutoHide={() => {
+                    saveRunner.reset();
+                    setIsModalOpen(false);
+                  }}
+                  className="min-w-[165px]"
+                />
               </div>
             </form>
           </div>

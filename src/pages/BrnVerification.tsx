@@ -35,6 +35,7 @@ import { usePermissions } from '../contexts/PermissionsContext';
 import { Trainee, Institute, Trade, Batch } from '../types';
 import { dataService } from '../lib/dataService';
 import { toBn, normalizeUBRN, normalizeBirthDate, formatBengaliDate } from '../lib/dateUtils';
+import { TruncatedText } from '../components/ui/TruncatedText';
 import {
   downloadCSV,
   downloadExcel,
@@ -45,6 +46,8 @@ import {
 } from '../lib/exportUtils';
 import BrnExportModal, { ExportScope } from '../components/BrnExportModal';
 import { useModalViewportPosition } from '../hooks/useModalViewportPosition';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
 import { TableSkeleton, StatsSkeleton } from '../components/Skeleton';
 import DataTableToolbar, { ColumnOption, GroupByOption } from '../components/TableToolbar/DataTableToolbar';
 
@@ -221,7 +224,6 @@ const BrnVerification: React.FC = () => {
   const [activeTrainee, setActiveTrainee] = useState<Trainee | null>(null);
   const [modalVerified, setModalVerified] = useState<boolean>(true);
   const [modalRemark, setModalRemark] = useState<string>('');
-  const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Dynamic viewport & modal height calculation hook for mobile & desktop positioning
@@ -406,55 +408,64 @@ const BrnVerification: React.FC = () => {
     setModalRemark(trainee.brn_remark || '');
   };
 
-  const handleSaveVerification = async () => {
-    if (!activeTrainee) return;
-    setSaving(true);
-    try {
-      const now = Date.now();
-      const verifiedBy = userProfile?.name || userProfile?.email || 'Course Director';
-      const updatedData = {
-        is_brn_verified: modalVerified,
-        brn_remark: modalRemark.trim(),
-        brn_verified_at: now,
-        brn_verified_by: verifiedBy
-      };
-
-      await dataService.updateTraineeBrnVerification(
-        activeTrainee.id,
-        {
-          is_brn_verified: modalVerified,
-          brn_remark: modalRemark.trim(),
-          verifiedBy,
-        },
-        userProfile
-          ? {
-              userId: userProfile.id || '',
-              user: userProfile.name || 'Course Director',
-              userRole: userProfile.role || '',
-            }
-          : undefined
-      );
-
-      // Local optimistic update
-      setTrainees(prev => prev.map(t => {
-        if (t.id === activeTrainee.id) {
-          return {
-            ...t,
-            ...updatedData
+  const brnVerifySteps: ActionStep<{ verified: boolean }>[] = useMemo(
+    () => [
+      {
+        id: 'save-brn-verification',
+        label: 'যাচাই ফলাফল সংরক্ষণ করা হচ্ছে',
+        run: async () => {
+          if (!activeTrainee) {
+            throw new Error('প্রশিক্ষণার্থী নির্বাচিত নেই');
+          }
+          const now = Date.now();
+          const verifiedBy = userProfile?.name || userProfile?.email || 'Course Director';
+          const updatedData = {
+            is_brn_verified: modalVerified,
+            brn_remark: modalRemark.trim(),
+            brn_verified_at: now,
+            brn_verified_by: verifiedBy,
           };
-        }
-        return t;
-      }));
 
-      showToast(`শিক্ষার্থী ${activeTrainee.nameBn}-এর জন্ম নিবন্ধন যাচাই অবস্থা সফলভাবে সংরক্ষিত হয়েছে।`);
-      setActiveTrainee(null);
-    } catch (err) {
-      console.error("Failed to update BRN verification:", err);
-      alert("যাচাইকরণ সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।");
-    } finally {
-      setSaving(false);
-    }
-  };
+          await dataService.updateTraineeBrnVerification(
+            activeTrainee.id,
+            {
+              is_brn_verified: modalVerified,
+              brn_remark: modalRemark.trim(),
+              verifiedBy,
+            },
+            userProfile
+              ? {
+                  userId: userProfile.id || '',
+                  user: userProfile.name || 'Course Director',
+                  userRole: userProfile.role || '',
+                }
+              : undefined
+          );
+
+          setTrainees((prev) =>
+            prev.map((t) => (t.id === activeTrainee.id ? { ...t, ...updatedData } : t))
+          );
+
+          showToast(
+            `শিক্ষার্থী ${activeTrainee.nameBn}-এর জন্ম নিবন্ধন যাচাই অবস্থা সফলভাবে সংরক্ষিত হয়েছে।`
+          );
+          return { verified: modalVerified };
+        },
+        describe: (res) =>
+          res.verified ? 'স্ট্যাটাস: যাচাইকৃত (Verified)' : 'স্ট্যাটাস: অবৈধ (Invalid)',
+      },
+    ],
+    [activeTrainee, modalRemark, modalVerified, userProfile]
+  );
+
+  const brnSaveRunner = useActionRunner(brnVerifySteps);
+  const isBrnBusy = brnSaveRunner.phase === 'running' || brnSaveRunner.phase === 'waiting';
+  const isBrnSuccess = brnSaveRunner.phase === 'success';
+
+  useEffect(() => {
+    brnSaveRunner.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTrainee?.id]);
 
   // Quick Export Handler for filtered view
   const handleQuickExport = async (format: 'excel' | 'csv' | 'pdf' | 'print') => {
@@ -668,14 +679,23 @@ const BrnVerification: React.FC = () => {
               <div className="min-w-0">
                 <Link
                   to={`/trainees/${trainee.id}`}
-                  className="font-bold text-theme-text-primary hover:text-theme-primary transition flex items-center space-x-1 group/link truncate"
+                  className="font-bold text-theme-text-primary hover:text-theme-primary transition flex items-center space-x-1 group/link min-w-0"
                   title="প্রশিক্ষণার্থীর প্রোফাইল দেখুন"
                 >
-                  <span className="truncate">{trainee.nameBn || trainee.nameEn}</span>
+                  <TruncatedText
+                    text={trainee.nameBn || trainee.nameEn}
+                    mode="pop"
+                    className="min-w-0"
+                  />
                   <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 text-theme-primary shrink-0 transition" />
                 </Link>
                 {trainee.nameEn && trainee.nameBn && (
-                  <p className="text-[11px] text-theme-text-muted truncate">{trainee.nameEn}</p>
+                  <TruncatedText
+                    as="p"
+                    text={trainee.nameEn}
+                    mode="pop"
+                    className="text-[11px] text-theme-text-muted"
+                  />
                 )}
                 <div className="flex items-center space-x-2 mt-0.5 text-[11px] font-mono text-theme-text-secondary tabular-nums">
                   <span>ID: <strong className="text-theme-text-primary">{trainee.traineeId}</strong></span>
@@ -739,11 +759,13 @@ const BrnVerification: React.FC = () => {
               <span className="text-[10px] text-theme-text-muted block">লিঙ্গ:</span>
               <span className="font-medium text-theme-text-primary">{trainee.gender === 'Female' ? 'নারী' : 'পুরুষ'}</span>
             </div>
-            <div className="col-span-2 pt-1 border-t border-theme-border">
+            <div className="col-span-2 pt-1 border-t border-theme-border min-w-0">
               <span className="text-[10px] text-theme-text-muted block">প্রতিষ্ঠান ও ব্যাচ:</span>
-              <span className="font-medium text-theme-text-primary block truncate" title={`${getInstituteName(trainee.instituteId)} • ${getBatchName(trainee.batchId)}`}>
-                {getBatchName(trainee.batchId)} ({getInstituteName(trainee.instituteId)})
-              </span>
+              <TruncatedText
+                text={`${getBatchName(trainee.batchId)} (${getInstituteName(trainee.instituteId)})`}
+                mode="pop"
+                className="font-medium text-theme-text-primary block"
+              />
             </div>
           </div>
 
@@ -821,10 +843,14 @@ const BrnVerification: React.FC = () => {
               <div className="min-w-0">
                 <Link
                   to={`/trainees/${trainee.id}`}
-                  className="font-bold text-theme-text-primary hover:text-theme-primary transition block truncate text-xs sm:text-sm"
+                  className="font-bold text-theme-text-primary hover:text-theme-primary transition block text-xs sm:text-sm"
                   title="প্রোফাইল দেখুন"
                 >
-                  {trainee.nameBn || trainee.nameEn}
+                  <TruncatedText
+                    text={trainee.nameBn || trainee.nameEn}
+                    mode="pop"
+                    className="w-full"
+                  />
                 </Link>
                 <div className="flex items-center space-x-2 mt-0.5 text-[10px] text-theme-text-muted font-mono tabular-nums">
                   <span>আইডি: <strong className="text-theme-text-primary font-bold">{trainee.traineeId}</strong></span>
@@ -888,12 +914,18 @@ const BrnVerification: React.FC = () => {
         )}
         {isColVisible('instituteBatch') && (
           <td className="px-4 py-3">
-            <div className="font-bold text-theme-text-primary text-xs truncate max-w-[190px]">
-              {getBatchName(trainee.batchId)}
-            </div>
-            <div className="text-[11px] text-theme-text-muted truncate max-w-[190px]">
-              {getInstituteName(trainee.instituteId)}
-            </div>
+            <TruncatedText
+              as="div"
+              text={getBatchName(trainee.batchId)}
+              mode="pop"
+              className="font-bold text-theme-text-primary text-xs"
+            />
+            <TruncatedText
+              as="div"
+              text={getInstituteName(trainee.instituteId)}
+              mode="pop"
+              className="text-[11px] text-theme-text-muted"
+            />
           </td>
         )}
         {isColVisible('status') && (
@@ -902,11 +934,15 @@ const BrnVerification: React.FC = () => {
           </td>
         )}
         {isColVisible('remark') && (
-          <td className="px-4 py-3 max-w-[190px]">
+          <td className="px-4 py-3">
             {trainee.brn_remark ? (
-              <span className="text-theme-text-secondary text-[11px] line-clamp-2 leading-relaxed" title={trainee.brn_remark}>
-                "{trainee.brn_remark}"
-              </span>
+              <TruncatedText
+                text={`"${trainee.brn_remark}"`}
+                lines={2}
+                mode="sheet"
+                title="যাচাই মন্তব্য"
+                className="text-theme-text-secondary text-[11px] leading-relaxed block"
+              />
             ) : (
               <span className="text-theme-text-muted italic text-[11px]">—</span>
             )}
@@ -1471,17 +1507,17 @@ const BrnVerification: React.FC = () => {
         /* ======================================================== */
         <div className="bg-theme-surface rounded-2xl border border-theme-border shadow-xs overflow-hidden">
           <div className="overflow-x-auto max-h-[70vh] scrollbar-thin">
-            <table className="min-w-full divide-y divide-theme-border text-left">
+            <table className="min-w-[1200px] w-full table-fixed divide-y divide-theme-border text-left">
               <thead className="sticky top-0 z-10 bg-theme-surface-subtle text-[11px] font-bold text-theme-text-secondary uppercase tracking-wider border-b border-theme-border shadow-2xs">
                 <tr>
                   {isColVisible('sl') && <th className="px-4 py-3.5 w-14 text-center">ক্রমিক</th>}
-                  {isColVisible('traineeInfo') && <th className="px-4 py-3.5 min-w-[220px]">প্রশিক্ষণার্থী ও আইডি</th>}
-                  {isColVisible('ubrn') && <th className="px-4 py-3.5 min-w-[210px]">জন্ম নিবন্ধন নম্বর (UBRN)</th>}
-                  {isColVisible('dob') && <th className="px-4 py-3.5 min-w-[120px] whitespace-nowrap">জন্ম তারিখ</th>}
-                  {isColVisible('instituteBatch') && <th className="px-4 py-3.5 min-w-[180px]">প্রতিষ্ঠান ও ব্যাচ</th>}
-                  {isColVisible('status') && <th className="px-4 py-3.5 text-center min-w-[140px] whitespace-nowrap">যাচাই অবস্থা</th>}
-                  {isColVisible('remark') && <th className="px-4 py-3.5 min-w-[150px]">মন্তব্য</th>}
-                  {isColVisible('actions') && <th className="px-4 py-3.5 text-right min-w-[220px] whitespace-nowrap">অ্যাকশন</th>}
+                  {isColVisible('traineeInfo') && <th className="px-4 py-3.5 w-[220px]">প্রশিক্ষণার্থী ও আইডি</th>}
+                  {isColVisible('ubrn') && <th className="px-4 py-3.5 w-[210px]">জন্ম নিবন্ধন নম্বর (UBRN)</th>}
+                  {isColVisible('dob') && <th className="px-4 py-3.5 w-[125px] whitespace-nowrap">জন্ম তারিখ</th>}
+                  {isColVisible('instituteBatch') && <th className="px-4 py-3.5 w-[195px]">প্রতিষ্ঠান ও ব্যাচ</th>}
+                  {isColVisible('status') && <th className="px-4 py-3.5 text-center w-[140px] whitespace-nowrap">যাচাই অবস্থা</th>}
+                  {isColVisible('remark') && <th className="px-4 py-3.5 w-[190px]">মন্তব্য</th>}
+                  {isColVisible('actions') && <th className="px-4 py-3.5 text-right w-[220px] whitespace-nowrap">অ্যাকশন</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-theme-border text-xs">
@@ -1598,13 +1634,15 @@ const BrnVerification: React.FC = () => {
       {activeTrainee && (
         <div 
           className={`${verifyBackdropClasses} animate-fadeIn`}
-          onClick={() => setActiveTrainee(null)}
+          onClick={() => {
+            if (!isBrnBusy) setActiveTrainee(null);
+          }}
         >
           <div className={verifyAlignmentClasses}>
             <div 
               ref={verifyModalRef}
               onClick={(e) => e.stopPropagation()}
-              className="bg-theme-elevated rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-theme-border space-y-4 sm:space-y-5"
+              className="bg-theme-elevated rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-theme-border space-y-4 sm:space-y-5 overflow-visible"
             >
               {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-theme-border pb-3.5">
@@ -1619,8 +1657,9 @@ const BrnVerification: React.FC = () => {
               </div>
               <button
                 type="button"
+                disabled={isBrnBusy}
                 onClick={() => setActiveTrainee(null)}
-                className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg hover:bg-theme-surface-hover cursor-pointer"
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg hover:bg-theme-surface-hover cursor-pointer disabled:opacity-50"
               >
                 <X size={18} />
               </button>
@@ -1649,8 +1688,9 @@ const BrnVerification: React.FC = () => {
                 {/* YES Option Button */}
                 <button
                   type="button"
+                  disabled={isBrnBusy || isBrnSuccess}
                   onClick={() => setModalVerified(true)}
-                  className={`py-3 px-4 rounded-xl border flex items-center justify-center space-x-2 text-sm font-bold transition-all cursor-pointer shadow-xs ${
+                  className={`py-3 px-4 rounded-xl border flex items-center justify-center space-x-2 text-sm font-bold transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
                     modalVerified === true
                       ? 'bg-theme-success border-theme-success text-theme-success-fg ring-2 ring-theme-success/35 scale-[1.02]'
                       : 'bg-theme-surface border-theme-border text-theme-text-primary hover:bg-theme-success-soft hover:border-theme-success-border'
@@ -1667,8 +1707,9 @@ const BrnVerification: React.FC = () => {
                 {/* NO Option Button (Marks as Invalid) */}
                 <button
                   type="button"
+                  disabled={isBrnBusy || isBrnSuccess}
                   onClick={() => setModalVerified(false)}
-                  className={`py-3 px-4 rounded-xl border flex items-center justify-center space-x-2 text-sm font-bold transition-all cursor-pointer shadow-xs ${
+                  className={`py-3 px-4 rounded-xl border flex items-center justify-center space-x-2 text-sm font-bold transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
                     modalVerified === false
                       ? 'bg-theme-danger border-theme-danger text-theme-danger-fg ring-2 ring-theme-danger/35 scale-[1.02]'
                       : 'bg-theme-surface border-theme-border text-theme-text-primary hover:bg-theme-danger-soft hover:border-theme-danger-border'
@@ -1697,10 +1738,11 @@ const BrnVerification: React.FC = () => {
               </label>
               <textarea
                 rows={3}
+                disabled={isBrnBusy || isBrnSuccess}
                 value={modalRemark}
                 onChange={(e) => setModalRemark(e.target.value)}
                 placeholder="e.g. BDRIS সার্ভারে নাম ও জন্ম তারিখ মিলেছে / জন্ম তারিখ তথ্যে অমিল রয়েছে"
-                className="w-full px-3.5 py-2.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs text-theme-text-primary placeholder:text-theme-text-muted font-medium focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-theme-surface-subtle border border-theme-border rounded-xl text-xs text-theme-text-primary placeholder:text-theme-text-muted font-medium focus:ring-2 focus:ring-theme-primary/25 focus:border-theme-primary focus:outline-none disabled:opacity-60"
               />
 
               {/* Quick suggestion tag chips */}
@@ -1714,6 +1756,7 @@ const BrnVerification: React.FC = () => {
                   <button
                     key={preset}
                     type="button"
+                    disabled={isBrnBusy || isBrnSuccess}
                     onClick={() => {
                       setModalRemark(preset);
                       if (preset.includes('Invalid') || preset.includes('রেকর্ড পাওয়া যায়নি') || preset.includes('অমিল')) {
@@ -1722,7 +1765,7 @@ const BrnVerification: React.FC = () => {
                         setModalVerified(true);
                       }
                     }}
-                    className="text-[10px] bg-theme-surface-subtle hover:bg-theme-surface-hover border border-theme-border text-theme-text-secondary px-2 py-0.5 rounded-md transition font-medium cursor-pointer"
+                    className="text-[10px] bg-theme-surface-subtle hover:bg-theme-surface-hover border border-theme-border text-theme-text-secondary px-2 py-0.5 rounded-md transition font-medium cursor-pointer disabled:opacity-50"
                   >
                     {preset}
                   </button>
@@ -1731,24 +1774,23 @@ const BrnVerification: React.FC = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end space-x-2.5 pt-3 border-t border-theme-border">
+            <div className="flex items-start justify-end gap-2.5 pt-3 border-t border-theme-border">
               <button
                 type="button"
                 onClick={() => setActiveTrainee(null)}
-                disabled={saving}
-                className="px-4 py-2 text-xs font-bold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer"
+                disabled={isBrnBusy}
+                className="min-h-[44px] px-4 py-2 text-xs font-bold text-theme-text-secondary hover:bg-theme-surface-hover rounded-xl transition cursor-pointer disabled:opacity-50 shrink-0"
               >
-                বাতিল (Cancel)
+                {isBrnSuccess ? 'বন্ধ করুন' : 'বাতিল (Cancel)'}
               </button>
-              <button
-                type="button"
-                onClick={handleSaveVerification}
-                disabled={saving}
-                className="px-5 py-2 text-xs font-bold bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl shadow-sm hover:shadow transition flex items-center space-x-1.5 active:scale-95 cursor-pointer"
-              >
-                <Check size={14} />
-                <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন (Save)'}</span>
-              </button>
+              <ActionButton
+                runner={brnSaveRunner}
+                idleLabel="সংরক্ষণ করুন (Save)"
+                idleIcon={<Check size={14} />}
+                popoverTitle="যাচাই সংরক্ষণের ধাপ"
+                onAutoHide={() => setActiveTrainee(null)}
+                className="flex-1 sm:flex-initial sm:min-w-[190px]"
+              />
             </div>
           </div>
         </div>

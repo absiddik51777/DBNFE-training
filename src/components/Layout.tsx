@@ -39,6 +39,7 @@ import { extractAttendanceNavigationTarget } from './notifications/notificationH
 import { AuditDetailSheet } from './audit/AuditDetailSheet';
 import { useNotifications } from '../hooks/useNotifications';
 import type { ActivityLog } from '../types';
+import { TruncatedText } from './ui/TruncatedText';
 
 const Layout: React.FC = () => {
   const { userProfile, signOut, permissionError } = useAuth();
@@ -54,6 +55,8 @@ const Layout: React.FC = () => {
   const bellButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const isTrainer = userProfile?.role === 'Trainer';
+  const isAttendanceRoute =
+    location.pathname === '/attendance' || location.pathname === '/attendance-sheet';
 
   const handleSelectNotification = useCallback(
     (log: ActivityLog) => {
@@ -130,6 +133,7 @@ const Layout: React.FC = () => {
       { path: '/exams', name: 'পরীক্ষা', sub: 'Exams', icon: <FileText size={19} /> },
       { path: '/results', name: 'ফলাফল', sub: 'Results', icon: <BarChart size={19} /> },
       { path: '/reports', name: 'প্রতিবেদন', sub: 'Reports', icon: <FileText size={19} /> },
+      { path: '/reports/weekly-signature', name: 'সাপ্তাহিক স্বাক্ষর সিট', sub: 'Weekly Signature', icon: <CalendarDays size={19} /> },
       { path: '/certificates', name: 'সার্টিফিকেট', sub: 'Certificates', icon: <Award size={19} /> },
       { path: '/users', name: 'ব্যবহারকারী', sub: 'Users', icon: <UserCheck size={19} /> }
     );
@@ -159,36 +163,12 @@ const Layout: React.FC = () => {
     return items;
   }, [isTrainer, isCourseDirector]);
 
-  const menuItems = baseMenuItems.filter((item) => canViewPage(item.path));
-
-  const getRoleBadge = (role?: string) => {
-    switch (role) {
-      case 'Course Director':
-        return (
-          <span className="bg-theme-accent-soft text-theme-accent border border-theme-accent-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
-            কোর্স পরিচালক
-          </span>
-        );
-      case 'FMA':
-        return (
-          <span className="bg-theme-info-soft text-theme-info border border-theme-info-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
-            FMA
-          </span>
-        );
-      case 'Trainer':
-        return (
-          <span className="bg-theme-primary-soft text-theme-primary-soft-fg border border-theme-primary-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
-            প্রশিক্ষক
-          </span>
-        );
-      default:
-        return role ? (
-          <span className="bg-theme-surface-subtle text-theme-text-secondary border border-theme-border text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 leading-snug">
-            {role}
-          </span>
-        ) : null;
+  const menuItems = baseMenuItems.filter((item) => {
+    if (item.path === '/reports/weekly-signature') {
+      return canViewPage('/reports') || canViewPage('/attendance-sheet');
     }
-  };
+    return canViewPage(item.path);
+  });
 
   const toggleQuickMode = () => {
     setMode(resolvedMode === 'dark' ? 'light' : 'dark');
@@ -197,7 +177,7 @@ const Layout: React.FC = () => {
   return (
     <div className="min-h-screen bg-theme-bg text-theme-text-primary font-sans flex flex-col lg:flex-row antialiased">
       {/* Desktop and Large Tablet Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen lg:shrink-0 w-72 bg-theme-nav border-r border-theme-border text-theme-text-primary justify-between z-30">
+      <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen lg:shrink-0 w-72 bg-theme-nav border-r border-theme-border text-theme-text-primary justify-between z-30 print:hidden">
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Header & Logo */}
           <div className="h-18 px-5 flex items-center justify-between border-b border-theme-border shrink-0">
@@ -222,15 +202,20 @@ const Layout: React.FC = () => {
               <div className="w-9 h-9 rounded-full bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center font-medium text-sm border border-theme-primary-border shrink-0">
                 {userProfile?.name?.charAt(0) || 'U'}
               </div>
-              <div className="overflow-hidden flex-1">
-                <p className="font-medium text-sm text-theme-text-primary truncate leading-snug">
-                  {userProfile?.name}
-                </p>
-                <div className="flex items-center space-x-1.5 mt-0.5">
+              <div className="min-w-0 overflow-hidden flex-1">
+                <TruncatedText
+                  as="p"
+                  text={userProfile?.name}
+                  mode="pop"
+                  className="font-medium text-sm text-theme-text-primary leading-snug"
+                />
+                <div className="flex items-center space-x-1.5 mt-0.5 min-w-0">
                   <Shield size={12} className="text-theme-primary shrink-0" />
-                  <span className="text-xs text-theme-text-secondary truncate">
-                    {userProfile?.role}
-                  </span>
+                  <TruncatedText
+                    text={userProfile?.role}
+                    mode="pop"
+                    className="text-xs text-theme-text-secondary min-w-0"
+                  />
                 </div>
               </div>
             </div>
@@ -240,8 +225,10 @@ const Layout: React.FC = () => {
           <nav className="flex-1 min-h-0 px-3 py-1 space-y-1 overflow-y-auto overscroll-contain">
             {menuItems.map((item) => {
               const isActive =
-                location.pathname === item.path ||
-                (item.path !== '/' && location.pathname.startsWith(item.path));
+                item.path === '/reports'
+                  ? location.pathname === '/reports'
+                  : location.pathname === item.path ||
+                    (item.path !== '/' && location.pathname.startsWith(item.path));
               return (
                 <Link
                   key={item.path}
@@ -289,8 +276,12 @@ const Layout: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Navbar */}
-        <header className="h-16 bg-theme-nav border-b border-theme-border px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30">
+        {/* Top Navbar (hidden on mobile /attendance where page provides its own compact sticky header) */}
+        <header
+          className={`h-16 bg-theme-nav border-b border-theme-border px-4 sm:px-6 lg:px-8 items-center justify-between sticky top-0 z-30 print:hidden ${
+            isAttendanceRoute ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
           <div className="flex items-center space-x-3 min-w-0">
             {/* Mobile Native App Branding */}
             <div className="flex items-center space-x-2.5 lg:hidden">
@@ -308,14 +299,15 @@ const Layout: React.FC = () => {
             </div>
 
             {/* Desktop Program Title */}
-            <div className="hidden lg:block text-theme-text-primary font-medium text-sm truncate">
-              ঝরে পড়া শিক্ষার্থীদের দক্ষতা উন্নয়ন প্রশিক্ষণ কর্মসূচি (Class 8 Dropout Program)
-            </div>
+            <TruncatedText
+              as="div"
+              text="ঝরে পড়া শিক্ষার্থীদের দক্ষতা উন্নয়ন প্রশিক্ষণ কর্মসূচি (Class 8 Dropout Program)"
+              mode="pop"
+              className="hidden lg:block min-w-0 text-theme-text-primary font-medium text-sm"
+            />
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
-            {getRoleBadge(userProfile?.role)}
-            <div className="h-4 w-px bg-theme-border mx-1 hidden sm:block" />
             <div className="text-right hidden sm:block">
               <span className="block text-xs font-medium text-theme-text-primary">
                 {userProfile?.name}
@@ -340,29 +332,23 @@ const Layout: React.FC = () => {
             >
               {resolvedMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-
-            <button
-              type="button"
-              onClick={() => signOut()}
-              title="লগআউট"
-              aria-label="লগআউট"
-              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-theme-text-secondary hover:text-theme-danger hover:bg-theme-danger-soft rounded-xl transition active:scale-95 cursor-pointer"
-            >
-              <LogOut size={18} />
-            </button>
           </div>
         </header>
 
         {/* Once-per-open Notification Banner */}
-        <NotificationBanner onOpenNotifications={() => setNotifDropdownOpen(true)} />
+        <div className="print:hidden">
+          <NotificationBanner onOpenNotifications={() => setNotifDropdownOpen(true)} />
+        </div>
 
         {/* Page Container */}
         <main
-          className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto lg:pb-8"
+          className={`flex-1 overflow-y-auto lg:pb-8 print:overflow-visible print:p-0! ${
+            isAttendanceRoute ? 'p-0 lg:p-6' : 'p-3.5 sm:p-6 lg:p-8'
+          }`}
           style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
         >
           {permissionError && !dismissPermNotice && (
-            <div className="mb-6 p-4 rounded-2xl bg-theme-warning-soft border border-theme-warning-border text-theme-text-primary text-xs flex items-start justify-between gap-3 shadow-xs">
+            <div className="mb-6 p-4 rounded-2xl bg-theme-warning-soft border border-theme-warning-border text-theme-text-primary text-xs flex items-start justify-between gap-3 shadow-xs print:hidden">
               <div className="space-y-1">
                 <div className="font-bold flex items-center space-x-1.5 text-theme-warning text-sm">
                   <span>ফায়ারবেস ডেটাবেস পারমিশন সংক্রান্ত নির্দেশনা (Firestore Rules Note):</span>
@@ -412,7 +398,7 @@ const Layout: React.FC = () => {
       {/* Read-only (or Admin) Detail Sheet triggered from Notification Dropdown/Modal */}
       <AuditDetailSheet
         log={selectedNotifLog}
-        isAdmin={userProfile?.role === 'Course Director' || isCourseDirector}
+        isAdmin={isCourseDirector}
         actor={
           userProfile
             ? {

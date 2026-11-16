@@ -21,7 +21,15 @@ import {
 
 const Login: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
-  const { signIn, signInWithGoogle, signUp, sendPasswordReset, userProfile } = useAuth();
+  const {
+    signIn,
+    signInWithGoogle,
+    signUp,
+    sendPasswordReset,
+    userProfile,
+    sessionNotice,
+    clearSessionNotice,
+  } = useAuth();
   const { getDefaultLandingRoute } = usePermissions();
   const navigate = useNavigate();
 
@@ -88,19 +96,23 @@ const Login: React.FC = () => {
     fetchData();
   }, []);
 
-  // Redirect if logged in to role's authorized landing page (Trainers -> Trainer Dashboard, Others -> Overview Dashboard)
+  // Redirect if logged in with Active or Pending Approval status
   useEffect(() => {
-    if (userProfile) {
+    if (
+      userProfile &&
+      (userProfile.status === 'Active' || userProfile.status === 'Pending Approval')
+    ) {
       if (userProfile.role === 'Trainer') {
         navigate('/trainer-dashboard', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate(getDefaultLandingRoute('/'), { replace: true });
       }
     }
-  }, [userProfile]);
+  }, [userProfile, navigate, getDefaultLandingRoute]);
 
   const handleGoogleSignIn = async () => {
     setError('');
+    clearSessionNotice();
     setSuccessMsg('');
     setGoogleLoading(true);
     try {
@@ -124,6 +136,7 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    clearSessionNotice();
     setSuccessMsg('');
     setLoading(true);
 
@@ -169,6 +182,7 @@ const Login: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    clearSessionNotice();
     setSuccessMsg('');
 
     if (!allowPublicRegistration) {
@@ -263,7 +277,7 @@ const Login: React.FC = () => {
         <div className="flex bg-theme-surface-subtle border border-theme-border p-1 mx-5 rounded-xl">
           <button
             type="button"
-            onClick={() => { setIsRegister(false); setError(''); }}
+            onClick={() => { setIsRegister(false); setError(''); clearSessionNotice(); }}
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               !isRegister
                 ? 'bg-theme-surface text-theme-primary shadow-xs border border-theme-border'
@@ -274,7 +288,7 @@ const Login: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => { setIsRegister(true); setError(''); }}
+            onClick={() => { setIsRegister(true); setError(''); clearSessionNotice(); }}
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center space-x-1 ${
               isRegister
                 ? 'bg-theme-surface text-theme-primary shadow-xs border border-theme-border'
@@ -289,12 +303,13 @@ const Login: React.FC = () => {
         </div>
 
         <div className="p-5 sm:p-6 pt-4">
-          {error && (() => {
+          {(error || sessionNotice) && (() => {
+            const activeError = error || sessionNotice || '';
             const isOperationNotAllowed =
-              error.toLowerCase().includes('operation-not-allowed') ||
-              error.includes('auth/operation-not-allowed') ||
-              error.includes('সক্রিয় (Enabled) করা নেই') ||
-              error.includes('প্রোভাইডার বন্ধ');
+              activeError.toLowerCase().includes('operation-not-allowed') ||
+              activeError.includes('auth/operation-not-allowed') ||
+              activeError.includes('সক্রিয় (Enabled) করা নেই') ||
+              activeError.includes('প্রোভাইডার বন্ধ');
 
             return (
               <div className={`mb-4 p-3.5 rounded-xl border text-xs sm:text-sm ${
@@ -305,7 +320,7 @@ const Login: React.FC = () => {
                 <div className="flex items-start space-x-2.5">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-semibold">{error}</p>
+                    <p className="font-semibold">{activeError}</p>
                     {isOperationNotAllowed && (
                       <div className="mt-2.5 pt-2.5 border-t border-theme-warning-border text-[11px] text-theme-text-secondary space-y-2">
                         <p className="font-bold text-theme-text-primary">সমাধান নির্দেশিকা (Firebase Console Setup):</p>

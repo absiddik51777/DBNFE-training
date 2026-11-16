@@ -43,6 +43,7 @@ import { SHIKHON_92_DAYS, SHIKHON_COURSE_INFO } from '../data/shikhonCalendarDat
 import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { SHOW_CALENDAR_MODULES } from '../config/features';
+import { TruncatedText } from '../components/ui/TruncatedText';
 import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
 
@@ -965,16 +966,16 @@ const TrainerDashboard: React.FC = () => {
               </p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full min-w-[760px] table-fixed text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-theme-surface-subtle border-b border-theme-border text-theme-text-secondary text-[11px] uppercase tracking-wider font-bold">
                   <th className="py-3 px-4 text-center w-12">#</th>
-                  <th className="py-3 px-4">প্রশিক্ষণার্থী</th>
-                  <th className="py-3 px-4">অভিভাবক ও যোগাযোগ</th>
-                  <th className="py-3 px-4 text-center">উপস্থিতি বিবরণ</th>
-                  <th className="py-3 px-4">উপস্থিতির হার</th>
-                  <th className="py-3 px-4 text-center">ঝুঁকির স্তর</th>
-                  <th className="py-3 px-4 text-right">পদক্ষেপ</th>
+                  <th className="py-3 px-4 w-[210px]">প্রশিক্ষণার্থী</th>
+                  <th className="py-3 px-4 w-[180px]">অভিভাবক ও যোগাযোগ</th>
+                  <th className="py-3 px-4 text-center w-[115px]">উপস্থিতি বিবরণ</th>
+                  <th className="py-3 px-4 w-[115px]">উপস্থিতির হার</th>
+                  <th className="py-3 px-4 text-center w-[105px]">ঝুঁকির স্তর</th>
+                  <th className="py-3 px-4 text-right w-[95px]">পদক্ষেপ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-theme-border">
@@ -1010,8 +1011,13 @@ const TrainerDashboard: React.FC = () => {
                               {item.nameBn ? item.nameBn.charAt(0) : 'শি'}
                             </div>
                           )}
-                          <div className="overflow-hidden">
-                            <p className="font-bold text-theme-text-primary truncate">{item.nameBn || item.nameEn}</p>
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <TruncatedText
+                              as="p"
+                              text={item.nameBn || item.nameEn}
+                              mode="pop"
+                              className="font-bold text-theme-text-primary"
+                            />
                             <div className="flex items-center space-x-1 mt-0.5">
                               <span className="font-mono text-[10px] text-theme-text-muted bg-theme-surface-subtle px-1.5 py-0.2 rounded tabular-nums">
                                 {item.registrationNumber}

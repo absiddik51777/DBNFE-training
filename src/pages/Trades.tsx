@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, 
   Edit2, 
@@ -36,6 +36,10 @@ import { dataService } from '../lib/dataService';
 import { safeFormatDate, toBn } from '../lib/dateUtils';
 import { TableSkeleton } from '../components/Skeleton';
 import DataTableToolbar, { ColumnOption, GroupByOption } from '../components/TableToolbar/DataTableToolbar';
+import { TruncatedText } from '../components/ui/TruncatedText';
+import { ActionMessageError } from '../lib/friendlyError';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
 
 const DURATION_PRESETS = [
   '৬ মাস (৩৬০ ঘণ্টা)',
@@ -93,7 +97,7 @@ const Trades: React.FC = () => {
     status: 'Active' as 'Active' | 'Inactive' | 'Archived',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   // Search, Filter, Sort, Pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -299,8 +303,47 @@ const Trades: React.FC = () => {
     return { total, active, inactive, totalBatchesWithTrade, totalTraineesWithTrade };
   }, [trades, batches, trainees]);
 
+  const tradeSaveSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-trade',
+      label: editingTrade ? 'ট্রেডের তথ্য আপডেট করা হচ্ছে' : 'নতুন ট্রেড সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!canEdit) {
+          throw new ActionMessageError('আপনার ট্রেড সংরক্ষণের অনুমতি নেই।');
+        }
+        const cleanCode = formData.code.trim().toUpperCase();
+        const finalDuration = formData.duration === 'কাস্টম (অন্যান্য)' ? formData.customDuration.trim() : formData.duration;
+        const id = editingTrade ? editingTrade.id : `TRD-${cleanCode.replace(/[^A-Z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
+
+        const savedTrade: Trade = {
+          id,
+          name: formData.name.trim(),
+          nameEn: formData.nameEn.trim() || undefined,
+          code: cleanCode,
+          description: formData.description.trim(),
+          duration: finalDuration,
+          status: formData.status,
+          createdAt: editingTrade?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        await dataService.saveItem('trades', savedTrade, {
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
+
+        await fetchTradesData();
+        return savedTrade;
+      },
+      describe: (saved: Trade) => `সংরক্ষিত: ${saved.name} (${saved.code})`,
+    },
+  ], [canEdit, editingTrade, formData, userProfile]);
+
+  const tradeSaveRunner = useActionRunner(tradeSaveSteps);
+  const isTradeModalLocked = tradeSaveRunner.phase === 'running' || tradeSaveRunner.phase === 'waiting';
+
   // Open Add/Edit Modal
   const handleOpenModal = (trade?: Trade) => {
+    tradeSaveRunner.reset();
     setFormErrors({});
     if (trade) {
       setEditingTrade(trade);
@@ -328,6 +371,12 @@ const Trades: React.FC = () => {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    if (isTradeModalLocked) return;
+    tradeSaveRunner.reset();
+    setIsModalOpen(false);
   };
 
   // Form Validation
@@ -367,52 +416,17 @@ const Trades: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Form Submit (Save / Edit)
+  const handleBeforeSaveTrade = async () => {
+    if (!canEdit) return false;
+    return validateForm();
+  };
+
+  // Form Submit (Save / Edit via Enter key)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canEdit) return;
-
-    const isValid = await validateForm();
-    if (!isValid) return;
-
-    setSubmitting(true);
-    try {
-      const cleanCode = formData.code.trim().toUpperCase();
-      const finalDuration = formData.duration === 'কাস্টম (অন্যান্য)' ? formData.customDuration.trim() : formData.duration;
-      
-      const id = editingTrade ? editingTrade.id : `TRD-${cleanCode.replace(/[^A-Z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
-
-      const savedTrade: Trade = {
-        id,
-        name: formData.name.trim(),
-        nameEn: formData.nameEn.trim() || undefined,
-        code: cleanCode,
-        description: formData.description.trim(),
-        duration: finalDuration,
-        status: formData.status,
-        createdAt: editingTrade?.createdAt || Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      await dataService.saveItem('trades', savedTrade, {
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      setActionSuccessMessage(editingTrade ? 'ট্রেডের তথ্য সফলভাবে আপডেট করা হয়েছে।' : 'নতুন ট্রেড সফলভাবে যুক্ত করা হয়েছে।');
-      setTimeout(() => setActionSuccessMessage(''), 3000);
-
-      setIsModalOpen(false);
-      await fetchTradesData();
-    } catch (error) {
-      console.warn("Notice saving trade:", error);
-      await showAlert({
-        title: 'সংরক্ষণ ব্যর্থ',
-        message: "ট্রেড সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।",
-        variant: 'danger'
-      });
-    } finally {
-      setSubmitting(false);
-    }
+    if (isTradeModalLocked || tradeSaveRunner.phase === 'success') return;
+    if (!(await handleBeforeSaveTrade())) return;
+    await tradeSaveRunner.run();
   };
 
   // Delete Request Flow: Checks references and opens safe deactivation if referenced
@@ -449,6 +463,7 @@ const Trades: React.FC = () => {
 
     if (isReferenced) {
       // Referenced by batches/trainees: Open modal with BOTH safe deactivate and hard delete options
+      deactivateRunner.reset();
       setSafeDeleteModalTrade({
         trade,
         batchCount: usage.batchCount,
@@ -542,31 +557,33 @@ const Trades: React.FC = () => {
     }
   };
 
-  // Safe Deactivate Handler (Preserves Foreign Keys)
-  const handleConfirmDeactivate = async () => {
-    if (!safeDeleteModalTrade || !canEdit) return;
-    const { trade } = safeDeleteModalTrade;
+  const deactivateSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'deactivate-trade',
+      label: 'ট্রেড নিরাপদে নিষ্ক্রিয় করা হচ্ছে',
+      run: async () => {
+        if (!safeDeleteModalTrade || !canEdit) {
+          throw new ActionMessageError('ট্রেড নিষ্ক্রিয় করার অনুমতি নেই।');
+        }
+        const { trade } = safeDeleteModalTrade;
+        const updated: Trade = {
+          ...trade,
+          status: 'Inactive',
+          updatedAt: Date.now(),
+        };
+        await dataService.saveItem('trades', updated, {
+          title: `ট্রেড নিষ্ক্রিয়করণ: ${trade.name}`,
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
+        await fetchTradesData();
+        return trade.name;
+      },
+      describe: (name: string) => `নিষ্ক্রিয় সম্পন্ন: ${name}`,
+    },
+  ], [safeDeleteModalTrade, canEdit, userProfile]);
 
-    try {
-      const updated: Trade = {
-        ...trade,
-        status: 'Inactive',
-        updatedAt: Date.now(),
-      };
-      await dataService.saveItem('trades', updated, {
-        title: `ট্রেড নিষ্ক্রিয়করণ: ${trade.name}`,
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      setActionSuccessMessage(`"${trade.name}" ট্রেডটি সফলভাবে নিষ্ক্রিয় করা হয়েছে। বিদ্যমান ব্যাচ ও শিক্ষার্থীদের রেকর্ড অক্ষত রয়েছে।`);
-      setTimeout(() => setActionSuccessMessage(''), 4000);
-
-      setSafeDeleteModalTrade(null);
-      fetchTradesData();
-    } catch (err) {
-      console.warn("Could not deactivate trade:", err);
-    }
-  };
+  const deactivateRunner = useActionRunner(deactivateSteps);
+  const isDeactivateLocked = deactivateRunner.phase === 'running' || deactivateRunner.phase === 'waiting';
 
   // Filtered & Sorted Trades List
   const processedTrades = useMemo(() => {
@@ -1201,9 +1218,13 @@ const Trades: React.FC = () => {
                                 </div>
                               </div>
 
-                              <p className="text-xs text-theme-text-secondary leading-relaxed line-clamp-2 min-h-[32px]">
-                                {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
-                              </p>
+                              <TruncatedText
+                                as="p"
+                                text={trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
+                                lines={2}
+                                mode="exp"
+                                className="text-xs text-theme-text-secondary leading-relaxed min-h-[32px]"
+                              />
 
                               <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary py-1.5 px-2.5 bg-theme-surface-subtle rounded-xl border border-theme-border">
                                 <Clock size={14} className="text-theme-primary shrink-0" />
@@ -1321,9 +1342,13 @@ const Trades: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="text-xs text-theme-text-secondary leading-relaxed line-clamp-2 min-h-[32px]">
-                      {trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
-                    </p>
+                    <TruncatedText
+                      as="p"
+                      text={trade.description || 'ট্রেডের বিস্তারিত বিবরণ উল্লেখ করা হয়নি।'}
+                      lines={2}
+                      mode="exp"
+                      className="text-xs text-theme-text-secondary leading-relaxed min-h-[32px]"
+                    />
 
                     <div className="flex items-center space-x-1.5 text-xs text-theme-text-secondary py-1.5 px-2.5 bg-theme-surface-subtle rounded-xl border border-theme-border">
                       <Clock size={14} className="text-theme-primary shrink-0" />
@@ -1435,7 +1460,7 @@ const Trades: React.FC = () => {
       {/* ======================================================== */}
       {safeDeleteModalTrade && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-theme-border space-y-4 text-theme-text-primary">
+          <div className="bg-theme-elevated rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-theme-border space-y-4 text-theme-text-primary overflow-visible">
             <div className="flex items-start space-x-3.5">
               <div className="w-12 h-12 rounded-2xl bg-theme-danger-soft text-theme-danger flex items-center justify-center shrink-0">
                 <ShieldAlert size={28} />
@@ -1449,8 +1474,13 @@ const Trades: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={() => setSafeDeleteModalTrade(null)}
-                className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer"
+                type="button"
+                disabled={isDeactivateLocked}
+                onClick={() => {
+                  deactivateRunner.reset();
+                  setSafeDeleteModalTrade(null);
+                }}
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 disabled:opacity-50 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -1472,29 +1502,36 @@ const Trades: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2">
+            <div className="flex flex-wrap items-start justify-end gap-2.5 pt-2">
               <button
                 type="button"
-                onClick={() => setSafeDeleteModalTrade(null)}
-                className="px-4 py-2 border border-theme-border rounded-xl text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover cursor-pointer"
+                disabled={isDeactivateLocked}
+                onClick={() => {
+                  deactivateRunner.reset();
+                  setSafeDeleteModalTrade(null);
+                }}
+                className="min-h-[44px] px-4 py-2 border border-theme-border rounded-[12px] text-xs font-semibold text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 cursor-pointer"
               >
-                বাতিল
+                {deactivateRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmDeactivate}
-                className="px-4 py-2 bg-theme-warning hover:opacity-90 text-theme-warning-fg rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-              >
-                নিরাপদে নিষ্ক্রিয় করুন (Deactivate)
-              </button>
+              <ActionButton
+                runner={deactivateRunner}
+                idleLabel="নিরাপদে নিষ্ক্রিয় করুন"
+                popoverTitle="ট্রেড নিষ্ক্রিয়করণ"
+                onAutoHide={() => {
+                  deactivateRunner.reset();
+                  setSafeDeleteModalTrade(null);
+                }}
+                className="min-w-[180px]"
+              />
               <button
                 type="button"
                 onClick={handleForceDeleteTrade}
-                disabled={!isDeletionAllowed}
-                className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 ${
+                disabled={!isDeletionAllowed || isDeactivateLocked || deactivateRunner.phase === 'success'}
+                className={`min-h-[44px] px-4 py-2 rounded-[12px] text-xs font-bold shadow-xs transition flex items-center space-x-1.5 ${
                   !isDeletionAllowed
                     ? 'bg-theme-surface-subtle text-theme-text-muted cursor-not-allowed'
-                    : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer'
+                    : 'bg-theme-danger hover:opacity-90 text-theme-danger-fg cursor-pointer disabled:opacity-50'
                 }`}
                 title={!isDeletionAllowed ? 'সেটিংস থেকে ডাটা ডিলিট বন্ধ রাখা হয়েছে 🔒' : 'ট্রেডটি স্থায়ীভাবে মুছে ফেলুন'}
               >
@@ -1521,12 +1558,18 @@ const Trades: React.FC = () => {
                   BNFE কারিগরি শিক্ষা মানদণ্ড অনুযায়ী কোর্স বিবরণ পূরণ করুন
                 </p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary p-1 cursor-pointer">
+              <button
+                type="button"
+                disabled={isTradeModalLocked}
+                onClick={handleCloseModal}
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 disabled:opacity-50 cursor-pointer"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+              <fieldset disabled={isTradeModalLocked || tradeSaveRunner.phase === 'success'} className="space-y-4 min-w-0">
               {/* Bengali Trade Name */}
               <div>
                 <label className="block text-xs font-bold text-theme-text-secondary mb-1">
@@ -1669,22 +1712,29 @@ const Trades: React.FC = () => {
                 </p>
               </div>
 
+              </fieldset>
+
               {/* Modal Buttons */}
-              <div className="flex items-center justify-end space-x-2.5 pt-4 border-t border-theme-border">
+              <div className="flex items-start justify-end gap-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 border border-theme-border rounded-xl text-xs sm:text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
+                  disabled={isTradeModalLocked}
+                  onClick={handleCloseModal}
+                  className="min-h-[44px] px-4 py-2.5 border border-theme-border rounded-[12px] text-xs sm:text-sm font-semibold text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 transition cursor-pointer"
                 >
-                  বাতিল
+                  {tradeSaveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2.5 bg-theme-primary hover:bg-theme-primary-hover active:scale-95 text-theme-primary-fg rounded-xl text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
-                >
-                  {submitting ? 'সংরক্ষণ হচ্ছে...' : editingTrade ? 'আপডেট সংরক্ষণ করুন' : 'ট্রেড তৈরি করুন'}
-                </button>
+                <ActionButton
+                  runner={tradeSaveRunner}
+                  idleLabel={editingTrade ? 'আপডেট সংরক্ষণ করুন' : 'ট্রেড তৈরি করুন'}
+                  popoverTitle={editingTrade ? 'ট্রেড আপডেট' : 'নতুন ট্রেড'}
+                  onBeforeRun={handleBeforeSaveTrade}
+                  onAutoHide={() => {
+                    tradeSaveRunner.reset();
+                    setIsModalOpen(false);
+                  }}
+                  className="min-w-[185px]"
+                />
               </div>
             </form>
           </div>

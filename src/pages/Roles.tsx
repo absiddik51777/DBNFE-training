@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Role, UserProfile } from '../types';
@@ -30,6 +30,11 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
+import { TruncatedText } from '../components/ui/TruncatedText';
+import { ActionMessageError } from '../lib/friendlyError';
+import { toBn } from '../lib/dateUtils';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
 
 interface RolesPageProps {
   embedded?: boolean;
@@ -55,12 +60,12 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
   // Modal / Drawer states
   const [selectedRoleForPerms, setSelectedRoleForPerms] = useState<Role | null>(null);
   const [selectedPermKeys, setSelectedPermKeys] = useState<string[]>([]);
-  const [isSavingPerms, setIsSavingPerms] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
   // Add / Edit Role Modal
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [roleFormError, setRoleFormError] = useState('');
+  const roleFormRef = useRef<HTMLFormElement | null>(null);
   const [roleFormData, setRoleFormData] = useState({
     name: '',
     nameBn: '',
@@ -68,6 +73,64 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
     description: '',
     template: 'fma'
   });
+
+  const permsSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-role-permissions',
+      label: 'রোলের পারমিশন সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!selectedRoleForPerms) {
+          throw new ActionMessageError('কোনো রোল নির্বাচিত নেই।');
+        }
+        await updateRolePermissions(selectedRoleForPerms.id, selectedPermKeys);
+        return {
+          roleName: selectedRoleForPerms.nameBn || selectedRoleForPerms.name,
+          count: selectedPermKeys.length,
+        };
+      },
+      describe: (res: { roleName: string; count: number }) =>
+        `${res.roleName}: ${toBn(res.count)}টি পারমিশন সংরক্ষিত`,
+    },
+  ], [selectedRoleForPerms, selectedPermKeys, updateRolePermissions]);
+
+  const permsRunner = useActionRunner(permsSteps);
+  const isPermsLocked = permsRunner.phase === 'running' || permsRunner.phase === 'waiting';
+
+  const createRoleSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'create-role',
+      label: 'নতুন রোল ডাটাবেজে সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!roleFormData.name.trim()) {
+          throw new ActionMessageError('রোলের নাম প্রদান করুন।');
+        }
+        let initialPerms: string[] = [];
+        if (roleFormData.template === 'all') {
+          initialPerms = [...ALL_PERMISSION_KEYS];
+        } else if (roleFormData.template === 'fma') {
+          initialPerms = [...DEFAULT_ROLES[1].permissions];
+        } else if (roleFormData.template === 'trainer') {
+          initialPerms = [...DEFAULT_ROLES[2].permissions];
+        } else if (roleFormData.template === 'view_only') {
+          initialPerms = ALL_PERMISSIONS.filter(p => p.isPageView).map(p => p.key);
+        }
+
+        const created = await createRole({
+          name: roleFormData.name.trim(),
+          nameBn: roleFormData.nameBn.trim() || roleFormData.name.trim(),
+          code: roleFormData.code.trim() || undefined,
+          description: roleFormData.description.trim(),
+          permissions: initialPerms,
+        });
+
+        return created;
+      },
+      describe: () => `রোল তৈরি সম্পন্ন: ${roleFormData.nameBn.trim() || roleFormData.name.trim()}`,
+    },
+  ], [roleFormData, createRole]);
+
+  const createRoleRunner = useActionRunner(createRoleSteps);
+  const isRoleModalLocked = createRoleRunner.phase === 'running' || createRoleRunner.phase === 'waiting';
 
   const groupedPermissions = useMemo(() => getGroupedPermissions(), []);
 
@@ -122,13 +185,14 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
 
   // Open Permission Editor
   const handleOpenPermEditor = (role: Role) => {
+    permsRunner.reset();
     setSelectedRoleForPerms(role);
     setSelectedPermKeys([...role.permissions]);
-    setSaveSuccessMsg('');
   };
 
   // Toggle single permission
   const handleTogglePerm = (key: string) => {
+    if (isPermsLocked || permsRunner.phase === 'success') return;
     if (selectedRoleForPerms?.name === 'Course Director') return; // Cannot alter course director's full perms
     setSelectedPermKeys(prev => 
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
@@ -137,6 +201,7 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
 
   // Toggle all permissions for a specific module
   const handleToggleModulePerms = (modulePerms: typeof ALL_PERMISSIONS) => {
+    if (isPermsLocked || permsRunner.phase === 'success') return;
     if (selectedRoleForPerms?.name === 'Course Director') return;
     const moduleKeys = modulePerms.map(p => p.key);
     const allSelected = moduleKeys.every(k => selectedPermKeys.includes(k));
@@ -150,43 +215,22 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
 
   // Bulk actions in modal
   const handleSelectAllPerms = () => {
+    if (isPermsLocked || permsRunner.phase === 'success') return;
     if (selectedRoleForPerms?.name === 'Course Director') return;
     setSelectedPermKeys([...ALL_PERMISSION_KEYS]);
   };
 
   const handleDeselectAllPerms = () => {
+    if (isPermsLocked || permsRunner.phase === 'success') return;
     if (selectedRoleForPerms?.name === 'Course Director') return;
     setSelectedPermKeys([]);
   };
 
   const handleSelectPageViewsOnly = () => {
+    if (isPermsLocked || permsRunner.phase === 'success') return;
     if (selectedRoleForPerms?.name === 'Course Director') return;
     const pageKeys = ALL_PERMISSIONS.filter(p => p.isPageView).map(p => p.key);
     setSelectedPermKeys(pageKeys);
-  };
-
-  // Save permissions
-  const handleSavePermissions = async () => {
-    if (!selectedRoleForPerms) return;
-    setIsSavingPerms(true);
-    setSaveSuccessMsg('');
-
-    try {
-      await updateRolePermissions(selectedRoleForPerms.id, selectedPermKeys);
-      setSaveSuccessMsg('পারমিশন সফলভাবে সংরক্ষণ ও আপডেট করা হয়েছে!');
-      setTimeout(() => {
-        setSelectedRoleForPerms(null);
-        setSaveSuccessMsg('');
-      }, 1200);
-    } catch (err: any) {
-      await showAlert({
-        title: 'ত্রুটি',
-        message: err?.message || 'পারমিশন সংরক্ষণ ব্যর্থ হয়েছে।',
-        variant: 'danger'
-      });
-    } finally {
-      setIsSavingPerms(false);
-    }
   };
 
   // Reset to default roles and permissions
@@ -220,52 +264,31 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
     }
   };
 
-  // Add / Edit Role Submit
+  const handleCloseRoleModal = () => {
+    if (isRoleModalLocked) return;
+    createRoleRunner.reset();
+    setRoleFormError('');
+    setIsRoleModalOpen(false);
+  };
+
+  const handleBeforeCreateRole = () => {
+    setRoleFormError('');
+    if (roleFormRef.current && !roleFormRef.current.reportValidity()) {
+      return false;
+    }
+    if (!roleFormData.name.trim()) {
+      setRoleFormError('রোলের নাম প্রদান করুন।');
+      return false;
+    }
+    return true;
+  };
+
+  // Add / Edit Role Submit (via Enter key)
   const handleRoleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roleFormData.name.trim()) {
-      await showAlert({
-        title: 'প্রয়োজনীয় তথ্য অনুপস্থিত',
-        message: 'রোলের নাম প্রদান করুন।',
-        variant: 'warning'
-      });
-      return;
-    }
-
-    try {
-      let initialPerms: string[] = [];
-      if (roleFormData.template === 'all') {
-        initialPerms = [...ALL_PERMISSION_KEYS];
-      } else if (roleFormData.template === 'fma') {
-        initialPerms = [...DEFAULT_ROLES[1].permissions];
-      } else if (roleFormData.template === 'trainer') {
-        initialPerms = [...DEFAULT_ROLES[2].permissions];
-      } else if (roleFormData.template === 'view_only') {
-        initialPerms = ALL_PERMISSIONS.filter(p => p.isPageView).map(p => p.key);
-      }
-
-      await createRole({
-        name: roleFormData.name.trim(),
-        nameBn: roleFormData.nameBn.trim() || roleFormData.name.trim(),
-        code: roleFormData.code.trim() || undefined,
-        description: roleFormData.description.trim(),
-        permissions: initialPerms,
-      });
-
-      setIsRoleModalOpen(false);
-      setRoleFormData({ name: '', nameBn: '', code: '', description: '', template: 'fma' });
-      await showAlert({
-        title: 'সফলতা',
-        message: 'নতুন রোল সফলভাবে তৈরি হয়েছে!',
-        variant: 'success'
-      });
-    } catch (err: any) {
-      await showAlert({
-        title: 'ত্রুটি',
-        message: err?.message || 'রোল তৈরিতে সমস্যা হয়েছে।',
-        variant: 'danger'
-      });
-    }
+    if (isRoleModalLocked || createRoleRunner.phase === 'success') return;
+    if (!handleBeforeCreateRole()) return;
+    await createRoleRunner.run();
   };
 
   const handleDeleteRole = async (role: Role) => {
@@ -481,16 +504,16 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[960px] table-fixed text-left text-sm">
               <thead className="bg-theme-surface-subtle text-theme-text-secondary border-b border-theme-border text-xs font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4 w-12 text-center">ক্র.নং</th>
-                  <th className="py-3.5 px-6">রোলের নাম ও পদবী</th>
-                  <th className="py-3.5 px-4">কোড (Code)</th>
-                  <th className="py-3.5 px-6">বিবরণ (Description)</th>
-                  <th className="py-3.5 px-6">বরাদ্দকৃত পারমিশন</th>
-                  <th className="py-3.5 px-4 text-center">ব্যবহারকারী সংখ্যা</th>
-                  <th className="py-3.5 px-6 text-right">অ্যাকশন (Actions)</th>
+                  <th className="py-3.5 px-4 w-14 text-center">ক্র.নং</th>
+                  <th className="py-3.5 px-6 w-[230px]">রোলের নাম ও পদবী</th>
+                  <th className="py-3.5 px-4 w-[130px]">কোড (Code)</th>
+                  <th className="py-3.5 px-6 w-[240px]">বিবরণ (Description)</th>
+                  <th className="py-3.5 px-6 w-[220px]">বরাদ্দকৃত পারমিশন</th>
+                  <th className="py-3.5 px-4 w-[130px] text-center">ব্যবহারকারী সংখ্যা</th>
+                  <th className="py-3.5 px-6 w-[140px] text-right">অ্যাকশন (Actions)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-theme-border">
@@ -539,8 +562,13 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                           {role.code}
                         </code>
                       </td>
-                      <td className="py-4 px-6 text-xs text-theme-text-secondary max-w-xs">
-                        <p className="line-clamp-2">{role.description || 'কোনো বিবরণ প্রদান করা হয়নি'}</p>
+                      <td className="py-4 px-6 text-xs text-theme-text-secondary">
+                        <TruncatedText
+                          as="p"
+                          text={role.description || 'কোনো বিবরণ প্রদান করা হয়নি'}
+                          lines={2}
+                          mode="exp"
+                        />
                       </td>
                       <td className="py-4 px-6">
                         <div className="space-y-1.5 w-48">
@@ -739,8 +767,13 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedRoleForPerms(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                type="button"
+                disabled={isPermsLocked}
+                onClick={() => {
+                  permsRunner.reset();
+                  setSelectedRoleForPerms(null);
+                }}
+                className="text-slate-400 hover:text-white p-1 rounded-lg disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -759,22 +792,25 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
+                    disabled={isPermsLocked || permsRunner.phase === 'success'}
                     onClick={handleSelectAllPerms}
-                    className="px-2.5 py-1.5 bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover rounded-lg text-xs font-semibold transition"
+                    className="px-2.5 py-1.5 bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover rounded-lg text-xs font-semibold transition disabled:opacity-50"
                   >
                     সব সিলেক্ট করুন
                   </button>
                   <button
                     type="button"
+                    disabled={isPermsLocked || permsRunner.phase === 'success'}
                     onClick={handleSelectPageViewsOnly}
-                    className="px-2.5 py-1.5 bg-theme-info-soft border border-theme-info-border text-theme-info hover:opacity-85 rounded-lg text-xs font-semibold transition"
+                    className="px-2.5 py-1.5 bg-theme-info-soft border border-theme-info-border text-theme-info hover:opacity-85 rounded-lg text-xs font-semibold transition disabled:opacity-50"
                   >
                     শুধুমাত্র পেজ ভিউ
                   </button>
                   <button
                     type="button"
+                    disabled={isPermsLocked || permsRunner.phase === 'success'}
                     onClick={handleDeselectAllPerms}
-                    className="px-2.5 py-1.5 bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover rounded-lg text-xs font-semibold transition"
+                    className="px-2.5 py-1.5 bg-theme-surface border border-theme-border text-theme-text-primary hover:bg-theme-surface-hover rounded-lg text-xs font-semibold transition disabled:opacity-50"
                   >
                     সব আন-সিলেক্ট
                   </button>
@@ -786,14 +822,6 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                 </span>
               )}
             </div>
-
-            {/* Feedback message banner */}
-            {saveSuccessMsg && (
-              <div className="mx-6 mt-4 p-3 rounded-xl bg-theme-success-soft border border-theme-success-border text-theme-success text-xs font-semibold flex items-center space-x-2">
-                <CheckCircle2 size={16} className="text-theme-success" />
-                <span>{saveSuccessMsg}</span>
-              </div>
-            )}
 
             {/* Permissions List / Modules */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
@@ -848,7 +876,7 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              disabled={isCourseDirectorRole}
+                              disabled={isCourseDirectorRole || isPermsLocked || permsRunner.phase === 'success'}
                               onChange={() => handleTogglePerm(perm.key)}
                               className="mt-1 h-4 w-4 rounded border-theme-border-strong accent-emerald-600 focus:ring-theme-primary shrink-0"
                             />
@@ -884,36 +912,34 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-theme-surface-subtle border-t border-theme-border flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 bg-theme-surface-subtle border-t border-theme-border flex flex-wrap items-center justify-between gap-3 shrink-0">
               <span className="text-xs text-theme-text-secondary">
                 পরিবর্তনগুলো তাৎক্ষণিকভাবে সিস্টেমে কার্যকর হবে।
               </span>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-start space-x-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedRoleForPerms(null)}
-                  className="px-4 py-2 border border-theme-border-strong text-theme-text-primary rounded-xl text-sm font-semibold hover:bg-theme-surface-hover transition"
+                  disabled={isPermsLocked}
+                  onClick={() => {
+                    permsRunner.reset();
+                    setSelectedRoleForPerms(null);
+                  }}
+                  className="min-h-[44px] px-4 py-2 border border-theme-border-strong text-theme-text-primary rounded-[12px] text-sm font-semibold hover:bg-theme-surface-hover disabled:opacity-50 transition"
                 >
                   বন্ধ করুন
                 </button>
-                <button
-                  type="button"
-                  disabled={isSavingPerms || selectedRoleForPerms.name === 'Course Director'}
-                  onClick={handleSavePermissions}
-                  className="px-6 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-md flex items-center space-x-2 transition disabled:opacity-60"
-                >
-                  {isSavingPerms ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      <span>সংরক্ষণ হচ্ছে...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} />
-                      <span>পারমিশন সংরক্ষণ করুন</span>
-                    </>
-                  )}
-                </button>
+                <ActionButton
+                  runner={permsRunner}
+                  idleLabel="পারমিশন সংরক্ষণ করুন"
+                  idleIcon={<Check size={16} />}
+                  popoverTitle="পারমিশন সংরক্ষণ"
+                  disabled={selectedRoleForPerms.name === 'Course Director'}
+                  onAutoHide={() => {
+                    permsRunner.reset();
+                    setSelectedRoleForPerms(null);
+                  }}
+                  className="min-w-[205px]"
+                />
               </div>
             </div>
           </div>
@@ -923,7 +949,7 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
       {/* CREATE NEW ROLE MODAL */}
       {isRoleModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-theme-elevated rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-theme-border">
+          <div className="bg-theme-elevated rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-theme-border overflow-visible">
             <div className="flex items-center justify-between pb-4 border-b border-theme-border">
               <div className="flex items-center space-x-2.5">
                 <div className="w-9 h-9 rounded-xl bg-theme-primary-soft text-theme-primary-soft-fg flex items-center justify-center font-bold">
@@ -935,14 +961,23 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                 </div>
               </div>
               <button
-                onClick={() => setIsRoleModalOpen(false)}
-                className="text-theme-text-muted hover:text-theme-text-primary p-1"
+                type="button"
+                disabled={isRoleModalLocked}
+                onClick={handleCloseRoleModal}
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 disabled:opacity-50"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleRoleFormSubmit} className="space-y-4 pt-4">
+            {roleFormError && (
+              <div className="mt-3 p-3 rounded-xl border border-theme-warning-border bg-theme-warning-soft text-xs font-semibold text-theme-text-primary">
+                {roleFormError}
+              </div>
+            )}
+
+            <form ref={roleFormRef} onSubmit={handleRoleFormSubmit} className="space-y-4 pt-4">
+              <fieldset disabled={isRoleModalLocked || createRoleRunner.phase === 'success'} className="space-y-4 min-w-0">
               <div>
                 <label className="block text-xs font-bold text-theme-text-primary mb-1">
                   রোলের নাম (English) <span className="text-theme-danger">*</span>
@@ -1015,20 +1050,29 @@ const RolesPage: React.FC<RolesPageProps> = ({ embedded = false }) => {
                 </span>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-theme-border">
+              </fieldset>
+
+              <div className="flex items-start justify-end space-x-3 pt-3 border-t border-theme-border">
                 <button
                   type="button"
-                  onClick={() => setIsRoleModalOpen(false)}
-                  className="px-4 py-2 border border-theme-border-strong text-theme-text-primary rounded-xl text-sm font-semibold hover:bg-theme-surface-hover"
+                  disabled={isRoleModalLocked}
+                  onClick={handleCloseRoleModal}
+                  className="min-h-[44px] px-4 py-2 border border-theme-border-strong text-theme-text-primary rounded-[12px] text-sm font-semibold hover:bg-theme-surface-hover disabled:opacity-50"
                 >
-                  বাতিল
+                  {createRoleRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-md"
-                >
-                  রোল সংরক্ষণ করুন
-                </button>
+                <ActionButton
+                  runner={createRoleRunner}
+                  idleLabel="রোল সংরক্ষণ করুন"
+                  popoverTitle="নতুন রোল তৈরি"
+                  onBeforeRun={handleBeforeCreateRole}
+                  onAutoHide={() => {
+                    createRoleRunner.reset();
+                    setRoleFormData({ name: '', nameBn: '', code: '', description: '', template: 'fma' });
+                    setIsRoleModalOpen(false);
+                  }}
+                  className="min-w-[180px]"
+                />
               </div>
             </form>
           </div>

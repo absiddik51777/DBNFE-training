@@ -11,13 +11,15 @@ import {
   Building2, 
   Layers,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  CalendarDays
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { dataService } from '../lib/dataService';
 import { downloadCSV, printCurrentDocument } from '../lib/exportUtils';
+import WeeklySignatureSheet from './WeeklySignatureSheet';
 
 type ReportType = 
   | 'trainees_master' 
@@ -25,7 +27,8 @@ type ReportType =
   | 'trade_trainees' 
   | 'attendance_summary' 
   | 'exam_results' 
-  | 'completion_certificates';
+  | 'completion_certificates'
+  | 'weekly_signature';
 
 const Reports: React.FC = () => {
   const { userProfile } = useAuth();
@@ -209,7 +212,7 @@ const Reports: React.FC = () => {
           </p>
         </div>
 
-        {canExport && (
+        {canExport && reportType !== 'weekly_signature' && (
           <div className="flex items-center space-x-2.5">
             <button
               type="button"
@@ -254,6 +257,7 @@ const Reports: React.FC = () => {
           { id: 'attendance_summary', name: 'উপস্থিতির সারসংক্ষেপ', icon: Calendar },
           { id: 'exam_results', name: 'পরীক্ষার ফলাফল', icon: Award },
           { id: 'completion_certificates', name: 'কোর্স সমাপন ও সনদ যোগ্যতা', icon: FileText },
+          { id: 'weekly_signature', name: 'সাপ্তাহিক স্বাক্ষর হাজিরা সিট', icon: CalendarDays },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = reportType === tab.id;
@@ -274,8 +278,12 @@ const Reports: React.FC = () => {
         })}
       </div>
 
-      {/* Filter Options Bar */}
-      {userProfile?.role !== 'Trainer' && (
+      {reportType === 'weekly_signature' ? (
+        <WeeklySignatureSheet embedded />
+      ) : (
+        <>
+          {/* Filter Options Bar */}
+          {userProfile?.role !== 'Trainer' && (
         <div className="bg-theme-surface p-4.5 rounded-2xl border border-theme-border shadow-xs print:hidden">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -520,6 +528,8 @@ const Reports: React.FC = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

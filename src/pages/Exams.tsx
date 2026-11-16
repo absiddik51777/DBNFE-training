@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Edit2, Trash2, FileText, Calendar, Award, BookOpen, X } from 'lucide-react';
 import { Exam, Institute, Trade, Batch } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,9 @@ import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { useConfirm } from '../contexts/ConfirmationContext';
 import { format } from 'date-fns';
 import { dataService } from '../lib/dataService';
+import { ActionMessageError } from '../lib/friendlyError';
+import { useActionRunner, type ActionStep } from '../hooks/useActionRunner';
+import { ActionButton } from '../components/ui/ActionButton';
 
 const Exams: React.FC = () => {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -74,7 +77,42 @@ const Exams: React.FC = () => {
     return true;
   });
 
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [formValidationError, setFormValidationError] = useState('');
+
+  const examSaveSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-exam',
+      label: editingExam ? 'পরীক্ষার তথ্য আপডেট করা হচ্ছে' : 'নতুন পরীক্ষা সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        if (!canEdit) {
+          throw new ActionMessageError('আপনার পরীক্ষা সংরক্ষণের অনুমতি নেই।');
+        }
+        const id = editingExam ? editingExam.id : `EXM-${Date.now().toString().slice(-4)}`;
+        const savedExam: Exam = {
+          id,
+          ...formData,
+          date: new Date(formData.date).getTime(),
+          createdAt: editingExam?.createdAt || Date.now(),
+        };
+
+        await dataService.saveItem('exams', savedExam, {
+          actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
+        });
+
+        await fetchData();
+        return savedExam;
+      },
+      describe: (saved: Exam) => `সংরক্ষিত: ${saved.name}`,
+    },
+  ], [canEdit, editingExam, formData, userProfile]);
+
+  const saveRunner = useActionRunner(examSaveSteps);
+  const isModalLocked = saveRunner.phase === 'running' || saveRunner.phase === 'waiting';
+
   const handleOpenModal = (exam?: Exam) => {
+    saveRunner.reset();
+    setFormValidationError('');
     if (exam) {
       setEditingExam(exam);
       setFormData({
@@ -120,37 +158,31 @@ const Exams: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleCloseModal = () => {
+    if (isModalLocked) return;
+    saveRunner.reset();
+    setFormValidationError('');
+    setIsModalOpen(false);
+  };
+
+  const handleBeforeSave = () => {
+    if (!canEdit) return false;
+    setFormValidationError('');
+    if (formRef.current && !formRef.current.reportValidity()) {
+      return false;
+    }
+    if (formData.passMarks > formData.totalMarks) {
+      setFormValidationError('পাস নম্বর মোট নম্বরের চেয়ে বেশি হতে পারে না।');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canEdit) return;
-
-    if (formData.passMarks > formData.totalMarks) {
-      await showAlert({
-        title: 'অকার্যকর নম্বর',
-        message: "পাস নম্বর মোট নম্বরের চেয়ে বেশি হতে পারে না।",
-        variant: 'warning'
-      });
-      return;
-    }
-
-    try {
-      const id = editingExam ? editingExam.id : `EXM-${Date.now().toString().slice(-4)}`;
-      const savedExam: Exam = {
-        id,
-        ...formData,
-        date: new Date(formData.date).getTime(),
-        createdAt: editingExam?.createdAt || Date.now(),
-      };
-
-      await dataService.saveItem('exams', savedExam, {
-        actor: userProfile ? { userId: userProfile.id || '', user: userProfile.name || 'User', userRole: userProfile.role || '' } : undefined,
-      });
-
-      setIsModalOpen(false);
-      fetchData();
-    } catch (error) {
-      console.warn("Notice saving exam:", error);
-    }
+    if (isModalLocked || saveRunner.phase === 'success') return;
+    if (!handleBeforeSave()) return;
+    await saveRunner.run();
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -317,17 +349,29 @@ const Exams: React.FC = () => {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-theme-elevated text-theme-text-primary rounded-2xl max-w-lg w-full p-6 shadow-xl border border-theme-border">
+          <div className="bg-theme-elevated text-theme-text-primary rounded-2xl max-w-lg w-full p-6 shadow-xl border border-theme-border overflow-visible">
             <div className="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
               <h2 className="text-lg font-bold text-theme-text-primary">
                 {editingExam ? 'পরীক্ষা তথ্য সম্পাদনা' : 'নতুন পরীক্ষা তৈরি'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg transition cursor-pointer">
+              <button
+                type="button"
+                disabled={isModalLocked}
+                onClick={handleCloseModal}
+                className="text-theme-text-muted hover:text-theme-text-primary p-1 rounded-lg transition disabled:opacity-50 cursor-pointer"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            {formValidationError && (
+              <div className="mb-3 p-3 rounded-xl border border-theme-warning-border bg-theme-warning-soft text-xs font-semibold text-theme-text-primary">
+                {formValidationError}
+              </div>
+            )}
+
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-3.5">
+              <fieldset disabled={isModalLocked || saveRunner.phase === 'success'} className="space-y-3.5 min-w-0">
               <div>
                 <label className="block text-xs font-semibold text-theme-text-secondary mb-1">পরীক্ষার নাম *</label>
                 <input
@@ -434,20 +478,28 @@ const Exams: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2.5 pt-4 border-t border-theme-border">
+              </fieldset>
+
+              <div className="flex items-start justify-end gap-2.5 pt-4 border-t border-theme-border">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-theme-border rounded-xl text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover transition cursor-pointer"
+                  disabled={isModalLocked}
+                  onClick={handleCloseModal}
+                  className="min-h-[44px] px-4 py-2 border border-theme-border rounded-[12px] text-sm font-medium text-theme-text-secondary hover:bg-theme-surface-hover disabled:opacity-50 transition cursor-pointer"
                 >
-                  বাতিল
+                  {saveRunner.phase === 'success' ? 'বন্ধ করুন' : 'বাতিল'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg rounded-xl text-sm font-semibold shadow-xs transition cursor-pointer"
-                >
-                  সংরক্ষণ করুন
-                </button>
+                <ActionButton
+                  runner={saveRunner}
+                  idleLabel="সংরক্ষণ করুন"
+                  popoverTitle={editingExam ? 'পরীক্ষা আপডেট' : 'নতুন পরীক্ষা'}
+                  onBeforeRun={handleBeforeSave}
+                  onAutoHide={() => {
+                    saveRunner.reset();
+                    setIsModalOpen(false);
+                  }}
+                  className="min-w-[165px]"
+                />
               </div>
             </form>
           </div>

@@ -10,7 +10,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Nikosh', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Nikosh', 'Hind Siliguri', 'Inter', system-ui, sans-serif;
 
   --color-theme-primary: var(--theme-primary);
   --color-theme-primary-hover: var(--theme-primary-hover);
@@ -104,6 +104,17 @@
   --theme-info-fg: #FFFFFF;
   --theme-info-soft: rgba(37, 99, 235, 0.11);
   --theme-info-border: rgba(37, 99, 235, 0.26);
+
+  --bg: var(--theme-bg);
+  --surface: var(--theme-surface);
+  --surface2: var(--theme-surface-subtle);
+  --text: var(--theme-text-primary);
+  --muted: var(--theme-text-secondary);
+  --border: var(--theme-border);
+  --green: #059669;
+  --red: #DC2626;
+  --amber: #D97706;
+  --gray: #94A3B8;
 }
 
 .dark {
@@ -152,6 +163,65 @@
   --theme-info-fg: #0F172A;
   --theme-info-soft: rgba(96, 165, 250, 0.16);
   --theme-info-border: rgba(96, 165, 250, 0.32);
+
+  --bg: var(--theme-bg);
+  --surface: var(--theme-surface);
+  --surface2: var(--theme-elevated);
+  --text: var(--theme-text-primary);
+  --muted: var(--theme-text-secondary);
+  --border: var(--theme-border);
+  --green: #34D399;
+  --red: #F87171;
+  --amber: #FBBF24;
+  --gray: #64748B;
+}
+
+.register-theme {
+  --reg-bg: #f3f7f6;
+  --reg-surface: #ffffff;
+  --reg-surface2: #eef4f2;
+  --reg-text: #0f172a;
+  --reg-muted: #64748b;
+  --reg-border: #dbe4e1;
+  --reg-accent: #0f8f74;
+  --reg-green: #0f8f74;
+  --reg-red: #d6334a;
+  --reg-amber: #b7791f;
+  --reg-gray: #94a3b8;
+}
+
+.dark .register-theme {
+  --reg-bg: #08151a;
+  --reg-surface: #0f2127;
+  --reg-surface2: #152b32;
+  --reg-text: #f1f5f9;
+  --reg-muted: #94a3b8;
+  --reg-border: #1e3a42;
+  --reg-accent: #2ed3a8;
+  --reg-green: #2ed3a8;
+  --reg-red: #ff6b81;
+  --reg-amber: #f2c14e;
+  --reg-gray: #64748b;
+}
+
+.weekly-sheet-theme {
+  --ws-bg: #e9eeed;
+  --ws-surface: #ffffff;
+  --ws-surface2: #eef4f2;
+  --ws-text: #0f172a;
+  --ws-muted: #5b7470;
+  --ws-border: #cfdcd9;
+  --ws-accent: #0f8f74;
+}
+
+.dark .weekly-sheet-theme {
+  --ws-bg: #08151a;
+  --ws-surface: #0f2127;
+  --ws-surface2: #152b32;
+  --ws-text: #f1f5f9;
+  --ws-muted: #8aa8a3;
+  --ws-border: #1f3a41;
+  --ws-accent: #2ed3a8;
 }
 
 @layer base {
@@ -232,6 +302,11 @@
     margin: 12mm 10mm;
   }
 
+  @page weekly-sheet-a4 {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
   html,
   body {
     background: #FFFFFF !important;
@@ -245,11 +320,59 @@
 
   tr {
     page-break-inside: avoid;
+    break-inside: avoid;
     page-break-after: auto;
   }
 
   thead {
     display: table-header-group;
+  }
+
+  .weekly-sheet-print-root {
+    page: weekly-sheet-a4;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  .weekly-sheet-paper-scroll {
+    overflow: visible !important;
+  }
+
+  .weekly-sheet-paper-inner {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .weekly-sheet-table th {
+    height: 12mm !important;
+  }
+
+  .weekly-sheet-table tbody tr {
+    height: 8.2mm !important;
+    break-inside: avoid !important;
+  }
+
+  .weekly-sheet-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .weekly-sheet-signatures {
+    margin-top: 11mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
 

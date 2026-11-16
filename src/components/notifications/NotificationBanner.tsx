@@ -7,6 +7,7 @@ import {
   formatNotificationTimeDhaka,
   getNotificationSubtitle,
 } from './notificationHelpers';
+import { TruncatedText } from '../ui/TruncatedText';
 
 interface NotificationBannerProps {
   onOpenNotifications: () => void;
@@ -29,9 +30,12 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
         <span className="w-7 h-7 rounded-[9px] bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0">
           <Bell size={15} />
         </span>
-        <p className="text-xs sm:text-sm font-medium text-theme-text-primary leading-snug truncate tabular-nums">
-          আপনার {toBnDigits(bannerUnreadCount)} টি নতুন বিজ্ঞপ্তি আছে
-        </p>
+        <TruncatedText
+          as="p"
+          text={`আপনার ${toBnDigits(bannerUnreadCount)} টি নতুন বিজ্ঞপ্তি আছে`}
+          mode="pop"
+          className="text-xs sm:text-sm font-medium text-theme-text-primary leading-snug tabular-nums min-w-0"
+        />
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">

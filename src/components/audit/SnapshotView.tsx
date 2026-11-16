@@ -6,6 +6,7 @@ import {
   getCollectionLabelBn,
   getSnapshotFieldLabel,
 } from './auditFormatters';
+import { TruncatedText } from '../ui/TruncatedText';
 
 interface SnapshotViewProps {
   log: ActivityLog;
@@ -71,12 +72,12 @@ export const SnapshotView: React.FC<SnapshotViewProps> = ({ log, isAdmin }) => {
                 {previewNames.map((name, idx) => (
                   <li
                     key={`${name}-${idx}`}
-                    className="text-xs text-theme-text-primary flex items-center gap-2"
+                    className="text-xs text-theme-text-primary flex items-center gap-2 min-w-0"
                   >
                     <span className="w-5 h-5 rounded-md bg-theme-surface-subtle border border-theme-border text-[10px] font-mono text-theme-text-secondary inline-flex items-center justify-center shrink-0 tabular-nums">
                       {idx + 1}
                     </span>
-                    <span className="truncate">{name}</span>
+                    <TruncatedText text={name} mode="pop" className="min-w-0" />
                   </li>
                 ))}
               </ul>

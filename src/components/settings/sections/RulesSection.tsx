@@ -1,7 +1,10 @@
-import React, { useEffect, useId, useState } from 'react';
-import { RefreshCw, Save } from 'lucide-react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
+import { Save } from 'lucide-react';
 import { useSystemSettings } from '../../../contexts/SystemSettingsContext';
 import { SettingsToastType } from '../types';
+import { toBn } from '../../../lib/dateUtils';
+import { useActionRunner, type ActionStep } from '../../../hooks/useActionRunner';
+import { ActionButton } from '../../ui/ActionButton';
 
 interface RulesSectionProps {
   showToast: (type: SettingsToastType, message: string) => void;
@@ -27,7 +30,6 @@ export const RulesSection: React.FC<RulesSectionProps> = ({ showToast }) => {
   const [passMarkInput, setPassMarkInput] = useState<string>(
     String(settings.passMarkPercent ?? 40)
   );
-  const [saving, setSaving] = useState(false);
 
   const attendanceId = useId();
   const passMarkId = useId();
@@ -39,29 +41,40 @@ export const RulesSection: React.FC<RulesSectionProps> = ({ showToast }) => {
 
   const attendanceCheck = validatePercent(attendanceInput);
   const passMarkCheck = validatePercent(passMarkInput);
-  const canSave = attendanceCheck.valid && passMarkCheck.valid && !saving;
+
+  const saveSteps = useMemo<ActionStep<any>[]>(() => [
+    {
+      id: 'save-rules',
+      label: 'সিস্টেম নিয়ম ও মানদণ্ড সংরক্ষণ করা হচ্ছে',
+      run: async () => {
+        await updateSettings({
+          minAttendancePercentForCert: attendanceCheck.value,
+          passMarkPercent: passMarkCheck.value,
+        });
+        showToast('success', 'নিয়ম ও মানদণ্ড সফলভাবে সংরক্ষিত হয়েছে।');
+        return {
+          attendance: attendanceCheck.value,
+          passMark: passMarkCheck.value,
+        };
+      },
+      describe: (res: { attendance: number; passMark: number }) =>
+        `উপস্থিতি ${toBn(res.attendance)}% · পাস ${toBn(res.passMark)}%`,
+    },
+  ], [attendanceCheck.value, passMarkCheck.value, updateSettings, showToast]);
+
+  const saveRunner = useActionRunner(saveSteps);
+  const isBusy = saveRunner.phase === 'running' || saveRunner.phase === 'waiting';
+  const canSave = attendanceCheck.valid && passMarkCheck.valid && !isBusy;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
-
-    setSaving(true);
-    try {
-      await updateSettings({
-        minAttendancePercentForCert: attendanceCheck.value,
-        passMarkPercent: passMarkCheck.value,
-      });
-      showToast('success', 'নিয়ম ও মানদণ্ড সফলভাবে সংরক্ষিত হয়েছে।');
-    } catch (err: any) {
-      showToast('error', err?.message || 'নিয়ম সংরক্ষণে সমস্যা হয়েছে।');
-    } finally {
-      setSaving(false);
-    }
+    await saveRunner.run();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-[14px] border border-theme-border bg-theme-surface p-4 sm:p-5 space-y-5">
+      <fieldset disabled={isBusy} className="rounded-[14px] border border-theme-border bg-theme-surface p-4 sm:p-5 space-y-5 min-w-0">
         <div className="space-y-1.5">
           <label
             htmlFor={attendanceId}
@@ -79,7 +92,12 @@ export const RulesSection: React.FC<RulesSectionProps> = ({ showToast }) => {
             min={0}
             max={100}
             value={attendanceInput}
-            onChange={(e) => setAttendanceInput(e.target.value)}
+            onChange={(e) => {
+              setAttendanceInput(e.target.value);
+              if (saveRunner.phase === 'success' || saveRunner.phase === 'failed') {
+                saveRunner.reset();
+              }
+            }}
             aria-invalid={!attendanceCheck.valid}
             className={`w-full min-h-[44px] px-3.5 py-2 rounded-[12px] bg-theme-elevated border text-sm text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 ${
               attendanceCheck.valid
@@ -111,7 +129,12 @@ export const RulesSection: React.FC<RulesSectionProps> = ({ showToast }) => {
             min={0}
             max={100}
             value={passMarkInput}
-            onChange={(e) => setPassMarkInput(e.target.value)}
+            onChange={(e) => {
+              setPassMarkInput(e.target.value);
+              if (saveRunner.phase === 'success' || saveRunner.phase === 'failed') {
+                saveRunner.reset();
+              }
+            }}
             aria-invalid={!passMarkCheck.valid}
             className={`w-full min-h-[44px] px-3.5 py-2 rounded-[12px] bg-theme-elevated border text-sm text-theme-text-primary tabular-nums focus:outline-hidden focus:ring-2 ${
               passMarkCheck.valid
@@ -125,22 +148,24 @@ export const RulesSection: React.FC<RulesSectionProps> = ({ showToast }) => {
             </p>
           )}
         </div>
-      </div>
+      </fieldset>
 
       {/* Sticky Save Action Bar */}
       <div className="sticky bottom-0 z-10 bg-theme-bg/95 backdrop-blur-xs pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
-        <div className="rounded-[14px] border border-theme-border bg-theme-surface p-3 flex items-center justify-between gap-3">
+        <div className="rounded-[14px] border border-theme-border bg-theme-surface p-3 flex flex-wrap items-center justify-between gap-3 overflow-visible">
           <span className="text-xs text-theme-text-secondary tabular-nums">
-            বর্তমান: উপস্থিতি {settings.minAttendancePercentForCert ?? 75}% · পাস {settings.passMarkPercent ?? 40}%
+            বর্তমান: উপস্থিতি {toBn(settings.minAttendancePercentForCert ?? 75)}% · পাস {toBn(settings.passMarkPercent ?? 40)}%
           </span>
-          <button
-            type="submit"
-            disabled={!canSave}
-            className="min-h-[44px] px-5 py-2 rounded-[12px] bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
-          >
-            {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-            <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}</span>
-          </button>
+          <ActionButton
+            runner={saveRunner}
+            idleLabel="সংরক্ষণ করুন"
+            idleIcon={<Save size={16} />}
+            popoverTitle="নিয়ম সংরক্ষণ"
+            disabled={!attendanceCheck.valid || !passMarkCheck.valid}
+            onBeforeRun={() => attendanceCheck.valid && passMarkCheck.valid}
+            onAutoHide={() => saveRunner.reset()}
+            className="min-w-[175px]"
+          />
         </div>
       </div>
     </form>

@@ -81,7 +81,7 @@ const TradeCalendar: React.FC = () => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
-  const canManage = isCourseDirector || userProfile?.role === 'FMA' || hasPermission('edit_trade') || hasPermission('update_shikhon_calendar');
+  const canManage = isCourseDirector || hasPermission('edit_trade') || hasPermission('update_shikhon_calendar');
 
   // Load trades and batches
   useEffect(() => {

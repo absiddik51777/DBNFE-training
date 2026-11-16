@@ -306,6 +306,12 @@ export function computeFieldDiff(
   return changes;
 }
 
+let liveAuditActor: AuditActor | null = null;
+
+export function setLiveAuditActor(actor: AuditActor | null): void {
+  liveAuditActor = actor;
+}
+
 export function resolveAuditActor(actor?: AuditActor): {
   userId: string;
   user: string;
@@ -313,31 +319,20 @@ export function resolveAuditActor(actor?: AuditActor): {
 } {
   const authUid = auth.currentUser?.uid || '';
   const authEmail = auth.currentUser?.email || '';
-  let cachedName = '';
-  let cachedRole = '';
-
-  if (typeof window !== 'undefined' && authUid) {
-    try {
-      const raw = localStorage.getItem(`bnfe_cached_profile_${authUid}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        cachedName = parsed?.name || '';
-        cachedRole = parsed?.role || '';
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }
+  const activeActor =
+    liveAuditActor && (!liveAuditActor.userId || !authUid || liveAuditActor.userId === authUid)
+      ? liveAuditActor
+      : null;
 
   // Firestore rules check request.resource.data.userId == request.auth.uid
   const userId = authUid || actor?.userId || 'system';
   const user =
     actor?.user ||
-    cachedName ||
+    activeActor?.user ||
     auth.currentUser?.displayName ||
     authEmail ||
     'ব্যবহারকারী';
-  const userRole = actor?.userRole || cachedRole || 'User';
+  const userRole = actor?.userRole || activeActor?.userRole || 'User';
 
   return { userId, user, userRole };
 }
