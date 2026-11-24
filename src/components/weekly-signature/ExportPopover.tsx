@@ -1,15 +1,16 @@
 import React, { useEffect, useRef } from 'react';
-import { FileText, FileType2, Loader2 } from 'lucide-react';
+import { FileCode2, FileText, FileType2, Loader2 } from 'lucide-react';
 import { TruncatedText } from '../ui/TruncatedText';
 
 interface ExportPopoverProps {
   open: boolean;
   onClose: () => void;
   triggerRef: React.RefObject<HTMLButtonElement | null>;
-  generating: 'pdf' | 'docx' | null;
+  generating: 'pdf' | 'docx' | 'html' | null;
   errorMessage: string;
   onSelectPdf: () => void;
   onSelectDocx: () => void;
+  onSelectHtml: () => void;
 }
 
 export const ExportPopover: React.FC<ExportPopoverProps> = ({
@@ -20,6 +21,7 @@ export const ExportPopover: React.FC<ExportPopoverProps> = ({
   errorMessage,
   onSelectPdf,
   onSelectDocx,
+  onSelectHtml,
 }) => {
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const firstItemRef = useRef<HTMLButtonElement | null>(null);
@@ -71,7 +73,7 @@ export const ExportPopover: React.FC<ExportPopoverProps> = ({
       ref={popoverRef}
       role="menu"
       aria-label="এক্সপোর্ট ফরম্যাট"
-      className="absolute left-0 min-[480px]:left-auto min-[480px]:right-0 top-[calc(100%+8px)] z-40 w-full min-[480px]:w-auto min-w-[260px] rounded-[14px] bg-[var(--ws-surface)] text-[var(--ws-text)] border border-[var(--ws-border)] shadow-xl p-2 space-y-1.5"
+      className="absolute left-0 top-[calc(100%+8px)] z-40 w-[260px] max-w-[calc(100vw-2rem)] rounded-[14px] bg-[var(--ws-surface)] text-[var(--ws-text)] border border-[var(--ws-border)] shadow-xl p-2 space-y-1.5"
     >
       <button
         ref={firstItemRef}
@@ -120,6 +122,32 @@ export const ExportPopover: React.FC<ExportPopoverProps> = ({
           </span>
           <TruncatedText
             text="সম্পাদনা করা যাবে"
+            mode="pop"
+            className="block text-[12px] text-[var(--ws-muted)] leading-snug"
+          />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        disabled={isBusy}
+        onClick={onSelectHtml}
+        className="w-full min-h-[52px] px-3 py-2 rounded-[10px] hover:bg-[var(--ws-surface2)] flex items-center gap-3 text-left transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-[var(--ws-accent)]"
+      >
+        <span className="w-9 h-9 rounded-xl bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          {generating === 'html' ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <FileCode2 size={18} />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-medium text-[var(--ws-text)] leading-snug">
+            {generating === 'html' ? 'তৈরি হচ্ছে…' : 'HTML (.html)'}
+          </span>
+          <TruncatedText
+            text="ব্রাউজার ও প্রিন্টের জন্য"
             mode="pop"
             className="block text-[12px] text-[var(--ws-muted)] leading-snug"
           />

@@ -247,6 +247,44 @@
         "deletionLockedReason": { "type": "string", "maxLength": 500 },
         "minAttendancePercentForCert": { "type": "number" },
         "passMarkPercent": { "type": "number" },
+        "weeklySignatureHeading": {
+          "type": "object",
+          "properties": {
+            "govtTitle": { "type": "string", "maxLength": 200 },
+            "officeTitle": { "type": "string", "maxLength": 200 },
+            "officeAddress": { "type": "string", "maxLength": 250 },
+            "programTitle": { "type": "string", "maxLength": 400 },
+            "sheetTitle": { "type": "string", "maxLength": 200 }
+          }
+        },
+        "weeklySignaturePageConfig": {
+          "type": "object",
+          "properties": {
+            "paperSize": { "type": "string", "enum": ["a4", "legal", "letter"] },
+            "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
+            "margins": {
+              "type": "object",
+              "properties": {
+                "top": { "type": "number" },
+                "right": { "type": "number" },
+                "bottom": { "type": "number" },
+                "left": { "type": "number" }
+              }
+            },
+            "fontFamily": {
+              "type": "string",
+              "enum": [
+                "Nikosh",
+                "Hind Siliguri",
+                "Noto Sans Bengali",
+                "SolaimanLipi",
+                "Kalpurush",
+                "system-ui"
+              ]
+            },
+            "fontSizePt": { "type": "number" }
+          }
+        },
         "updatedAt": { "type": "number" },
         "updatedBy": { "type": "string", "maxLength": 100 }
       },

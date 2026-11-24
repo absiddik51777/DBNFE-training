@@ -297,6 +297,39 @@ export interface ActivityLog {
   hasPendingWrites?: boolean;
 }
 
+export interface WeeklySignatureHeading {
+  govtTitle: string;
+  officeTitle: string;
+  officeAddress: string;
+  programTitle: string;
+  sheetTitle: string;
+}
+
+export type WeeklySignaturePaperSize = 'a4' | 'legal' | 'letter';
+export type WeeklySignatureOrientation = 'portrait' | 'landscape';
+export type WeeklySignatureFontFamily =
+  | 'Nikosh'
+  | 'Hind Siliguri'
+  | 'Noto Sans Bengali'
+  | 'SolaimanLipi'
+  | 'Kalpurush'
+  | 'system-ui';
+
+export interface WeeklySignatureMargins {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export interface WeeklySignaturePageConfig {
+  paperSize: WeeklySignaturePaperSize;
+  orientation: WeeklySignatureOrientation;
+  margins: WeeklySignatureMargins;
+  fontFamily: WeeklySignatureFontFamily;
+  fontSizePt: number;
+}
+
 export interface SystemSettings {
   allowDataDeletion: boolean; // Controls whether deletion of data (trainees, batches, trades, institutes, attendance, exams) is permitted
   allowPublicRegistration?: boolean; // Controls whether public self-registration is permitted by Course Director
@@ -305,6 +338,8 @@ export interface SystemSettings {
   deletionLockedReason?: string;
   minAttendancePercentForCert: number;
   passMarkPercent: number;
+  weeklySignatureHeading?: WeeklySignatureHeading;
+  weeklySignaturePageConfig?: WeeklySignaturePageConfig;
   gradingRules?: {
     grade: string;
     minPercent: number;

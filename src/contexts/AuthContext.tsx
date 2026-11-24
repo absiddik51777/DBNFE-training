@@ -24,6 +24,7 @@ import {
   onSnapshot,
   setDoc,
   deleteDoc,
+  writeBatch,
   query,
   collection,
   where,
@@ -289,8 +290,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             collection(db, 'users'),
             where('email', '==', cleanEmail)
           );
-          const querySnap = await getDocs(emailQuery);
-          const matchingDoc = querySnap.docs.find((d) => d.id !== uid);
+          let querySnap = await getDocs(emailQuery);
+          const rawEmail = currentUser.email?.trim() || '';
+          if (querySnap.empty && rawEmail && rawEmail !== cleanEmail) {
+            querySnap = await getDocs(
+              query(collection(db, 'users'), where('email', '==', rawEmail))
+            );
+          }
+          const matchingDocs = querySnap.docs.filter((d) => d.id !== uid);
+
+          // Prefer Active doc if multiple duplicates exist, then newest
+          const matchingDoc =
+            matchingDocs.find((d) => String(d.data().status || '').trim() === 'Active') ||
+            matchingDocs[0];
 
           if (matchingDoc) {
             const raw = matchingDoc.data();
@@ -303,54 +315,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             matchingDocId = matchingDoc.id;
             preExistingPlaceholder = { id: matchingDoc.id, ...raw } as UserProfile;
 
-            // Rules allow direct adoption if super admin or if placeholder is Pending/Pending Approval
-            if (
-              isSuper ||
-              (preExistingPlaceholder.role === 'Pending' &&
-                preStatus === 'Pending Approval')
-            ) {
-              const adoptedProfile: UserProfile = {
-                ...preExistingPlaceholder,
-                id: uid,
-                name:
-                  preExistingPlaceholder.name ||
-                  currentUser.displayName ||
-                  'ব্যবহারকারী',
-                email: cleanEmail,
-                phone: preExistingPlaceholder.phone || currentUser.phoneNumber || '',
-                role: isSuper ? 'Course Director' : preExistingPlaceholder.role,
-                status: isSuper
-                  ? 'Active'
-                  : (preStatus as 'Active' | 'Pending Approval'),
-                updatedAt: Date.now(),
-              };
+            const resolvedRole: UserRole = isSuper
+              ? 'Course Director'
+              : ((preExistingPlaceholder.role || 'Pending') as UserRole);
+            const resolvedStatus: 'Active' | 'Pending Approval' = isSuper
+              ? 'Active'
+              : (preStatus as 'Active' | 'Pending Approval');
 
-              await setDoc(doc(db, 'users', uid), adoptedProfile);
-              if (matchingDocId) {
-                try {
-                  await deleteDoc(doc(db, 'users', matchingDocId));
-                } catch (delErr) {
-                  console.warn('Could not remove old placeholder doc:', delErr);
-                }
+            const adoptedProfile: UserProfile = {
+              ...preExistingPlaceholder,
+              id: uid,
+              name:
+                preExistingPlaceholder.name ||
+                currentUser.displayName ||
+                'ব্যবহারকারী',
+              email: cleanEmail,
+              phone: preExistingPlaceholder.phone || currentUser.phoneNumber || '',
+              role: resolvedRole,
+              status: resolvedStatus,
+              updatedAt: Date.now(),
+            };
+
+            // Atomically create users/{uid} and delete the old placeholder doc
+            // so isAdoptingPreCreatedUser() in firestore.rules validates !existsAfter(adoptedFromId).
+            const batch = writeBatch(db);
+            batch.set(doc(db, 'users', uid), {
+              ...adoptedProfile,
+              adoptedFromId: matchingDocId,
+            });
+            batch.delete(doc(db, 'users', matchingDocId));
+            await batch.commit();
+
+            // Clean up any other leftover duplicate placeholder docs with the same email
+            for (const extra of matchingDocs) {
+              if (extra.id !== matchingDocId) {
+                await deleteDoc(doc(db, 'users', extra.id)).catch(() => {});
               }
-
-              recordSimpleAuditLog({
-                action: 'update',
-                module: 'security',
-                collectionName: 'users',
-                targetId: uid,
-                targetLabel: adoptedProfile.name || cleanEmail,
-                title: `প্রাক-নিবন্ধিত অ্যাকাউন্ট সংযুক্ত: ${adoptedProfile.name || cleanEmail}`,
-                actor: {
-                  userId: uid,
-                  user: adoptedProfile.name || cleanEmail,
-                  userRole: adoptedProfile.role || '',
-                },
-              }).catch(() => {});
-
-              dataService.broadcastSync('users');
-              return adoptedProfile;
             }
+
+            recordSimpleAuditLog({
+              action: 'update',
+              module: 'security',
+              collectionName: 'users',
+              targetId: uid,
+              targetLabel: adoptedProfile.name || cleanEmail,
+              title: `প্রাক-নিবন্ধিত অ্যাকাউন্ট সংযুক্ত: ${adoptedProfile.name || cleanEmail}`,
+              actor: {
+                userId: uid,
+                user: adoptedProfile.name || cleanEmail,
+                userRole: adoptedProfile.role || '',
+              },
+            }).catch(() => {});
+
+            dataService.broadcastSync('users');
+            return adoptedProfile;
           }
         } catch (findErr: any) {
           if (findErr?.message === MSG_INACTIVE_FORCED_LOGOUT) {

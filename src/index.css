@@ -302,11 +302,6 @@
     margin: 12mm 10mm;
   }
 
-  @page weekly-sheet-a4 {
-    size: A4 portrait;
-    margin: 10mm;
-  }
-
   html,
   body {
     background: #FFFFFF !important;
@@ -328,12 +323,39 @@
     display: table-header-group;
   }
 
+  .weekly-sheet-scale-frame {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+
+  .weekly-sheet-pages-stack {
+    width: 100% !important;
+    transform: none !important;
+    display: block !important;
+    gap: 0 !important;
+  }
+
+  .weekly-sheet-page-item {
+    display: block !important;
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .weekly-sheet-page-item:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
   .weekly-sheet-print-root {
     page: weekly-sheet-a4;
+    display: block !important;
     width: 100% !important;
+    min-height: 0 !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    transform: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     border: none !important;
@@ -342,8 +364,14 @@
     overflow: visible !important;
   }
 
+  .weekly-sheet-page-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   .weekly-sheet-paper-scroll {
     overflow: visible !important;
+    padding: 0 !important;
   }
 
   .weekly-sheet-paper-inner {
@@ -360,7 +388,8 @@
   }
 
   .weekly-sheet-table tbody tr {
-    height: 8.2mm !important;
+    min-height: 8.2mm !important;
+    height: auto !important;
     break-inside: avoid !important;
   }
 

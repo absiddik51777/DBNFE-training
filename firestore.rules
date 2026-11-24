@@ -66,6 +66,25 @@ service cloud.firestore {
       return getUserDoc().batchId;
     }
 
+    function isAdoptingPreCreatedUser(userId) {
+      return request.auth.uid == userId &&
+        request.auth.token.email != null &&
+        'adoptedFromId' in request.resource.data &&
+        request.resource.data.adoptedFromId is string &&
+        isValidId(request.resource.data.adoptedFromId) &&
+        request.resource.data.adoptedFromId != userId &&
+        exists(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId)) &&
+        get(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId)).data.email != null &&
+        get(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId)).data.email.lower() == request.auth.token.email.lower() &&
+        get(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId)).data.status in ['Active', 'Pending Approval'] &&
+        request.resource.data.id == userId &&
+        request.resource.data.email != null &&
+        request.resource.data.email.lower() == request.auth.token.email.lower() &&
+        request.resource.data.role == get(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId)).data.role &&
+        request.resource.data.status == get(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId)).data.status &&
+        !existsAfter(/databases/$(database)/documents/users/$(request.resource.data.adoptedFromId));
+    }
+
     // --- 1. User Profiles & RBAC ---
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isCourseDirector() || isFMA());
@@ -79,16 +98,20 @@ service cloud.firestore {
       );
 
       allow create: if isSignedIn() && isValidId(userId) && (
-        isCourseDirector() ||
         (
           request.auth.uid == userId && (
             isSuperAdmin() ||
+            isAdoptingPreCreatedUser(userId) ||
             (
               request.resource.data.role == 'Pending' &&
-              request.resource.data.status == 'Pending Approval'
+              request.resource.data.status == 'Pending Approval' &&
+              (request.auth.token.email == null ||
+                (request.resource.data.email != null &&
+                 request.resource.data.email.lower() == request.auth.token.email.lower()))
             )
           )
-        )
+        ) ||
+        isCourseDirector()
       );
 
       allow update: if isSignedIn() && isValidId(userId) && (
