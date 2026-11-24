@@ -1,14 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, Printer } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 import type {
   Batch,
+  DocumentPrintConfig,
   Institute,
   Trade,
   Trainee,
   UserProfile,
+  WeeklySignatureHeading,
 } from '../../../types';
-import { downloadCSV, printCurrentDocument } from '../../../lib/exportUtils';
+import { usePermissions } from '../../../contexts/PermissionsContext';
+import { useSystemSettings } from '../../../contexts/SystemSettingsContext';
+import { downloadCSV } from '../../../lib/exportUtils';
 import { formatBengaliDate, safeFormatDate, toBn } from '../../../lib/dateUtils';
+import {
+  mergeHeadingWithDefault,
+  normalizeDocumentPrintConfig,
+  readLocalDocHeading,
+  readLocalDocPrintConfig,
+  writeLocalDocHeading,
+  writeLocalDocPrintConfig,
+} from '../../../lib/documentFrameService';
+import { DocumentPrintFrame } from '../../document-frame/DocumentPrintFrame';
 import {
   getGenderLabelBn,
   getTraineeStatusLabelBn,
@@ -25,6 +38,15 @@ interface BatchTraineesReportProps {
   onNotify: (toast: ReportsToast) => void;
 }
 
+const DEFAULT_BATCH_REPORT_HEADING: WeeklySignatureHeading = {
+  govtTitle: 'গণপ্রজাতন্ত্রী বাংলাদেশ সরকার',
+  officeTitle: 'জেলা উপানুষ্ঠানিক শিক্ষা ব্যুরো',
+  officeAddress: 'কালেক্টরেট ভবন, ময়মনসিংহ',
+  programTitle:
+    "উপানুষ্ঠানিক শিক্ষা ব্যুরো'র বিশেষ কার্যক্রম কার্যকর সাক্ষরতা ও ব্যবহারিক কর্মদক্ষতা প্রশিক্ষণ প্রাক বৃত্তিমূলক পর্যায়",
+  sheetTitle: 'ব্যাচ ভিত্তিক প্রশিক্ষণার্থীদের তালিকা',
+};
+
 export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
   userProfile,
   institutes,
@@ -34,7 +56,11 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
   canExport,
   onNotify,
 }) => {
+  const { isCourseDirector } = usePermissions();
+  const { settings, updateSettings } = useSystemSettings();
   const isTrainer = userProfile?.role === 'Trainer';
+  const canPersistGlobal =
+    userProfile?.role === 'Course Director' || isCourseDirector;
 
   const [filterInstitute, setFilterInstitute] = useState<string>(() =>
     isTrainer && userProfile?.instituteId ? userProfile.instituteId : ''
@@ -43,22 +69,90 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
     isTrainer && userProfile?.batchId ? userProfile.batchId : ''
   );
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [exporting, setExporting] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  const [localConfigOverride, setLocalConfigOverride] =
+    useState<Partial<DocumentPrintConfig> | null>(() =>
+      readLocalDocPrintConfig('batch_trainees', userProfile?.id)
+    );
+  const [localHeadingOverride, setLocalHeadingOverride] =
+    useState<Partial<WeeklySignatureHeading> | null>(() =>
+      readLocalDocHeading('batch_trainees', userProfile?.id)
+    );
+
+  const activeConfig = useMemo<DocumentPrintConfig>(
+    () =>
+      normalizeDocumentPrintConfig(
+        {
+          ...(settings.documentPrintConfig || {}),
+          ...(localConfigOverride || {}),
+          margins: {
+            ...(settings.documentPrintConfig?.margins || {}),
+            ...(localConfigOverride?.margins || {}),
+          },
+        } as Partial<DocumentPrintConfig>,
+        'landscape'
+      ),
+    [settings.documentPrintConfig, localConfigOverride]
+  );
+
+  const activeHeading = useMemo<WeeklySignatureHeading>(
+    () =>
+      mergeHeadingWithDefault(
+        DEFAULT_BATCH_REPORT_HEADING,
+        settings.weeklySignatureHeading,
+        localHeadingOverride
+      ),
+    [settings.weeklySignatureHeading, localHeadingOverride]
+  );
+
+  const handleConfigChange = async (nextConfig: DocumentPrintConfig) => {
+    setLocalConfigOverride(nextConfig);
+    writeLocalDocPrintConfig('batch_trainees', userProfile?.id, nextConfig);
+    if (canPersistGlobal) {
+      try {
+        await updateSettings({ documentPrintConfig: nextConfig });
+      } catch (err) {
+        console.warn('Could not save documentPrintConfig globally:', err);
+      }
+    }
+  };
+
+  const handleHeadingChange = async (nextHeading: WeeklySignatureHeading) => {
+    setLocalHeadingOverride(nextHeading);
+    writeLocalDocHeading('batch_trainees', userProfile?.id, nextHeading);
+    if (canPersistGlobal) {
+      try {
+        await updateSettings({
+          weeklySignatureHeading: {
+            ...(settings.weeklySignatureHeading || DEFAULT_BATCH_REPORT_HEADING),
+            govtTitle: nextHeading.govtTitle,
+            officeTitle: nextHeading.officeTitle,
+            officeAddress: nextHeading.officeAddress,
+            programTitle: nextHeading.programTitle,
+            sheetTitle:
+              settings.weeklySignatureHeading?.sheetTitle ||
+              'প্রশিক্ষণার্থী হাজিরা সিট',
+          },
+        });
+      } catch (err) {
+        console.warn('Could not save heading globally:', err);
+      }
+    }
+  };
 
   const effectiveInstitute =
     isTrainer && userProfile?.instituteId ? userProfile.instituteId : filterInstitute;
 
   const availableBatches = useMemo(() => {
-    const filtered = batches.filter((b) => {
+    return batches.filter((b) => {
       if (b.isArchived) return false;
       if (isTrainer && userProfile?.batchId) return b.id === userProfile.batchId;
       if (effectiveInstitute && b.instituteId !== effectiveInstitute) return false;
       return true;
     });
-    return filtered;
   }, [batches, isTrainer, userProfile?.batchId, effectiveInstitute]);
 
-  // Default to the first batch so a clear batch-wise directory shows right away
   useEffect(() => {
     if (isTrainer && userProfile?.batchId) {
       setSelectedBatchId(userProfile.batchId);
@@ -118,8 +212,8 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
   }, [trainees, selectedBatchId]);
 
   const handleExportCSV = async () => {
-    if (exporting || !selectedBatch) return;
-    setExporting(true);
+    if (exportingCsv || !selectedBatch) return;
+    setExportingCsv(true);
     try {
       const headers = [
         'ক্রঃ',
@@ -176,7 +270,7 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
           : 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। আবার চেষ্টা করুন।';
       onNotify({ type: 'error', message });
     } finally {
-      setExporting(false);
+      setExportingCsv(false);
     }
   };
 
@@ -188,8 +282,8 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Filter & Export Controls */}
-      <div className="rounded-[14px] border border-theme-border bg-theme-surface p-4 space-y-4 print:hidden">
+      {/* Filter Controls */}
+      <div className="rounded-[14px] border border-theme-border bg-theme-surface p-4 print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {!isTrainer && (
             <div>
@@ -206,7 +300,7 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
                   setFilterInstitute(e.target.value);
                   setSelectedBatchId('');
                 }}
-                className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+                className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm cursor-pointer"
               >
                 <option value="">সকল প্রতিষ্ঠান</option>
                 {institutes.map((inst) => (
@@ -230,7 +324,7 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
               value={selectedBatchId}
               disabled={isTrainer && Boolean(userProfile?.batchId)}
               onChange={(e) => setSelectedBatchId(e.target.value)}
-              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm disabled:opacity-70 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm disabled:opacity-70 cursor-pointer"
             >
               {availableBatches.length === 0 ? (
                 <option value="">কোনো ব্যাচ নেই</option>
@@ -255,7 +349,7 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
               id="batch-rep-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm cursor-pointer"
             >
               <option value="all">সকল ({toBn(counts.total)})</option>
               <option value="Active">সক্রিয় ({toBn(counts.active)})</option>
@@ -264,34 +358,6 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
             </select>
           </div>
         </div>
-
-        {canExport && (
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-theme-border">
-            <button
-              type="button"
-              disabled={exporting || !selectedBatch}
-              onClick={handleExportCSV}
-              className="min-h-[44px] px-4 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg text-xs sm:text-sm font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
-            >
-              <Download size={16} />
-              <span>{exporting ? 'সংরক্ষণ হচ্ছে...' : 'CSV এক্সপোর্ট'}</span>
-            </button>
-            <button
-              type="button"
-              disabled={!selectedBatch}
-              onClick={() =>
-                printCurrentDocument({
-                  jobName: `BNFE_Batch_Trainees_${selectedBatch?.name || 'List'}`,
-                  landscape: true,
-                })
-              }
-              className="min-h-[44px] px-4 rounded-xl border border-theme-border-strong bg-theme-elevated hover:bg-theme-surface-hover text-theme-text-primary text-xs sm:text-sm font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
-            >
-              <Printer size={16} />
-              <span>প্রিন্ট করুন</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Batch Summary Cards */}
@@ -325,72 +391,139 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
         </div>
       )}
 
-      {/* Official Printable Sheet */}
-      <div className="bg-theme-surface text-theme-text-primary p-5 sm:p-8 rounded-[14px] border border-theme-border print:bg-white print:text-slate-900 print:border-none print:p-0">
-        <div className="text-center border-b-2 border-theme-border-strong print:border-slate-800 pb-4 mb-5">
-          <h2 className="text-lg sm:text-xl font-bold text-theme-text-primary print:text-slate-900">
-            গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
-          </h2>
-          <h3 className="text-base sm:text-lg font-semibold text-theme-text-primary print:text-slate-800 mt-0.5">
-            উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)
-          </h3>
-          <p className="text-xs text-theme-text-secondary print:text-slate-600 mt-0.5">
-            ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ কর্মসূচি
-          </p>
-          <div className="mt-3 inline-block px-4 py-1 bg-theme-surface-subtle print:bg-slate-100 rounded-md font-semibold text-sm text-theme-text-primary print:text-slate-900">
-            ব্যাচ ভিত্তিক প্রশিক্ষণার্থীদের তালিকা
-          </div>
-          {selectedBatch && (
-            <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-theme-text-secondary print:text-slate-600">
-              <span>
-                প্রতিষ্ঠান:{' '}
-                <strong className="text-theme-text-primary print:text-slate-900">
-                  {getInstituteName(selectedBatch.instituteId)}
-                </strong>
+      {/* MS-Word-Style Paginated Document Frame */}
+      <DocumentPrintFrame
+        documentTitle={`ব্যাচ ভিত্তিক প্রশিক্ষণার্থীদের তালিকা${
+          selectedBatch ? ` — ${selectedBatch.name}` : ''
+        }`}
+        fileNamePrefix={`BNFE_Batch_Trainees_${selectedBatch?.name || 'List'}`}
+        config={activeConfig}
+        defaultOrientation="landscape"
+        onConfigChange={handleConfigChange}
+        heading={activeHeading}
+        defaultHeading={DEFAULT_BATCH_REPORT_HEADING}
+        onHeadingChange={handleHeadingChange}
+        supportsSignatures
+        supportsGeneratedDate
+        canExport={canExport && Boolean(selectedBatch)}
+        rowCount={batchTrainees.length}
+        measureKey={`${selectedBatchId}|${statusFilter}|${batchTrainees.length}`}
+        onNotify={onNotify}
+        extraDownloadItems={
+          canExport && selectedBatch
+            ? [
+                {
+                  id: 'csv',
+                  label: exportingCsv ? 'CSV তৈরি হচ্ছে...' : 'CSV স্প্রেডশিট (.csv)',
+                  subtitle: 'Excel-এ খোলার উপযোগী',
+                  icon: <FileSpreadsheet size={16} />,
+                  disabled: exportingCsv,
+                  onClick: handleExportCSV,
+                },
+              ]
+            : []
+        }
+        renderHeader={({ config, px }) => (
+          <div className="text-center border-b-2 border-slate-800 pb-3 mb-3.5 text-black">
+            {activeHeading.govtTitle.trim() && (
+              <p style={{ fontSize: px(10.5) }} className="leading-[1.35]">
+                {activeHeading.govtTitle.trim()}
+              </p>
+            )}
+            {activeHeading.officeTitle.trim() && (
+              <h2
+                style={{ fontSize: px(15) }}
+                className="font-bold leading-[1.35] mt-0.5"
+              >
+                {activeHeading.officeTitle.trim()}
+              </h2>
+            )}
+            {activeHeading.officeAddress.trim() && (
+              <p style={{ fontSize: px(11.5) }} className="font-medium leading-[1.35]">
+                {activeHeading.officeAddress.trim()}
+              </p>
+            )}
+            {activeHeading.programTitle.trim() && (
+              <p
+                style={{ fontSize: px(11) }}
+                className="font-semibold leading-[1.35] max-w-[92%] mx-auto mt-1"
+              >
+                {activeHeading.programTitle.trim()}
+              </p>
+            )}
+            <div className="mt-2 inline-block px-3.5 py-1 bg-slate-100 border border-slate-300 rounded font-bold leading-[1.3]">
+              <span style={{ fontSize: px(12.5) }}>
+                {activeHeading.sheetTitle.trim() || 'ব্যাচ ভিত্তিক প্রশিক্ষণার্থীদের তালিকা'}
               </span>
-              <span>
-                ট্রেড:{' '}
-                <strong className="text-theme-text-primary print:text-slate-900">
-                  {getTradeName(selectedBatch.tradeId)}
-                </strong>
-              </span>
-              <span>
-                ব্যাচ:{' '}
-                <strong className="text-theme-text-primary print:text-slate-900">
-                  {selectedBatch.name}
-                </strong>
-              </span>
-              <span className="tabular-nums">তারিখ: {formatBengaliDate(todayIso)}</span>
             </div>
-          )}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-400 text-xs">
-            <thead className="bg-theme-surface-subtle print:bg-slate-100 text-theme-text-primary print:text-slate-900">
+            {selectedBatch && (
+              <div
+                style={{ fontSize: px(10.5) }}
+                className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-slate-700"
+              >
+                <span>
+                  প্রতিষ্ঠান:{' '}
+                  <strong className="text-black">
+                    {getInstituteName(selectedBatch.instituteId)}
+                  </strong>
+                </span>
+                <span>
+                  ট্রেড:{' '}
+                  <strong className="text-black">
+                    {getTradeName(selectedBatch.tradeId)}
+                  </strong>
+                </span>
+                <span>
+                  ব্যাচ: <strong className="text-black">{selectedBatch.name}</strong>
+                </span>
+                {config.showGeneratedDate && (
+                  <span className="tabular-nums">
+                    তারিখ: <strong className="text-black">{formatBengaliDate(todayIso)}</strong>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        renderTable={({ rowIndices, px }) => (
+          <table
+            style={{ fontSize: px(10) }}
+            className="w-full table-fixed border-collapse border border-slate-700 text-black"
+          >
+            <colgroup>
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '19%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
+            <thead className="bg-slate-100 text-black">
               <tr>
-                <th className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2.5 text-center w-12">
+                <th className="border border-slate-700 px-1 pt-1.5 pb-2 text-center align-middle leading-[1.25]">
                   ক্রঃ
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-left">
+                <th className="border border-slate-700 px-1.5 pt-1.5 pb-2 text-left align-middle leading-[1.25]">
                   রেজিঃ নম্বর
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-left min-w-[160px]">
+                <th className="border border-slate-700 px-2 pt-1.5 pb-2 text-left align-middle leading-[1.25]">
                   প্রশিক্ষণার্থীর নাম
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-left min-w-[150px]">
+                <th className="border border-slate-700 px-2 pt-1.5 pb-2 text-left align-middle leading-[1.25]">
                   পিতা ও মাতা
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-center whitespace-nowrap">
+                <th className="border border-slate-700 px-1.5 pt-1.5 pb-2 text-center align-middle leading-[1.25]">
                   জন্ম তারিখ ও লিঙ্গ
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-left">
+                <th className="border border-slate-700 px-1.5 pt-1.5 pb-2 text-left align-middle leading-[1.25]">
                   জন্ম নিবন্ধন / NID
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-center">
+                <th className="border border-slate-700 px-1.5 pt-1.5 pb-2 text-center align-middle leading-[1.25]">
                   মোবাইল
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-3 py-2.5 text-center">
+                <th className="border border-slate-700 px-1.5 pt-1.5 pb-2 text-center align-middle leading-[1.25]">
                   স্ট্যাটাস
                 </th>
               </tr>
@@ -400,80 +533,94 @@ export const BatchTraineesReport: React.FC<BatchTraineesReportProps> = ({
                 <tr>
                   <td
                     colSpan={8}
-                    className="border border-theme-border-strong print:border-slate-400 py-8 text-center text-theme-text-muted print:text-slate-500"
+                    className="border border-slate-700 py-8 text-center align-middle text-slate-600"
                   >
                     এই ব্যাচে কোনো প্রশিক্ষণার্থী পাওয়া যায়নি।
                   </td>
                 </tr>
               ) : (
-                batchTrainees.map((t, idx) => (
-                  <tr
-                    key={t.id}
-                    className="hover:bg-theme-surface-hover print:hover:bg-transparent"
-                  >
-                    <td className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2 text-center tabular-nums">
-                      {toBn(idx + 1)}
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2 font-mono font-semibold tabular-nums whitespace-nowrap">
-                      {t.registrationNumber || t.traineeId || '—'}
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2">
-                      <div className="font-medium text-theme-text-primary print:text-slate-900">
-                        {t.nameBn || '—'}
-                      </div>
-                      {t.nameEn && (
-                        <div className="text-[11px] text-theme-text-secondary print:text-slate-500">
-                          {t.nameEn}
+                rowIndices.map((idx) => {
+                  const t = batchTrainees[idx];
+                  if (!t) return null;
+                  return (
+                    <tr key={t.id}>
+                      <td className="border border-slate-700 px-1 pt-[4px] pb-[6px] text-center align-middle leading-[1.25] tabular-nums">
+                        {toBn(idx + 1)}
+                      </td>
+                      <td className="border border-slate-700 px-1.5 pt-[4px] pb-[6px] font-mono font-semibold align-middle leading-[1.25] tabular-nums break-all">
+                        {t.registrationNumber || t.traineeId || '—'}
+                      </td>
+                      <td className="border border-slate-700 px-2 pt-[4px] pb-[6px] align-middle">
+                        <div className="font-medium text-black leading-[1.25] break-words">
+                          {t.nameBn || '—'}
                         </div>
-                      )}
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2">
-                      <div>পিতা: {t.fatherNameBn || t.fatherNameEn || '—'}</div>
-                      <div className="text-theme-text-secondary print:text-slate-600">
-                        মাতা: {t.motherNameBn || t.motherNameEn || '—'}
-                      </div>
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2 text-center tabular-nums whitespace-nowrap">
-                      <div>{t.dateOfBirth || '—'}</div>
-                      <div className="text-[11px] text-theme-text-secondary print:text-slate-600">
-                        {getGenderLabelBn(t.gender)}
-                      </div>
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2 font-mono tabular-nums whitespace-nowrap">
-                      {t.nidOrBirthRegistration || '—'}
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2 text-center font-mono tabular-nums whitespace-nowrap">
-                      {t.mobileNumber || '—'}
-                    </td>
-                    <td className="border border-theme-border-strong print:border-slate-400 px-3 py-2 text-center font-medium whitespace-nowrap">
-                      {getTraineeStatusLabelBn(t.status)}
-                    </td>
-                  </tr>
-                ))
+                        {t.nameEn && (
+                          <div
+                            style={{ fontSize: px(8.8) }}
+                            className="text-slate-600 leading-[1.2] break-words"
+                          >
+                            {t.nameEn}
+                          </div>
+                        )}
+                      </td>
+                      <td className="border border-slate-700 px-2 pt-[4px] pb-[6px] align-middle">
+                        <div className="leading-[1.25] break-words">
+                          পিতা: {t.fatherNameBn || t.fatherNameEn || '—'}
+                        </div>
+                        <div className="text-slate-600 leading-[1.25] break-words">
+                          মাতা: {t.motherNameBn || t.motherNameEn || '—'}
+                        </div>
+                      </td>
+                      <td className="border border-slate-700 px-1.5 pt-[4px] pb-[6px] text-center align-middle leading-[1.25] tabular-nums">
+                        <div>{t.dateOfBirth || '—'}</div>
+                        <div
+                          style={{ fontSize: px(8.8) }}
+                          className="text-slate-600"
+                        >
+                          {getGenderLabelBn(t.gender)}
+                        </div>
+                      </td>
+                      <td className="border border-slate-700 px-1.5 pt-[4px] pb-[6px] font-mono align-middle leading-[1.25] tabular-nums break-all">
+                        {t.nidOrBirthRegistration || '—'}
+                      </td>
+                      <td className="border border-slate-700 px-1.5 pt-[4px] pb-[6px] text-center font-mono align-middle leading-[1.25] tabular-nums break-all">
+                        {t.mobileNumber || '—'}
+                      </td>
+                      <td className="border border-slate-700 px-1.5 pt-[4px] pb-[6px] text-center font-medium align-middle leading-[1.25]">
+                        {getTraineeStatusLabelBn(t.status)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Official Print Signatures */}
-        <div className="grid grid-cols-3 gap-6 pt-14 text-center text-xs mt-6">
-          <div>
-            <div className="border-t border-theme-border-strong print:border-slate-500 pt-1.5 font-medium text-theme-text-secondary print:text-slate-700">
-              প্রশিক্ষক
+        )}
+        renderFooter={({ config, px }) =>
+          config.showSignatures ? (
+            <div
+              style={{ fontSize: px(10.5) }}
+              className="grid grid-cols-3 gap-6 pt-12 text-center mt-4 text-black"
+            >
+              <div>
+                <div className="border-t border-slate-700 pt-1.5 font-medium">
+                  প্রশিক্ষক
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-slate-700 pt-1.5 font-medium">
+                  প্রতিষ্ঠান প্রধান
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-slate-700 pt-1.5 font-medium">
+                  কোর্স পরিচালক
+                </div>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="border-t border-theme-border-strong print:border-slate-500 pt-1.5 font-medium text-theme-text-secondary print:text-slate-700">
-              প্রতিষ্ঠান প্রধান
-            </div>
-          </div>
-          <div>
-            <div className="border-t border-theme-border-strong print:border-slate-500 pt-1.5 font-medium text-theme-text-secondary print:text-slate-700">
-              কোর্স পরিচালক
-            </div>
-          </div>
-        </div>
-      </div>
+          ) : null
+        }
+      />
     </div>
   );
 };

@@ -1,5 +1,14 @@
 import React, { useRef } from 'react';
-import { CalendarRange, CheckCircle2, ChevronDown, Download, Printer, Settings } from 'lucide-react';
+import {
+  CalendarRange,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  Printer,
+  Settings,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { ExportPopover } from './ExportPopover';
 import { formatSelectedRangeBn, toBnDigits, type WeekDayInfo } from './utils';
 
@@ -18,6 +27,11 @@ interface ActionBarProps {
   onPrint: () => void;
   onChangeDates: () => void;
   onOpenHeadingSettings: () => void;
+  zoomMode: 'fit' | 'manual';
+  effectiveZoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onToggleFitZoom: () => void;
 }
 
 export const ActionBar: React.FC<ActionBarProps> = ({
@@ -35,13 +49,19 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onPrint,
   onChangeDates,
   onOpenHeadingSettings,
+  zoomMode,
+  effectiveZoom,
+  onZoomIn,
+  onZoomOut,
+  onToggleFitZoom,
 }) => {
   const exportBtnRef = useRef<HTMLButtonElement | null>(null);
   const rangeLabel = formatSelectedRangeBn(selectedDays);
+  const zoomPercent = Math.round(effectiveZoom * 100);
 
   return (
     <section
-      style={{ maxWidth: `${paperWidthMm}mm` }}
+      style={{ maxWidth: `${Math.max(paperWidthMm, 260)}mm` }}
       className="mx-auto rounded-[16px] bg-[var(--ws-surface)] border border-[var(--ws-border)] p-3.5 sm:p-4 space-y-3 print:hidden"
     >
       <div className="flex items-start justify-between gap-2.5">
@@ -57,15 +77,53 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenHeadingSettings}
-          aria-label="পেইজ ও হেডিং সেটিংস"
-          title="পেইজ, ফন্ট ও হেডিং সেটিংস"
-          className="w-10 h-10 -mt-1 -mr-1 rounded-[10px] bg-[var(--ws-surface2)] border border-[var(--ws-border)] text-[var(--ws-muted)] hover:text-[var(--ws-text)] hover:border-[var(--ws-accent)] flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition focus-visible:outline-2 focus-visible:outline-[var(--ws-accent)]"
-        >
-          <Settings size={17} />
-        </button>
+        <div className="flex items-center gap-2 shrink-0 -mt-1 -mr-1">
+          {/* Zoom Controls */}
+          <div
+            role="group"
+            aria-label="জুম নিয়ন্ত্রণ"
+            className="hidden sm:inline-flex items-center rounded-[10px] border border-[var(--ws-border)] bg-[var(--ws-surface2)] p-0.5"
+          >
+            <button
+              type="button"
+              onClick={onZoomOut}
+              disabled={effectiveZoom <= 0.4}
+              aria-label="জুম কমান"
+              className="w-8 h-8 rounded-[8px] inline-flex items-center justify-center text-[var(--ws-muted)] hover:text-[var(--ws-text)] hover:bg-[var(--ws-surface)] transition disabled:opacity-40 cursor-pointer"
+            >
+              <ZoomOut size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleFitZoom}
+              title={zoomMode === 'fit' ? '১০০% জুম করুন' : 'ফ্রেমে ফিট করুন'}
+              className="h-8 px-2 rounded-[8px] text-[11.5px] font-semibold text-[var(--ws-text)] hover:bg-[var(--ws-surface)] tabular-nums transition cursor-pointer min-w-[54px]"
+            >
+              {zoomMode === 'fit'
+                ? `ফিট (${toBnDigits(zoomPercent)}%)`
+                : `${toBnDigits(zoomPercent)}%`}
+            </button>
+            <button
+              type="button"
+              onClick={onZoomIn}
+              disabled={effectiveZoom >= 1.8}
+              aria-label="জুম বাড়ান"
+              className="w-8 h-8 rounded-[8px] inline-flex items-center justify-center text-[var(--ws-muted)] hover:text-[var(--ws-text)] hover:bg-[var(--ws-surface)] transition disabled:opacity-40 cursor-pointer"
+            >
+              <ZoomIn size={15} />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenHeadingSettings}
+            aria-label="পেইজ ও হেডিং সেটিংস"
+            title="পেইজ, ফন্ট ও হেডিং সেটিংস"
+            className="w-10 h-10 rounded-[10px] bg-[var(--ws-surface2)] border border-[var(--ws-border)] text-[var(--ws-muted)] hover:text-[var(--ws-text)] hover:border-[var(--ws-accent)] flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition focus-visible:outline-2 focus-visible:outline-[var(--ws-accent)]"
+          >
+            <Settings size={17} />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col min-[480px]:flex-row min-[480px]:flex-wrap items-stretch min-[480px]:items-center gap-2.5">
@@ -118,6 +176,41 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <CalendarRange size={16} />
           <span>ব্যাচ ও তারিখ বদলান</span>
         </button>
+
+        {/* Mobile Zoom Controls */}
+        <div
+          role="group"
+          aria-label="জুম নিয়ন্ত্রণ"
+          className="flex sm:hidden items-center justify-between rounded-[12px] border border-[var(--ws-border)] bg-[var(--ws-surface2)] p-1"
+        >
+          <button
+            type="button"
+            onClick={onZoomOut}
+            disabled={effectiveZoom <= 0.4}
+            aria-label="জুম কমান"
+            className="w-10 h-9 rounded-[8px] inline-flex items-center justify-center text-[var(--ws-text)] disabled:opacity-40 cursor-pointer"
+          >
+            <ZoomOut size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleFitZoom}
+            className="h-9 px-3 rounded-[8px] text-[12.5px] font-semibold text-[var(--ws-text)] tabular-nums cursor-pointer"
+          >
+            {zoomMode === 'fit'
+              ? `ফিট (${toBnDigits(zoomPercent)}%)`
+              : `${toBnDigits(zoomPercent)}%`}
+          </button>
+          <button
+            type="button"
+            onClick={onZoomIn}
+            disabled={effectiveZoom >= 1.8}
+            aria-label="জুম বাড়ান"
+            className="w-10 h-9 rounded-[8px] inline-flex items-center justify-center text-[var(--ws-text)] disabled:opacity-40 cursor-pointer"
+          >
+            <ZoomIn size={16} />
+          </button>
+        </div>
       </div>
     </section>
   );

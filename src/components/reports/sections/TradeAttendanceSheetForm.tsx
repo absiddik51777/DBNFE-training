@@ -2,22 +2,31 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
-  Printer,
+  FileSpreadsheet,
 } from 'lucide-react';
 import type {
   AttendanceRecord,
   Batch,
+  DocumentPrintConfig,
   Institute,
   Trade,
   Trainee,
   UserProfile,
+  WeeklySignatureHeading,
 } from '../../../types';
+import { usePermissions } from '../../../contexts/PermissionsContext';
+import { useSystemSettings } from '../../../contexts/SystemSettingsContext';
+import { downloadCSV } from '../../../lib/exportUtils';
+import { formatBengaliDate, toBn } from '../../../lib/dateUtils';
 import {
-  downloadCSV,
-  printCustomHtmlDocument,
-} from '../../../lib/exportUtils';
-import { toBn } from '../../../lib/dateUtils';
+  mergeHeadingWithDefault,
+  normalizeDocumentPrintConfig,
+  readLocalDocHeading,
+  readLocalDocPrintConfig,
+  writeLocalDocHeading,
+  writeLocalDocPrintConfig,
+} from '../../../lib/documentFrameService';
+import { DocumentPrintFrame } from '../../document-frame/DocumentPrintFrame';
 import { MONTH_NAMES_BN, ReportsToast, WEEKDAY_NAMES_BN } from '../types';
 
 type SheetFormMode = 'blank' | 'filled';
@@ -40,13 +49,14 @@ interface SheetDay {
   isFriday: boolean;
 }
 
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+const DEFAULT_TRADE_SHEET_HEADING: WeeklySignatureHeading = {
+  govtTitle: 'গণপ্রজাতন্ত্রী বাংলাদেশ সরকার',
+  officeTitle: 'জেলা উপানুষ্ঠানিক শিক্ষা ব্যুরো',
+  officeAddress: 'কালেক্টরেট ভবন, ময়মনসিংহ',
+  programTitle:
+    "উপানুষ্ঠানিক শিক্ষা ব্যুরো'র বিশেষ কার্যক্রম কার্যকর সাক্ষরতা ও ব্যবহারিক কর্মদক্ষতা প্রশিক্ষণ প্রাক বৃত্তিমূলক পর্যায়",
+  sheetTitle: 'মাসিক হাজিরা সিট (ট্রেড ভিত্তিক)',
+};
 
 export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> = ({
   userProfile,
@@ -58,7 +68,11 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
   canExport,
   onNotify,
 }) => {
+  const { isCourseDirector } = usePermissions();
+  const { settings, updateSettings } = useSystemSettings();
   const isTrainer = userProfile?.role === 'Trainer';
+  const canPersistGlobal =
+    userProfile?.role === 'Course Director' || isCourseDirector;
   const now = useMemo(() => new Date(), []);
 
   const trainerBatch = useMemo(
@@ -82,14 +96,83 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
   const [formMode, setFormMode] = useState<SheetFormMode>('blank');
   const [hideFridays, setHideFridays] = useState<boolean>(false);
-  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportingCsv, setExportingCsv] = useState<boolean>(false);
+
+  const [localConfigOverride, setLocalConfigOverride] =
+    useState<Partial<DocumentPrintConfig> | null>(() =>
+      readLocalDocPrintConfig('trade_sheet', userProfile?.id)
+    );
+  const [localHeadingOverride, setLocalHeadingOverride] =
+    useState<Partial<WeeklySignatureHeading> | null>(() =>
+      readLocalDocHeading('trade_sheet', userProfile?.id)
+    );
+
+  const activeConfig = useMemo<DocumentPrintConfig>(
+    () =>
+      normalizeDocumentPrintConfig(
+        {
+          ...(settings.documentPrintConfig || {}),
+          ...(localConfigOverride || {}),
+          margins: {
+            ...(settings.documentPrintConfig?.margins || {}),
+            ...(localConfigOverride?.margins || {}),
+          },
+        } as Partial<DocumentPrintConfig>,
+        'landscape'
+      ),
+    [settings.documentPrintConfig, localConfigOverride]
+  );
+
+  const activeHeading = useMemo<WeeklySignatureHeading>(
+    () =>
+      mergeHeadingWithDefault(
+        DEFAULT_TRADE_SHEET_HEADING,
+        settings.weeklySignatureHeading,
+        localHeadingOverride
+      ),
+    [settings.weeklySignatureHeading, localHeadingOverride]
+  );
+
+  const handleConfigChange = async (nextConfig: DocumentPrintConfig) => {
+    setLocalConfigOverride(nextConfig);
+    writeLocalDocPrintConfig('trade_sheet', userProfile?.id, nextConfig);
+    if (canPersistGlobal) {
+      try {
+        await updateSettings({ documentPrintConfig: nextConfig });
+      } catch (err) {
+        console.warn('Could not save documentPrintConfig globally:', err);
+      }
+    }
+  };
+
+  const handleHeadingChange = async (nextHeading: WeeklySignatureHeading) => {
+    setLocalHeadingOverride(nextHeading);
+    writeLocalDocHeading('trade_sheet', userProfile?.id, nextHeading);
+    if (canPersistGlobal) {
+      try {
+        await updateSettings({
+          weeklySignatureHeading: {
+            ...(settings.weeklySignatureHeading || DEFAULT_TRADE_SHEET_HEADING),
+            govtTitle: nextHeading.govtTitle,
+            officeTitle: nextHeading.officeTitle,
+            officeAddress: nextHeading.officeAddress,
+            programTitle: nextHeading.programTitle,
+            sheetTitle:
+              settings.weeklySignatureHeading?.sheetTitle ||
+              'প্রশিক্ষণার্থী হাজিরা সিট',
+          },
+        });
+      } catch (err) {
+        console.warn('Could not save heading globally:', err);
+      }
+    }
+  };
 
   const activeTrades = useMemo(
     () => trades.filter((t) => !t.isArchived),
     [trades]
   );
 
-  // Sync defaults once trades/batches load
   useEffect(() => {
     if (isTrainer && trainerBatch?.tradeId) {
       setSelectedTradeId(trainerBatch.tradeId);
@@ -181,7 +264,6 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
 
   const monthPrefix = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
 
-  // O(1) lookup for filled attendance mode
   const attendanceMap = useMemo(() => {
     const map = new Map<string, string>();
     if (formMode !== 'filled') return map;
@@ -243,230 +325,9 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
     }
   };
 
-  const buildPrintableHtml = (): string => {
-    const dayHeadCells = daysList
-      .map(
-        (d) =>
-          `<th class="${d.isFriday ? 'fri' : ''} day-col">${toBn(
-            d.day
-          )}<div class="wd">${escapeHtml(d.weekdayBn)}</div></th>`
-      )
-      .join('');
-
-    const bodyRows =
-      sheetTrainees.length === 0
-        ? `<tr><td colspan="${
-            daysList.length + 5
-          }" style="padding:18px;text-align:center;color:#64748b;">এই ট্রেডে কোনো প্রশিক্ষণার্থী পাওয়া যায়নি।</td></tr>`
-        : sheetTrainees
-            .map((t, idx) => {
-              let presentCount = 0;
-              const cells = daysList
-                .map((d) => {
-                  if (formMode === 'blank' || d.isFriday) {
-                    return `<td class="${d.isFriday ? 'fri' : ''} day-cell"></td>`;
-                  }
-                  const code = attendanceMap.get(`${t.id}|${d.dateStr}`) || '';
-                  if (code === 'P') presentCount++;
-                  const cls =
-                    code === 'P'
-                      ? 'p'
-                      : code === 'A'
-                      ? 'a'
-                      : code === 'L'
-                      ? 'l'
-                      : '';
-                  return `<td class="day-cell ${cls}">${code}</td>`;
-                })
-                .join('');
-
-              const reg = escapeHtml(t.registrationNumber || t.traineeId || '—');
-              const name = escapeHtml(t.nameBn || t.nameEn || '—');
-              const batchText = !selectedBatch
-                ? `<div class="sub">${escapeHtml(getBatchName(t.batchId))}</div>`
-                : '';
-
-              return `<tr>
-                <td>${toBn(idx + 1)}</td>
-                <td class="reg">${reg}</td>
-                <td class="name-col"><strong>${name}</strong>${batchText}</td>
-                ${cells}
-                <td class="tot">${formMode === 'filled' ? toBn(presentCount) : ''}</td>
-                <td class="sig"></td>
-              </tr>`;
-            })
-            .join('');
-
-    return `<!doctype html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8" />
-  <title>মাসিক হাজিরা সিট (ট্রেড ভিত্তক) — ${escapeHtml(
-    selectedTrade?.name || ''
-  )}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Nikosh', 'SolaimanLipi', 'Noto Sans Bengali', Arial, sans-serif;
-      margin: 14px;
-      color: #0f172a;
-      background: #fff;
-      font-size: 11px;
-    }
-    .hdr {
-      text-align: center;
-      border-bottom: 2px solid #1e293b;
-      padding-bottom: 8px;
-      margin-bottom: 10px;
-    }
-    .hdr h1 { margin: 0; font-size: 16px; }
-    .hdr h2 { margin: 2px 0 0; font-size: 14px; }
-    .hdr .sub-title { margin: 2px 0 6px; font-size: 11px; color: #475569; }
-    .hdr .badge {
-      display: inline-block;
-      background: #f1f5f9;
-      padding: 3px 12px;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 12.5px;
-    }
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 11px;
-      margin-bottom: 8px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      border: 1px solid #64748b;
-      padding: 3px 2px;
-      text-align: center;
-      vertical-align: middle;
-    }
-    th {
-      background: #f1f5f9;
-      font-weight: 700;
-      font-size: 10px;
-    }
-    .day-col {
-      min-width: 21px;
-    }
-    .wd {
-      font-size: 8.5px;
-      font-weight: 400;
-      color: #475569;
-    }
-    .reg {
-      font-family: monospace;
-      font-weight: 600;
-      padding: 3px 5px;
-      white-space: nowrap;
-      font-size: 10px;
-    }
-    .name-col {
-      text-align: left;
-      padding: 3px 6px;
-      min-width: 135px;
-    }
-    .sub {
-      font-size: 9px;
-      color: #475569;
-    }
-    .day-cell {
-      height: 22px;
-      font-size: 10px;
-    }
-    .fri {
-      background: #fff1f2;
-      color: #be123c;
-    }
-    .p { color: #047857; font-weight: 700; }
-    .a { color: #b91c1c; font-weight: 700; }
-    .l { color: #b45309; font-weight: 700; }
-    .tot {
-      min-width: 34px;
-      font-weight: 700;
-    }
-    .sig {
-      min-width: 68px;
-    }
-    .sigs {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 28px;
-      margin-top: 38px;
-      text-align: center;
-      font-size: 11px;
-    }
-    .sigs .line {
-      border-top: 1px solid #334155;
-      padding-top: 4px;
-      font-weight: 600;
-    }
-    @media print {
-      @page { size: A4 landscape; margin: 7mm; }
-      body { margin: 0; }
-    }
-  </style>
-</head>
-<body>
-  <div class="hdr">
-    <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</h1>
-    <h2>উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)</h2>
-    <div class="sub-title">ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ কর্মসূচি</div>
-    <div class="badge">মাসিক হাজিরা সিট (ট্রেড ভিত্তিক) — ${escapeHtml(monthName)} ${toBn(
-      selectedYear
-    )}</div>
-  </div>
-  <div class="meta">
-    <div><strong>ট্রেড:</strong> ${escapeHtml(selectedTrade?.name || '—')}</div>
-    <div><strong>ব্যাচ:</strong> ${escapeHtml(
-      selectedBatch ? selectedBatch.name : 'সকল ব্যাচ (ট্রেড ভিত্তিক)'
-    )}</div>
-    <div><strong>প্রতিষ্ঠান:</strong> ${escapeHtml(derivedInstituteLabel)}</div>
-    <div><strong>মোট প্রশিক্ষণার্থী:</strong> ${toBn(sheetTrainees.length)} জন</div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:26px;">ক্রঃ</th>
-        <th>রেজিঃ নং</th>
-        <th>প্রশিক্ষণার্থীর নাম</th>
-        ${dayHeadCells}
-        <th>মোট উপস্থিত</th>
-        <th>স্বাক্ষর / মন্তব্য</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${bodyRows}
-    </tbody>
-  </table>
-  <div class="sigs">
-    <div><div class="line">প্রশিক্ষকের স্বাক্ষর ও তারিখ</div></div>
-    <div><div class="line">প্রতিষ্ঠান প্রধানের স্বাক্ষর</div></div>
-    <div><div class="line">কোর্স পরিচালক</div></div>
-  </div>
-</body>
-</html>`;
-  };
-
-  const handlePrintSheet = async () => {
-    const html = buildPrintableHtml();
-    await printCustomHtmlDocument({
-      html,
-      jobName: `BNFE_Trade_Attendance_Sheet_${monthPrefix}`,
-      landscape: true,
-    });
-  };
-
   const handleExportCSV = async () => {
-    if (exporting || !selectedTrade) return;
-    setExporting(true);
+    if (exportingCsv || !selectedTrade) return;
+    setExportingCsv(true);
     try {
       const headers = [
         'ক্রঃ',
@@ -517,9 +378,25 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
           : 'ফাইল সংরক্ষণ করা সম্ভব হয়নি। আবার চেষ্টা করুন।';
       onNotify({ type: 'error', message });
     } finally {
-      setExporting(false);
+      setExportingCsv(false);
     }
   };
+
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+    2,
+    '0'
+  )}-${String(now.getDate()).padStart(2, '0')}`;
+
+  // Proportional 100% usable-width column allocation across 31-day matrix
+  const slPct = 3;
+  const regPct = 8;
+  const namePct = 15;
+  const presentPct = 4.5;
+  const sigPct = 6.5;
+  const dayPct =
+    daysList.length > 0
+      ? (100 - slPct - regPct - namePct - presentPct - sigPct) / daysList.length
+      : 0;
 
   return (
     <div className="space-y-4">
@@ -541,7 +418,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                 setSelectedTradeId(e.target.value);
                 setSelectedBatchId('');
               }}
-              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm disabled:opacity-70 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm disabled:opacity-70 cursor-pointer"
             >
               {activeTrades.length === 0 ? (
                 <option value="">কোনো ট্রেড নেই</option>
@@ -567,7 +444,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
               value={effectiveBatchId}
               disabled={isTrainer && Boolean(userProfile?.batchId)}
               onChange={(e) => setSelectedBatchId(e.target.value)}
-              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm disabled:opacity-70 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+              className="w-full min-h-[44px] px-3 bg-theme-surface-subtle text-theme-text-primary border border-theme-border rounded-xl text-xs sm:text-sm disabled:opacity-70 cursor-pointer"
             >
               <option value="">সকল ব্যাচ (ট্রেড ভিত্তিক)</option>
               {tradeBatches.map((b) => (
@@ -587,7 +464,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                 type="button"
                 onClick={handlePrevMonth}
                 aria-label="আগের মাস"
-                className="min-h-[44px] min-w-[44px] rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+                className="min-h-[44px] min-w-[44px] rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer"
               >
                 <ChevronLeft size={17} />
               </button>
@@ -596,7 +473,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                 aria-label="মাস নির্বাচন"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="flex-1 min-w-0 min-h-[44px] px-2.5 rounded-xl border border-theme-border bg-theme-surface-subtle text-xs sm:text-sm font-medium text-theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+                className="flex-1 min-w-0 min-h-[44px] px-2.5 rounded-xl border border-theme-border bg-theme-surface-subtle text-xs sm:text-sm font-medium text-theme-text-primary cursor-pointer"
               >
                 {MONTH_NAMES_BN.map((mName, idx) => (
                   <option key={mName} value={idx + 1}>
@@ -609,7 +486,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                 aria-label="বছর নির্বাচন"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-[82px] min-h-[44px] px-2 rounded-xl border border-theme-border bg-theme-surface-subtle text-xs sm:text-sm font-medium text-theme-text-primary tabular-nums focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary cursor-pointer"
+                className="w-[82px] min-h-[44px] px-2 rounded-xl border border-theme-border bg-theme-surface-subtle text-xs sm:text-sm font-medium text-theme-text-primary tabular-nums cursor-pointer"
               >
                 {yearOptions.map((yr) => (
                   <option key={yr} value={yr}>
@@ -622,7 +499,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                 type="button"
                 onClick={handleNextMonth}
                 aria-label="পরের মাস"
-                className="min-h-[44px] min-w-[44px] rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+                className="min-h-[44px] min-w-[44px] rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer"
               >
                 <ChevronRight size={17} />
               </button>
@@ -630,149 +507,189 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
           </div>
         </div>
 
-        {/* Mode toggle + Friday toggle + Export buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-theme-border">
-          <div className="flex flex-wrap items-center gap-3">
-            <div
-              role="group"
-              aria-label="ফর্মের ধরন"
-              className="inline-flex rounded-xl bg-theme-surface-subtle p-1 border border-theme-border"
+        {/* Mode toggle + Friday toggle */}
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-theme-border">
+          <div
+            role="group"
+            aria-label="ফর্মের ধরন"
+            className="inline-flex rounded-xl bg-theme-surface-subtle p-1 border border-theme-border"
+          >
+            <button
+              type="button"
+              onClick={() => setFormMode('blank')}
+              className={`min-h-[36px] px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                formMode === 'blank'
+                  ? 'bg-theme-surface text-theme-text-primary shadow-xs border border-theme-border'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary'
+              }`}
             >
-              <button
-                type="button"
-                onClick={() => setFormMode('blank')}
-                className={`min-h-[36px] px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
-                  formMode === 'blank'
-                    ? 'bg-theme-surface text-theme-text-primary shadow-xs border border-theme-border'
-                    : 'text-theme-text-secondary hover:text-theme-text-primary'
-                }`}
-              >
-                খালি ফর্ম (স্বাক্ষরের জন্য)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormMode('filled')}
-                className={`min-h-[36px] px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
-                  formMode === 'filled'
-                    ? 'bg-theme-surface text-theme-text-primary shadow-xs border border-theme-border'
-                    : 'text-theme-text-secondary hover:text-theme-text-primary'
-                }`}
-              >
-                হাজিরাসহ শিট
-              </button>
-            </div>
-
-            <label className="min-h-[44px] inline-flex items-center gap-2 px-2.5 rounded-xl text-xs sm:text-sm text-theme-text-secondary hover:text-theme-text-primary cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={hideFridays}
-                onChange={(e) => setHideFridays(e.target.checked)}
-                className="w-4 h-4 accent-theme-primary rounded cursor-pointer"
-              />
-              <span>শুক্রবার বাদ দিন</span>
-            </label>
+              খালি ফর্ম (স্বাক্ষরের জন্য)
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormMode('filled')}
+              className={`min-h-[36px] px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                formMode === 'filled'
+                  ? 'bg-theme-surface text-theme-text-primary shadow-xs border border-theme-border'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary'
+              }`}
+            >
+              হাজিরাসহ শিট
+            </button>
           </div>
 
-          {canExport && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={exporting || !selectedTrade}
-                onClick={handleExportCSV}
-                className="min-h-[44px] px-4 rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover text-theme-text-primary text-xs sm:text-sm font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
-              >
-                <Download size={16} />
-                <span>{exporting ? 'সংরক্ষণ হচ্ছে...' : 'CSV এক্সপোর্ট'}</span>
-              </button>
-              <button
-                type="button"
-                disabled={!selectedTrade}
-                onClick={handlePrintSheet}
-                className="min-h-[44px] px-4 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-theme-primary-fg text-xs sm:text-sm font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
-              >
-                <Printer size={16} />
-                <span>প্রিন্ট / PDF ফর্ম</span>
-              </button>
-            </div>
-          )}
+          <label className="min-h-[40px] inline-flex items-center gap-2 px-2.5 rounded-xl text-xs sm:text-sm text-theme-text-secondary hover:text-theme-text-primary cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hideFridays}
+              onChange={(e) => setHideFridays(e.target.checked)}
+              className="w-4 h-4 accent-theme-primary rounded cursor-pointer"
+            />
+            <span>শুক্রবার বাদ দিন</span>
+          </label>
         </div>
       </div>
 
-      {/* Live Printable Form Preview */}
-      <div className="bg-theme-surface text-theme-text-primary p-4 sm:p-6 rounded-[14px] border border-theme-border print:bg-white print:text-slate-900 print:border-none print:p-0">
-        <div className="text-center border-b-2 border-theme-border-strong print:border-slate-800 pb-4 mb-4">
-          <h2 className="text-base sm:text-lg font-bold text-theme-text-primary print:text-slate-900">
-            গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
-          </h2>
-          <h3 className="text-sm sm:text-base font-semibold text-theme-text-primary print:text-slate-800 mt-0.5">
-            উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE)
-          </h3>
-          <p className="text-xs text-theme-text-secondary print:text-slate-600 mt-0.5">
-            ঝরে পড়া কিশোর-কিশোরীদের বৃত্তিমূলক দক্ষতা প্রশিক্ষণ কর্মসূচি
-          </p>
-          <div className="mt-2.5 inline-block px-4 py-1 bg-theme-surface-subtle print:bg-slate-100 rounded-md font-semibold text-xs sm:text-sm text-theme-text-primary print:text-slate-900">
-            মাসিক হাজিরা সিট (ট্রেড ভিত্তিক) — {monthName} {toBn(selectedYear)}
+      {/* MS-Word-Style Paginated Document Frame */}
+      <DocumentPrintFrame
+        documentTitle={`মাসিক হাজিরা সিট (ট্রেড ভিত্তিক) — ${monthName} ${toBn(
+          selectedYear
+        )}`}
+        fileNamePrefix={`BNFE_Trade_Attendance_Sheet_${monthPrefix}`}
+        config={activeConfig}
+        defaultOrientation="landscape"
+        onConfigChange={handleConfigChange}
+        heading={activeHeading}
+        defaultHeading={DEFAULT_TRADE_SHEET_HEADING}
+        onHeadingChange={handleHeadingChange}
+        supportsSignatures
+        supportsGeneratedDate
+        canExport={canExport && Boolean(selectedTrade)}
+        rowCount={sheetTrainees.length}
+        measureKey={`${effectiveTradeId}|${effectiveBatchId}|${monthPrefix}|${formMode}|${hideFridays}|${sheetTrainees.length}`}
+        onNotify={onNotify}
+        extraDownloadItems={
+          canExport && selectedTrade
+            ? [
+                {
+                  id: 'csv',
+                  label: exportingCsv ? 'CSV তৈরি হচ্ছে...' : 'CSV স্প্রেডশিট (.csv)',
+                  subtitle: 'Excel-এ খোলার উপযোগী',
+                  icon: <FileSpreadsheet size={16} />,
+                  disabled: exportingCsv,
+                  onClick: handleExportCSV,
+                },
+              ]
+            : []
+        }
+        renderHeader={({ config, px }) => (
+          <div className="text-center border-b-2 border-slate-800 pb-2.5 mb-3 text-black">
+            {activeHeading.govtTitle.trim() && (
+              <p style={{ fontSize: px(10) }} className="leading-[1.3]">
+                {activeHeading.govtTitle.trim()}
+              </p>
+            )}
+            {activeHeading.officeTitle.trim() && (
+              <h2
+                style={{ fontSize: px(14) }}
+                className="font-bold leading-[1.3] mt-0.5"
+              >
+                {activeHeading.officeTitle.trim()}
+              </h2>
+            )}
+            {activeHeading.officeAddress.trim() && (
+              <p style={{ fontSize: px(10.5) }} className="font-medium leading-[1.3]">
+                {activeHeading.officeAddress.trim()}
+              </p>
+            )}
+            {activeHeading.programTitle.trim() && (
+              <p
+                style={{ fontSize: px(10) }}
+                className="font-semibold leading-[1.3] max-w-[94%] mx-auto mt-0.5"
+              >
+                {activeHeading.programTitle.trim()}
+              </p>
+            )}
+            <div className="mt-1.5 inline-block px-3.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold leading-[1.3]">
+              <span style={{ fontSize: px(12) }}>
+                {activeHeading.sheetTitle.trim() || 'মাসিক হাজিরা সিট (ট্রেড ভিত্তিক)'} —{' '}
+                {monthName} {toBn(selectedYear)}
+              </span>
+            </div>
+            <div
+              style={{ fontSize: px(10) }}
+              className="mt-1.5 flex flex-wrap justify-center gap-x-4 gap-y-1 text-slate-700"
+            >
+              <span>
+                ট্রেড: <strong className="text-black">{selectedTrade?.name || '—'}</strong>
+              </span>
+              <span>
+                ব্যাচ:{' '}
+                <strong className="text-black">
+                  {selectedBatch ? selectedBatch.name : 'সকল ব্যাচ'}
+                </strong>
+              </span>
+              <span>
+                প্রতিষ্ঠান: <strong className="text-black">{derivedInstituteLabel}</strong>
+              </span>
+              <span className="tabular-nums">
+                প্রশিক্ষণার্থী:{' '}
+                <strong className="text-black">{toBn(sheetTrainees.length)} জন</strong>
+              </span>
+              {config.showGeneratedDate && (
+                <span className="tabular-nums">
+                  তারিখ: <strong className="text-black">{formatBengaliDate(todayIso)}</strong>
+                </span>
+              )}
+            </div>
           </div>
-          <div className="mt-2.5 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-theme-text-secondary print:text-slate-600">
-            <span>
-              ট্রেড:{' '}
-              <strong className="text-theme-text-primary print:text-slate-900">
-                {selectedTrade?.name || '—'}
-              </strong>
-            </span>
-            <span>
-              ব্যাচ:{' '}
-              <strong className="text-theme-text-primary print:text-slate-900">
-                {selectedBatch ? selectedBatch.name : 'সকল ব্যাচ'}
-              </strong>
-            </span>
-            <span>
-              প্রতিষ্ঠান:{' '}
-              <strong className="text-theme-text-primary print:text-slate-900">
-                {derivedInstituteLabel}
-              </strong>
-            </span>
-            <span className="tabular-nums">
-              প্রশিক্ষণার্থী:{' '}
-              <strong className="text-theme-text-primary print:text-slate-900">
-                {toBn(sheetTrainees.length)} জন
-              </strong>
-            </span>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-theme-border-strong print:border-slate-400 text-[11px]">
-            <thead className="bg-theme-surface-subtle print:bg-slate-100 text-theme-text-primary print:text-slate-900">
+        )}
+        renderTable={({ rowIndices, px }) => (
+          <table
+            style={{ fontSize: px(8.8) }}
+            className="w-full table-fixed border-collapse border border-slate-700 text-black"
+          >
+            <colgroup>
+              <col style={{ width: `${slPct}%` }} />
+              <col style={{ width: `${regPct}%` }} />
+              <col style={{ width: `${namePct}%` }} />
+              {daysList.map((d) => (
+                <col key={d.day} style={{ width: `${dayPct}%` }} />
+              ))}
+              <col style={{ width: `${presentPct}%` }} />
+              <col style={{ width: `${sigPct}%` }} />
+            </colgroup>
+            <thead className="bg-slate-100 text-black">
               <tr>
-                <th className="border border-theme-border-strong print:border-slate-400 px-2 py-2 text-center w-9">
+                <th className="border border-slate-700 px-0.5 pt-1 pb-1.5 text-center align-middle leading-[1.2]">
                   ক্রঃ
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2 text-left whitespace-nowrap">
+                <th className="border border-slate-700 px-1 pt-1 pb-1.5 text-left align-middle leading-[1.2]">
                   রেজিঃ নং
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2 text-left min-w-[155px]">
+                <th className="border border-slate-700 px-1.5 pt-1 pb-1.5 text-left align-middle leading-[1.2]">
                   প্রশিক্ষণার্থীর নাম
                 </th>
                 {daysList.map((d) => (
                   <th
                     key={d.day}
-                    className={`border border-theme-border-strong print:border-slate-400 px-1 py-1.5 text-center min-w-[26px] tabular-nums ${
-                      d.isFriday
-                        ? 'bg-theme-danger-soft text-theme-danger print:bg-rose-50 print:text-rose-700'
-                        : ''
+                    className={`border border-slate-700 px-0.5 pt-1 pb-1.5 text-center align-middle tabular-nums ${
+                      d.isFriday ? 'bg-rose-50 text-rose-700' : ''
                     }`}
                   >
-                    <div className="font-semibold leading-none">{toBn(d.day)}</div>
-                    <div className="text-[9px] font-normal opacity-80 mt-0.5">
+                    <div className="font-bold leading-none">{toBn(d.day)}</div>
+                    <div
+                      style={{ fontSize: px(7) }}
+                      className="font-normal opacity-80 mt-0.5 leading-none"
+                    >
                       {d.weekdayBn}
                     </div>
                   </th>
                 ))}
-                <th className="border border-theme-border-strong print:border-slate-400 px-2 py-2 text-center whitespace-nowrap">
+                <th className="border border-slate-700 px-0.5 pt-1 pb-1.5 text-center align-middle leading-[1.2]">
                   উপস্থিত
                 </th>
-                <th className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2 text-center min-w-[82px]">
+                <th className="border border-slate-700 px-1 pt-1 pb-1.5 text-center align-middle leading-[1.2]">
                   স্বাক্ষর
                 </th>
               </tr>
@@ -782,31 +699,33 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                 <tr>
                   <td
                     colSpan={daysList.length + 5}
-                    className="border border-theme-border-strong print:border-slate-400 py-8 text-center text-theme-text-muted print:text-slate-500"
+                    className="border border-slate-700 py-8 text-center align-middle text-slate-600"
                   >
                     এই ট্রেডে কোনো প্রশিক্ষণার্থী পাওয়া যায়নি।
                   </td>
                 </tr>
               ) : (
-                sheetTrainees.map((t, idx) => {
+                rowIndices.map((idx) => {
+                  const t = sheetTrainees[idx];
+                  if (!t) return null;
                   let presentCount = 0;
                   return (
-                    <tr
-                      key={t.id}
-                      className="hover:bg-theme-surface-hover print:hover:bg-transparent"
-                    >
-                      <td className="border border-theme-border-strong print:border-slate-400 px-2 py-2 text-center tabular-nums">
+                    <tr key={t.id}>
+                      <td className="border border-slate-700 px-0.5 pt-[3px] pb-[5px] text-center align-middle leading-[1.2] tabular-nums">
                         {toBn(idx + 1)}
                       </td>
-                      <td className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2 font-mono font-semibold tabular-nums whitespace-nowrap">
+                      <td className="border border-slate-700 px-1 pt-[3px] pb-[5px] font-mono font-semibold align-middle leading-[1.2] tabular-nums break-all">
                         {t.registrationNumber || t.traineeId || '—'}
                       </td>
-                      <td className="border border-theme-border-strong print:border-slate-400 px-2.5 py-2">
-                        <div className="font-medium text-theme-text-primary print:text-slate-900">
+                      <td className="border border-slate-700 px-1.5 pt-[3px] pb-[5px] align-middle">
+                        <div className="font-medium text-black leading-[1.2] break-words">
                           {t.nameBn || t.nameEn || '—'}
                         </div>
                         {!selectedBatch && (
-                          <div className="text-[10px] text-theme-text-secondary print:text-slate-500">
+                          <div
+                            style={{ fontSize: px(7.5) }}
+                            className="text-slate-600 leading-[1.15] break-words"
+                          >
                             {getBatchName(t.batchId)}
                           </div>
                         )}
@@ -816,10 +735,8 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                           return (
                             <td
                               key={d.day}
-                              className={`border border-theme-border-strong print:border-slate-400 h-7 text-center ${
-                                d.isFriday
-                                  ? 'bg-theme-danger-soft/60 print:bg-rose-50'
-                                  : ''
+                              className={`border border-slate-700 h-6 text-center align-middle ${
+                                d.isFriday ? 'bg-rose-50/80' : ''
                               }`}
                             />
                           );
@@ -828,52 +745,57 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
                         if (code === 'P') presentCount++;
                         const codeClass =
                           code === 'P'
-                            ? 'text-theme-success print:text-emerald-700 font-semibold'
+                            ? 'text-emerald-700 font-bold'
                             : code === 'A'
-                            ? 'text-theme-danger print:text-red-700 font-semibold'
+                            ? 'text-rose-700 font-bold'
                             : code === 'L'
-                            ? 'text-theme-warning print:text-amber-700 font-semibold'
-                            : 'text-theme-text-muted';
+                            ? 'text-amber-700 font-bold'
+                            : 'text-slate-400';
                         return (
                           <td
                             key={d.day}
-                            className={`border border-theme-border-strong print:border-slate-400 h-7 text-center ${codeClass}`}
+                            className={`border border-slate-700 h-6 text-center align-middle ${codeClass}`}
                           >
                             {code}
                           </td>
                         );
                       })}
-                      <td className="border border-theme-border-strong print:border-slate-400 px-2 py-2 text-center font-semibold tabular-nums">
+                      <td className="border border-slate-700 px-0.5 pt-[3px] pb-[5px] text-center font-semibold align-middle leading-[1.2] tabular-nums">
                         {formMode === 'filled' ? toBn(presentCount) : ''}
                       </td>
-                      <td className="border border-theme-border-strong print:border-slate-400 px-2 py-2" />
+                      <td className="border border-slate-700 px-1 pt-[3px] pb-[5px] align-middle" />
                     </tr>
                   );
                 })
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Bottom Print Signatures */}
-        <div className="grid grid-cols-3 gap-6 pt-12 text-center text-xs mt-5">
-          <div>
-            <div className="border-t border-theme-border-strong print:border-slate-500 pt-1.5 font-medium text-theme-text-secondary print:text-slate-700">
-              প্রশিক্ষকের স্বাক্ষর ও তারিখ
+        )}
+        renderFooter={({ config, px }) =>
+          config.showSignatures ? (
+            <div
+              style={{ fontSize: px(10) }}
+              className="grid grid-cols-3 gap-6 pt-10 text-center mt-4 text-black"
+            >
+              <div>
+                <div className="border-t border-slate-700 pt-1.5 font-medium">
+                  প্রশিক্ষকের স্বাক্ষর ও তারিখ
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-slate-700 pt-1.5 font-medium">
+                  প্রতিষ্ঠান প্রধানের স্বাক্ষর
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-slate-700 pt-1.5 font-medium">
+                  কোর্স পরিচালক
+                </div>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="border-t border-theme-border-strong print:border-slate-500 pt-1.5 font-medium text-theme-text-secondary print:text-slate-700">
-              প্রতিষ্ঠান প্রধানের স্বাক্ষর
-            </div>
-          </div>
-          <div>
-            <div className="border-t border-theme-border-strong print:border-slate-500 pt-1.5 font-medium text-theme-text-secondary print:text-slate-700">
-              কোর্স পরিচালক
-            </div>
-          </div>
-        </div>
-      </div>
+          ) : null
+        }
+      />
     </div>
   );
 };

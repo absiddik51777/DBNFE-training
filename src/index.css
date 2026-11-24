@@ -403,6 +403,117 @@
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* Unified DocumentPrintFrame Print Isolation & Multi-Page Rules */
+  body.doc-print-active [data-doc-print-hide="true"] {
+    display: none !important;
+  }
+
+  body.doc-print-active .doc-print-ancestor {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  body.doc-print-active [data-doc-print-target="true"],
+  body.doc-print-active [data-doc-print-target="true"] .doc-frame-backdrop,
+  body.doc-print-active [data-doc-print-target="true"] .doc-frame-scale-frame {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  body.doc-print-active [data-doc-print-target="true"] .doc-frame-pages-stack {
+    display: block !important;
+    width: 100% !important;
+    transform: none !important;
+    gap: 0 !important;
+  }
+
+  .doc-frame-page-item {
+    display: block !important;
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .doc-frame-page-item:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  .doc-frame-paper {
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  .doc-frame-page-footer,
+  .doc-frame-doc-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+/* Force crisp high-contrast light styling inside DocumentPrintFrame paper cards */
+.doc-print-light-reset {
+  --theme-bg: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-surface-subtle: #f1f5f9;
+  --theme-surface-hover: #f8fafc;
+  --theme-elevated: #ffffff;
+  --theme-text-primary: #0f172a;
+  --theme-text-secondary: #334155;
+  --theme-text-muted: #475569;
+  --theme-border: #cbd5e1;
+  --theme-border-strong: #64748b;
+  --theme-primary: #047857;
+  --theme-primary-soft: #d1fae5;
+  --theme-success: #047857;
+  --theme-danger: #b91c1c;
+  --theme-warning: #b45309;
+  --theme-info: #1d4ed8;
+  color-scheme: light;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.doc-print-light-reset table,
+.doc-print-content-scope table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.doc-print-light-reset th,
+.doc-print-light-reset td {
+  vertical-align: middle;
 }
 
 /* Native <dialog> modal backdrop and reset */

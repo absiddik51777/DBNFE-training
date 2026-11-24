@@ -198,19 +198,147 @@ export interface BRNPrintReportOptions {
 }
 
 /**
- * Generates official BRN Report PDF via jsPDF (doc.output('blob')) and saves/shares via saveFile.
+ * Opens official BRN Verification Report in the unified MS-Word DocumentPrintFrame
+ * (with Zoom, Page Settings, PDF/HTML download, multi-page pagination & Print).
  */
 export async function printBRNReportPDF(options: BRNPrintReportOptions): Promise<FileExportResult> {
-  const safeName = (options.title || 'BNFE_BRN_Verification_Report')
-    .replace(/[^\w\u0980-\u09FF-]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'BNFE_BRN_Verification_Report';
-  const pdfBlob = await generateBRNReportPDF(options);
-  return saveFileToDevice({
-    fileName: `${safeName}.pdf`,
-    content: pdfBlob,
-    mimeType: 'application/pdf',
-    category: 'pdf',
-    title: options.title || 'জন্ম নিবন্ধন যাচাই প্রতিবেদন'
+  const {
+    title = 'প্রশিক্ষণার্থীদের জন্ম নিবন্ধন অনলাইন যাচাইকরণ প্রতিবেদন (BRN Verification Report)',
+    scopeLabel,
+    generatedBy = 'Course Director',
+    generatedDateStr = new Date().toLocaleDateString('bn-BD', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+    filterDetails,
+    stats,
+    trainees,
+  } = options;
+
+  const esc = (s: unknown) =>
+    String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+  const safeName =
+    title
+      .replace(/[^\w\u0980-\u09FF-]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'BNFE_BRN_Verification_Report';
+
+  const rowsHtml =
+    trainees.length === 0
+      ? `<tr><td colspan="9" style="text-align:center; padding:24px; color:#475569;">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</td></tr>`
+      : trainees
+          .map((t, idx) => {
+            const statusText =
+              t.status === 'Verified'
+                ? 'Valid (যাচাইকৃত)'
+                : t.status === 'Invalid'
+                ? 'Invalid (অবৈধ)'
+                : 'Pending (অপেক্ষমাণ)';
+            const statusColor =
+              t.status === 'Verified'
+                ? '#065f46'
+                : t.status === 'Invalid'
+                ? '#9f1239'
+                : '#92400e';
+
+            return `<tr>
+              <td style="text-align:center;font-weight:700;">${esc(t.sl || idx + 1)}</td>
+              <td style="font-family:monospace;font-weight:700;">
+                <div>${esc(t.id || '-')}</div>
+                <div style="font-weight:400;font-size:0.88em;">${esc(t.regNo || '—')}</div>
+              </td>
+              <td>
+                <div style="font-weight:700;">${esc(t.nameBn || '-')}</div>
+                <div style="font-size:0.88em;color:#334155;">${esc(t.nameEn || '-')}</div>
+              </td>
+              <td>
+                <div style="font-family:monospace;font-weight:700;">${esc(t.ubrn || 'অনুপস্থিত')}</div>
+                <div style="font-size:0.84em;color:#334155;">${esc(t.ubrnValidation)}</div>
+              </td>
+              <td style="font-family:monospace;">${esc(t.dob || '—')}</td>
+              <td>${esc(t.gender || '-')}</td>
+              <td>
+                <div style="font-weight:600;">${esc(t.batch || '-')}</div>
+                <div style="font-size:0.88em;color:#334155;">${esc(t.institute || '-')}</div>
+              </td>
+              <td style="text-align:center;font-weight:700;color:${statusColor};">${esc(statusText)}</td>
+              <td style="font-size:0.88em;">${esc(t.remark || '—')}</td>
+            </tr>`;
+          })
+          .join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <title>${esc(title)}</title>
+  <style>
+    .brn-hdr { text-align:center; border-bottom: 1.5px solid #475569; padding-bottom: 8px; margin-bottom: 10px; }
+    .brn-hdr h1 { margin:0; font-size: 1.35em; font-weight: 800; }
+    .brn-hdr h2 { margin:2px 0 0; font-size: 1.05em; font-weight: 700; }
+    .brn-hdr p { margin:3px 0 0; font-size: 1em; font-weight: 700; }
+    .brn-meta { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin-bottom:8px; font-size:0.9em; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.85em; }
+    th, td { border: 1px solid #64748b; padding: 5px 6px; vertical-align: middle; word-break: break-word; }
+    th { background: #f1f5f9; font-weight: 700; text-align: left; }
+    .brn-foot { margin-top: 10px; border-top: 1px solid #94a3b8; padding-top: 6px; display:flex; justify-content:space-between; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <div class="brn-hdr">
+    <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</h1>
+    <h2>উপানুষ্ঠানিক শিক্ষা ব্যুরো (BNFE), প্রাথমিক ও গণশিক্ষা মন্ত্রণালয়</h2>
+    <p>${esc(title)}</p>
+  </div>
+  <div class="brn-meta">
+    <div><strong>আওতা:</strong> ${esc(scopeLabel)} ${filterDetails ? `• ${esc(filterDetails)}` : ''}</div>
+    <div><strong>যাচাইকৃত:</strong> ${esc(stats.verified)} | <strong>অবৈধ:</strong> ${esc(stats.invalid)} | <strong>অপেক্ষমাণ:</strong> ${esc(stats.pending)} • <strong>তারিখ:</strong> ${esc(generatedDateStr)}</div>
+  </div>
+  <table>
+    <colgroup>
+      <col style="width:5%" />
+      <col style="width:10%" />
+      <col style="width:15%" />
+      <col style="width:15%" />
+      <col style="width:9%" />
+      <col style="width:6%" />
+      <col style="width:16%" />
+      <col style="width:11%" />
+      <col style="width:13%" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th style="text-align:center;">ক্রমিক</th>
+        <th>আইডি ও রেজিঃ</th>
+        <th>শিক্ষার্থীর নাম</th>
+        <th>জন্ম নিবন্ধন (UBRN)</th>
+        <th>জন্ম তারিখ</th>
+        <th>লিঙ্গ</th>
+        <th>প্রতিষ্ঠান ও ব্যাচ</th>
+        <th style="text-align:center;">যাচাই স্ট্যাটাস</th>
+        <th>মন্তব্য</th>
+      </tr>
+    </thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <div class="brn-foot">
+    <div>* BNFE জন্ম নিবন্ধন যাচাই সিস্টেম</div>
+    <div><strong>প্রস্তুতকারী:</strong> ${esc(generatedBy)}</div>
+  </div>
+</body>
+</html>`;
+
+  const { printCustomHtmlDocument } = await import('./fileExportService');
+  return printCustomHtmlDocument({
+    html,
+    jobName: safeName,
+    title,
+    landscape: true,
   });
 }
 

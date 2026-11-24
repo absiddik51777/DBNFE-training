@@ -435,9 +435,11 @@ function paginateWithFooterReserve(
   rowHeights: number[],
   footerH: number,
   reservedBottomH: number,
-  safetyPx: number
+  safetyPx: number,
+  repeatHeaderOnAllPages = true
 ): SheetPageSlice[] {
   const effectiveUsableH = Math.max(120, usableHeightPx - reservedBottomH);
+  const continuationHeaderH = repeatHeaderOnAllPages ? topExtrasH : 0;
 
   if (rowHeights.length === 0) {
     const emptyBodyH = Math.max(36, theadH);
@@ -450,7 +452,12 @@ function paginateWithFooterReserve(
     }
     return [
       { rowIndices: [], includeHeader: true, includeTable: true, includeFooter: false },
-      { rowIndices: [], includeHeader: true, includeTable: false, includeFooter: true },
+      {
+        rowIndices: [],
+        includeHeader: repeatHeaderOnAllPages,
+        includeTable: false,
+        includeFooter: true,
+      },
     ];
   }
 
@@ -461,7 +468,7 @@ function paginateWithFooterReserve(
     const current = rowPages[rowPages.length - 1];
     if (current.length > 0 && used + rowHeights[i] > effectiveUsableH - safetyPx) {
       rowPages.push([i]);
-      used = topExtrasH + theadH + rowHeights[i];
+      used = continuationHeaderH + theadH + rowHeights[i];
     } else {
       current.push(i);
       used += rowHeights[i];
@@ -473,7 +480,8 @@ function paginateWithFooterReserve(
     const lastPage = rowPages[rowPages.length - 1];
     if (lastPage.length > 1) {
       const movedIdx = lastPage.pop()!;
-      if (topExtrasH + theadH + rowHeights[movedIdx] + footerH <= effectiveUsableH - safetyPx) {
+      const nextPageHeaderH = rowPages.length === 1 ? continuationHeaderH : continuationHeaderH;
+      if (nextPageHeaderH + theadH + rowHeights[movedIdx] + footerH <= effectiveUsableH - safetyPx) {
         rowPages.push([movedIdx]);
       } else {
         lastPage.push(movedIdx);
@@ -486,7 +494,7 @@ function paginateWithFooterReserve(
 
   const slices: SheetPageSlice[] = rowPages.map((rowIndices, idx) => ({
     rowIndices,
-    includeHeader: true,
+    includeHeader: idx === 0 || repeatHeaderOnAllPages,
     includeTable: true,
     includeFooter: !includeFooterOnlyPage && idx === rowPages.length - 1,
   }));
@@ -494,7 +502,7 @@ function paginateWithFooterReserve(
   if (includeFooterOnlyPage) {
     slices.push({
       rowIndices: [],
-      includeHeader: true,
+      includeHeader: repeatHeaderOnAllPages,
       includeTable: false,
       includeFooter: true,
     });
@@ -511,6 +519,7 @@ export function computeSheetPageSlices(params: {
   footerH: number;
   pageNumberFooterH?: number;
   safetyPx?: number;
+  repeatHeaderOnAllPages?: boolean;
 }): SheetPageSlice[] {
   const {
     usableHeightPx,
@@ -520,6 +529,7 @@ export function computeSheetPageSlices(params: {
     footerH,
     pageNumberFooterH = 30,
     safetyPx = 6,
+    repeatHeaderOnAllPages = true,
   } = params;
 
   const singlePass = paginateWithFooterReserve(
@@ -529,7 +539,8 @@ export function computeSheetPageSlices(params: {
     rowHeights,
     footerH,
     0,
-    safetyPx
+    safetyPx,
+    repeatHeaderOnAllPages
   );
 
   if (singlePass.length <= 1 || pageNumberFooterH <= 0) {
@@ -543,7 +554,8 @@ export function computeSheetPageSlices(params: {
     rowHeights,
     footerH,
     pageNumberFooterH,
-    safetyPx
+    safetyPx,
+    repeatHeaderOnAllPages
   );
 }
 

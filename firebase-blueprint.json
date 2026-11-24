@@ -282,7 +282,39 @@
                 "system-ui"
               ]
             },
-            "fontSizePt": { "type": "number" }
+          "fontSizePt": { "type": "number" }
+          }
+        },
+        "documentPrintConfig": {
+          "type": "object",
+          "properties": {
+            "paperSize": { "type": "string", "enum": ["a4", "legal", "letter"] },
+            "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
+            "margins": {
+              "type": "object",
+              "properties": {
+                "top": { "type": "number" },
+                "right": { "type": "number" },
+                "bottom": { "type": "number" },
+                "left": { "type": "number" }
+              }
+            },
+            "fontFamily": {
+              "type": "string",
+              "enum": [
+                "Nikosh",
+                "Hind Siliguri",
+                "Noto Sans Bengali",
+                "SolaimanLipi",
+                "Kalpurush",
+                "system-ui"
+              ]
+            },
+            "fontSizePt": { "type": "number" },
+            "repeatHeaderOnAllPages": { "type": "boolean" },
+            "showPageNumbers": { "type": "boolean" },
+            "showSignatures": { "type": "boolean" },
+            "showGeneratedDate": { "type": "boolean" }
           }
         },
         "updatedAt": { "type": "number" },

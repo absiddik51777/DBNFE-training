@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import { TruncatedTextProvider } from './components/ui/TruncatedText';
 import { RequireRole } from './components/auth/RequireRole';
 import { SessionToast } from './components/SessionToast';
+import { GlobalDocumentPrintHost } from './components/document-frame/GlobalDocumentPrintHost';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TrainerDashboard from './pages/TrainerDashboard';
@@ -344,6 +345,7 @@ export default function App() {
                 <TruncatedTextProvider>
                   <BrowserRouter>
                     <SessionToast />
+                    <GlobalDocumentPrintHost />
                     <AppRoutes />
                   </BrowserRouter>
                 </TruncatedTextProvider>

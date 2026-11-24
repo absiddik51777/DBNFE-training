@@ -3,6 +3,12 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import {
+  extractStructuredDocumentFromDom,
+  extractStructuredDocumentFromHtml,
+  hasGlobalPrintHost,
+  openGlobalDocumentPrintPreview,
+} from './documentFrameService';
 
 export type ExportFileCategory =
   | 'pdf'
@@ -353,11 +359,13 @@ async function renderElementToPdfBlob(
 }
 
 /**
- * Generates a PDF file from the current visible document (excluding .print:hidden UI controls)
- * using jsPDF + html2canvas and saves/shares it via saveFile(fileName, blob).
+ * Opens the current visible document inside the unified MS-Word-style DocumentPrintFrame
+ * (with Zoom, Page/Font Settings, PDF/HTML download, multi-page pagination & Print).
+ * Falls back to direct PDF download if GlobalDocumentPrintHost is unavailable.
  */
 export async function printCurrentDocument(options?: {
   jobName?: string;
+  title?: string;
   landscape?: boolean;
 }): Promise<FileExportResult> {
   const platform = getRuntimePlatform();
@@ -366,11 +374,37 @@ export async function printCurrentDocument(options?: {
 
   try {
     if (typeof document === 'undefined') {
-      throw new Error('পিডিএফ সেবা উপলব্ধ নয়।');
+      throw new Error('প্রিন্ট সেবা উপলব্ধ নয়।');
     }
 
     const targetEl =
       (document.querySelector('main') as HTMLElement | null) || document.body;
+
+    if (hasGlobalPrintHost()) {
+      const extracted = extractStructuredDocumentFromDom(targetEl);
+      const docTitle =
+        options?.title ||
+        targetEl.querySelector('h1, h2')?.textContent?.trim() ||
+        options?.jobName ||
+        'ডকুমেন্ট প্রিন্ট প্রিভিউ';
+
+      const opened = openGlobalDocumentPrintPreview({
+        title: docTitle,
+        jobName: baseName,
+        defaultOrientation: options?.landscape ? 'landscape' : 'portrait',
+        extracted,
+      });
+
+      if (opened) {
+        return {
+          success: true,
+          fileName: baseName,
+          platform,
+          method: 'document_print_frame',
+          message: 'প্রিন্ট প্রিভিউ ফ্রেম খোলা হয়েছে।',
+        };
+      }
+    }
 
     const pdfBlob = await renderElementToPdfBlob(targetEl, {
       landscape: options?.landscape ?? false,
@@ -392,24 +426,52 @@ export async function printCurrentDocument(options?: {
       fileName: pdfFileName,
       platform,
       method: 'pdf_error',
-      message: 'পিডিএফ ফাইল তৈরি বা সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      message: 'ডকুমেন্ট প্রিভিউ বা পিডিএফ তৈরি করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
       error: errMsg
     };
   }
 }
 
 /**
- * Renders custom HTML report content into a PDF Blob via jsPDF and saves/shares via saveFile(fileName, blob).
+ * Opens custom HTML report content inside the unified MS-Word-style DocumentPrintFrame
+ * (with Zoom, Page/Font Settings, PDF/HTML download, multi-page pagination & Print).
+ * Falls back to direct PDF download if GlobalDocumentPrintHost is unavailable.
  */
 export async function printCustomHtmlDocument(options: {
   html: string;
   jobName?: string;
+  title?: string;
   landscape?: boolean;
   iframeId?: string;
 }): Promise<FileExportResult> {
   const platform = getRuntimePlatform();
   const baseName = sanitizeExportFileName(options.jobName || 'BNFE_Report');
   const pdfFileName = baseName.toLowerCase().endsWith('.pdf') ? baseName : `${baseName}.pdf`;
+
+  if (hasGlobalPrintHost() && typeof DOMParser !== 'undefined') {
+    const extracted = extractStructuredDocumentFromHtml(options.html);
+    const parsedTitle = new DOMParser()
+      .parseFromString(options.html, 'text/html')
+      .querySelector('title')
+      ?.textContent?.trim();
+
+    const opened = openGlobalDocumentPrintPreview({
+      title: options.title || parsedTitle || options.jobName || 'ডকুমেন্ট প্রিন্ট প্রিভিউ',
+      jobName: baseName,
+      defaultOrientation: options.landscape === false ? 'portrait' : 'landscape',
+      extracted,
+    });
+
+    if (opened) {
+      return {
+        success: true,
+        fileName: baseName,
+        platform,
+        method: 'document_print_frame',
+        message: 'প্রিন্ট প্রিভিউ ফ্রেম খোলা হয়েছে।',
+      };
+    }
+  }
 
   const container = document.createElement('div');
   container.style.position = 'fixed';

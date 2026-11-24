@@ -137,6 +137,9 @@ const WeeklySignatureSheet: React.FC<WeeklySignatureSheetProps> = ({ embedded = 
   const [generating, setGenerating] = useState<'pdf' | 'docx' | 'html' | null>(null);
   const [exportError, setExportError] = useState('');
   const paperRef = useRef<HTMLDivElement | null>(null);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
+  const [manualZoom, setManualZoom] = useState<number>(1);
+  const [effectiveZoom, setEffectiveZoom] = useState<number>(1);
 
   // Editable page heading & layout config state
   const [headingModalOpen, setHeadingModalOpen] = useState(false);
@@ -548,6 +551,26 @@ const WeeklySignatureSheet: React.FC<WeeklySignatureSheetProps> = ({ embedded = 
               setHeadingSaveError('');
               setHeadingModalOpen(true);
             }}
+            zoomMode={zoomMode}
+            effectiveZoom={effectiveZoom}
+            onZoomOut={() => {
+              const next = Math.max(0.4, Math.round((effectiveZoom - 0.1) * 10) / 10);
+              setManualZoom(next);
+              setZoomMode('manual');
+            }}
+            onZoomIn={() => {
+              const next = Math.min(1.8, Math.round((effectiveZoom + 0.1) * 10) / 10);
+              setManualZoom(next);
+              setZoomMode('manual');
+            }}
+            onToggleFitZoom={() => {
+              if (zoomMode === 'fit') {
+                setManualZoom(1);
+                setZoomMode('manual');
+              } else {
+                setZoomMode('fit');
+              }
+            }}
           />
 
           <SheetPaper
@@ -555,6 +578,9 @@ const WeeklySignatureSheet: React.FC<WeeklySignatureSheetProps> = ({ embedded = 
             days={selectedDays}
             trainees={trainees}
             meta={meta}
+            zoomMode={zoomMode}
+            manualZoom={manualZoom}
+            onEffectiveZoomChange={setEffectiveZoom}
           />
         </div>
       )}

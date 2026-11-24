@@ -330,6 +330,13 @@ export interface WeeklySignaturePageConfig {
   fontSizePt: number;
 }
 
+export interface DocumentPrintConfig extends WeeklySignaturePageConfig {
+  repeatHeaderOnAllPages: boolean;
+  showPageNumbers: boolean;
+  showSignatures: boolean;
+  showGeneratedDate: boolean;
+}
+
 export interface SystemSettings {
   allowDataDeletion: boolean; // Controls whether deletion of data (trainees, batches, trades, institutes, attendance, exams) is permitted
   allowPublicRegistration?: boolean; // Controls whether public self-registration is permitted by Course Director
@@ -340,6 +347,7 @@ export interface SystemSettings {
   passMarkPercent: number;
   weeklySignatureHeading?: WeeklySignatureHeading;
   weeklySignaturePageConfig?: WeeklySignaturePageConfig;
+  documentPrintConfig?: DocumentPrintConfig;
   gradingRules?: {
     grade: string;
     minPercent: number;

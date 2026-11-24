@@ -19,6 +19,9 @@ interface SheetPaperProps {
   days: WeekDayInfo[];
   trainees: SignatureTrainee[];
   meta: SignatureSheetMeta;
+  zoomMode?: 'fit' | 'manual';
+  manualZoom?: number;
+  onEffectiveZoomChange?: (zoom: number) => void;
 }
 
 function slicesEqual(a: SheetPageSlice[], b: SheetPageSlice[]): boolean {
@@ -46,6 +49,9 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
   days,
   trainees,
   meta,
+  zoomMode = 'fit',
+  manualZoom = 1,
+  onEffectiveZoomChange,
 }) => {
   const heading = meta.heading || DEFAULT_SHEET_HEADING;
   const pageConfig = normalizePageConfig(meta.pageConfig);
@@ -91,7 +97,8 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
     const vp = viewportRef.current;
     if (!vp) return;
     const measure = () => {
-      const next = vp.clientWidth;
+      const pad = window.innerWidth >= 640 ? 48 : 28;
+      const next = Math.max(220, vp.clientWidth - pad);
       if (next > 0) setAvailableWidth(next);
     };
     measure();
@@ -206,9 +213,17 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
       ? Math.max(0.25, availableWidth / paperWidthPx)
       : 1;
 
-  const scaledOuterWidth = Math.floor(paperWidthPx * fitScale);
+  const effectiveZoom = zoomMode === 'fit' ? fitScale : manualZoom;
+
+  useEffect(() => {
+    onEffectiveZoomChange?.(effectiveZoom);
+  }, [effectiveZoom, onEffectiveZoomChange]);
+
+  const scaledOuterWidth = Math.floor(paperWidthPx * effectiveZoom);
   const scaledOuterHeight =
-    fitScale < 1 && stackHeight > 0 ? Math.ceil(stackHeight * fitScale) : undefined;
+    effectiveZoom !== 1 && stackHeight > 0
+      ? Math.ceil(stackHeight * effectiveZoom)
+      : undefined;
 
   const renderHeaderAndMeta = () => (
     <>
@@ -385,7 +400,10 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
   );
 
   return (
-    <div ref={viewportRef} className="w-full overflow-x-hidden print:overflow-visible">
+    <div
+      ref={viewportRef}
+      className="w-full rounded-[14px] border border-[var(--ws-border)] bg-[#dde3ea] dark:bg-[#1a2433] p-3.5 sm:p-6 overflow-auto max-h-[78vh] print:border-none print:rounded-none print:bg-white print:p-0 print:max-h-none print:overflow-visible"
+    >
       {/* Hidden full unsplit DOM used both for height measurement & buildPdf() capture */}
       <div
         aria-hidden="true"
@@ -422,7 +440,7 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
           className="weekly-sheet-pages-stack flex flex-col gap-[24px]"
           style={{
             width: `${paperWidthPx}px`,
-            transform: fitScale < 1 ? `scale(${fitScale})` : undefined,
+            transform: effectiveZoom !== 1 ? `scale(${effectiveZoom})` : undefined,
             transformOrigin: 'top left',
           }}
         >
