@@ -11,12 +11,12 @@ import {
   X,
 } from 'lucide-react';
 import type { WeeklySignatureMargins, WeeklySignaturePageConfig } from '../../types';
+import { useTheme } from '../../contexts/ThemeContext';
+import { getAppFontCssStack, getAppFontOption } from '../../lib/theme';
 import {
   DEFAULT_SHEET_HEADING,
   DEFAULT_SHEET_PAGE_CONFIG,
-  FONT_FAMILY_OPTIONS,
   PAPER_SIZE_OPTIONS,
-  getFontCssStack,
   normalizePageConfig,
   toBnDigits,
   type SignatureSheetHeading,
@@ -144,7 +144,9 @@ export const HeadingSettingsModal: React.FC<HeadingSettingsModalProps> = ({
     }));
   };
 
-  const previewFontCss = getFontCssStack(draftPage.fontFamily);
+  const { fontFamily: globalFont } = useTheme();
+  const activeFontOpt = getAppFontOption(globalFont);
+  const previewFontCss = getAppFontCssStack(globalFont);
   const previewScale = draftPage.fontSizePt / DEFAULT_SHEET_PAGE_CONFIG.fontSizePt;
 
   return (
@@ -456,31 +458,22 @@ export const HeadingSettingsModal: React.FC<HeadingSettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* 4. Font Family */}
+                {/* 4. Global Font Info */}
                 <div>
-                  <label
-                    htmlFor="ws-font-family"
-                    className="block text-[12.5px] font-medium text-[var(--ws-muted)] mb-1.5"
+                  <span className="block text-[12.5px] font-medium text-[var(--ws-muted)] mb-1.5">
+                    ৪. ফন্ট ফ্যামিলি (গ্লোবাল থিম ফন্ট)
+                  </span>
+                  <div
+                    style={{ fontFamily: previewFontCss }}
+                    className="w-full min-h-[44px] px-3.5 py-2 rounded-[12px] bg-[var(--ws-surface2)] border border-[var(--ws-border)] flex items-center justify-between gap-2"
                   >
-                    ৪. ফন্ট ফ্যামিলি
-                  </label>
-                  <select
-                    id="ws-font-family"
-                    value={draftPage.fontFamily}
-                    onChange={(e) =>
-                      setDraftPage((prev) => ({
-                        ...prev,
-                        fontFamily: e.target.value as WeeklySignaturePageConfig['fontFamily'],
-                      }))
-                    }
-                    className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-[var(--ws-surface2)] border border-[var(--ws-border)] text-[14px] text-[var(--ws-text)] cursor-pointer focus:outline-none focus:border-[var(--ws-accent)] focus-visible:outline-2 focus-visible:outline-[var(--ws-accent)]"
-                  >
-                    {FONT_FAMILY_OPTIONS.map((font) => (
-                      <option key={font.value} value={font.value}>
-                        {font.label}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="text-[14px] font-medium text-[var(--ws-text)]">
+                      {activeFontOpt.name} ({activeFontOpt.nameBn})
+                    </span>
+                    <span className="text-[11px] text-[var(--ws-muted)] shrink-0">
+                      থিম সেটিংস থেকে নিয়ন্ত্রিত
+                    </span>
+                  </div>
                 </div>
 
                 {/* 5. Font Size */}

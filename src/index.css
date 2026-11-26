@@ -4,13 +4,55 @@
 @font-face {
   font-family: 'Nikosh';
   src: url('/fonts/Nikosh.ttf') format('truetype');
-  font-weight: 400 700;
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nikosh';
+  src: url('/fonts/Nikosh.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nikosh';
+  src: url('/fonts/Nikosh.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nikosh';
+  src: url('/fonts/Nikosh.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nikosh';
+  src: url('/fonts/Nikosh.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nikosh';
+  src: url('/fonts/Nikosh.ttf') format('truetype');
+  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
 
 @theme inline {
-  --font-sans: 'Nikosh', 'Hind Siliguri', 'Inter', system-ui, sans-serif;
+  --font-sans: var(--theme-font-family, 'Nikosh', sans-serif);
+  --font-serif: var(--theme-font-family, 'Nikosh', sans-serif);
+  --font-mono: var(--theme-font-family, 'Nikosh', sans-serif);
 
   --color-theme-primary: var(--theme-primary);
   --color-theme-primary-hover: var(--theme-primary-hover);
@@ -59,6 +101,7 @@
 }
 
 :root {
+  --theme-font-family: 'Nikosh', sans-serif;
   --theme-primary: #059669;
   --theme-primary-hover: #047857;
   --theme-primary-soft: #D1FAE5;
@@ -227,7 +270,7 @@
 @layer base {
   html {
     font-size: 17px;
-    font-family: var(--font-sans);
+    font-family: var(--theme-font-family, 'Nikosh', sans-serif);
     font-synthesis-weight: none;
   }
 
@@ -235,7 +278,7 @@
   body {
     background-color: var(--theme-bg);
     color: var(--theme-text-primary);
-    font-family: var(--font-sans);
+    font-family: var(--theme-font-family, 'Nikosh', sans-serif);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -252,8 +295,24 @@
   textarea,
   dialog,
   optgroup,
-  option {
+  option,
+  table,
+  th,
+  td {
     font-family: inherit;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--theme-font-family, 'Nikosh', sans-serif);
+  }
+
+  svg text,
+  .recharts-wrapper,
+  .recharts-text {
+    font-family: var(--theme-font-family, 'Nikosh', sans-serif);
   }
 
   /* Ensure select options remain legible in Dark Mode */

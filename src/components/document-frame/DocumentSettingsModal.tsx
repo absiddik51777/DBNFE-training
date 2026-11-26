@@ -16,12 +16,12 @@ import type {
   WeeklySignatureHeading,
   WeeklySignatureMargins,
 } from '../../types';
+import { useTheme } from '../../contexts/ThemeContext';
+import { getAppFontCssStack, getAppFontOption } from '../../lib/theme';
 import {
   DEFAULT_SHEET_HEADING,
   DEFAULT_SHEET_PAGE_CONFIG,
-  FONT_FAMILY_OPTIONS,
   PAPER_SIZE_OPTIONS,
-  getFontCssStack,
   toBnDigits,
 } from '../weekly-signature/utils';
 import {
@@ -163,7 +163,9 @@ export const DocumentSettingsModal: React.FC<DocumentSettingsModalProps> = ({
     }));
   };
 
-  const previewFontCss = getFontCssStack(draftConfig.fontFamily);
+  const { fontFamily: globalFont } = useTheme();
+  const activeFontOpt = getAppFontOption(globalFont);
+  const previewFontCss = getAppFontCssStack(globalFont);
   const previewScale = draftConfig.fontSizePt / DEFAULT_SHEET_PAGE_CONFIG.fontSizePt;
 
   return (
@@ -373,31 +375,22 @@ export const DocumentSettingsModal: React.FC<DocumentSettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* 4. Font Family */}
+                {/* 4. Global Font Info */}
                 <div>
-                  <label
-                    htmlFor="doc-font-family"
-                    className="block text-[12.5px] font-medium text-theme-text-secondary mb-1.5"
+                  <span className="block text-[12.5px] font-medium text-theme-text-secondary mb-1.5">
+                    ৪. ফন্ট ফ্যামিলি (গ্লোবাল থিম ফন্ট)
+                  </span>
+                  <div
+                    style={{ fontFamily: previewFontCss }}
+                    className="w-full min-h-[44px] px-3.5 py-2 rounded-[12px] bg-theme-surface-subtle border border-theme-border flex items-center justify-between gap-2"
                   >
-                    ৪. ফন্ট ফ্যামিলি
-                  </label>
-                  <select
-                    id="doc-font-family"
-                    value={draftConfig.fontFamily}
-                    onChange={(e) =>
-                      setDraftConfig((prev) => ({
-                        ...prev,
-                        fontFamily: e.target.value as DocumentPrintConfig['fontFamily'],
-                      }))
-                    }
-                    className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-theme-surface-subtle border border-theme-border text-[14px] text-theme-text-primary cursor-pointer focus:outline-none focus:border-theme-primary"
-                  >
-                    {FONT_FAMILY_OPTIONS.map((font) => (
-                      <option key={font.value} value={font.value}>
-                        {font.label}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="text-[14px] font-medium text-theme-text-primary">
+                      {activeFontOpt.name} ({activeFontOpt.nameBn})
+                    </span>
+                    <span className="text-[11px] text-theme-text-muted shrink-0">
+                      থিম সেটিংস থেকে নিয়ন্ত্রিত
+                    </span>
+                  </div>
                 </div>
 
                 {/* 5. Font Size */}

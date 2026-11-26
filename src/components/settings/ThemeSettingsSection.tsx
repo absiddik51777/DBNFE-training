@@ -17,8 +17,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
+  Type,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
+import { useSystemSettings } from '../../contexts/SystemSettingsContext';
 import { TruncatedText } from '../ui/TruncatedText';
 import {
   ThemeConfig,
@@ -26,6 +30,10 @@ import {
   ResolvedThemeMode,
   ThemeTokenKey,
   ThemePresetId,
+  AppFontFamily,
+  APP_FONT_OPTIONS,
+  getAppFontOption,
+  getAppFontCssStack,
   THEME_PRESETS,
   THEME_TOKEN_METADATA,
   DEFAULT_LIGHT_TOKENS,
@@ -47,7 +55,11 @@ interface ThemeSettingsSectionProps {
 }
 
 export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hideHeader = false }) => {
-  const { config, resolvedMode, setMode, applyConfig, restoreDefaultTheme } = useTheme();
+  const { config, resolvedMode, setMode, setFontFamily, applyConfig, restoreDefaultTheme } = useTheme();
+  const { userProfile } = useAuth();
+  const { isCourseDirector: hasCourseDirectorPerm } = usePermissions();
+  const { updateSettings } = useSystemSettings();
+  const isAdmin = userProfile?.role === 'Course Director' || hasCourseDirectorPerm;
 
   // Draft state for live preview before clicking Apply Changes
   const [draftConfig, setDraftConfig] = useState<ThemeConfig>(config);
@@ -83,6 +95,25 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
     if (nextMode === 'light' || nextMode === 'dark') {
       setEditTabMode(nextMode);
     }
+  };
+
+  const handleFontSelect = async (nextFont: AppFontFamily) => {
+    const now = Date.now();
+    setFontFamily(nextFont, now);
+    setDraftConfig((prev) => ({ ...prev, fontFamily: nextFont, fontUpdatedAt: now }));
+    const fontOpt = getAppFontOption(nextFont);
+    if (isAdmin) {
+      try {
+        await updateSettings({
+          globalFontFamily: nextFont,
+          globalFontUpdatedAt: now,
+        });
+      } catch (err) {
+        console.warn('Could not sync global font to Firestore settings:', err);
+      }
+    }
+    setSavedNotice(`গ্লোবাল ফন্ট "${fontOpt.name} (${fontOpt.nameBn})" সাইটের সকল জায়গায় প্রয়োগ করা হয়েছে!`);
+    setTimeout(() => setSavedNotice(''), 3500);
   };
 
   const handlePresetDraftSelect = (presetId: Exclude<ThemePresetId, 'custom'>) => {
@@ -179,9 +210,19 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
     setHexErrors({});
   };
 
-  const handleRestoreDefaultTheme = () => {
+  const handleRestoreDefaultTheme = async () => {
     restoreDefaultTheme();
-    setSavedNotice('সিস্টেম ডিফল্ট "Emerald Slate" থিমে ফিরিয়ে আনা হয়েছে।');
+    if (isAdmin) {
+      try {
+        await updateSettings({
+          globalFontFamily: 'Nikosh',
+          globalFontUpdatedAt: Date.now(),
+        });
+      } catch (err) {
+        console.warn('Could not reset global font in Firestore settings:', err);
+      }
+    }
+    setSavedNotice('সিস্টেম ডিফল্ট "Emerald Slate" থিম ও Nikosh ফন্টে ফিরিয়ে আনা হয়েছে।');
     setTimeout(() => setSavedNotice(''), 3500);
   };
 
@@ -300,12 +341,79 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
         </div>
       </div>
 
-      {/* 2. THEME PRESETS */}
-      <div className="space-y-2.5">
+      {/* 2. GLOBAL FONT SELECTOR (IMMEDIATE APPLY ACROSS ENTIRE SITE) */}
+      <div className="space-y-3 pt-2 border-t border-theme-border">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs sm:text-sm font-medium text-theme-text-primary uppercase tracking-wider flex items-center space-x-1.5">
+              <Type size={14} className="text-theme-primary" />
+              <span>২. গ্লোবাল ফন্ট নির্বাচন (Global Font Family)</span>
+            </h3>
+            <p className="text-xs text-theme-text-secondary mt-0.5">
+              নির্বাচিত ফন্ট তাৎক্ষণিকভাবে সাইটের সকল পেইজ, রিপোর্ট, কাস্টম বিল্ডার ও প্রিন্টে ব্যবহৃত হবে।
+            </p>
+          </div>
+          <span className="text-xs font-medium text-theme-primary">
+            সক্রিয়: {getAppFontOption(config.fontFamily).name}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {APP_FONT_OPTIONS.map((font) => {
+            const isSelected = config.fontFamily === font.id;
+            return (
+              <button
+                key={font.id}
+                type="button"
+                onClick={() => void handleFontSelect(font.id)}
+                className={`min-h-[44px] p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary ${
+                  isSelected
+                    ? 'bg-theme-primary-soft/70 border-theme-primary ring-2 ring-theme-primary/20'
+                    : 'bg-theme-surface-subtle border-theme-border hover:border-theme-border-strong hover:bg-theme-surface-hover'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        style={{ fontFamily: font.cssStack }}
+                        className="text-sm font-semibold text-theme-text-primary truncate"
+                      >
+                        {font.name}
+                      </span>
+                      <span className="text-[11px] text-theme-text-muted truncate">
+                        ({font.nameBn})
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-theme-text-secondary mt-0.5 leading-snug">
+                      {font.descriptionBn}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <span className="w-5 h-5 rounded-full bg-theme-primary text-theme-primary-fg flex items-center justify-center shrink-0">
+                      <Check size={12} />
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{ fontFamily: font.cssStack }}
+                  className="pt-2 border-t border-theme-border text-xs sm:text-[13px] text-theme-text-primary leading-snug truncate"
+                >
+                  {font.sampleBn}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. THEME PRESETS */}
+      <div className="space-y-2.5 pt-2 border-t border-theme-border">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-xs sm:text-sm font-medium text-theme-text-primary uppercase tracking-wider flex items-center space-x-1.5">
             <Sparkles size={14} className="text-theme-primary" />
-            <span>২. থিম প্রিসেট (Theme Presets)</span>
+            <span>৩. থিম প্রিসেট (Theme Presets)</span>
           </h3>
           {draftConfig.presetId === 'custom' && (
             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-theme-accent-soft text-theme-accent font-medium whitespace-nowrap leading-snug border border-theme-accent-border">
@@ -383,7 +491,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-xs sm:text-sm font-medium text-theme-text-primary uppercase tracking-wider">
-              ৩. বিস্তারিত কালার কাস্টমাইজেশন (Independent Light &amp; Dark Tokens)
+              ৪. বিস্তারিত কালার কাস্টমাইজেশন (Independent Light &amp; Dark Tokens)
             </h3>
             <p className="text-xs text-theme-text-secondary mt-0.5">
               Light এবং Dark মোডের জন্য আলাদাভাবে রঙ পরিবর্তন করুন ও নিচে লাইভ প্রিভিউ দেখুন।
@@ -432,6 +540,7 @@ export const ThemeSettingsSection: React.FC<ThemeSettingsSectionProps> = ({ hide
           <div
             style={{
               ...previewCssVars,
+              fontFamily: getAppFontCssStack(draftConfig.fontFamily),
               backgroundColor: 'var(--theme-bg)',
               color: 'var(--theme-text-primary)',
               borderColor: 'var(--theme-border)',

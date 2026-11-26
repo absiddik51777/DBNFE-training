@@ -126,3 +126,61 @@ export function normalizeBirthDate(dob?: string | null): string {
   }
   return cleaned;
 }
+
+/**
+ * Calculates completed age in years from dateOfBirth as of a reference date
+ * (such as batch startDate). Returns null if dateOfBirth is invalid or in the future.
+ */
+export function calculateAgeAtDate(
+  dob?: string | null,
+  referenceDateInput?: number | string | Date | { seconds?: number; toDate?: () => Date } | null
+): number | null {
+  const normalized = normalizeBirthDate(dob);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!match) return null;
+
+  const birthYear = parseInt(match[1], 10);
+  const birthMonth = parseInt(match[2], 10);
+  const birthDay = parseInt(match[3], 10);
+  if (
+    birthYear < 1900 ||
+    birthYear > 2100 ||
+    birthMonth < 1 ||
+    birthMonth > 12 ||
+    birthDay < 1 ||
+    birthDay > 31
+  ) {
+    return null;
+  }
+
+  const checkBirth = new Date(birthYear, birthMonth - 1, birthDay);
+  if (
+    checkBirth.getFullYear() !== birthYear ||
+    checkBirth.getMonth() !== birthMonth - 1 ||
+    checkBirth.getDate() !== birthDay
+  ) {
+    return null;
+  }
+
+  let refDate: Date;
+  if (referenceDateInput instanceof Date && !isNaN(referenceDateInput.getTime())) {
+    refDate = referenceDateInput;
+  } else if (referenceDateInput !== undefined && referenceDateInput !== null && referenceDateInput !== '') {
+    const ts = toTimestampNumber(referenceDateInput);
+    const parsed = new Date(ts);
+    refDate = !isNaN(parsed.getTime()) ? parsed : new Date();
+  } else {
+    refDate = new Date();
+  }
+
+  const refYear = refDate.getFullYear();
+  const refMonth = refDate.getMonth() + 1;
+  const refDay = refDate.getDate();
+
+  let age = refYear - birthYear;
+  if (refMonth < birthMonth || (refMonth === birthMonth && refDay < birthDay)) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}

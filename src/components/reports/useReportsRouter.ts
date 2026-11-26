@@ -10,6 +10,16 @@ function parseHashSection(hash: string): ReportSectionId | null {
   return null;
 }
 
+function parseTemplateParam(search: string): string | null {
+  try {
+    const params = new URLSearchParams(search || '');
+    const val = params.get('tpl')?.trim();
+    return val ? val : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useReportsRouter() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,13 +45,29 @@ export function useReportsRouter() {
   }, []);
 
   const rawSection = parseHashSection(location.hash);
+  const activeTemplateId =
+    rawSection === 'custom-builder' ? parseTemplateParam(location.search) : null;
 
   const effectiveSection: ReportSectionId | null =
     rawSection ?? (isDesktopSplit ? 'monthly-attendance' : null);
 
   const openSection = useCallback(
-    (sectionId: ReportSectionId) => {
+    (sectionId: ReportSectionId, templateId?: string | null) => {
+      if (sectionId === 'custom-builder' && templateId) {
+        navigate(`/reports?tpl=${encodeURIComponent(templateId)}#custom-builder`);
+        return;
+      }
       navigate(`/reports#${sectionId}`);
+    },
+    [navigate]
+  );
+
+  const setTemplateQuery = useCallback(
+    (templateId: string | null) => {
+      const targetUrl = templateId
+        ? `/reports?tpl=${encodeURIComponent(templateId)}#custom-builder`
+        : '/reports#custom-builder';
+      navigate(targetUrl, { replace: true });
     },
     [navigate]
   );
@@ -53,7 +79,9 @@ export function useReportsRouter() {
   return {
     isDesktopSplit,
     activeSection: effectiveSection,
+    activeTemplateId,
     openSection,
+    setTemplateQuery,
     goToHub,
   };
 }

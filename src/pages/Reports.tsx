@@ -4,6 +4,7 @@ import type {
   AttendanceRecord,
   Batch,
   Institute,
+  ReportTemplate,
   Trade,
   Trainee,
 } from '../types';
@@ -17,6 +18,7 @@ import { ReportsHub } from '../components/reports/ReportsHub';
 import { MonthlyAttendanceReport } from '../components/reports/sections/MonthlyAttendanceReport';
 import { BatchTraineesReport } from '../components/reports/sections/BatchTraineesReport';
 import { TradeAttendanceSheetForm } from '../components/reports/sections/TradeAttendanceSheetForm';
+import { CustomReportBuilder } from '../components/reports/custom-builder/CustomReportBuilder';
 
 const Reports: React.FC = () => {
   const { userProfile } = useAuth();
@@ -24,14 +26,22 @@ const Reports: React.FC = () => {
   const canExport =
     hasPermission('export_reports') || hasPermission('export_attendance_sheet');
 
-  const { isDesktopSplit, activeSection, openSection, goToHub } =
-    useReportsRouter();
+  const {
+    isDesktopSplit,
+    activeSection,
+    activeTemplateId,
+    openSection,
+    setTemplateQuery,
+    goToHub,
+  } = useReportsRouter();
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [savedTemplates, setSavedTemplates] = useState<ReportTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const [toast, setToast] = useState<ReportsToast | null>(null);
@@ -94,6 +104,31 @@ const Reports: React.FC = () => {
     fetchData();
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = dataService.subscribeCollection<ReportTemplate>(
+      'report_templates',
+      (items) => {
+        if (!active) return;
+        const sorted = [...items].sort(
+          (a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
+        );
+        setSavedTemplates(sorted);
+        setLoadingTemplates(false);
+      },
+      (err) => {
+        if (!active) return;
+        console.warn('Failed to subscribe report_templates:', err);
+        setLoadingTemplates(false);
+      }
+    );
+
+    return () => {
+      active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -173,6 +208,23 @@ const Reports: React.FC = () => {
             onNotify={showToast}
           />
         );
+      case 'custom-builder':
+        return (
+          <CustomReportBuilder
+            userProfile={userProfile}
+            institutes={institutes}
+            trades={trades}
+            batches={batches}
+            trainees={trainees}
+            attendance={attendance}
+            canExport={canExport}
+            externalTemplates={savedTemplates}
+            loadingExternalTemplates={loadingTemplates}
+            requestedTemplateId={activeTemplateId}
+            onSyncTemplateId={setTemplateQuery}
+            onNotify={showToast}
+          />
+        );
       default:
         return null;
     }
@@ -246,12 +298,16 @@ const Reports: React.FC = () => {
           >
             <ReportsHub
               activeSection={activeSection}
+              activeTemplateId={activeTemplateId}
               highlightSelection={isDesktopSplit}
               totalTrainees={hubCounts.traineesCount}
               totalBatches={hubCounts.batchesCount}
               totalTrades={hubCounts.tradesCount}
               currentMonthLabel={currentMonthLabel}
-              onSelectSection={openSection}
+              savedTemplates={savedTemplates}
+              loadingTemplates={loadingTemplates}
+              onSelectSection={(id) => openSection(id)}
+              onSelectSavedTemplate={(tplId) => openSection('custom-builder', tplId)}
             />
           </nav>
         )}

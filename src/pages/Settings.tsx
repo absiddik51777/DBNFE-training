@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { THEME_PRESETS } from '../lib/theme';
+import { THEME_PRESETS, getAppFontOption } from '../lib/theme';
 import { SETTINGS_SECTIONS } from '../components/settings/types';
 import { useSettingsRouter } from '../components/settings/useSettingsRouter';
 import { useSettingsData } from '../components/settings/useSettingsData';
@@ -62,7 +62,8 @@ const Settings: React.FC = () => {
       : themeConfig.mode === 'dark'
       ? 'ডার্ক'
       : 'লাইট';
-  const appearanceSummary = `${activePresetName} · ${modeLabelBn}`;
+  const activeFontName = getAppFontOption(themeConfig.fontFamily).name;
+  const appearanceSummary = `${activePresetName} · ${modeLabelBn} · ${activeFontName}`;
 
   const activeMeta = SETTINGS_SECTIONS.find((s) => s.id === activeSection) || null;
 

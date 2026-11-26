@@ -21,11 +21,12 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { DocumentPrintConfig, WeeklySignatureHeading } from '../../types';
+import { useTheme } from '../../contexts/ThemeContext';
+import { getAppFontCssStack, getGoogleFontsStylesheetUrl } from '../../lib/theme';
 import {
   DEFAULT_SHEET_PAGE_CONFIG,
   PX_PER_MM,
   computeSheetPageSlices,
-  getFontCssStack,
   getPaperDimensionsMm,
   toBnDigits,
   type SheetPageSlice,
@@ -94,6 +95,7 @@ interface DocumentPrintFrameProps {
   extraDownloadItems?: ExtraDownloadItem[];
   canExport?: boolean;
   workspaceMaxHeightClass?: string;
+  printActionRef?: React.MutableRefObject<(() => void) | null>;
 
   onNotify?: (toast: { type: 'success' | 'error'; message: string }) => void;
 }
@@ -180,9 +182,11 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
   extraDownloadItems = [],
   canExport = true,
   workspaceMaxHeightClass = 'max-h-[76vh]',
+  printActionRef,
   onNotify,
 }) => {
   const frameId = useId().replace(/:/g, '_');
+  const { fontFamily: globalFont } = useTheme();
   const config = useMemo(
     () => normalizeDocumentPrintConfig(rawConfig, defaultOrientation),
     [rawConfig, defaultOrientation]
@@ -192,7 +196,7 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
     () => getPaperDimensionsMm(config.paperSize, config.orientation),
     [config.paperSize, config.orientation]
   );
-  const fontCssStack = useMemo(() => getFontCssStack(config.fontFamily), [config.fontFamily]);
+  const fontCssStack = useMemo(() => getAppFontCssStack(globalFont), [globalFont]);
   const scale = config.fontSizePt / DEFAULT_SHEET_PAGE_CONFIG.fontSizePt;
   const px = useCallback((basePx: number) => `${(basePx * scale).toFixed(2)}px`, [scale]);
 
@@ -377,7 +381,7 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
     config.showPageNumbers,
     config.showSignatures,
     config.showGeneratedDate,
-    config.fontFamily,
+    globalFont,
     config.fontSizePt,
     measureKey,
     extractedHeaderHtml,
@@ -551,6 +555,14 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
     }, 50);
   }, [frameId, dims.cssPageSize, config.orientation, config.margins]);
 
+  useEffect(() => {
+    if (!printActionRef) return;
+    printActionRef.current = handlePrint;
+    return () => {
+      printActionRef.current = null;
+    };
+  }, [printActionRef, handlePrint]);
+
   const handleDownloadPdf = async () => {
     if (generating || !stackRef.current) return;
     setDownloadOpen(false);
@@ -563,6 +575,7 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
     host.style.width = `${paperWidthPx}px`;
     host.style.backgroundColor = '#ffffff';
     host.style.color = '#000000';
+    host.style.fontFamily = fontCssStack;
     host.style.zIndex = '-9999';
     host.style.pointerEvents = 'none';
     document.body.appendChild(host);
@@ -600,6 +613,7 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
         clone.style.transform = 'none';
         clone.style.backgroundColor = '#ffffff';
         clone.style.color = '#000000';
+        clone.style.fontFamily = fontCssStack;
 
         host.innerHTML = '';
         if (customScopeCss) {
@@ -691,17 +705,55 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
       const pagesHtml = pageItems.map((el) => el.outerHTML).join('\n');
       const safeTitle = escapeHtml(documentTitle);
       const { margins } = config;
+      const fontOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+      const googleFontHref = getGoogleFontsStylesheetUrl(globalFont);
+      const googleFontLinks = googleFontHref
+        ? `\n  <link rel="preconnect" href="https://fonts.googleapis.com" />\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n  <link rel="stylesheet" href="${googleFontHref}" />`
+        : '';
 
       const htmlDoc = `<!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${safeTitle}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
+  <title>${safeTitle}</title>${googleFontLinks}
   <style>
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 500;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 800;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 900;
+      font-style: normal;
+    }
     @page {
       size: ${dims.cssPageSize} ${config.orientation};
       margin: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;

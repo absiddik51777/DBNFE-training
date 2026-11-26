@@ -367,5 +367,145 @@ service cloud.firestore {
     match /notifications/{notifId} {
       allow read, write: if false;
     }
+
+    // --- 15. Custom Report Builder Templates ---
+    function isValidReportTemplateHeading(h) {
+      return h is map &&
+             h.keys().hasAll([
+               'govtTitle',
+               'officeTitle',
+               'officeAddress',
+               'programTitle',
+               'reportTitle',
+               'showMemo',
+               'memoNumber',
+               'showMetaLine'
+             ]) &&
+             h.keys().hasOnly([
+               'govtTitle',
+               'officeTitle',
+               'officeAddress',
+               'programTitle',
+               'reportTitle',
+               'showMemo',
+               'memoNumber',
+               'showMetaLine'
+             ]) &&
+             h.govtTitle is string && h.govtTitle.size() <= 200 &&
+             h.officeTitle is string && h.officeTitle.size() <= 200 &&
+             h.officeAddress is string && h.officeAddress.size() <= 250 &&
+             h.programTitle is string && h.programTitle.size() <= 400 &&
+             h.reportTitle is string && h.reportTitle.size() <= 250 &&
+             h.showMemo is bool &&
+             h.memoNumber is string && h.memoNumber.size() <= 200 &&
+             h.showMetaLine is bool;
+    }
+
+    function isValidReportTemplatePage(p) {
+      return p is map &&
+             p.keys().hasAll([
+               'paperSize',
+               'orientation',
+               'margins',
+               'fontFamily',
+               'fontSizePt',
+               'repeatHeaderOnAllPages',
+               'showPageNumbers',
+               'showSignatures',
+               'showGeneratedDate'
+             ]) &&
+             p.keys().hasOnly([
+               'paperSize',
+               'orientation',
+               'margins',
+               'fontFamily',
+               'fontSizePt',
+               'repeatHeaderOnAllPages',
+               'showPageNumbers',
+               'showSignatures',
+               'showGeneratedDate'
+             ]) &&
+             p.paperSize in ['a4', 'legal', 'letter'] &&
+             p.orientation in ['portrait', 'landscape'] &&
+             p.fontFamily in ['Nikosh', 'Hind Siliguri', 'Noto Sans Bengali', 'SolaimanLipi', 'Kalpurush', 'system-ui'] &&
+             (p.fontSizePt is int || p.fontSizePt is float) &&
+             p.fontSizePt >= 8 && p.fontSizePt <= 16 &&
+             p.margins is map &&
+             p.margins.keys().hasAll(['top', 'right', 'bottom', 'left']) &&
+             p.margins.keys().hasOnly(['top', 'right', 'bottom', 'left']) &&
+             (p.margins.top is int || p.margins.top is float) && p.margins.top >= 4 && p.margins.top <= 35 &&
+             (p.margins.right is int || p.margins.right is float) && p.margins.right >= 4 && p.margins.right <= 35 &&
+             (p.margins.bottom is int || p.margins.bottom is float) && p.margins.bottom >= 4 && p.margins.bottom <= 35 &&
+             (p.margins.left is int || p.margins.left is float) && p.margins.left >= 4 && p.margins.left <= 35 &&
+             p.repeatHeaderOnAllPages is bool &&
+             p.showPageNumbers is bool &&
+             p.showSignatures is bool &&
+             p.showGeneratedDate is bool;
+    }
+
+    function isValidReportTemplate(data) {
+      return data is map &&
+             data.keys().hasAll([
+               'id',
+               'name',
+               'dataSource',
+               'heading',
+               'columns',
+               'signatures',
+               'page',
+               'useBengaliDigits',
+               'createdBy',
+               'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id',
+               'name',
+               'dataSource',
+               'heading',
+               'columns',
+               'signatures',
+               'page',
+               'useBengaliDigits',
+               'createdBy',
+               'createdAt',
+               'updatedAt'
+             ]) &&
+             isValidId(data.id) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 160 &&
+             data.dataSource in ['trainees', 'attendance-summary'] &&
+             isValidReportTemplateHeading(data.heading) &&
+             data.columns is list &&
+             data.columns.size() >= 1 && data.columns.size() <= 20 &&
+             data.columns[0] is map &&
+             data.signatures is list &&
+             data.signatures.size() <= 4 &&
+             (data.signatures.size() == 0 || data.signatures[0] is map) &&
+             isValidReportTemplatePage(data.page) &&
+             data.useBengaliDigits is bool &&
+             data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() <= 128 &&
+             (data.createdAt is int || data.createdAt is float) &&
+             (!('updatedAt' in data) || (data.updatedAt is int || data.updatedAt is float));
+    }
+
+    match /report_templates/{templateId} {
+      allow get: if canRead() && isValidId(templateId);
+      allow list: if canRead();
+      allow create: if isSignedIn() &&
+                       isValidId(templateId) &&
+                       isValidReportTemplate(request.resource.data) &&
+                       request.resource.data.id == templateId &&
+                       request.resource.data.createdBy == request.auth.uid &&
+                       (isCourseDirector() || isFMA() || isActiveMember());
+      allow update: if isSignedIn() &&
+                       isValidId(templateId) &&
+                       isValidReportTemplate(request.resource.data) &&
+                       request.resource.data.id == templateId &&
+                       request.resource.data.createdBy == resource.data.createdBy &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       (isCourseDirector() || isFMA() || (isActiveMember() && resource.data.createdBy == request.auth.uid));
+      allow delete: if isSignedIn() &&
+                       isValidId(templateId) &&
+                       (isCourseDirector() || isFMA() || (isActiveMember() && resource.data.createdBy == request.auth.uid));
+    }
   }
 }

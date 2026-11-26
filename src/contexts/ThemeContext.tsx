@@ -6,6 +6,7 @@ import {
   ThemeTokens,
   ThemePresetId,
   ThemeTokenKey,
+  AppFontFamily,
   DEFAULT_THEME_CONFIG,
   DEFAULT_LIGHT_TOKENS,
   DEFAULT_DARK_TOKENS,
@@ -21,7 +22,9 @@ interface ThemeContextValue {
   config: ThemeConfig;
   resolvedMode: ResolvedThemeMode;
   activeTokens: ThemeTokens;
+  fontFamily: AppFontFamily;
   setMode: (mode: ThemeMode) => void;
+  setFontFamily: (fontFamily: AppFontFamily, updatedAt?: number) => void;
   applyConfig: (nextConfig: ThemeConfig) => void;
   selectPreset: (presetId: Exclude<ThemePresetId, 'custom'>) => void;
   resetModeTokens: (modeToReset: ResolvedThemeMode) => void;
@@ -86,10 +89,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return resolvedMode === 'dark' ? config.dark : config.light;
   }, [config.dark, config.light, resolvedMode]);
 
-  // Apply CSS custom properties & .dark class immediately on any change
+  // Apply CSS custom properties, global font & .dark class immediately on any change
   useEffect(() => {
-    applyThemeToDocument(activeTokens, resolvedMode);
-  }, [activeTokens, resolvedMode]);
+    applyThemeToDocument(activeTokens, resolvedMode, config.fontFamily);
+  }, [activeTokens, resolvedMode, config.fontFamily]);
 
   const applyConfig = useCallback((nextConfig: ThemeConfig) => {
     setConfig(nextConfig);
@@ -98,7 +101,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       nextConfig.mode === 'system' ? resolveThemeMode('system') : nextConfig.mode;
     applyThemeToDocument(
       nextResolved === 'dark' ? nextConfig.dark : nextConfig.light,
-      nextResolved
+      nextResolved,
+      nextConfig.fontFamily
     );
   }, []);
 
@@ -110,6 +114,29 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
     },
     [config, applyConfig]
+  );
+
+  const setFontFamily = useCallback(
+    (fontFamily: AppFontFamily, updatedAt?: number) => {
+      const nextUpdatedAt = updatedAt ?? Date.now();
+      setConfig((prev) => {
+        const nextConfig: ThemeConfig = {
+          ...prev,
+          fontFamily,
+          fontUpdatedAt: nextUpdatedAt,
+        };
+        saveThemeConfig(nextConfig);
+        const nextResolved =
+          nextConfig.mode === 'system' ? resolveThemeMode('system') : nextConfig.mode;
+        applyThemeToDocument(
+          nextResolved === 'dark' ? nextConfig.dark : nextConfig.light,
+          nextResolved,
+          nextConfig.fontFamily
+        );
+        return nextConfig;
+      });
+    },
+    []
   );
 
   const selectPreset = useCallback(
@@ -143,6 +170,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     applyConfig({
       mode: config.mode,
       presetId: DEFAULT_THEME_CONFIG.presetId,
+      fontFamily: DEFAULT_THEME_CONFIG.fontFamily,
+      fontUpdatedAt: Date.now(),
       light: { ...DEFAULT_LIGHT_TOKENS },
       dark: { ...DEFAULT_DARK_TOKENS },
     });
@@ -191,7 +220,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       config,
       resolvedMode,
       activeTokens,
+      fontFamily: config.fontFamily,
       setMode,
+      setFontFamily,
       applyConfig,
       selectPreset,
       resetModeTokens,
@@ -204,6 +235,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       resolvedMode,
       activeTokens,
       setMode,
+      setFontFamily,
       applyConfig,
       selectPreset,
       resetModeTokens,

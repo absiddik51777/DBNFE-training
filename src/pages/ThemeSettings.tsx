@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Sun, Moon, Monitor } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { THEME_PRESETS } from '../lib/theme';
+import { THEME_PRESETS, getAppFontOption } from '../lib/theme';
 import { ThemeSettingsSection } from '../components/settings/ThemeSettingsSection';
 import { TruncatedText } from '../components/ui/TruncatedText';
 
@@ -55,6 +55,8 @@ const ThemeSettings: React.FC = () => {
             </span>
             <span aria-hidden="true">·</span>
             <span>প্রিসেট: {presetLabel}</span>
+            <span aria-hidden="true">·</span>
+            <span>ফন্ট: {getAppFontOption(config.fontFamily).name}</span>
             <span aria-hidden="true">·</span>
             <span>Light ও Dark মোডের কালার টোকেন স্বাধীনভাবে কাস্টমাইজ করুন</span>
           </div>

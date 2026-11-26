@@ -1,5 +1,10 @@
 import type { Trainee } from '../../types';
 import { toBn } from '../../lib/dateUtils';
+import {
+  getAppFontCssStack,
+  getGoogleFontsStylesheetUrl,
+  getStoredGlobalFontFamily,
+} from '../../lib/theme';
 
 export type AttendanceCode = 'P' | 'A' | 'L' | '';
 
@@ -162,14 +167,23 @@ export function buildRegisterHtml(params: {
     })
     .join('');
 
+  const fontOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const activeGlobalFont = getStoredGlobalFontFamily();
+  const fontCssStack = getAppFontCssStack(activeGlobalFont);
+  const googleFontHref = getGoogleFontsStylesheetUrl(activeGlobalFont);
   return `<!doctype html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
   <title>মাসিক হাজিরা রেজিস্টার - ${escapeHtml(monthName)} ${toBn(year)}</title>
+  ${googleFontHref ? `<link rel="stylesheet" href="${googleFontHref}" />` : ''}
   <style>
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 400; font-style: normal; }
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 500; font-style: normal; }
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 600; font-style: normal; }
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 700; font-style: normal; }
     * { box-sizing: border-box; }
-    body { font-family: 'Nikosh', 'Hind Siliguri', Arial, sans-serif; margin: 16px; color: #0f172a; background: #fff; font-size: 12px; }
+    body { font-family: ${fontCssStack}; margin: 16px; color: #0f172a; background: #fff; font-size: 12px; }
     h1 { margin: 0 0 4px; font-size: 18px; }
     .meta { margin: 0 0 12px; color: #475569; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; table-layout: auto; }

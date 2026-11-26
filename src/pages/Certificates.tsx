@@ -248,7 +248,7 @@ const Certificates: React.FC = () => {
                 <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
                   বৃত্তিমূলক প্রশিক্ষণ সমাপনী সনদপত্র
                 </span>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1 font-serif">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1 font-sans">
                   CERTIFICATE OF VOCATIONAL TRAINING
                 </h1>
               </div>

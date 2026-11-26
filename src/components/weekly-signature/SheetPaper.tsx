@@ -1,10 +1,11 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
+import { getAppFontCssStack } from '../../lib/theme';
 import {
   DEFAULT_SHEET_HEADING,
   DEFAULT_SHEET_PAGE_CONFIG,
   PX_PER_MM,
   computeSheetPageSlices,
-  getFontCssStack,
   getPaperDimensionsMm,
   normalizePageConfig,
   toBnDigits,
@@ -53,10 +54,11 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
   manualZoom = 1,
   onEffectiveZoomChange,
 }) => {
+  const { fontFamily: globalFont } = useTheme();
   const heading = meta.heading || DEFAULT_SHEET_HEADING;
   const pageConfig = normalizePageConfig(meta.pageConfig);
   const dims = getPaperDimensionsMm(pageConfig.paperSize, pageConfig.orientation);
-  const fontCssStack = getFontCssStack(pageConfig.fontFamily);
+  const fontCssStack = getAppFontCssStack(globalFont);
   const scale = pageConfig.fontSizePt / DEFAULT_SHEET_PAGE_CONFIG.fontSizePt;
   const px = (basePx: number) => `${(basePx * scale).toFixed(2)}px`;
 
@@ -183,7 +185,7 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
     meta.tradeName,
     pageConfig.paperSize,
     pageConfig.orientation,
-    pageConfig.fontFamily,
+    globalFont,
     pageConfig.fontSizePt,
     usableWidthPx,
     usableHeightPx,

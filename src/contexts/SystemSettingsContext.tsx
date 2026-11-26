@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SystemSettings } from '../types';
 import { dataService, DEFAULT_SYSTEM_SETTINGS } from '../lib/dataService';
+import { isValidAppFontFamily } from '../lib/theme';
 import { useAuth } from './AuthContext';
+import { useTheme } from './ThemeContext';
 
 interface SystemSettingsContextType {
   settings: SystemSettings;
@@ -55,6 +57,7 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const [loading, setLoading] = useState(true);
   const { user, userProfile } = useAuth();
+  const { config: themeConfig, setFontFamily } = useTheme();
 
   const canReadSettings = Boolean(
     user && userProfile && userProfile.status === 'Active' && userProfile.role !== 'Pending'
@@ -105,6 +108,25 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
       unsubscribe();
     };
   }, [canReadSettings, user?.uid]);
+
+  // Keep global theme font synced when Course Director updates SystemSettings.globalFontFamily
+  useEffect(() => {
+    if (!isValidAppFontFamily(settings.globalFontFamily)) return;
+    const serverTs = settings.globalFontUpdatedAt || 0;
+    const localTs = themeConfig.fontUpdatedAt || 0;
+    if (
+      settings.globalFontFamily !== themeConfig.fontFamily &&
+      (localTs === 0 || serverTs > localTs)
+    ) {
+      setFontFamily(settings.globalFontFamily, serverTs || Date.now());
+    }
+  }, [
+    settings.globalFontFamily,
+    settings.globalFontUpdatedAt,
+    themeConfig.fontFamily,
+    themeConfig.fontUpdatedAt,
+    setFontFamily,
+  ]);
 
   const updateSettings = async (
     updates: Partial<SystemSettings>

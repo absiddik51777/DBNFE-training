@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Laptop, Moon, RefreshCw, Sliders, Sun } from 'lucide-react';
+import { Check, Laptop, Moon, RefreshCw, Sliders, Sun, Type } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../contexts/PermissionsContext';
+import { useSystemSettings } from '../../../contexts/SystemSettingsContext';
 import { dataService } from '../../../lib/dataService';
-import type { ThemeMode } from '../../../lib/theme';
+import {
+  APP_FONT_OPTIONS,
+  getAppFontOption,
+  type AppFontFamily,
+  type ThemeMode,
+} from '../../../lib/theme';
 import { ACCENT_OPTIONS, AccentPresetOption, SettingsToastType } from '../types';
 import { SettingsConfirmDialog } from '../SettingsConfirmDialog';
 
@@ -18,8 +26,14 @@ const MODE_OPTIONS: { mode: ThemeMode; label: string; icon: React.ReactNode }[] 
 ];
 
 export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast }) => {
-  const { config, setMode, applyConfig } = useTheme();
+  const { config, setMode, setFontFamily, applyConfig } = useTheme();
+  const { userProfile } = useAuth();
+  const { isCourseDirector: hasCourseDirectorPerm } = usePermissions();
+  const { updateSettings } = useSystemSettings();
   const [confirmCacheOpen, setConfirmCacheOpen] = useState(false);
+
+  const isAdmin = userProfile?.role === 'Course Director' || hasCourseDirectorPerm;
+  const activeFontOpt = getAppFontOption(config.fontFamily);
 
   const selectedAccentId = (() => {
     const primary = config.light.primary.toLowerCase();
@@ -48,6 +62,23 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
       },
     });
     showToast('success', `${option.label} অ্যাক্সেন্ট কালার প্রয়োগ করা হয়েছে।`);
+  };
+
+  const handleSelectGlobalFont = async (nextFont: AppFontFamily) => {
+    const now = Date.now();
+    setFontFamily(nextFont, now);
+    const opt = getAppFontOption(nextFont);
+    if (isAdmin) {
+      try {
+        await updateSettings({
+          globalFontFamily: nextFont,
+          globalFontUpdatedAt: now,
+        });
+      } catch (err) {
+        console.warn('Could not sync global font to Firestore settings:', err);
+      }
+    }
+    showToast('success', `গ্লোবাল ফন্ট "${opt.nameBn}" সাইটের সকল জায়গায় প্রয়োগ করা হয়েছে।`);
   };
 
   const handleConfirmCacheReset = () => {
@@ -145,6 +176,56 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({ showToast 
               <Sliders size={14} />
               <span>বিস্তারিত থিম এডিটর</span>
             </Link>
+          </div>
+        </div>
+
+        {/* Global Font Selector */}
+        <div className="pt-4 border-t border-theme-border space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium text-theme-text-primary flex items-center gap-1.5">
+                <Type size={15} className="text-theme-primary shrink-0" />
+                <span>গ্লোবাল ফন্ট (Global Font)</span>
+              </h2>
+              <p className="text-xs text-theme-text-secondary mt-0.5">
+                এখান থেকে নির্বাচিত ফন্ট পুরো ওয়েবসাইট, রিপোর্ট, কাস্টম বিল্ডার ও প্রিন্টে ব্যবহৃত হবে
+              </p>
+            </div>
+            <span className="text-xs font-medium text-theme-primary">
+              {activeFontOpt.name} ({activeFontOpt.nameBn})
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label htmlFor="appearance-global-font" className="sr-only">
+                গ্লোবাল ফন্ট নির্বাচন করুন
+              </label>
+              <select
+                id="appearance-global-font"
+                value={config.fontFamily}
+                onChange={(e) => void handleSelectGlobalFont(e.target.value as AppFontFamily)}
+                className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-theme-surface-subtle border border-theme-border text-sm font-medium text-theme-text-primary cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary"
+              >
+                {APP_FONT_OPTIONS.map((font) => (
+                  <option key={font.id} value={font.id}>
+                    {font.name} — {font.nameBn}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div
+              style={{ fontFamily: activeFontOpt.cssStack }}
+              className="min-h-[44px] px-3.5 py-2 rounded-[12px] bg-theme-surface-subtle border border-theme-border flex flex-col justify-center"
+            >
+              <span className="text-[11px] text-theme-text-muted leading-tight">
+                ফন্ট প্রিভিউ ({activeFontOpt.categoryBn})
+              </span>
+              <span className="text-sm font-medium text-theme-text-primary leading-snug">
+                {activeFontOpt.sampleBn}
+              </span>
+            </div>
           </div>
         </div>
       </div>

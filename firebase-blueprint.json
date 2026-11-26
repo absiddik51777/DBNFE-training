@@ -317,10 +317,98 @@
             "showGeneratedDate": { "type": "boolean" }
           }
         },
+        "globalFontFamily": {
+          "type": "string",
+          "enum": [
+            "Nikosh",
+            "Hind Siliguri",
+            "Noto Sans Bengali",
+            "Noto Serif Bengali",
+            "Baloo Da 2",
+            "Tiro Bangla",
+            "SolaimanLipi",
+            "Kalpurush",
+            "system-ui"
+          ]
+        },
+        "globalFontUpdatedAt": { "type": "number" },
         "updatedAt": { "type": "number" },
         "updatedBy": { "type": "string", "maxLength": 100 }
       },
       "required": ["allowDataDeletion"]
+    },
+    "ReportTemplate": {
+      "title": "ReportTemplate",
+      "description": "Custom official government report layout template with heading, columns, signatures, and page setup",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 160 },
+        "dataSource": { "type": "string", "enum": ["trainees", "attendance-summary"] },
+        "heading": {
+          "type": "object",
+          "properties": {
+            "govtTitle": { "type": "string", "maxLength": 200 },
+            "officeTitle": { "type": "string", "maxLength": 200 },
+            "officeAddress": { "type": "string", "maxLength": 250 },
+            "programTitle": { "type": "string", "maxLength": 400 },
+            "reportTitle": { "type": "string", "maxLength": 250 },
+            "showMemo": { "type": "boolean" },
+            "memoNumber": { "type": "string", "maxLength": 200 },
+            "showMetaLine": { "type": "boolean" }
+          }
+        },
+        "columns": { "type": "array" },
+        "signatures": { "type": "array" },
+        "page": {
+          "type": "object",
+          "properties": {
+            "paperSize": { "type": "string", "enum": ["a4", "legal", "letter"] },
+            "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
+            "margins": {
+              "type": "object",
+              "properties": {
+                "top": { "type": "number" },
+                "right": { "type": "number" },
+                "bottom": { "type": "number" },
+                "left": { "type": "number" }
+              }
+            },
+            "fontFamily": {
+              "type": "string",
+              "enum": [
+                "Nikosh",
+                "Hind Siliguri",
+                "Noto Sans Bengali",
+                "SolaimanLipi",
+                "Kalpurush",
+                "system-ui"
+              ]
+            },
+            "fontSizePt": { "type": "number" },
+            "repeatHeaderOnAllPages": { "type": "boolean" },
+            "showPageNumbers": { "type": "boolean" },
+            "showSignatures": { "type": "boolean" },
+            "showGeneratedDate": { "type": "boolean" }
+          }
+        },
+        "useBengaliDigits": { "type": "boolean" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": [
+        "id",
+        "name",
+        "dataSource",
+        "heading",
+        "columns",
+        "signatures",
+        "page",
+        "useBengaliDigits",
+        "createdBy",
+        "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -383,6 +471,10 @@
     "/calendar_progress_logs/{logId}": {
       "schema": "object",
       "description": "Daily calendar progress logs"
+    },
+    "/report_templates/{templateId}": {
+      "schema": "ReportTemplate",
+      "description": "Saved custom official report builder templates"
     }
   }
 }

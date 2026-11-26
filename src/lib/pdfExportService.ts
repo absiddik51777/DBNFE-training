@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 import { Trainee, Institute, Trade, Batch } from '../types';
 import { toBn, safeFormatDate } from './dateUtils';
 import { saveFileToDevice, shareExportedFile, FileExportResult } from './fileExportService';
+import { getStoredGlobalFontCssStack } from './theme';
 
 export interface TraineePdfExportOptions {
   trainees: Trainee[];
@@ -159,6 +160,9 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
   document.body.appendChild(container);
 
   try {
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      await document.fonts.ready;
+    }
     if (onProgress) {
       onProgress(0, totalPages, 'পিডিএফ ইঞ্জিন শুরু হচ্ছে...', 5);
       await new Promise(r => setTimeout(r, 60));
@@ -183,7 +187,7 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
       pageEl.style.boxSizing = 'border-box';
       pageEl.style.padding = '18px 25px 22px 25px';
       pageEl.style.backgroundColor = '#ffffff';
-      pageEl.style.fontFamily = "'Noto Sans Bengali', Arial, sans-serif";
+      pageEl.style.fontFamily = getStoredGlobalFontCssStack();
       pageEl.style.color = '#000000';
       pageEl.style.display = 'flex';
       pageEl.style.flexDirection = 'column';
@@ -218,14 +222,14 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
 
             <!-- 2. ID & Reg -->
             <td style="padding: 7px 8px; width: 120px; border-right: 1px solid #94a3b8; color: #000000;">
-              <div style="font-weight: bold; color: #000000; font-family: monospace; font-size: 10.5px; margin: 0; padding: 0;">${(t.traineeId || '-').trim()}</div>
-              <div style="color: #000000; font-size: 9.5px; font-family: monospace; margin-top: 2px; margin: 0; padding: 0;">${(t.registrationNumber || '-').trim()}</div>
+              <div style="font-weight: bold; color: #000000; font-family: inherit; font-size: 10.5px; margin: 0; padding: 0;">${(t.traineeId || '-').trim()}</div>
+              <div style="color: #000000; font-size: 9.5px; font-family: inherit; margin-top: 2px; margin: 0; padding: 0;">${(t.registrationNumber || '-').trim()}</div>
             </td>
 
             <!-- 3. Trainee Info (Name, Mobile, Father) - Solid Black Text, Gray Border -->
             <td style="padding: 7px 8px; width: 190px; border-right: 1px solid #94a3b8; text-align: left; color: #000000;">
               <div style="font-weight: bold; color: #000000; font-size: 11px; line-height: 1.25; margin: 0; padding: 0; text-align: left;">${traineeName}</div>
-              <div style="color: #000000; font-size: 9.5px; margin-top: 2px; font-family: monospace; margin: 0; padding: 0; text-align: left;">${mobile}</div>
+              <div style="color: #000000; font-size: 9.5px; margin-top: 2px; font-family: inherit; margin: 0; padding: 0; text-align: left;">${mobile}</div>
               <div style="color: #000000; font-size: 9px; margin-top: 1px; margin: 0; padding: 0; text-align: left;">পিতা: ${father}</div>
             </td>
 
@@ -237,8 +241,8 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
 
             <!-- 5. ID Document & Age - Solid Black Text, Gray Border -->
             <td style="padding: 7px 8px; width: 165px; border-right: 1px solid #94a3b8; text-align: left; color: #000000;">
-              <div style="font-weight: bold; font-family: monospace; font-size: 10.5px; color: #000000; letter-spacing: 0.2px; margin: 0; padding: 0;">${docNum}</div>
-              <div style="color: #000000; font-size: 9.5px; margin-top: 2px; margin: 0; padding: 0;">জন্ম: <span style="font-family: monospace;">${toBn(dob)}</span></div>
+              <div style="font-weight: bold; font-family: inherit; font-size: 10.5px; color: #000000; letter-spacing: 0.2px; margin: 0; padding: 0;">${docNum}</div>
+              <div style="color: #000000; font-size: 9.5px; margin-top: 2px; margin: 0; padding: 0;">জন্ম: <span style="font-family: inherit;">${toBn(dob)}</span></div>
               <div style="color: #000000; font-size: 9px; margin-top: 1px; margin: 0; padding: 0;">বয়স: <strong style="color: #000000;">${age}</strong></div>
             </td>
 

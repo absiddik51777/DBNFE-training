@@ -1,12 +1,14 @@
 export type ReportSectionId =
   | 'monthly-attendance'
   | 'batch-trainees'
-  | 'trade-attendance-sheet';
+  | 'trade-attendance-sheet'
+  | 'custom-builder';
 
 export const REPORT_SECTION_IDS: ReportSectionId[] = [
   'monthly-attendance',
   'batch-trainees',
   'trade-attendance-sheet',
+  'custom-builder',
 ];
 
 export type ReportGroupId = 'reports' | 'forms';
@@ -36,6 +38,12 @@ export const REPORT_SECTIONS: ReportSectionMeta[] = [
     group: 'forms',
     title: 'মাসিক হাজিরা সিট (ট্রেড ভিত্তক)',
     subtitle: 'ট্রেড অনুযায়ী প্রিন্ট ও স্বাক্ষরযোগ্য মাসিক হাজিরা ফর্ম',
+  },
+  {
+    id: 'custom-builder',
+    group: 'forms',
+    title: 'কাস্টম রিপোর্ট বিল্ডার',
+    subtitle: 'সরকারি প্রস্তাব, কলাম ও স্বাক্ষর নিজের মতো সাজিয়ে টেমপ্লেট সেভ করুন',
   },
 ];
 

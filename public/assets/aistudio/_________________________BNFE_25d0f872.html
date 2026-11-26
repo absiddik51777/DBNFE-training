@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>কাস্টম রিপোর্ট বিল্ডার — BNFE</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&display=swap">
+<style>
+:root{--p:#059669;--ph:#047857;--ps:#D1FAE5;--pf:#fff;--bg:#F8FAFC;--sf:#fff;--sub:#F1F5F9;--hov:#F8FAFC;--t1:#0F172A;--t2:#64748B;--t3:#94A3B8;--bd:#E2E8F0;--dg:#DC2626;--ok:#059669;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--p:#34D399;--ph:#6EE7B7;--ps:rgba(52,211,153,.14);--pf:#052e22;--bg:#0B1220;--sf:#111A2B;--sub:#182236;--hov:#162033;--t1:#F1F5F9;--t2:#94A3B8;--t3:#64748B;--bd:#223049}}
+:root[data-theme="dark"]{--p:#34D399;--ph:#6EE7B7;--ps:rgba(52,211,153,.14);--pf:#052e22;--bg:#0B1220;--sf:#111A2B;--sub:#182236;--hov:#162033;--t1:#F1F5F9;--t2:#94A3B8;--t3:#64748B;--bd:#223049}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--t1);font-family:'Nikosh','Hind Siliguri',system-ui,sans-serif;font-size:15px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding:16px 14px 96px}
+h1{font-size:22px;font-weight:500;margin:0}.sub{font-size:13px;color:var(--t2);margin:2px 0 0}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.pad{padding:14px}.stack>*+*{margin-top:12px}
+.row{display:flex;gap:8px;align-items:center}.grow{flex:1;min-width:0}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.chip{flex:none;min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--ps);color:var(--p);border-color:var(--p)}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);background:var(--sub);border-radius:12px;padding:3px;gap:2px}
+.seg button{min-height:40px;border:0;background:transparent;border-radius:10px;font:inherit;font-size:12.5px;color:var(--t2);cursor:pointer;padding:0 2px}
+.seg button.on{background:var(--sf);color:var(--p);font-weight:600;box-shadow:0 0 0 1px var(--bd)}
+label.f{display:block;font-size:12px;color:var(--t2);margin:0 0 4px}
+input,select,textarea{width:100%;min-height:44px;border:1px solid var(--bd);border-radius:12px;background:var(--sf);color:var(--t1);font:inherit;font-size:14px;padding:8px 12px}
+textarea{min-height:64px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--p);outline-offset:1px}
+.tok{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.tok button{border:1px dashed var(--p);background:var(--ps);color:var(--p);border-radius:8px;font:inherit;font-size:12px;padding:3px 8px;cursor:pointer;min-height:28px}
+.item{border:1px solid var(--bd);border-radius:12px;background:var(--hov);padding:10px}
+.item+.item{margin-top:8px}
+.ibar{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.num{width:26px;height:26px;border-radius:8px;background:var(--ps);color:var(--p);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.ib{min-width:36px;min-height:36px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);border-radius:10px;cursor:pointer;font:inherit}
+.ib.d{color:var(--dg)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{min-height:46px;border-radius:12px;border:1px solid var(--bd);background:var(--sf);color:var(--t1);font:inherit;font-size:14px;padding:0 16px;cursor:pointer}
+.btn.p{background:var(--p);color:var(--pf);border-color:var(--p);font-weight:600}
+.btn.add{width:100%;border-style:dashed;color:var(--p);margin-top:8px}
+.sw{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px}
+.sw input{width:22px;min-height:22px;height:22px;accent-color:var(--p)}
+.note{font-size:12px;color:var(--t2);background:var(--sub);border-radius:10px;padding:8px 10px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--sf);border-top:1px solid var(--bd);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:5}
+.bar .btn{flex:1}
+.toast{position:fixed;left:14px;right:14px;bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px;font-size:13px;z-index:9;display:none}
+.toast.on{display:block}
+.view{display:none}.view.on{display:block}
+.pvhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.stage{background:var(--sub);border:1px solid var(--bd);border-radius:14px;padding:10px;overflow:hidden}
+.scaler{transform-origin:top left}
+.paper{background:#fff;color:#000;box-shadow:0 1px 6px rgba(0,0,0,.18);padding:18mm 15mm;font-family:'Nikosh','Hind Siliguri',serif;overflow:hidden}
+.paper h2,.paper p{margin:0}
+.paper table{width:100%;border-collapse:collapse;margin-top:10px}
+.paper th,.paper td{border:1px solid #1e293b;padding:3px 5px;vertical-align:middle}
+.paper th{background:#f1f5f9;font-weight:700}
+.cd{display:flex;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--bd)}.cd code{font-family:ui-monospace,monospace;font-size:12.5px;background:var(--ps);color:var(--p);padding:1px 7px;border-radius:7px}
+@media(min-width:900px){
+ .wrap{padding-bottom:40px}
+ .layout{display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start}
+ .tabs-m{display:none}.view{display:block!important}
+ #edit{position:sticky;top:12px}
+ .bar{position:static;border:0;background:none;padding:0;margin-top:12px}.toast{bottom:20px;left:auto;width:380px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="stack">
+  <div><h1>কাস্টম রিপোর্ট</h1><p class="sub">শিরোনাম, টেবিল ও স্বাক্ষর নিজের মতো সাজিয়ে সরকারি প্রস্তাবের নথি তৈরি করুন</p></div>
+
+  <div>
+   <label class="f">টেমপ্লেট</label>
+   <div class="chips" id="tpls"></div>
+   <div class="row" style="margin-top:6px"><input id="tname" placeholder="টেমপ্লেটের নাম (ডাটাবেইজে সংরক্ষণের জন্য)" maxlength="80"><button class="btn" id="delTpl" hidden style="color:var(--dg)">মুছুন</button></div>
+  </div>
+
+  <div class="seg tabs-m" id="mtabs" style="grid-template-columns:1fr 1fr">
+   <button class="on" data-v="edit">সম্পাদনা</button><button data-v="pv">প্রিভিউ</button>
+  </div>
+
+  <div class="layout">
+   <div id="edit" class="view on stack">
+    <div class="seg" id="tabs"></div>
+    <div class="card pad" id="panel"></div>
+    <div class="bar">
+     <button class="btn" id="save">সংরক্ষণ</button>
+     <button class="btn p" id="print">প্রিন্ট / PDF</button>
+    </div>
+   </div>
+
+   <div id="pv" class="view">
+    <div class="pvhead"><strong style="font-weight:500">প্রিভিউ</strong><span class="sub" id="pgInfo"></span></div>
+    <div class="stage" id="stage"><div class="scaler" id="scaler"><div class="paper" id="paper"></div></div></div>
+    <p class="note" style="margin-top:10px">নমুনা তথ্য দিয়ে দেখানো হয়েছে। প্রিন্টের সময় নির্বাচিত ব্যাচ/মাসের আসল ডাটা বসবে।</p>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BN='০১২৩৪৫৬৭৮৯';const bn=v=>String(v).replace(/\d/g,d=>BN[d]);
+let useBn=true;const N=v=>useBn?bn(v):String(v);
+const $=s=>document.querySelector(s);
+
+/* ---- Data catalog (maps to existing Trainee / AttendanceRecord / Batch types) ---- */
+const FIELDS={
+ serial:{l:'ক্রমিক',g:'সাধারণ'},
+ nameBn:{l:'নাম (বাংলা)',g:'প্রশিক্ষণার্থী'},fatherNameBn:{l:'পিতার নাম',g:'প্রশিক্ষণার্থী'},motherNameBn:{l:'মাতার নাম',g:'প্রশিক্ষণার্থী'},
+ traineeId:{l:'আইডি',g:'প্রশিক্ষণার্থী'},registrationNumber:{l:'রেজিস্ট্রেশন নং',g:'প্রশিক্ষণার্থী'},mobileNumber:{l:'মোবাইল',g:'প্রশিক্ষণার্থী'},
+ nid:{l:'NID/জন্মনিবন্ধন',g:'প্রশিক্ষণার্থী'},gender:{l:'লিঙ্গ',g:'প্রশিক্ষণার্থী'},dob:{l:'জন্ম তারিখ',g:'প্রশিক্ষণার্থী'},address:{l:'ঠিকানা',g:'প্রশিক্ষণার্থী'},
+ presentDays:{l:'উপস্থিত দিন',g:'হাজিরা'},absentDays:{l:'অনুপস্থিত দিন',g:'হাজিরা'},leaveDays:{l:'ছুটি',g:'হাজিরা'},totalDays:{l:'মোট কার্যদিবস',g:'হাজিরা'},pct:{l:'উপস্থিতির হার %',g:'হাজিরা'},eligible:{l:'সনদের যোগ্যতা',g:'হাজিরা'},
+ custom:{l:'কাস্টম টেক্সট / সূত্র',g:'কাস্টম'},blank:{l:'ফাঁকা (হাতে লেখার ঘর)',g:'কাস্টম'}
+};
+const SAMPLE=[
+ {nameBn:'মোছা. রুনা আক্তার',fatherNameBn:'আব্দুল করিম',motherNameBn:'সালমা বেগম',traineeId:'T-0101',registrationNumber:'২৬০১০১',mobileNumber:'01712-345601',nid:'2005123456',gender:'নারী',dob:'০৫/০৩/২০০৫',address:'ত্রিশাল, ময়মনসিংহ',p:21,a:1,l:0},
+ {nameBn:'মো. সজীব হোসেন',fatherNameBn:'আলমগীর হোসেন',motherNameBn:'রোকেয়া খাতুন',traineeId:'T-0102',registrationNumber:'২৬০১০২',mobileNumber:'01812-345602',nid:'2004123457',gender:'পুরুষ',dob:'১২/০৮/২০০৪',address:'ফুলবাড়িয়া, ময়মনসিংহ',p:18,a:3,l:1},
+ {nameBn:'আয়েশা সিদ্দিকা',fatherNameBn:'মো. জামাল উদ্দিন',motherNameBn:'নাছিমা আক্তার',traineeId:'T-0103',registrationNumber:'২৬০১০৩',mobileNumber:'01912-345603',nid:'2006123458',gender:'নারী',dob:'২০/০১/২০০৬',address:'গফরগাঁও, ময়মনসিংহ',p:22,a:0,l:0},
+ {nameBn:'মো. রাকিব মিয়া',fatherNameBn:'ইসমাইল মিয়া',motherNameBn:'জাহানারা বেগম',traineeId:'T-0104',registrationNumber:'২৬০১০৪',mobileNumber:'01612-345604',nid:'2004123459',gender:'পুরুষ',dob:'০৯/১১/২০০৪',address:'ভালুকা, ময়মনসিংহ',p:14,a:8,l:0},
+ {nameBn:'সুমাইয়া খাতুন',fatherNameBn:'আব্দুল মান্নান',motherNameBn:'শিরিন আক্তার',traineeId:'T-0105',registrationNumber:'২৬০১০৫',mobileNumber:'01512-345605',nid:'2005123460',gender:'নারী',dob:'৩০/০৬/২০০৫',address:'নান্দাইল, ময়মনসিংহ',p:20,a:2,l:0}
+];
+const CTX={institute:'ময়মনসিংহ সদর উপজেলা প্রশিক্ষণ কেন্দ্র',trade:'ড্রেস মেকিং',batch:'ব্যাচ-০২',month:'নভেম্বর ২০২৬',fiscalYear:'২০২৬-২০২৭',date:'২৭ নভেম্বর ২০২৬',total:5,pass:75,workDays:22};
+const TOK=['institute','trade','batch','month','fiscalYear','date','total'];
+const TOKL={institute:'প্রতিষ্ঠান',trade:'ট্রেড',batch:'ব্যাচ',month:'মাস',fiscalYear:'অর্থবছর',date:'আজকের তারিখ',total:'মোট জন'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fill=(s,extra={})=>esc(String(s||'').replace(/\{\{(\w+)\}\}/g,(m,k)=>k in extra?extra[k]:k in CTX?(typeof CTX[k]==='number'?N(CTX[k]):CTX[k]):m));
+
+function rowMap(t,i){const tot=t.p+t.a+t.l,pct=Math.round(t.p/tot*100);return{...t,serial:N(i+1),presentDays:N(t.p),absentDays:N(t.a),leaveDays:N(t.l),totalDays:N(tot),pct:N(pct),eligible:pct>=CTX.pass?'যোগ্য':'অযোগ্য',blank:''}}
+function cell(c,t,i){const m=rowMap(t,i);if(c.field==='custom')return fill(c.text,m);if(c.field==='pct')return m.pct+'%';return m[c.field]??''}
+
+/* ---- Templates ---- */
+const BASE_H={govt:'গণপ্রজাতন্ত্রী বাংলাদেশ সরকার',office:'জেলা উপানুষ্ঠানিক শিক্ষা ব্যুরো',address:'কালেক্টরেট ভবন, ময়মনসিংহ',program:'কার্যকর সাক্ষরতা ও ব্যবহারিক কর্মদক্ষতা প্রশিক্ষণ প্রাক বৃত্তিমূলক পর্যায়',title:'',memoOn:true,memo:'৩৮.০১.৬১০০.০০১.{{batch}}/২৬',showMeta:true};
+const C=(label,field,w,align='left',text='')=>({label,field,w,align,text});
+const TEMPLATES={
+ monthly:{name:'মাসিক হাজিরা সারসংক্ষেপ',orient:'portrait',h:{...BASE_H,title:'{{month}} মাসের হাজিরা প্রতিবেদন',memoOn:false},
+  cols:[C('ক্রমিক','serial',7,'center'),C('প্রশিক্ষণার্থীর নাম','nameBn',30),C('উপস্থিত','presentDays',12,'center'),C('অনুপস্থিত','absentDays',12,'center'),C('ছুটি','leaveDays',10,'center'),C('হার (%)','pct',12,'center'),C('মন্তব্য','blank',17)],
+  sigs:[['প্রশিক্ষক','{{trainer}}','স্কিল ট্রেইনার'],['প্রতিষ্ঠান প্রধান','','']]},
+ list:{name:'প্রশিক্ষণার্থী তালিকা',orient:'landscape',h:{...BASE_H,title:'{{batch}} — প্রশিক্ষণার্থীদের তালিকা',memoOn:false},
+  cols:[C('ক্রমিক','serial',5,'center'),C('নাম','nameBn',18),C('পিতার নাম','fatherNameBn',16),C('মাতার নাম','motherNameBn',16),C('জন্ম তারিখ','dob',11,'center'),C('মোবাইল','mobileNumber',14),C('ঠিকানা','address',20)],
+  sigs:[['প্রশিক্ষক','',''],['প্রতিষ্ঠান প্রধান','',''],['কোর্স পরিচালক','','']]},
+ proposal:{name:'সনদের প্রস্তাব (সরকারি)',orient:'portrait',h:{...BASE_H,title:'প্রশিক্ষণ সমাপ্তির সনদ প্রদানের প্রস্তাব',memoOn:true},
+  cols:[C('ক্রমিক','serial',6,'center'),C('নাম ও পিতার নাম','custom',32,'left','{{nameBn}}\nপিতা: {{fatherNameBn}}'),C('রেজি. নং','registrationNumber',13,'center'),C('উপস্থিতি','custom',14,'center','{{presentDays}}/{{totalDays}} ({{pct}}%)'),C('যোগ্যতা','eligible',13,'center'),C('মন্তব্য','blank',22)],
+  sigs:[['প্রস্তুতকারী','',''],['যাচাইকারী','',''],['কোর্স পরিচালক','','']]}
+};
+let S,tplKey='proposal',tab=0;
+const load=k=>{tplKey=k;lastRef=null;const base={size:'A4',orient:'portrait',fs:12,pageNo:true,genDate:true,bnDigits:true};
+ if(k.startsWith('saved:')){const r=saved.find(x=>'saved:'+x.id===k);if(!r||!r.heading||!r.cols)return;const cp=o=>JSON.parse(JSON.stringify(o));S={h:cp(r.heading),cols:cp(r.cols),sigs:cp(r.sigs||[]),page:{...base,...r.page},name:r.name,id:r.id}}
+ else{S=JSON.parse(JSON.stringify(TEMPLATES[k]));S.sigs=S.sigs.map(x=>({label:x[0],name:x[1],desig:x[2]}));S.page={...base,orient:S.orient};S.name='';S.id=null}
+ useBn=S.page.bnDigits;render()};
+
+/* ---- Preview ---- */
+function paper(){
+ const h=S.h,pg=S.page,isL=pg.orient==='landscape',fs=pg.fs;
+ useBn=pg.bnDigits;
+ const w=isL?1123:794,hgt=isL?794:1123;
+ const P=$('#paper');P.style.width=w+'px';P.style.minHeight=hgt+'px';P.style.fontSize=fs+'px';
+ const head=`<div style="text-align:center;border-bottom:2px solid #1e293b;padding-bottom:8px">
+  ${h.govt?`<p style="font-size:${fs-1}px">${esc(h.govt)}</p>`:''}
+  ${h.office?`<h2 style="font-size:${fs+4}px;font-weight:700">${esc(h.office)}</h2>`:''}
+  ${h.address?`<p style="font-size:${fs}px;font-weight:500">${esc(h.address)}</p>`:''}
+  ${h.program?`<p style="font-size:${fs-1}px;font-weight:600;margin-top:3px">${esc(h.program)}</p>`:''}</div>
+  ${h.memoOn?`<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:${fs}px"><span>স্মারক নং: ${fill(h.memo)}</span><span>তারিখ: ${CTX.date}</span></div>`:''}
+  ${h.title?`<div style="text-align:center;margin-top:10px"><span style="display:inline-block;border:1px solid #94a3b8;background:#f1f5f9;padding:3px 14px;font-weight:700;font-size:${fs+1.5}px">${fill(h.title)}</span></div>`:''}
+  ${h.showMeta?`<div style="margin-top:8px;font-size:${fs-1}px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center"><span>প্রতিষ্ঠান: <b>${CTX.institute}</b></span><span>ট্রেড: <b>${CTX.trade}</b></span><span>ব্যাচ: <b>${CTX.batch}</b></span></div>`:''}`;
+ const tw=S.cols.reduce((a,c)=>a+(+c.w||0),0)||1;
+ const th=S.cols.map(c=>`<th style="width:${(c.w/tw*100).toFixed(1)}%;text-align:${c.align==='left'?'left':'center'}">${fill(c.label)}</th>`).join('');
+ const rows=SAMPLE.map((t,i)=>'<tr>'+S.cols.map(c=>`<td style="text-align:${c.align};white-space:pre-line;${c.field==='eligible'&&cell(c,t,i)==='অযোগ্য'?'color:#b91c1c;font-weight:600':''}">${cell(c,t,i)}</td>`).join('')+'</tr>').join('');
+ const sg=S.sigs.length?`<div style="display:grid;grid-template-columns:repeat(${Math.min(S.sigs.length,4)},1fr);gap:28px;margin-top:64px;text-align:center;font-size:${fs-.5}px">${S.sigs.map(s=>`<div><div style="border-top:1px solid #1e293b;padding-top:4px;font-weight:600">${esc(s.label)}</div>${s.name?`<div>(${fill(s.name,{trainer:'মো. আনিসুর রহমান'})})</div>`:''}${s.desig?`<div style="font-size:${fs-2}px">${esc(s.desig)}</div>`:''}</div>`).join('')}</div>`:'';
+ P.innerHTML=head+`<table style="font-size:${fs-1}px"><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table>`+sg+(pg.genDate||pg.pageNo?`<div style="display:flex;justify-content:space-between;margin-top:18px;font-size:${fs-3}px;color:#475569">${pg.genDate?`<span>তৈরির তারিখ: ${CTX.date}</span>`:'<span></span>'}${pg.pageNo?`<span>পৃষ্ঠা ${N(1)}/${N(1)}</span>`:''}</div>`:'');
+ $('#pgInfo').textContent=`${pg.size} · ${isL?'ল্যান্ডস্কেপ':'পোর্ট্রেট'} · ${N(fs)}pt`;
+ fit(w);
+}
+function fit(w){const st=$('#stage'),sc=$('#scaler');const k=Math.min(1,(st.clientWidth-20)/(w||794));sc.style.transform=`scale(${k})`;sc.style.width=w+'px';st.style.height=($('#paper').offsetHeight*k+20)+'px'}
+addEventListener('resize',()=>fit(S.page.orient==='landscape'?1123:794));
+
+/* ---- Editor panels ---- */
+const tokBtns=id=>`<div class="tok">${TOK.map(k=>`<button type="button" data-ins="${id}" data-k="${k}">+ ${TOKL[k]}</button>`).join('')}</div>`;
+const opts=(arr,v)=>arr.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${b}</option>`).join('');
+const fieldOpts=v=>{const g={};Object.entries(FIELDS).forEach(([k,f])=>(g[f.g]=g[f.g]||[]).push([k,f.l]));return Object.entries(g).map(([n,a])=>`<optgroup label="${n}">${opts(a,v)}</optgroup>`).join('')};
+const TABS=['শিরোনাম','টেবিল','স্বাক্ষর','ডাটা কোড','পাতা'];
+function panel(){
+ const h=S.h;
+ if(tab===0)return`<div class="stack">
+  ${[['govt','সরকারি শিরোনাম'],['office','অফিসের নাম'],['address','ঠিকানা'],['title','রিপোর্টের নাম']].map(([k,l])=>`<div><label class="f">${l}</label><input data-h="${k}" value="${esc(h[k])}">${k==='title'?tokBtns('title'):''}</div>`).join('')}
+  <div><label class="f">কার্যক্রমের বিবরণ</label><textarea data-h="program">${esc(h.program)}</textarea></div>
+  <label class="sw"><span>স্মারক নম্বর ও তারিখ দেখান</span><input type="checkbox" data-hb="memoOn" ${h.memoOn?'checked':''}></label>
+  ${h.memoOn?`<div><label class="f">স্মারক নম্বর</label><input data-h="memo" value="${esc(h.memo)}">${tokBtns('memo')}</div>`:''}
+  <label class="sw"><span>প্রতিষ্ঠান · ট্রেড · ব্যাচ লাইন</span><input type="checkbox" data-hb="showMeta" ${h.showMeta?'checked':''}></label></div>`;
+ if(tab===1)return`<div>${S.cols.map((c,i)=>`<div class="item"><div class="ibar"><span class="num">${N(i+1)}</span><strong class="grow" style="font-weight:500;font-size:13px">${esc(c.label)||'(শিরোনামহীন)'}</strong>
+   <button class="ib" data-mv="${i}" data-d="-1" ${i?'':'disabled'}>↑</button><button class="ib" data-mv="${i}" data-d="1" ${i<S.cols.length-1?'':'disabled'}>↓</button><button class="ib d" data-rm="${i}">✕</button></div>
+   <div class="stack"><div><label class="f">টেবিল হেড</label><input data-c="${i}.label" value="${esc(c.label)}"></div>
+   <div><label class="f">ঘরের তথ্য (ডাটা সোর্স)</label><select data-c="${i}.field">${fieldOpts(c.field)}</select></div>
+   ${c.field==='custom'?`<div><label class="f">সূত্র — {{nameBn}} {{presentDays}} {{pct}} ইত্যাদি</label><textarea data-c="${i}.text">${esc(c.text)}</textarea></div>`:''}
+   <div class="g2"><div><label class="f">প্রস্থ (আপেক্ষিক)</label><input type="number" min="3" max="60" data-c="${i}.w" value="${c.w}"></div><div><label class="f">সারিবদ্ধ</label><select data-c="${i}.align">${opts([['left','বামে'],['center','মাঝে'],['right','ডানে']],c.align)}</select></div></div></div></div>`).join('')}
+  <button class="btn add" id="addCol">+ কলাম যোগ করুন</button></div>`;
+ if(tab===2)return`<div>${S.sigs.map((s,i)=>`<div class="item"><div class="ibar"><span class="num">${N(i+1)}</span><strong class="grow" style="font-weight:500;font-size:13px">${esc(s.label)||'স্বাক্ষর'}</strong><button class="ib d" data-rs="${i}">✕</button></div>
+  <div class="stack"><div><label class="f">পদবি / লেবেল</label><input data-s="${i}.label" value="${esc(s.label)}"></div>
+  <div><label class="f">নাম (ঐচ্ছিক — {{trainer}} ব্যবহারযোগ্য)</label><input data-s="${i}.name" value="${esc(s.name)}"></div>
+  <div><label class="f">অতিরিক্ত পরিচয়</label><input data-s="${i}.desig" value="${esc(s.desig)}"></div></div></div>`).join('')}
+  ${S.sigs.length<4?'<button class="btn add" id="addSig">+ স্বাক্ষরের ঘর যোগ করুন</button>':''}
+  <p class="note" style="margin-top:10px">নাম ফাঁকা রাখলে শুধু লাইন ও পদবি ছাপা হবে — হাতে স্বাক্ষরের জন্য।</p></div>`;
+ if(tab===3)return codesPanel();
+ const pg=S.page;
+ return`<div class="stack"><div class="g2"><div><label class="f">কাগজ</label><select data-p="size">${opts([['A4','A4'],['Legal','Legal'],['Letter','Letter']],pg.size)}</select></div><div><label class="f">দিক</label><select data-p="orient">${opts([['portrait','পোর্ট্রেট'],['landscape','ল্যান্ডস্কেপ']],pg.orient)}</select></div></div>
+  <div><label class="f">ফন্ট সাইজ: ${N(pg.fs)}pt</label><input type="range" min="9" max="15" step=".5" value="${pg.fs}" data-p="fs" style="min-height:30px;padding:0"></div>
+  ${[['bnDigits','বাংলা অঙ্ক'],['pageNo','পৃষ্ঠা নম্বর'],['genDate','তৈরির তারিখ']].map(([k,l])=>`<label class="sw"><span>${l}</span><input type="checkbox" data-pb="${k}" ${pg[k]?'checked':''}></label>`).join('')}</div>`;
+}
+function render(){
+ chips();$('#tname').value=S.name||'';$('#delTpl').hidden=!S.id;
+ $('#tabs').innerHTML=TABS.map((t,i)=>`<button class="${i===tab?'on':''}" data-tab="${i}">${t}</button>`).join('');
+ $('#panel').innerHTML=panel();paper();
+}
+const toast=m=>{const t=$('#toast');t.textContent=m;t.className='toast on';clearTimeout(toast.id);toast.id=setTimeout(()=>t.className='toast',3200)};
+document.addEventListener('focusin',e=>{const t=e.target,d=t.dataset;if(!t.matches('input[type=text],input:not([type]),textarea'))return;if(d.h!==undefined)lastRef={kind:'h',key:d.h};else if(d.c)lastRef={kind:'c',key:d.c};else if(d.s)lastRef={kind:'s',key:d.s}});
+document.addEventListener('input',e=>{
+ if(e.target.id==='tname'){S.name=e.target.value;return}
+ const d=e.target.dataset;
+ if(d.h!==undefined)S.h[d.h]=e.target.value;
+ else if(d.c){const[i,k]=d.c.split('.');S.cols[i][k]=k==='w'?+e.target.value:e.target.value}
+ else if(d.s){const[i,k]=d.s.split('.');S.sigs[i][k]=e.target.value}
+ else if(d.p){S.page[d.p]=d.p==='fs'?+e.target.value:e.target.value;if(d.p==='fs')e.target.previousElementSibling.textContent='ফন্ট সাইজ: '+N(S.page.fs)+'pt'}
+ else return;
+ paper();
+});
+document.addEventListener('change',e=>{
+ const d=e.target.dataset;
+ if(d.hb){S.h[d.hb]=e.target.checked;render()}
+ else if(d.pb){S.page[d.pb]=e.target.checked;render()}
+ else if(d.p==='orient'||(d.c&&d.c.endsWith('field'))||(d.c&&d.c.endsWith('align')))render();
+});
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+ if(d.t)load(d.t);
+ else if(d.tab!==undefined){tab=+d.tab;render()}
+ else if(d.v){document.querySelectorAll('#mtabs button').forEach(x=>x.classList.toggle('on',x===b));$('#edit').classList.toggle('on',d.v==='edit');$('#pv').classList.toggle('on',d.v==='pv');paper()}
+ else if(d.mv!==undefined){const i=+d.mv,j=i+ +d.d;[S.cols[i],S.cols[j]]=[S.cols[j],S.cols[i]];render()}
+ else if(d.rm!==undefined){S.cols.splice(+d.rm,1);render()}
+ else if(d.rs!==undefined){S.sigs.splice(+d.rs,1);render()}
+ else if(b.id==='addCol'){S.cols.push(C('নতুন কলাম','blank',12,'center'));render()}
+ else if(b.id==='addSig'){S.sigs.push({label:'নতুন স্বাক্ষর',name:'',desig:''});render()}
+ else if(d.ins){const inp=document.querySelector(`[data-h="${d.ins}"]`);inp.value+=`{{${d.k}}}`;S.h[d.ins]=inp.value;paper()}
+ else if(b.id==='save')saveTpl();else if(b.id==='delTpl')delTpl();else if(d.ci)insertCode(d.ci);else if(d.cc)copyCode(d.cc);
+ else if(b.id==='print')toast('DocumentPrintFrame-এ প্রিভিউ খুলছে — PDF / DOCX / প্রিন্ট');
+});
+/* ---- ডাটা কোড ---- */
+const CODES=[
+['সাধারণ কোড','শিরোনাম · টেবিল · স্বাক্ষর — সর্বত্র',[['institute','প্রতিষ্ঠানের নাম'],['trade','ট্রেডের নাম'],['batch','ব্যাচের নাম'],['month','প্রতিবেদনের মাস'],['fiscalYear','অর্থবছর'],['date','আজকের তারিখ'],['total','মোট প্রশিক্ষণার্থী (জন)'],['workDays','মোট কার্যদিবস'],['pass','সনদের ন্যূনতম উপস্থিতি (%)']]],
+['স্বাক্ষর','শুধু স্বাক্ষরের নামে',[['trainer','প্রশিক্ষকের নাম']]],
+['প্রশিক্ষণার্থী','টেবিলের ঘর / কাস্টম সূত্র',[['serial','ক্রমিক নং'],['nameBn','নাম (বাংলা)'],['fatherNameBn','পিতার নাম'],['motherNameBn','মাতার নাম'],['traineeId','আইডি'],['registrationNumber','রেজিস্ট্রেশন নং'],['mobileNumber','মোবাইল'],['nid','NID/জন্মনিবন্ধন'],['gender','লিঙ্গ'],['dob','জন্ম তারিখ'],['address','ঠিকানা']]],
+['হাজিরা','টেবিলের ঘর / কাস্টম সূত্র',[['presentDays','উপস্থিত দিন'],['absentDays','অনুপস্থিত দিন'],['leaveDays','ছুটির দিন'],['totalDays','মোট দিন'],['pct','উপস্থিতির হার (%)'],['eligible','সনদের যোগ্যতা']]]];
+let lastRef=null;const KL={h:'শিরোনাম',c:'টেবিল',s:'স্বাক্ষর'};
+function codesPanel(){const ctx={...CTX,...rowMap(SAMPLE[0],0),trainer:'মো. আনিসুর রহমান'};const ex=k=>{const v=ctx[k];return typeof v==='number'?N(v):v};
+ return `<div class="stack"><p class="note">যেকোনো ঘরে <b>{{কোড}}</b> লিখলে রিপোর্টে আসল তথ্য বসবে। "যোগ" চাপলে শেষবার লেখা ঘরে (${lastRef?KL[lastRef.kind]+' ট্যাব':'এখনও কোনো ঘর নির্বাচিত নেই — তখন কপি হবে'}) বসবে।</p>`+
+ CODES.map(([g,u,a])=>`<div><div class="row" style="justify-content:space-between;margin-bottom:2px"><strong style="font-weight:500">${g}</strong><span class="sub" style="font-size:11.5px">${u}</span></div>${a.map(([k,d])=>`<div class="cd"><div class="grow"><code>{{${k}}}</code><div class="sub">${d} · যেমন: ${esc(ex(k))}</div></div><button class="ib" data-cc="${k}">কপি</button><button class="ib" style="color:var(--p)" data-ci="${k}">যোগ</button></div>`).join('')}</div>`).join('')+'</div>'}
+function copyCode(k){const c='{{'+k+'}}';try{navigator.clipboard.writeText(c).then(()=>toast(c+' কপি হয়েছে'),()=>toast(c))}catch(e){toast(c)}}
+function insertCode(k){const c='{{'+k+'}}';if(!lastRef)return copyCode(k);const{kind,key}=lastRef;
+ if(kind==='h')S.h[key]=(S.h[key]||'')+c;else{const[i,f]=key.split('.');const o=(kind==='c'?S.cols:S.sigs)[i];if(!o)return copyCode(k);o[f]=(o[f]||'')+c}
+ paper();toast(c+' যোগ হয়েছে — '+KL[kind]+' ট্যাবে দেখুন')}
+
+/* ---- ডাটাবেইজ (reportTemplates) ---- */
+let DB=null,saved=[],delArm=false;
+function chips(){$('#tpls').innerHTML=Object.entries(TEMPLATES).map(([k,t])=>`<button class="chip${k===tplKey?' on':''}" data-t="${k}">${t.name}</button>`).join('')+saved.map(r=>`<button class="chip${'saved:'+r.id===tplKey?' on':''}" data-t="saved:${esc(r.id)}">★ ${esc(r.name)}</button>`).join('')}
+async function saveTpl(){const name=(S.name||'').trim();if(!name){toast('আগে টেমপ্লেটের নাম লিখুন');$('#tname').focus();return}
+ if(!DB){toast('ডাটাবেইজ সংযোগ নেই — লগইন অবস্থায় পেজটি খুলুন');return}
+ const id=S.id||'t'+Date.now().toString(36);
+ try{await DB.collection('reportTemplates').doc(id).set({name,heading:S.h,cols:S.cols,sigs:S.sigs,page:S.page,updatedAt:Date.now()});S.id=id;tplKey='saved:'+id;render();toast('"'+name+'" ডাটাবেইজে সংরক্ষিত হয়েছে')}catch(e){toast('সংরক্ষণ ব্যর্থ: '+((e&&e.message)||'অজানা ত্রুটি'))}}
+async function delTpl(){if(!S.id||!DB)return;if(!delArm){delArm=true;$('#delTpl').textContent='নিশ্চিত?';setTimeout(()=>{delArm=false;$('#delTpl').textContent='মুছুন'},3000);return}
+ try{await DB.doc('reportTemplates/'+S.id).delete();delArm=false;toast('টেমপ্লেট মুছে ফেলা হয়েছে');load('proposal')}catch(e){toast('মুছতে ব্যর্থ')}}
+(async()=>{try{DB=window.claude?await claude.use('db'):null;if(!DB)return;
+ DB.collection('reportTemplates').onSnapshot(q=>{saved=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));chips()},()=>{})}catch(e){DB=null}})();
+load('proposal');
+</script>
+</body>
+</html>

@@ -12,6 +12,11 @@ import {
   printCustomHtmlDocument,
   FileExportResult
 } from './fileExportService';
+import {
+  getAppFontCssStack,
+  getGoogleFontsStylesheetUrl,
+  getStoredGlobalFontFamily,
+} from './theme';
 
 /**
  * Format a cell value for CSV export.
@@ -248,7 +253,7 @@ export async function printBRNReportPDF(options: BRNPrintReportOptions): Promise
 
             return `<tr>
               <td style="text-align:center;font-weight:700;">${esc(t.sl || idx + 1)}</td>
-              <td style="font-family:monospace;font-weight:700;">
+              <td style="font-family:inherit;font-weight:700;">
                 <div>${esc(t.id || '-')}</div>
                 <div style="font-weight:400;font-size:0.88em;">${esc(t.regNo || '—')}</div>
               </td>
@@ -257,10 +262,10 @@ export async function printBRNReportPDF(options: BRNPrintReportOptions): Promise
                 <div style="font-size:0.88em;color:#334155;">${esc(t.nameEn || '-')}</div>
               </td>
               <td>
-                <div style="font-family:monospace;font-weight:700;">${esc(t.ubrn || 'অনুপস্থিত')}</div>
+                <div style="font-family:inherit;font-weight:700;">${esc(t.ubrn || 'অনুপস্থিত')}</div>
                 <div style="font-size:0.84em;color:#334155;">${esc(t.ubrnValidation)}</div>
               </td>
-              <td style="font-family:monospace;">${esc(t.dob || '—')}</td>
+              <td style="font-family:inherit;">${esc(t.dob || '—')}</td>
               <td>${esc(t.gender || '-')}</td>
               <td>
                 <div style="font-weight:600;">${esc(t.batch || '-')}</div>
@@ -272,12 +277,22 @@ export async function printBRNReportPDF(options: BRNPrintReportOptions): Promise
           })
           .join('');
 
+  const fontOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const activeGlobalFont = getStoredGlobalFontFamily();
+  const fontCssStack = getAppFontCssStack(activeGlobalFont);
+  const googleFontHref = getGoogleFontsStylesheetUrl(activeGlobalFont);
   const html = `<!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
   <title>${esc(title)}</title>
+  ${googleFontHref ? `<link rel="stylesheet" href="${googleFontHref}" />` : ''}
   <style>
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 400; font-style: normal; }
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 500; font-style: normal; }
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 600; font-style: normal; }
+    @font-face { font-family: 'Nikosh'; src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh'); font-weight: 700; font-style: normal; }
+    body { font-family: ${fontCssStack}; color: #000000; }
     .brn-hdr { text-align:center; border-bottom: 1.5px solid #475569; padding-bottom: 8px; margin-bottom: 10px; }
     .brn-hdr h1 { margin:0; font-size: 1.35em; font-weight: 800; }
     .brn-hdr h2 { margin:2px 0 0; font-size: 1.05em; font-weight: 700; }
@@ -378,6 +393,9 @@ export async function generateBRNReportPDF(options: BRNPrintReportOptions): Prom
   document.body.appendChild(container);
 
   try {
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      await document.fonts.ready;
+    }
     for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
       const startIdx = pageIdx * ROWS_PER_PAGE;
       const pageItems = trainees.slice(startIdx, startIdx + ROWS_PER_PAGE);
@@ -387,7 +405,7 @@ export async function generateBRNReportPDF(options: BRNPrintReportOptions): Prom
       pageEl.style.boxSizing = 'border-box';
       pageEl.style.padding = '18px 24px 20px 24px';
       pageEl.style.backgroundColor = '#ffffff';
-      pageEl.style.fontFamily = "'Noto Sans Bengali', Arial, sans-serif";
+      pageEl.style.fontFamily = getAppFontCssStack(getStoredGlobalFontFamily());
       pageEl.style.color = '#000000';
 
       const rowsHtml = pageItems.length === 0
@@ -407,7 +425,7 @@ export async function generateBRNReportPDF(options: BRNPrintReportOptions): Prom
             return `
               <tr style="border-bottom: 1px solid #94a3b8; font-size: 9.5px; color: #000000;">
                 <td style="padding: 6px 5px; text-align: center; font-weight: bold; border-right: 1px solid #94a3b8;">${t.sl || (startIdx + idx + 1)}</td>
-                <td style="padding: 6px 7px; font-family: monospace; font-weight: bold; border-right: 1px solid #94a3b8;">
+                <td style="padding: 6px 7px; font-family: inherit; font-weight: bold; border-right: 1px solid #94a3b8;">
                   <div>${t.id || '-'}</div>
                   <div style="font-weight: normal; font-size: 8.5px;">${t.regNo || '—'}</div>
                 </td>
@@ -416,10 +434,10 @@ export async function generateBRNReportPDF(options: BRNPrintReportOptions): Prom
                   <div style="font-size: 8.5px; color: #334155;">${t.nameEn || '-'}</div>
                 </td>
                 <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">
-                  <div style="font-family: monospace; font-weight: bold; font-size: 10px;">${t.ubrn || 'অনুপস্থিত'}</div>
+                  <div style="font-family: inherit; font-weight: bold; font-size: 10px;">${t.ubrn || 'অনুপস্থিত'}</div>
                   <div style="font-size: 8px; color: #334155;">${t.ubrnValidation}</div>
                 </td>
-                <td style="padding: 6px 7px; font-family: monospace; border-right: 1px solid #94a3b8;">${t.dob || '—'}</td>
+                <td style="padding: 6px 7px; font-family: inherit; border-right: 1px solid #94a3b8;">${t.dob || '—'}</td>
                 <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">${t.gender || '-'}</td>
                 <td style="padding: 6px 7px; border-right: 1px solid #94a3b8;">
                   <div style="font-weight: 600;">${t.batch || '-'}</div>

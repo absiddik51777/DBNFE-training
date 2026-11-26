@@ -1,5 +1,7 @@
 import { db, auth } from './firebase';
 import { handleFirestoreError } from './securityErrors';
+import { normalizeDocumentPrintConfig } from './documentFrameService';
+import { isValidAppFontFamily, getAppFontOption } from './theme';
 import {
   registerActiveListener,
   isPermissionDeniedError,
@@ -79,12 +81,28 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   ]
 };
 
+function normalizeSystemSettingsFonts(raw: SystemSettings): SystemSettings {
+  return {
+    ...raw,
+    ...(raw.globalFontFamily !== undefined
+      ? {
+          globalFontFamily: isValidAppFontFamily(raw.globalFontFamily)
+            ? raw.globalFontFamily
+            : 'Nikosh',
+        }
+      : {}),
+  };
+}
+
 let cachedSystemSettings: SystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
 if (typeof window !== 'undefined') {
   try {
     const saved = localStorage.getItem('bnfe_system_settings');
     if (saved) {
-      cachedSystemSettings = { ...DEFAULT_SYSTEM_SETTINGS, ...JSON.parse(saved) };
+      cachedSystemSettings = normalizeSystemSettingsFonts({
+        ...DEFAULT_SYSTEM_SETTINGS,
+        ...JSON.parse(saved),
+      });
       setAuditLocationModeCache(cachedSystemSettings.auditLocationMode);
     }
   } catch (e) {}
@@ -195,6 +213,26 @@ function normalizeDoc<T extends { id: string }>(col: string, data: any, docId: s
     } else {
       item.status = 'Active';
     }
+    item.createdAt = toTimestampNumber(item.createdAt);
+    if (item.updatedAt) item.updatedAt = toTimestampNumber(item.updatedAt);
+  } else if (col === 'report_templates') {
+    const rawHeading = (item.heading && typeof item.heading === 'object' ? item.heading : {}) as Record<string, any>;
+    item.name = String(item.name || 'নামবিহীন টেমপ্লেট').trim() || 'নামবিহীন টেমপ্লেট';
+    item.dataSource = item.dataSource === 'attendance-summary' ? 'attendance-summary' : 'trainees';
+    item.heading = {
+      govtTitle: typeof rawHeading.govtTitle === 'string' ? rawHeading.govtTitle : '',
+      officeTitle: typeof rawHeading.officeTitle === 'string' ? rawHeading.officeTitle : '',
+      officeAddress: typeof rawHeading.officeAddress === 'string' ? rawHeading.officeAddress : '',
+      programTitle: typeof rawHeading.programTitle === 'string' ? rawHeading.programTitle : '',
+      reportTitle: typeof rawHeading.reportTitle === 'string' ? rawHeading.reportTitle : '',
+      showMemo: Boolean(rawHeading.showMemo),
+      memoNumber: typeof rawHeading.memoNumber === 'string' ? rawHeading.memoNumber : '',
+      showMetaLine: rawHeading.showMetaLine !== false,
+    };
+    item.columns = Array.isArray(item.columns) ? item.columns : [];
+    item.signatures = Array.isArray(item.signatures) ? item.signatures : [];
+    item.page = normalizeDocumentPrintConfig(item.page, 'portrait');
+    item.useBengaliDigits = item.useBengaliDigits !== false;
     item.createdAt = toTimestampNumber(item.createdAt);
     if (item.updatedAt) item.updatedAt = toTimestampNumber(item.updatedAt);
   }
@@ -330,7 +368,8 @@ export const dataService = {
       'attendance',
       'exams',
       'marks',
-      'notifications'
+      'notifications',
+      'report_templates'
     ];
 
     if (!alwaysDirectDelete.includes(collectionName)) {
@@ -1039,11 +1078,11 @@ export const dataService = {
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();
-        cachedSystemSettings = {
+        cachedSystemSettings = normalizeSystemSettingsFonts({
           ...DEFAULT_SYSTEM_SETTINGS,
           ...data,
           allowDataDeletion: data.allowDataDeletion === true
-        };
+        });
       } else {
         // Initialize default in Firestore
         await setDoc(docRef, sanitizeForFirestore(DEFAULT_SYSTEM_SETTINGS));
@@ -1095,6 +1134,8 @@ export const dataService = {
               ? 'বাধ্যতামূলক'
               : 'ঐচ্ছিক'
           }`
+        : updates.globalFontFamily !== undefined
+        ? `গ্লোবাল ফন্ট পরিবর্তন: ${getAppFontOption(updates.globalFontFamily).nameBn}`
         : 'সিস্টেম সেটিংস হালনাগাদ';
 
     await recordAuditedSave({
@@ -1122,11 +1163,11 @@ export const dataService = {
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        cachedSystemSettings = {
+        cachedSystemSettings = normalizeSystemSettingsFonts({
           ...DEFAULT_SYSTEM_SETTINGS,
           ...data,
           allowDataDeletion: data.allowDataDeletion === true
-        };
+        });
       } else {
         cachedSystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
       }

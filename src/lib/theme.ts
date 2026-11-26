@@ -38,9 +38,170 @@ export interface ThemePreset {
   dark: ThemeTokens;
 }
 
+export type AppFontFamily =
+  | 'Nikosh'
+  | 'Hind Siliguri'
+  | 'Noto Sans Bengali'
+  | 'Noto Serif Bengali'
+  | 'Baloo Da 2'
+  | 'Tiro Bangla'
+  | 'SolaimanLipi'
+  | 'Kalpurush'
+  | 'system-ui';
+
+export interface AppFontOption {
+  id: AppFontFamily;
+  name: string;
+  nameBn: string;
+  categoryBn: string;
+  descriptionBn: string;
+  sampleBn: string;
+  cssStack: string;
+  docxFont: string;
+  isGoogleFont?: boolean;
+}
+
+export const APP_FONT_OPTIONS: ReadonlyArray<AppFontOption> = [
+  {
+    id: 'Nikosh',
+    name: 'Nikosh',
+    nameBn: 'নিকষ (ডিফল্ট)',
+    categoryBn: 'সরকারি ও দাপ্তরিক',
+    descriptionBn: 'বাংলাদেশ সরকারি নথি, প্রস্তাব ও রিপোর্টিংয়ের স্ট্যান্ডার্ড ফন্ট',
+    sampleBn: 'গণপ্রজাতন্ত্রী বাংলাদেশ সরকার • ১২৩৪৫৬',
+    cssStack: "'Nikosh', sans-serif",
+    docxFont: 'Nikosh',
+  },
+  {
+    id: 'Hind Siliguri',
+    name: 'Hind Siliguri',
+    nameBn: 'হিন্দ শিলিগুড়ি',
+    categoryBn: 'আধুনিক ইউআই',
+    descriptionBn: 'পরিচ্ছন্ন, আধুনিক ও উচ্চ পাঠযোগ্য স্ক্রিন ফন্ট',
+    sampleBn: 'উপানুষ্ঠানিক শিক্ষা ব্যুরো • ১২৩৪৫৬',
+    cssStack: "'Hind Siliguri', sans-serif",
+    docxFont: 'Hind Siliguri',
+    isGoogleFont: true,
+  },
+  {
+    id: 'Noto Sans Bengali',
+    name: 'Noto Sans Bengali',
+    nameBn: 'নোটো স্যান্স বাংলা',
+    categoryBn: 'সুষম ইউনিকোড',
+    descriptionBn: 'গুগল নোটো সিরিজের স্পষ্ট ও ভারসাম্যপূর্ণ বাংলা-ইংরেজি ফন্ট',
+    sampleBn: 'দক্ষতা উন্নয়ন প্রশিক্ষণ • ১২৩৪৫৬',
+    cssStack: "'Noto Sans Bengali', sans-serif",
+    docxFont: 'Noto Sans Bengali',
+    isGoogleFont: true,
+  },
+  {
+    id: 'Noto Serif Bengali',
+    name: 'Noto Serif Bengali',
+    nameBn: 'নোটো সেরিফ বাংলা',
+    categoryBn: 'ক্লাসিক সেরিফ',
+    descriptionBn: 'সনদপত্র, স্মারক ও আনুষ্ঠানিক দলিলের জন্য মার্জিত সেরিফ ফন্ট',
+    sampleBn: 'বৃত্তিমূলক প্রশিক্ষণ সনদ • ১২৩৪৫৬',
+    cssStack: "'Noto Serif Bengali', serif",
+    docxFont: 'Noto Serif Bengali',
+    isGoogleFont: true,
+  },
+  {
+    id: 'Baloo Da 2',
+    name: 'Baloo Da 2',
+    nameBn: 'বালু দা ২',
+    categoryBn: 'রাউন্ডেড ডিসপ্লে',
+    descriptionBn: 'গোলাকার ও প্রাণবন্ত ড্যাশবোর্ড-বান্ধব বাংলা ফন্ট',
+    sampleBn: 'প্রশিক্ষণার্থী উপস্থিতি ও মূল্যায়ন • ১২৩৪৫৬',
+    cssStack: "'Baloo Da 2', sans-serif",
+    docxFont: 'Baloo Da 2',
+    isGoogleFont: true,
+  },
+  {
+    id: 'Tiro Bangla',
+    name: 'Tiro Bangla',
+    nameBn: 'তিরো বাংলা',
+    categoryBn: 'ঐতিহ্যবাহী প্রিন্ট',
+    descriptionBn: 'প্রকাশনা ও মুদ্রিত নথির জন্য ক্লাসিক ছাপাখানার ফন্ট',
+    sampleBn: 'উপানুষ্ঠানিক শিক্ষা কার্যক্রম • ১২৩৪৫৬',
+    cssStack: "'Tiro Bangla', serif",
+    docxFont: 'Tiro Bangla',
+    isGoogleFont: true,
+  },
+  {
+    id: 'SolaimanLipi',
+    name: 'SolaimanLipi',
+    nameBn: 'সোলাইমানলিপি',
+    categoryBn: 'লোকাল / ডেস্কটপ',
+    descriptionBn: 'জনপ্রিয় বাংলা ওয়েব ও প্রিন্ট ফন্ট (ডিভাইসে না থাকলে সিস্টেম ফলব্যাক)',
+    sampleBn: 'প্রশিক্ষণ কেন্দ্র ব্যবস্থাপনা • ১২৩৪৫৬',
+    cssStack: "'SolaimanLipi', 'Noto Sans Bengali', sans-serif",
+    docxFont: 'SolaimanLipi',
+  },
+  {
+    id: 'Kalpurush',
+    name: 'Kalpurush',
+    nameBn: 'কালপুরুষ',
+    categoryBn: 'লোকাল / ডেস্কটপ',
+    descriptionBn: 'প্রচলিত বাংলা প্রাতিষ্ঠানিক ফন্ট (ডিভাইসে না থাকলে সিস্টেম ফলব্যাক)',
+    sampleBn: 'সাপ্তাহিক হাজিরা প্রতিবেদন • ১২৩৪৫৬',
+    cssStack: "'Kalpurush', 'Noto Sans Bengali', sans-serif",
+    docxFont: 'Kalpurush',
+  },
+  {
+    id: 'system-ui',
+    name: 'System Default',
+    nameBn: 'সিস্টেম ডিফল্ট',
+    categoryBn: 'ডিভাইস নেটিভ',
+    descriptionBn: 'ব্যবহৃত ডিভাইস বা অপারেটিং সিস্টেমের নিজস্ব ডিফল্ট ফন্ট',
+    sampleBn: 'সিস্টেম নেটিভ বাংলা ও ইংরেজি • 123456',
+    cssStack: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Bengali', sans-serif",
+    docxFont: 'Vrinda',
+  },
+];
+
+export const GOOGLE_FONTS_ALL_URL =
+  'https://fonts.googleapis.com/css2?family=Baloo+Da+2:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@400;500;600;700&family=Tiro+Bangla:ital@0;1&display=swap';
+
+export function isValidAppFontFamily(val: unknown): val is AppFontFamily {
+  return (
+    typeof val === 'string' &&
+    APP_FONT_OPTIONS.some((opt) => opt.id === val)
+  );
+}
+
+export function getAppFontOption(fontFamily?: AppFontFamily | string | null): AppFontOption {
+  return (
+    APP_FONT_OPTIONS.find((opt) => opt.id === fontFamily) || APP_FONT_OPTIONS[0]
+  );
+}
+
+export function getAppFontCssStack(fontFamily?: AppFontFamily | string | null): string {
+  return getAppFontOption(fontFamily).cssStack;
+}
+
+export function getAppFontDocxName(fontFamily?: AppFontFamily | string | null): string {
+  return getAppFontOption(fontFamily).docxFont;
+}
+
+export function getGoogleFontsStylesheetUrl(fontFamily?: AppFontFamily | string | null): string | null {
+  const opt = getAppFontOption(fontFamily);
+  if (!opt.isGoogleFont) return null;
+  const familyMap: Record<string, string> = {
+    'Hind Siliguri': 'Hind+Siliguri:wght@400;500;600;700',
+    'Noto Sans Bengali': 'Noto+Sans+Bengali:wght@400;500;600;700',
+    'Noto Serif Bengali': 'Noto+Serif+Bengali:wght@400;500;600;700',
+    'Baloo Da 2': 'Baloo+Da+2:wght@400;500;600;700',
+    'Tiro Bangla': 'Tiro+Bangla:ital@0;1',
+  };
+  const query = familyMap[opt.id];
+  return query ? `https://fonts.googleapis.com/css2?family=${query}&display=swap` : null;
+}
+
 export interface ThemeConfig {
   mode: ThemeMode;
   presetId: ThemePresetId;
+  fontFamily: AppFontFamily;
+  fontUpdatedAt?: number;
   light: ThemeTokens;
   dark: ThemeTokens;
 }
@@ -323,6 +484,7 @@ export const THEME_TOKEN_METADATA: ThemeTokenMeta[] = [
 export const DEFAULT_THEME_CONFIG: ThemeConfig = {
   mode: 'system',
   presetId: 'emerald-slate',
+  fontFamily: 'Nikosh',
   light: { ...DEFAULT_LIGHT_TOKENS },
   dark: { ...DEFAULT_DARK_TOKENS },
 };
@@ -467,7 +629,8 @@ export function buildThemeCssVariables(
 
 export function applyThemeToDocument(
   tokens: ThemeTokens,
-  resolvedMode: ResolvedThemeMode
+  resolvedMode: ResolvedThemeMode,
+  fontFamily: AppFontFamily = 'Nikosh'
 ): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -478,6 +641,10 @@ export function applyThemeToDocument(
     root.classList.remove('dark');
   }
   root.style.colorScheme = resolvedMode;
+
+  const fontCssStack = getAppFontCssStack(fontFamily);
+  root.style.setProperty('--theme-font-family', fontCssStack);
+  root.dataset.appFont = getAppFontOption(fontFamily).id;
 
   const vars = buildThemeCssVariables(tokens, resolvedMode);
   Object.entries(vars).forEach(([name, value]) => {
@@ -534,15 +701,34 @@ export function loadThemeConfig(): ThemeConfig {
       ? (parsed.presetId as ThemePresetId)
       : 'emerald-slate';
 
+    const fontFamily: AppFontFamily = isValidAppFontFamily(parsed.fontFamily)
+      ? parsed.fontFamily
+      : DEFAULT_THEME_CONFIG.fontFamily;
+
+    const fontUpdatedAt =
+      typeof parsed.fontUpdatedAt === 'number' && Number.isFinite(parsed.fontUpdatedAt)
+        ? parsed.fontUpdatedAt
+        : undefined;
+
     return {
       mode,
       presetId,
+      fontFamily,
+      ...(fontUpdatedAt !== undefined ? { fontUpdatedAt } : {}),
       light: sanitizeTokens(parsed.light, DEFAULT_LIGHT_TOKENS),
       dark: sanitizeTokens(parsed.dark, DEFAULT_DARK_TOKENS),
     };
   } catch {
     return DEFAULT_THEME_CONFIG;
   }
+}
+
+export function getStoredGlobalFontFamily(): AppFontFamily {
+  return loadThemeConfig().fontFamily;
+}
+
+export function getStoredGlobalFontCssStack(): string {
+  return getAppFontCssStack(getStoredGlobalFontFamily());
 }
 
 export function saveThemeConfig(config: ThemeConfig): void {

@@ -1,3 +1,5 @@
+import type { AppFontFamily } from '../lib/theme';
+
 export type UserRole = 'Course Director' | 'FMA' | 'Trainer' | string;
 
 export interface PermissionDefinition {
@@ -348,11 +350,79 @@ export interface SystemSettings {
   weeklySignatureHeading?: WeeklySignatureHeading;
   weeklySignaturePageConfig?: WeeklySignaturePageConfig;
   documentPrintConfig?: DocumentPrintConfig;
+  globalFontFamily?: AppFontFamily;
+  globalFontUpdatedAt?: number;
   gradingRules?: {
     grade: string;
     minPercent: number;
   }[];
   updatedAt?: number;
   updatedBy?: string;
+}
+
+export type ReportFieldKey =
+  | 'serialNo'
+  | 'traineeId'
+  | 'registrationNumber'
+  | 'nameBn'
+  | 'nameEn'
+  | 'fatherNameBn'
+  | 'motherNameBn'
+  | 'dateOfBirth'
+  | 'age'
+  | 'gender'
+  | 'nidOrBirthRegistration'
+  | 'brnStatus'
+  | 'mobileNumber'
+  | 'address'
+  | 'instituteName'
+  | 'tradeName'
+  | 'batchName'
+  | 'admissionDate'
+  | 'status'
+  | 'totalClasses'
+  | 'presentDays'
+  | 'absentDays'
+  | 'leaveDays'
+  | 'attendanceRate'
+  | 'eligible';
+
+export interface ReportTemplateColumn {
+  id: string;
+  label: string;
+  field: ReportFieldKey | 'custom' | 'blank';
+  text?: string;
+  widthWeight: number;
+  align: 'left' | 'center' | 'right';
+}
+
+export interface ReportTemplateSignature {
+  id: string;
+  label: string;
+  name?: string;
+  designation?: string;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  dataSource: 'trainees' | 'attendance-summary';
+  heading: {
+    govtTitle: string;
+    officeTitle: string;
+    officeAddress: string;
+    programTitle: string;
+    reportTitle: string;
+    showMemo: boolean;
+    memoNumber: string;
+    showMetaLine: boolean;
+  };
+  columns: ReportTemplateColumn[];
+  signatures: ReportTemplateSignature[]; // 0 to 4
+  page: DocumentPrintConfig;
+  useBengaliDigits: boolean;
+  createdBy: string;
+  createdAt: number;
+  updatedAt?: number;
 }
 

@@ -22,6 +22,12 @@ import {
   convertMillimetersToTwip,
 } from 'docx';
 import { saveFile } from '../../lib/fileExportService';
+import {
+  getAppFontCssStack,
+  getAppFontDocxName,
+  getGoogleFontsStylesheetUrl,
+  getStoredGlobalFontFamily,
+} from '../../lib/theme';
 import type {
   WeeklySignatureFontFamily,
   WeeklySignatureOrientation,
@@ -115,47 +121,14 @@ export const FONT_FAMILY_OPTIONS: ReadonlyArray<{
 }> = [
   {
     value: 'Nikosh',
-    label: 'Nikosh (নিকষ - ডিফল্ট)',
-    cssStack: "'Nikosh', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif",
+    label: 'Nikosh (নিকষ - নির্ধারিত)',
+    cssStack: "'Nikosh', sans-serif",
     docxFont: 'Nikosh',
-  },
-  {
-    value: 'Hind Siliguri',
-    label: 'Hind Siliguri',
-    cssStack: "'Hind Siliguri', 'Noto Sans Bengali', 'Nikosh', sans-serif",
-    docxFont: 'Hind Siliguri',
-  },
-  {
-    value: 'Noto Sans Bengali',
-    label: 'Noto Sans Bengali',
-    cssStack: "'Noto Sans Bengali', 'Hind Siliguri', 'Nikosh', sans-serif",
-    docxFont: 'Noto Sans Bengali',
-  },
-  {
-    value: 'SolaimanLipi',
-    label: 'SolaimanLipi (সোলাইমানলিপি)',
-    cssStack: "'SolaimanLipi', 'Nikosh', 'Noto Sans Bengali', sans-serif",
-    docxFont: 'SolaimanLipi',
-  },
-  {
-    value: 'Kalpurush',
-    label: 'Kalpurush (কালপুরুষ)',
-    cssStack: "'Kalpurush', 'Nikosh', 'Noto Sans Bengali', sans-serif",
-    docxFont: 'Kalpurush',
-  },
-  {
-    value: 'system-ui',
-    label: 'System Sans (সিস্টেম ফন্ট)',
-    cssStack: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Bengali', sans-serif",
-    docxFont: 'Vrinda',
   },
 ];
 
 const VALID_PAPER_SIZES = new Set<WeeklySignaturePaperSize>(['a4', 'legal', 'letter']);
 const VALID_ORIENTATIONS = new Set<WeeklySignatureOrientation>(['portrait', 'landscape']);
-const VALID_FONTS = new Set<WeeklySignatureFontFamily>(
-  FONT_FAMILY_OPTIONS.map((f) => f.value)
-);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
   const num = typeof value === 'number' ? value : Number(value);
@@ -176,10 +149,8 @@ export function normalizePageConfig(
       ? raw.orientation
       : DEFAULT_SHEET_PAGE_CONFIG.orientation;
 
-  const fontFamily: WeeklySignatureFontFamily =
-    raw?.fontFamily && VALID_FONTS.has(raw.fontFamily)
-      ? raw.fontFamily
-      : DEFAULT_SHEET_PAGE_CONFIG.fontFamily;
+  // Enforce Nikosh uniformly across all documents and templates
+  const fontFamily: WeeklySignatureFontFamily = 'Nikosh';
 
   return {
     paperSize,
@@ -213,18 +184,12 @@ export function getPaperDimensionsMm(
   };
 }
 
-export function getFontCssStack(fontFamily: WeeklySignatureFontFamily): string {
-  return (
-    FONT_FAMILY_OPTIONS.find((f) => f.value === fontFamily)?.cssStack ||
-    FONT_FAMILY_OPTIONS[0].cssStack
-  );
+export function getFontCssStack(_fontFamily?: WeeklySignatureFontFamily): string {
+  return getAppFontCssStack(getStoredGlobalFontFamily());
 }
 
-export function getDocxFontName(fontFamily: WeeklySignatureFontFamily): string {
-  return (
-    FONT_FAMILY_OPTIONS.find((f) => f.value === fontFamily)?.docxFont ||
-    FONT_FAMILY_OPTIONS[0].docxFont
-  );
+export function getDocxFontName(_fontFamily?: WeeklySignatureFontFamily): string {
+  return getAppFontDocxName(getStoredGlobalFontFamily());
 }
 
 export interface SignatureSheetMeta {
@@ -1612,16 +1577,55 @@ export async function buildHtml(
     )
     .join('\n');
 
+  const fontOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const activeGlobalFont = getStoredGlobalFontFamily();
+  const googleFontHref = getGoogleFontsStylesheetUrl(activeGlobalFont);
+  const googleFontLinks = googleFontHref
+    ? `\n  <link rel="preconnect" href="https://fonts.googleapis.com" />\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n  <link rel="stylesheet" href="${googleFontHref}" />`
+    : '';
   const html = `<!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${docTitle}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
+  <title>${docTitle}</title>${googleFontLinks}
   <style>
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 500;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 800;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Nikosh';
+      src: url('${fontOrigin}/fonts/Nikosh.ttf') format('truetype'), local('Nikosh');
+      font-weight: 900;
+      font-style: normal;
+    }
     @page {
       size: ${dims.cssPageSize} ${pageConfig.orientation};
       margin: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;

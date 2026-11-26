@@ -372,6 +372,7 @@ export function inferCollectionModule(collectionName: string): AuditModule {
     case 'roles':
     case 'settings':
     case 'systemSettings':
+    case 'report_templates':
       return 'settings';
     default:
       return 'settings';
@@ -421,6 +422,7 @@ const COLLECTION_TITLE_BN: Record<string, string> = {
   trade_skill_modules: 'স্কিল মডিউল',
   trade_literacy_modules: 'লিটারেসি মডিউল',
   batch_calendar_progress: 'ক্যালেন্ডার অগ্রগতি',
+  report_templates: 'কাস্টম রিপোর্ট টেমপ্লেট',
 };
 
 function buildDefaultTitle(
