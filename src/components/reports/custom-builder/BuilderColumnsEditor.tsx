@@ -8,6 +8,7 @@ import {
   getFieldOption,
   LastFocusTarget,
 } from './fieldCatalog';
+import { CodeAutocompleteField } from './CodeAutocompleteField';
 
 interface BuilderColumnsEditorProps {
   columns: ReportTemplateColumn[];
@@ -128,16 +129,16 @@ export const BuilderColumnsEditor: React.FC<BuilderColumnsEditorProps> = ({
               >
                 টেবিল হেড
               </label>
-              <input
+              <CodeAutocompleteField
                 id={`crb-col-label-${col.id}`}
-                type="text"
                 maxLength={120}
                 value={col.label}
                 onFocus={() =>
                   onFocusTarget?.({ kind: 'column', index: idx, key: 'label' })
                 }
-                onChange={(e) => updateColumn(col.id, { label: e.target.value })}
+                onChangeValue={(val) => updateColumn(col.id, { label: val })}
                 placeholder="যেমন: প্রশিক্ষণার্থীর নাম"
+                scope="document"
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
               />
             </div>
@@ -178,18 +179,20 @@ export const BuilderColumnsEditor: React.FC<BuilderColumnsEditorProps> = ({
                   htmlFor={`crb-col-custom-${col.id}`}
                   className="block text-xs text-theme-text-secondary mb-1"
                 >
-                  সূত্র — {'{{nameBn}}'} {'{{presentDays}}'} {'{{pct}}'} ইত্যাদি
+                  সূত্র — <code className="font-mono">{'{{'}</code> লিখলে কোড সাজেশন আসবে
                 </label>
-                <textarea
+                <CodeAutocompleteField
                   id={`crb-col-custom-${col.id}`}
+                  multiline
                   rows={2}
                   maxLength={200}
                   value={col.text || ''}
                   onFocus={() =>
                     onFocusTarget?.({ kind: 'column', index: idx, key: 'text' })
                   }
-                  onChange={(e) => updateColumn(col.id, { text: e.target.value })}
+                  onChangeValue={(val) => updateColumn(col.id, { text: val })}
                   placeholder="{{nameBn}}&#10;পিতা: {{fatherNameBn}}"
+                  scope="all"
                   className="w-full px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-sm text-theme-text-primary leading-relaxed resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
                 />
               </div>

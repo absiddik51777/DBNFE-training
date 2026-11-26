@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ReportTemplate } from '../../../types';
 import { HEADER_QUICK_TOKENS, LastFocusTarget } from './fieldCatalog';
+import { CodeAutocompleteField } from './CodeAutocompleteField';
 
 interface BuilderHeadingEditorProps {
   heading: ReportTemplate['heading'];
@@ -36,14 +37,14 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
         >
           সরকারি শিরোনাম
         </label>
-        <input
+        <CodeAutocompleteField
           id="crb-h-govt"
-          type="text"
           maxLength={200}
           value={heading.govtTitle}
           onFocus={() => onFocusTarget?.({ kind: 'heading', key: 'govtTitle' })}
-          onChange={(e) => updateField('govtTitle', e.target.value)}
+          onChangeValue={(val) => updateField('govtTitle', val)}
           placeholder="গণপ্রজাতন্ত্রী বাংলাদেশ সরকার"
+          scope="document"
           className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface-subtle border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
         />
       </div>
@@ -55,14 +56,14 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
         >
           অফিসের নাম
         </label>
-        <input
+        <CodeAutocompleteField
           id="crb-h-office"
-          type="text"
           maxLength={200}
           value={heading.officeTitle}
           onFocus={() => onFocusTarget?.({ kind: 'heading', key: 'officeTitle' })}
-          onChange={(e) => updateField('officeTitle', e.target.value)}
+          onChangeValue={(val) => updateField('officeTitle', val)}
           placeholder="জেলা উপানুষ্ঠানিক শিক্ষা ব্যুরো"
+          scope="document"
           className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface-subtle border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
         />
       </div>
@@ -74,14 +75,14 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
         >
           ঠিকানা
         </label>
-        <input
+        <CodeAutocompleteField
           id="crb-h-addr"
-          type="text"
           maxLength={250}
           value={heading.officeAddress}
           onFocus={() => onFocusTarget?.({ kind: 'heading', key: 'officeAddress' })}
-          onChange={(e) => updateField('officeAddress', e.target.value)}
+          onChangeValue={(val) => updateField('officeAddress', val)}
           placeholder="কালেক্টরেট ভবন, ময়মনসিংহ"
+          scope="document"
           className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface-subtle border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
         />
       </div>
@@ -93,14 +94,14 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
         >
           রিপোর্টের নাম
         </label>
-        <input
+        <CodeAutocompleteField
           id="crb-h-title"
-          type="text"
           maxLength={250}
           value={heading.reportTitle}
           onFocus={() => onFocusTarget?.({ kind: 'heading', key: 'reportTitle' })}
-          onChange={(e) => updateField('reportTitle', e.target.value)}
+          onChangeValue={(val) => updateField('reportTitle', val)}
           placeholder="প্রশিক্ষণ সমাপ্তির সনদ প্রদানের প্রস্তাব"
+          scope="document"
           className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface-subtle border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
         />
         <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -124,13 +125,15 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
         >
           কার্যক্রমের বিবরণ
         </label>
-        <textarea
+        <CodeAutocompleteField
           id="crb-h-program"
+          multiline
           rows={2}
           maxLength={400}
           value={heading.programTitle}
           onFocus={() => onFocusTarget?.({ kind: 'heading', key: 'programTitle' })}
-          onChange={(e) => updateField('programTitle', e.target.value)}
+          onChangeValue={(val) => updateField('programTitle', val)}
+          scope="document"
           className="w-full px-3 py-2 rounded-xl bg-theme-surface-subtle border border-theme-border text-sm text-theme-text-primary leading-relaxed resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
         />
       </div>
@@ -157,14 +160,14 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
               >
                 স্মারক নম্বর
               </label>
-              <input
+              <CodeAutocompleteField
                 id="crb-h-memo"
-                type="text"
                 maxLength={200}
                 value={heading.memoNumber}
                 onFocus={() => onFocusTarget?.({ kind: 'heading', key: 'memoNumber' })}
-                onChange={(e) => updateField('memoNumber', e.target.value)}
+                onChangeValue={(val) => updateField('memoNumber', val)}
                 placeholder="৩৮.০১.৬১০০.০০১.{{batch}}/২৬"
+                scope="document"
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface-subtle border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
               />
               <div className="flex flex-wrap gap-1.5 mt-1.5">

@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import type { ReportTemplateSignature } from '../../../types';
 import { toBn } from '../../../lib/dateUtils';
 import type { LastFocusTarget } from './fieldCatalog';
+import { CodeAutocompleteField } from './CodeAutocompleteField';
 
 interface BuilderSignaturesEditorProps {
   signatures: ReportTemplateSignature[];
@@ -118,16 +119,16 @@ export const BuilderSignaturesEditor: React.FC<BuilderSignaturesEditorProps> = (
               >
                 পদবি / লেবেল
               </label>
-              <input
+              <CodeAutocompleteField
                 id={`crb-sig-label-${sig.id}`}
-                type="text"
                 maxLength={120}
                 value={sig.label}
                 onFocus={() =>
                   onFocusTarget?.({ kind: 'signature', index: idx, key: 'label' })
                 }
-                onChange={(e) => updateSig(sig.id, { label: e.target.value })}
+                onChangeValue={(val) => updateSig(sig.id, { label: val })}
                 placeholder="যেমন: প্রশিক্ষক / কোর্স পরিচালক"
+                scope="signature"
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
               />
             </div>
@@ -139,16 +140,16 @@ export const BuilderSignaturesEditor: React.FC<BuilderSignaturesEditorProps> = (
               >
                 নাম (ঐচ্ছিক — {'{{trainer}}'} ব্যবহারযোগ্য)
               </label>
-              <input
+              <CodeAutocompleteField
                 id={`crb-sig-name-${sig.id}`}
-                type="text"
                 maxLength={120}
                 value={sig.name || ''}
                 onFocus={() =>
                   onFocusTarget?.({ kind: 'signature', index: idx, key: 'name' })
                 }
-                onChange={(e) => updateSig(sig.id, { name: e.target.value })}
+                onChangeValue={(val) => updateSig(sig.id, { name: val })}
                 placeholder="কর্মকর্তা / প্রশিক্ষকের নাম"
+                scope="signature"
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
               />
             </div>
@@ -160,16 +161,16 @@ export const BuilderSignaturesEditor: React.FC<BuilderSignaturesEditorProps> = (
               >
                 অতিরিক্ত পরিচয়
               </label>
-              <input
+              <CodeAutocompleteField
                 id={`crb-sig-desig-${sig.id}`}
-                type="text"
                 maxLength={150}
                 value={sig.designation || ''}
                 onFocus={() =>
                   onFocusTarget?.({ kind: 'signature', index: idx, key: 'designation' })
                 }
-                onChange={(e) => updateSig(sig.id, { designation: e.target.value })}
+                onChangeValue={(val) => updateSig(sig.id, { designation: val })}
                 placeholder="যেমন: স্কিল ট্রেইনার"
+                scope="signature"
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-sm text-theme-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
               />
             </div>
