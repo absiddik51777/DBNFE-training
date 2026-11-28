@@ -226,6 +226,9 @@ export const MobileMoreMenu: React.FC<MobileMoreMenuProps> = ({ isOpen, onClose 
 
       {/* Bottom Sheet Container */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="অতিরিক্ত মডিউল মেনু"
         className="relative z-10 w-full max-h-[88vh] bg-theme-surface text-theme-text-primary rounded-t-3xl shadow-2xl border-t border-theme-border flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)' }}
       >

@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { Institute, Trade, Batch, Trainee } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { ArrowLeft, Save, User, GraduationCap, Building2, Phone, Calendar, AlertCircle, ShieldAlert, CheckCircle2, Upload } from 'lucide-react';
+import { ArrowLeft, Save, User, GraduationCap, Building2, Phone, Calendar, AlertCircle, ShieldAlert, CheckCircle2, Upload, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { dataService } from '../../lib/dataService';
 import { FormSkeleton } from '../../components/Skeleton';
@@ -11,6 +11,7 @@ import { useActionRunner, type ActionStep } from '../../hooks/useActionRunner';
 import { ActionButton } from '../../components/ui/ActionButton';
 import { ActionMessageError } from '../../lib/friendlyError';
 import { toBn } from '../../lib/dateUtils';
+import { transliterateBengaliToEnglish } from '../../lib/bengaliTransliteration';
 
 const TraineeForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -52,8 +53,11 @@ const TraineeForm: React.FC = () => {
     nidOrBirthRegistration: '',
     mobileNumber: '',
     address: '',
+    addressEn: '',
     permanentAddress: '',
+    permanentAddressEn: '',
     presentAddress: '',
+    presentAddressEn: '',
     sameAsPermanentAddress: false,
     lastClassCompleted: 'Class 7 (৭ম শ্রেণি)',
     previousSchoolName: '',
@@ -90,6 +94,8 @@ const TraineeForm: React.FC = () => {
         if (found) {
           const perm = found.permanentAddress || found.address || '';
           const pres = found.presentAddress || found.address || '';
+          const permEn = found.permanentAddressEn || found.addressEn || '';
+          const presEn = found.presentAddressEn || found.addressEn || '';
           const same = found.sameAsPermanentAddress ?? (perm === pres && perm.length > 0);
           const foundBatch = btcList.find(b => b.id === found.batchId);
           // Hydrate with fallback for older records that may only have single fatherName / motherName
@@ -105,7 +111,10 @@ const TraineeForm: React.FC = () => {
             motherNameBn: mNameBn,
             motherNameEn: mNameEn,
             permanentAddress: perm,
+            permanentAddressEn: permEn,
             presentAddress: pres,
+            presentAddressEn: presEn,
+            addressEn: found.addressEn || presEn || permEn,
             sameAsPermanentAddress: same,
             instituteId: found.instituteId || foundBatch?.instituteId || '',
             tradeId: found.tradeId || foundBatch?.tradeId || '',
@@ -136,7 +145,10 @@ const TraineeForm: React.FC = () => {
           traineeId: autoTraineeId,
           registrationNumber: '',
           permanentAddress: '',
+          permanentAddressEn: '',
           presentAddress: '',
+          presentAddressEn: '',
+          addressEn: '',
           sameAsPermanentAddress: false,
           instituteId: assignedInst,
           tradeId: assignedTrade,
@@ -253,11 +265,48 @@ const TraineeForm: React.FC = () => {
     const isChecked = e.target.checked;
     setFormData(prev => {
       const perm = prev.permanentAddress || '';
+      const permEn = prev.permanentAddressEn || '';
       return {
         ...prev,
         sameAsPermanentAddress: isChecked,
         presentAddress: isChecked ? perm : prev.presentAddress,
-        address: isChecked ? perm : (prev.presentAddress || perm)
+        presentAddressEn: isChecked ? permEn : prev.presentAddressEn,
+        address: isChecked ? perm : (prev.presentAddress || perm),
+        addressEn: isChecked ? permEn : (prev.presentAddressEn || permEn),
+      };
+    });
+  };
+
+  const handlePermanentAddressEnChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      permanentAddressEn: value,
+      presentAddressEn: prev.sameAsPermanentAddress ? value : prev.presentAddressEn,
+      addressEn: prev.sameAsPermanentAddress ? value : (prev.presentAddressEn || value),
+    }));
+  };
+
+  const handlePresentAddressEnChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      presentAddressEn: value,
+      addressEn: value || prev.permanentAddressEn || '',
+    }));
+  };
+
+  const handleAutoTransliterateAddress = () => {
+    setFormData(prev => {
+      const permBn = prev.permanentAddress || prev.address || '';
+      const presBn = prev.sameAsPermanentAddress ? permBn : (prev.presentAddress || prev.address || '');
+      const permEn = transliterateBengaliToEnglish(permBn);
+      const presEn = prev.sameAsPermanentAddress ? permEn : transliterateBengaliToEnglish(presBn);
+      return {
+        ...prev,
+        permanentAddressEn: permEn,
+        presentAddressEn: presEn,
+        addressEn: presEn || permEn,
       };
     });
   };
@@ -425,6 +474,10 @@ const TraineeForm: React.FC = () => {
           const presAddr = formData.sameAsPermanentAddress
             ? permAddr
             : formData.presentAddress?.trim() || permAddr;
+          const permAddrEn = (formData.permanentAddressEn || '').trim();
+          const presAddrEn = formData.sameAsPermanentAddress
+            ? permAddrEn
+            : (formData.presentAddressEn || '').trim() || permAddrEn;
 
           const savedTrainee: Trainee = {
             id: traineeIdToSave,
@@ -441,8 +494,11 @@ const TraineeForm: React.FC = () => {
             nidOrBirthRegistration: formData.nidOrBirthRegistration || '',
             mobileNumber: formData.mobileNumber || '',
             address: presAddr || permAddr,
+            addressEn: presAddrEn || permAddrEn,
             permanentAddress: permAddr,
+            permanentAddressEn: permAddrEn,
             presentAddress: presAddr,
+            presentAddressEn: presAddrEn,
             sameAsPermanentAddress: !!formData.sameAsPermanentAddress,
             photoUrl: formData.photoUrl || '',
             lastClassCompleted: formData.lastClassCompleted || '',
@@ -1033,6 +1089,62 @@ const TraineeForm: React.FC = () => {
                         : 'bg-theme-surface border-theme-border-strong text-theme-text-primary'
                     }`}
                   />
+                </div>
+              </div>
+
+              {/* Optional English Address Section with auto-transliteration */}
+              <div className="p-3.5 bg-theme-surface-subtle border border-theme-border rounded-2xl space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold text-theme-text-primary block">
+                      ঠিকানা ইংরেজিতে (Address in English — ঐচ্ছিক)
+                    </span>
+                    <span className="text-[11px] text-theme-text-muted">
+                      ফাঁকা রাখলেও বাংলা ঠিকানা থেকে রিপোর্ট ও প্রোফাইলে স্বয়ংক্রিয়ভাবে ইংরেজিতে দেখানো হবে
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoTransliterateAddress}
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 min-h-[36px] bg-theme-info-soft text-theme-info border border-theme-info-border hover:opacity-90 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 self-start sm:self-auto"
+                  >
+                    <Sparkles size={14} />
+                    <span>বাংলা ঠিকানা থেকে ইংরেজি তৈরি করুন</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
+                      স্থায়ী ঠিকানা (Permanent Address — English)
+                    </label>
+                    <textarea
+                      rows={2}
+                      name="permanentAddressEn"
+                      value={formData.permanentAddressEn || ''}
+                      onChange={handlePermanentAddressEnChange}
+                      placeholder="Vill, P.O, Upazila, Dist (in English)"
+                      className="w-full px-3 py-2 bg-theme-surface border border-theme-border-strong text-theme-text-primary placeholder:text-theme-text-muted rounded-xl text-sm focus:ring-2 focus:ring-theme-info/25 focus:border-theme-info focus:outline-none font-sans"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-theme-text-secondary mb-1">
+                      বর্তমান ঠিকানা (Present Address — English)
+                    </label>
+                    <textarea
+                      rows={2}
+                      name="presentAddressEn"
+                      value={formData.presentAddressEn || ''}
+                      onChange={handlePresentAddressEnChange}
+                      readOnly={formData.sameAsPermanentAddress}
+                      placeholder="Vill, P.O, Upazila, Dist (in English)"
+                      className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-theme-info/25 focus:border-theme-info focus:outline-none placeholder:text-theme-text-muted font-sans ${
+                        formData.sameAsPermanentAddress
+                          ? 'bg-theme-surface-subtle border-theme-border text-theme-text-secondary cursor-not-allowed'
+                          : 'bg-theme-surface border-theme-border-strong text-theme-text-primary'
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

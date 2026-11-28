@@ -2,6 +2,7 @@ import React from 'react';
 import type { ReportTemplate } from '../../../types';
 import { HEADER_QUICK_TOKENS, LastFocusTarget } from './fieldCatalog';
 import { CodeAutocompleteField } from './CodeAutocompleteField';
+import { ReportLogoControls } from '../ReportLogoControls';
 
 interface BuilderHeadingEditorProps {
   heading: ReportTemplate['heading'];
@@ -30,6 +31,18 @@ export const BuilderHeadingEditor: React.FC<BuilderHeadingEditorProps> = ({
 
   return (
     <div className="space-y-3">
+      <ReportLogoControls
+        leftLogoUrl={heading.leftLogoUrl}
+        rightLogoUrl={heading.rightLogoUrl}
+        logoSizePx={heading.logoSizePx}
+        onChange={(patch) =>
+          onChangeHeading({
+            ...heading,
+            ...patch,
+          })
+        }
+      />
+
       <div>
         <label
           htmlFor="crb-h-govt"

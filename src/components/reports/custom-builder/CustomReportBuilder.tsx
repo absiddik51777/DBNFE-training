@@ -19,6 +19,8 @@ import { downloadCSV } from '../../../lib/exportUtils';
 import { formatBengaliDate, toBn } from '../../../lib/dateUtils';
 import { normalizeDocumentPrintConfig } from '../../../lib/documentFrameService';
 import { DocumentPrintFrame } from '../../document-frame/DocumentPrintFrame';
+import { ReportHeaderBanner } from '../ReportHeaderBanner';
+import { DEFAULT_SHEET_PAGE_CONFIG } from '../../weekly-signature/utils';
 import { MONTH_NAMES_BN, ReportsToast } from '../types';
 import {
   BUILDER_PRESETS,
@@ -576,6 +578,15 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
       (isTrainer && userProfile?.name) ||
       'প্রশিক্ষক';
 
+    let brnVerifiedCount = 0;
+    let brnInvalidCount = 0;
+    let brnPendingCount = 0;
+    for (const r of reportRows) {
+      if (r.trainee.is_brn_verified === true) brnVerifiedCount += 1;
+      else if (r.trainee.is_brn_verified === false) brnInvalidCount += 1;
+      else brnPendingCount += 1;
+    }
+
     return {
       institute: activeInstLabel,
       trade: activeTradeLabel,
@@ -587,6 +598,9 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
       workDays: formatByDigitMode(maxRecordedWorkDays, draft.useBengaliDigits),
       pass: formatByDigitMode(passThreshold, draft.useBengaliDigits),
       trainer: trainerName,
+      brnVerifiedTotal: formatByDigitMode(brnVerifiedCount, draft.useBengaliDigits),
+      brnPendingTotal: formatByDigitMode(brnPendingCount, draft.useBengaliDigits),
+      brnInvalidTotal: formatByDigitMode(brnInvalidCount, draft.useBengaliDigits),
     };
   }, [
     activeInstLabel,
@@ -597,7 +611,7 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
     selectedYear,
     draft.useBengaliDigits,
     todayIso,
-    reportRows.length,
+    reportRows,
     maxRecordedWorkDays,
     passThreshold,
     isTrainer,
@@ -610,16 +624,31 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
       return {
         serial: formatByDigitMode(1, draft.useBengaliDigits),
         nameBn: 'মোছা. রুনা আক্তার',
+        nameEn: 'Mst. Runa Akter',
         fatherNameBn: 'আব্দুল করিম',
+        fatherNameEn: 'Abdul Karim',
         motherNameBn: 'সালমা বেগম',
+        motherNameEn: 'Salma Begum',
         traineeId: 'T-0101',
         registrationNumber: formatByDigitMode('260101', draft.useBengaliDigits),
         mobileNumber: '01712-345601',
-        nid: formatByDigitMode('2005123456', draft.useBengaliDigits),
+        nid: formatByDigitMode('20051234567890123', draft.useBengaliDigits),
+        docType: 'জন্ম নিবন্ধন (BRN)',
+        brnStatus: 'যাচাইকৃত',
+        brnStatusEn: 'Verified',
+        brnRemark: 'তথ্য সঠিক পাওয়া গেছে',
+        brnVerifiedAt: formatByDigitMode('27/11/2026', draft.useBengaliDigits),
+        brnVerifiedBy: 'Course Director',
         gender: 'নারী',
+        genderEn: 'Female',
         dob: formatByDigitMode('05/03/2005', draft.useBengaliDigits),
         age: formatByDigitMode(21, draft.useBengaliDigits),
         address: 'ত্রিশাল, ময়মনসিংহ',
+        addressEn: 'Trishal, Mymensingh',
+        permanentAddress: 'ত্রিশাল, ময়মনসিংহ',
+        permanentAddressEn: 'Trishal, Mymensingh',
+        tradeName: 'কম্পিউটার অফিস অ্যাপ্লিকেশন',
+        tradeNameEn: 'Computer Office Application',
         presentDays: formatByDigitMode(21, draft.useBengaliDigits),
         absentDays: formatByDigitMode(1, draft.useBengaliDigits),
         leaveDays: formatByDigitMode(0, draft.useBengaliDigits),
@@ -755,6 +784,9 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
       officeAddress: draft.heading.officeAddress,
       programTitle: draft.heading.programTitle,
       sheetTitle: draft.heading.reportTitle,
+      leftLogoUrl: draft.heading.leftLogoUrl,
+      rightLogoUrl: draft.heading.rightLogoUrl,
+      logoSizePx: draft.heading.logoSizePx,
     }),
     [draft.heading]
   );
@@ -776,6 +808,9 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
         officeAddress: nextHeading.officeAddress,
         programTitle: nextHeading.programTitle,
         reportTitle: nextHeading.sheetTitle,
+        leftLogoUrl: nextHeading.leftLogoUrl,
+        rightLogoUrl: nextHeading.rightLogoUrl,
+        logoSizePx: nextHeading.logoSizePx,
       },
     }));
   };
@@ -1162,7 +1197,13 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
             }
             renderHeader={({ config, px }) => (
               <div className="pb-2.5 mb-3 text-black">
-                <div className="text-center border-b-2 border-slate-800 pb-2">
+                <ReportHeaderBanner
+                  leftLogoUrl={draft.heading.leftLogoUrl}
+                  rightLogoUrl={draft.heading.rightLogoUrl}
+                  logoSizePx={draft.heading.logoSizePx}
+                  scale={config.fontSizePt / DEFAULT_SHEET_PAGE_CONFIG.fontSizePt}
+                  className="border-b-2 border-slate-800 pb-2"
+                >
                   {draft.heading.govtTitle.trim() && (
                     <p style={{ fontSize: px(10.5) }} className="leading-[1.35]">
                       {resolveTokenTemplate(draft.heading.govtTitle.trim(), docContext)}
@@ -1189,7 +1230,7 @@ export const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                       {resolveTokenTemplate(draft.heading.programTitle.trim(), docContext)}
                     </p>
                   )}
-                </div>
+                </ReportHeaderBanner>
 
                 {(draft.heading.showMemo || config.showGeneratedDate) && (
                   <div

@@ -27,11 +27,13 @@ import {
   Eye,
   Activity,
   CalendarDays,
-  ExternalLink
+  ExternalLink,
+  Languages
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { dataService } from '../../lib/dataService';
 import { toBn, formatBengaliDate } from '../../lib/dateUtils';
+import { getTraineePermanentAddressEn, getTraineePresentAddressEn } from '../../lib/bengaliTransliteration';
 
 // Helpers to normalize UBRN and BirthDate for BDRIS online verification
 const normalizeUBRN = (val?: string): string => {
@@ -96,6 +98,7 @@ const TraineeProfile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [highlightIrregularOnly, setHighlightIrregularOnly] = useState<boolean>(false);
+  const [addressLang, setAddressLang] = useState<'bn' | 'en'>('bn');
 
   useEffect(() => {
     fetchProfile();
@@ -474,24 +477,69 @@ const TraineeProfile: React.FC = () => {
           </div>
 
           <div className="bg-theme-surface-subtle p-3.5 rounded-xl border border-theme-border text-xs text-theme-text-secondary space-y-2.5">
+            <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-theme-border">
+              <span className="font-bold text-theme-text-primary flex items-center space-x-1.5 text-[11px]">
+                <Languages size={13} className="text-theme-primary" />
+                <span>ঠিকানা ({addressLang === 'en' ? 'English' : 'বাংলা'})</span>
+              </span>
+              <div className="inline-flex items-center bg-theme-surface p-0.5 rounded-lg border border-theme-border print:hidden">
+                <button
+                  type="button"
+                  onClick={() => setAddressLang('bn')}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
+                    addressLang === 'bn'
+                      ? 'bg-theme-primary text-theme-primary-fg shadow-2xs'
+                      : 'text-theme-text-secondary hover:text-theme-text-primary'
+                  }`}
+                >
+                  বাংলা
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddressLang('en')}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
+                    addressLang === 'en'
+                      ? 'bg-theme-info text-theme-info-fg shadow-2xs'
+                      : 'text-theme-text-secondary hover:text-theme-text-primary'
+                  }`}
+                >
+                  English
+                </button>
+              </div>
+            </div>
+
             <div className="flex items-start space-x-2">
               <MapPin size={15} className="text-theme-primary shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-theme-text-primary block">স্থায়ী ঠিকানা:</span>
-                <span className="text-theme-text-secondary">{trainee.permanentAddress || trainee.address}</span>
+                <span className="font-semibold text-theme-text-primary block">
+                  {addressLang === 'en' ? 'Permanent Address (English):' : 'স্থায়ী ঠিকানা:'}
+                </span>
+                <span className="text-theme-text-secondary">
+                  {addressLang === 'en'
+                    ? (getTraineePermanentAddressEn(trainee) || 'Not available')
+                    : (trainee.permanentAddress || trainee.address || 'উল্লেখ নেই')}
+                </span>
               </div>
             </div>
-            {(trainee.presentAddress || trainee.sameAsPermanentAddress) && (
+            {(trainee.presentAddress || trainee.presentAddressEn || trainee.sameAsPermanentAddress || trainee.address) && (
               <div className="flex items-start space-x-2 pt-2 border-t border-theme-border">
                 <MapPin size={15} className="text-theme-info shrink-0 mt-0.5" />
                 <div>
                   <div className="flex items-center space-x-1.5">
-                    <span className="font-semibold text-theme-text-primary">বর্তমান ঠিকানা:</span>
+                    <span className="font-semibold text-theme-text-primary">
+                      {addressLang === 'en' ? 'Present Address (English):' : 'বর্তমান ঠিকানা:'}
+                    </span>
                     {trainee.sameAsPermanentAddress && (
-                      <span className="text-[10px] text-theme-primary-soft-fg bg-theme-primary-soft px-1 rounded">অনুরূপ</span>
+                      <span className="text-[10px] text-theme-primary-soft-fg bg-theme-primary-soft px-1 rounded">
+                        {addressLang === 'en' ? 'Same' : 'অনুরূপ'}
+                      </span>
                     )}
                   </div>
-                  <span className="text-theme-text-secondary">{trainee.presentAddress || trainee.permanentAddress || trainee.address}</span>
+                  <span className="text-theme-text-secondary">
+                    {addressLang === 'en'
+                      ? (getTraineePresentAddressEn(trainee) || 'Not available')
+                      : (trainee.presentAddress || trainee.permanentAddress || trainee.address || 'উল্লেখ নেই')}
+                  </span>
                 </div>
               </div>
             )}

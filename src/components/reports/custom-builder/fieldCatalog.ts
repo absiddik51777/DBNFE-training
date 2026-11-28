@@ -13,12 +13,22 @@ import {
   DEFAULT_DOCUMENT_PRINT_CONFIG,
   normalizeDocumentPrintConfig,
 } from '../../../lib/documentFrameService';
-import { calculateAgeAtDate, safeFormatDate, toBn, toEnDigits } from '../../../lib/dateUtils';
+import { formatAgeYearsMonthsAtDate, safeFormatDate, toBn, toEnDigits } from '../../../lib/dateUtils';
+import { clampReportLogoSize, sanitizeLogoUrl } from '../../../lib/reportLogoUtils';
+import {
+  getTraineePermanentAddressEn,
+  getTraineePresentAddressEn,
+} from '../../../lib/bengaliTransliteration';
 import { getGenderLabelBn, getTraineeStatusLabelBn } from '../types';
 
 export type ReportDataSource = 'trainees' | 'attendance-summary';
 
-export type FieldCatalogGroup = 'সাধারণ' | 'প্রশিক্ষণার্থী' | 'হাজিরা' | 'কাস্টম';
+export type FieldCatalogGroup =
+  | 'সাধারণ'
+  | 'প্রশিক্ষণার্থী'
+  | 'BRN / NID যাচাই'
+  | 'হাজিরা'
+  | 'কাস্টম';
 
 export type LastFocusTarget =
   | {
@@ -84,7 +94,7 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
   },
   {
     key: 'fatherNameBn',
-    labelBn: 'পিতার নাম',
+    labelBn: 'পিতার নাম (বাংলা)',
     group: 'প্রশিক্ষণার্থী',
     defaultColLabel: 'পিতার নাম',
     defaultWeight: 16,
@@ -92,10 +102,28 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
     sources: ['trainees', 'attendance-summary'],
   },
   {
+    key: 'fatherNameEn',
+    labelBn: 'পিতার নাম (ইংরেজি)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: "Father's Name",
+    defaultWeight: 16,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
     key: 'motherNameBn',
-    labelBn: 'মাতার নাম',
+    labelBn: 'মাতার নাম (বাংলা)',
     group: 'প্রশিক্ষণার্থী',
     defaultColLabel: 'মাতার নাম',
+    defaultWeight: 16,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'motherNameEn',
+    labelBn: 'মাতার নাম (ইংরেজি)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: "Mother's Name",
     defaultWeight: 16,
     defaultAlign: 'left',
     sources: ['trainees', 'attendance-summary'],
@@ -129,27 +157,81 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
   },
   {
     key: 'nidOrBirthRegistration',
-    labelBn: 'NID / জন্মনিবন্ধন',
-    group: 'প্রশিক্ষণার্থী',
+    labelBn: 'NID / জন্মনিবন্ধন নম্বর',
+    group: 'BRN / NID যাচাই',
     defaultColLabel: 'NID / জন্মনিবন্ধন',
     defaultWeight: 16,
     defaultAlign: 'left',
     sources: ['trainees', 'attendance-summary'],
   },
   {
-    key: 'brnStatus',
-    labelBn: 'BRN যাচাই স্ট্যাটাস',
-    group: 'প্রশিক্ষণার্থী',
-    defaultColLabel: 'BRN যাচাই',
-    defaultWeight: 11,
+    key: 'docType',
+    labelBn: 'পরিচয়পত্রের ধরন (NID / BRN)',
+    group: 'BRN / NID যাচাই',
+    defaultColLabel: 'ধরন',
+    defaultWeight: 12,
     defaultAlign: 'center',
     sources: ['trainees', 'attendance-summary'],
   },
   {
+    key: 'brnStatus',
+    labelBn: 'BRN/NID যাচাই অবস্থা (বাংলা)',
+    group: 'BRN / NID যাচাই',
+    defaultColLabel: 'BRN যাচাই',
+    defaultWeight: 12,
+    defaultAlign: 'center',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'brnStatusEn',
+    labelBn: 'BRN/NID যাচাই অবস্থা (ইংরেজি)',
+    group: 'BRN / NID যাচাই',
+    defaultColLabel: 'BRN Status',
+    defaultWeight: 12,
+    defaultAlign: 'center',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'brnRemark',
+    labelBn: 'BRN/NID যাচাই মন্তব্য',
+    group: 'BRN / NID যাচাই',
+    defaultColLabel: 'যাচাই মন্তব্য',
+    defaultWeight: 18,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'brnVerifiedAt',
+    labelBn: 'BRN/NID যাচাইয়ের তারিখ',
+    group: 'BRN / NID যাচাই',
+    defaultColLabel: 'যাচাইয়ের তারিখ',
+    defaultWeight: 13,
+    defaultAlign: 'center',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'brnVerifiedBy',
+    labelBn: 'BRN/NID যাচাইকারী',
+    group: 'BRN / NID যাচাই',
+    defaultColLabel: 'যাচাইকারী',
+    defaultWeight: 14,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
     key: 'gender',
-    labelBn: 'লিঙ্গ',
+    labelBn: 'লিঙ্গ (বাংলা)',
     group: 'প্রশিক্ষণার্থী',
     defaultColLabel: 'লিঙ্গ',
+    defaultWeight: 8,
+    defaultAlign: 'center',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'genderEn',
+    labelBn: 'লিঙ্গ (ইংরেজি)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: 'Gender',
     defaultWeight: 8,
     defaultAlign: 'center',
     sources: ['trainees', 'attendance-summary'],
@@ -168,10 +250,9 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
     labelBn: 'বয়স (ব্যাচ শুরুতে)',
     group: 'প্রশিক্ষণার্থী',
     defaultColLabel: 'বয়স',
-    defaultWeight: 8,
+    defaultWeight: 12,
     defaultAlign: 'center',
     sources: ['trainees', 'attendance-summary'],
-    isNumeric: true,
   },
   {
     key: 'admissionDate',
@@ -184,9 +265,36 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
   },
   {
     key: 'address',
-    labelBn: 'ঠিকানা',
+    labelBn: 'বর্তমান ঠিকানা (বাংলা)',
     group: 'প্রশিক্ষণার্থী',
     defaultColLabel: 'ঠিকানা',
+    defaultWeight: 20,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'addressEn',
+    labelBn: 'বর্তমান ঠিকানা (ইংরেজি)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: 'Address',
+    defaultWeight: 20,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'permanentAddress',
+    labelBn: 'স্থায়ী ঠিকানা (বাংলা)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: 'স্থায়ী ঠিকানা',
+    defaultWeight: 20,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'permanentAddressEn',
+    labelBn: 'স্থায়ী ঠিকানা (ইংরেজি)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: 'Permanent Address',
     defaultWeight: 20,
     defaultAlign: 'left',
     sources: ['trainees', 'attendance-summary'],
@@ -202,9 +310,18 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
   },
   {
     key: 'tradeName',
-    labelBn: 'ট্রেড',
+    labelBn: 'ট্রেড (বাংলা)',
     group: 'প্রশিক্ষণার্থী',
     defaultColLabel: 'ট্রেড',
+    defaultWeight: 15,
+    defaultAlign: 'left',
+    sources: ['trainees', 'attendance-summary'],
+  },
+  {
+    key: 'tradeNameEn',
+    labelBn: 'ট্রেড (ইংরেজি)',
+    group: 'প্রশিক্ষণার্থী',
+    defaultColLabel: 'Trade',
     defaultWeight: 15,
     defaultAlign: 'left',
     sources: ['trainees', 'attendance-summary'],
@@ -309,6 +426,7 @@ export const FIELD_CATALOG: readonly ReportFieldOption[] = [
 export const FIELD_GROUPS_ORDER: readonly FieldCatalogGroup[] = [
   'সাধারণ',
   'প্রশিক্ষণার্থী',
+  'BRN / NID যাচাই',
   'হাজিরা',
   'কাস্টম',
 ];
@@ -343,6 +461,9 @@ export const DATA_CODE_DICTIONARY: readonly DataCodeDictionaryGroup[] = [
       { key: 'total', desc: 'মোট প্রশিক্ষণার্থী (জন)' },
       { key: 'workDays', desc: 'মোট কার্যদিবস' },
       { key: 'pass', desc: 'সনদের ন্যূনতম উপস্থিতি (%)' },
+      { key: 'brnVerifiedTotal', desc: 'মোট যাচাইকৃত (BRN/NID)' },
+      { key: 'brnPendingTotal', desc: 'মোট অপেক্ষমাণ (BRN/NID)' },
+      { key: 'brnInvalidTotal', desc: 'মোট অবৈধ (BRN/NID)' },
     ],
   },
   {
@@ -356,16 +477,37 @@ export const DATA_CODE_DICTIONARY: readonly DataCodeDictionaryGroup[] = [
     items: [
       { key: 'serial', desc: 'ক্রমিক নং' },
       { key: 'nameBn', desc: 'নাম (বাংলা)' },
-      { key: 'fatherNameBn', desc: 'পিতার নাম' },
-      { key: 'motherNameBn', desc: 'মাতার নাম' },
+      { key: 'nameEn', desc: 'নাম (ইংরেজি)' },
+      { key: 'fatherNameBn', desc: 'পিতার নাম (বাংলা)' },
+      { key: 'fatherNameEn', desc: 'পিতার নাম (ইংরেজি)' },
+      { key: 'motherNameBn', desc: 'মাতার নাম (বাংলা)' },
+      { key: 'motherNameEn', desc: 'মাতার নাম (ইংরেজি)' },
       { key: 'traineeId', desc: 'আইডি' },
       { key: 'registrationNumber', desc: 'রেজিস্ট্রেশন নং' },
       { key: 'mobileNumber', desc: 'মোবাইল' },
-      { key: 'nid', desc: 'NID / জন্মনিবন্ধন' },
-      { key: 'gender', desc: 'লিঙ্গ' },
+      { key: 'gender', desc: 'লিঙ্গ (বাংলা)' },
+      { key: 'genderEn', desc: 'লিঙ্গ (ইংরেজি)' },
       { key: 'dob', desc: 'জন্ম তারিখ' },
-      { key: 'age', desc: 'বয়স (ব্যাচ শুরুর তারিখে)' },
-      { key: 'address', desc: 'ঠিকানা' },
+      { key: 'age', desc: 'বয়স — যেমন: ২০ বছর ৮ মাস (ব্যাচ শুরুতে)' },
+      { key: 'address', desc: 'বর্তমান ঠিকানা (বাংলা)' },
+      { key: 'addressEn', desc: 'বর্তমান ঠিকানা (ইংরেজি)' },
+      { key: 'permanentAddress', desc: 'স্থায়ী ঠিকানা (বাংলা)' },
+      { key: 'permanentAddressEn', desc: 'স্থায়ী ঠিকানা (ইংরেজি)' },
+      { key: 'tradeName', desc: 'ট্রেড (বাংলা)' },
+      { key: 'tradeNameEn', desc: 'ট্রেড (ইংরেজি)' },
+    ],
+  },
+  {
+    group: 'BRN / NID যাচাই',
+    usage: 'টেবিলের ঘর / কাস্টম সূত্র',
+    items: [
+      { key: 'nid', desc: 'NID / জন্মনিবন্ধন নম্বর' },
+      { key: 'docType', desc: 'পরিচয়পত্রের ধরন (NID / BRN)' },
+      { key: 'brnStatus', desc: 'BRN/NID যাচাই অবস্থা (বাংলা)' },
+      { key: 'brnStatusEn', desc: 'BRN/NID যাচাই অবস্থা (ইংরেজি)' },
+      { key: 'brnRemark', desc: 'BRN/NID যাচাই মন্তব্য' },
+      { key: 'brnVerifiedAt', desc: 'BRN/NID যাচাইয়ের তারিখ' },
+      { key: 'brnVerifiedBy', desc: 'BRN/NID যাচাইকারী' },
     ],
   },
   {
@@ -423,6 +565,9 @@ export interface ReportContextTokens {
   workDays: string;
   pass: string;
   trainer: string;
+  brnVerifiedTotal: string;
+  brnPendingTotal: string;
+  brnInvalidTotal: string;
 }
 
 const ATTENDANCE_TOKEN_PATTERN =
@@ -467,25 +612,59 @@ export function buildRowTokenMap(params: {
   const regStr = t.registrationNumber || t.traineeId || '—';
   const nameBnStr = t.nameBn || t.nameEn || '—';
   const nameEnStr = t.nameEn || '—';
-  const fatherStr = t.fatherNameBn || t.fatherNameEn || '—';
-  const motherStr = t.motherNameBn || t.motherNameEn || '—';
+  const legacyFather = (t as unknown as { fatherName?: string }).fatherName;
+  const legacyMother = (t as unknown as { motherName?: string }).motherName;
+  const fatherStr = t.fatherNameBn || t.fatherNameEn || legacyFather || '—';
+  const fatherEnStr = t.fatherNameEn || legacyFather || '—';
+  const motherStr = t.motherNameBn || t.motherNameEn || legacyMother || '—';
+  const motherEnStr = t.motherNameEn || legacyMother || '—';
   const dobStr = t.dateOfBirth ? fmt(t.dateOfBirth) : '—';
   const genderStr = getGenderLabelBn(t.gender);
+  const genderEnStr = t.gender || '—';
   const nidStr = t.nidOrBirthRegistration ? fmt(t.nidOrBirthRegistration) : '—';
+  const rawDocDigits = toEnDigits(t.nidOrBirthRegistration || '').replace(/\D/g, '');
+  const docTypeStr =
+    rawDocDigits.length === 17
+      ? 'জন্ম নিবন্ধন (BRN)'
+      : rawDocDigits.length === 10 || rawDocDigits.length === 13
+      ? 'NID'
+      : rawDocDigits.length > 0
+      ? 'অন্যান্য'
+      : '—';
   const brnStr =
     t.is_brn_verified === true
       ? 'যাচাইকৃত'
-      : t.is_brn_verified === false && t.brn_verified_at
-      ? 'অবৈধ/অসম্পূর্ণ'
+      : t.is_brn_verified === false
+      ? 'অবৈধ'
       : 'অপেক্ষমাণ';
+  const brnEnStr =
+    t.is_brn_verified === true
+      ? 'Verified'
+      : t.is_brn_verified === false
+      ? 'Invalid'
+      : 'Pending';
+  const brnRemarkStr = t.brn_remark?.trim() || '—';
+  const brnVerifiedAtStr = t.brn_verified_at
+    ? fmt(safeFormatDate(t.brn_verified_at, 'dd/MM/yyyy'))
+    : '—';
+  const brnVerifiedByStr = t.brn_verified_by?.trim() || '—';
   const mobileStr = t.mobileNumber ? fmt(t.mobileNumber) : '—';
   const addressStr = t.presentAddress || t.permanentAddress || t.address || '—';
+  const addressEnStr = getTraineePresentAddressEn(t) || '—';
+  const permAddressStr = t.permanentAddress || t.address || '—';
+  const permAddressEnStr = getTraineePermanentAddressEn(t) || '—';
   const instStr = institutesById.get(t.instituteId)?.name || '—';
-  const tradeStr = tradesById.get(t.tradeId)?.name || '—';
+  const tradeObj = tradesById.get(t.tradeId);
+  const tradeStr = tradeObj?.name || '—';
+  const tradeEnStr = tradeObj?.nameEn || tradeObj?.name || '—';
   const batchObj = batchesById.get(t.batchId);
   const batchStr = batchObj?.name || '—';
-  const ageNum = calculateAgeAtDate(t.dateOfBirth, batchObj?.startDate);
-  const ageStr = ageNum !== null ? fmt(ageNum) : '—';
+  const ageStr =
+    formatAgeYearsMonthsAtDate(
+      t.dateOfBirth,
+      batchObj?.startDate ?? t.trainingStartDate,
+      useBengaliDigits
+    ) ?? '—';
   const admissionStr = t.admissionDate
     ? fmt(safeFormatDate(t.admissionDate, 'dd/MM/yyyy'))
     : '—';
@@ -517,18 +696,30 @@ export function buildRowTokenMap(params: {
     nameBn: nameBnStr,
     nameEn: nameEnStr,
     fatherNameBn: fatherStr,
+    fatherNameEn: fatherEnStr,
     motherNameBn: motherStr,
+    motherNameEn: motherEnStr,
     dateOfBirth: dobStr,
     dob: dobStr,
     age: ageStr,
     gender: genderStr,
+    genderEn: genderEnStr,
     nidOrBirthRegistration: nidStr,
     nid: nidStr,
+    docType: docTypeStr,
     brnStatus: brnStr,
+    brnStatusEn: brnEnStr,
+    brnRemark: brnRemarkStr,
+    brnVerifiedAt: brnVerifiedAtStr,
+    brnVerifiedBy: brnVerifiedByStr,
     mobileNumber: mobileStr,
     address: addressStr,
+    addressEn: addressEnStr,
+    permanentAddress: permAddressStr,
+    permanentAddressEn: permAddressEnStr,
     instituteName: instStr,
     tradeName: tradeStr,
+    tradeNameEn: tradeEnStr,
     batchName: batchStr,
     admissionDate: admissionStr,
     status: statusStr,
@@ -857,6 +1048,10 @@ export function sanitizeReportTemplateForSave(
     showGeneratedDate: Boolean(normalizedPage.showGeneratedDate),
   };
 
+  const safeLeftLogo = sanitizeLogoUrl(template.heading?.leftLogoUrl);
+  const safeRightLogo = sanitizeLogoUrl(template.heading?.rightLogoUrl);
+  const hasAnyLogo = Boolean(safeLeftLogo || safeRightLogo);
+
   return {
     id: opts.id.slice(0, 128),
     name: safeName,
@@ -870,6 +1065,9 @@ export function sanitizeReportTemplateForSave(
       showMemo: Boolean(template.heading?.showMemo),
       memoNumber: (template.heading?.memoNumber || '').slice(0, 200),
       showMetaLine: Boolean(template.heading?.showMetaLine),
+      ...(safeLeftLogo ? { leftLogoUrl: safeLeftLogo } : {}),
+      ...(safeRightLogo ? { rightLogoUrl: safeRightLogo } : {}),
+      ...(hasAnyLogo ? { logoSizePx: clampReportLogoSize(template.heading?.logoSizePx) } : {}),
     },
     columns: safeColumns,
     signatures: safeSignatures,

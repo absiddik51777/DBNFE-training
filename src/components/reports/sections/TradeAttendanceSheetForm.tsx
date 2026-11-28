@@ -27,6 +27,8 @@ import {
   writeLocalDocPrintConfig,
 } from '../../../lib/documentFrameService';
 import { DocumentPrintFrame } from '../../document-frame/DocumentPrintFrame';
+import { ReportHeaderBanner } from '../ReportHeaderBanner';
+import { DEFAULT_SHEET_PAGE_CONFIG } from '../../weekly-signature/utils';
 import { MONTH_NAMES_BN, ReportsToast, WEEKDAY_NAMES_BN } from '../types';
 
 type SheetFormMode = 'blank' | 'filled';
@@ -160,6 +162,9 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
             sheetTitle:
               settings.weeklySignatureHeading?.sheetTitle ||
               'প্রশিক্ষণার্থী হাজিরা সিট',
+            leftLogoUrl: nextHeading.leftLogoUrl || '',
+            rightLogoUrl: nextHeading.rightLogoUrl || '',
+            logoSizePx: nextHeading.logoSizePx,
           },
         });
       } catch (err) {
@@ -566,7 +571,7 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
         supportsGeneratedDate
         canExport={canExport && Boolean(selectedTrade)}
         rowCount={sheetTrainees.length}
-        measureKey={`${effectiveTradeId}|${effectiveBatchId}|${monthPrefix}|${formMode}|${hideFridays}|${sheetTrainees.length}`}
+        measureKey={`${effectiveTradeId}|${effectiveBatchId}|${monthPrefix}|${formMode}|${hideFridays}|${sheetTrainees.length}|${activeHeading.leftLogoUrl || ''}|${activeHeading.rightLogoUrl || ''}|${activeHeading.logoSizePx || ''}|${activeHeading.programTitle}`}
         onNotify={onNotify}
         extraDownloadItems={
           canExport && selectedTrade
@@ -584,32 +589,39 @@ export const TradeAttendanceSheetForm: React.FC<TradeAttendanceSheetFormProps> =
         }
         renderHeader={({ config, px }) => (
           <div className="text-center border-b-2 border-slate-800 pb-2.5 mb-3 text-black">
-            {activeHeading.govtTitle.trim() && (
-              <p style={{ fontSize: px(10) }} className="leading-[1.3]">
-                {activeHeading.govtTitle.trim()}
-              </p>
-            )}
-            {activeHeading.officeTitle.trim() && (
-              <h2
-                style={{ fontSize: px(14) }}
-                className="font-bold leading-[1.3] mt-0.5"
-              >
-                {activeHeading.officeTitle.trim()}
-              </h2>
-            )}
-            {activeHeading.officeAddress.trim() && (
-              <p style={{ fontSize: px(10.5) }} className="font-medium leading-[1.3]">
-                {activeHeading.officeAddress.trim()}
-              </p>
-            )}
-            {activeHeading.programTitle.trim() && (
-              <p
-                style={{ fontSize: px(10) }}
-                className="font-semibold leading-[1.3] max-w-[94%] mx-auto mt-0.5"
-              >
-                {activeHeading.programTitle.trim()}
-              </p>
-            )}
+            <ReportHeaderBanner
+              leftLogoUrl={activeHeading.leftLogoUrl}
+              rightLogoUrl={activeHeading.rightLogoUrl}
+              logoSizePx={activeHeading.logoSizePx}
+              scale={config.fontSizePt / DEFAULT_SHEET_PAGE_CONFIG.fontSizePt}
+            >
+              {activeHeading.govtTitle.trim() && (
+                <p style={{ fontSize: px(10) }} className="leading-[1.3]">
+                  {activeHeading.govtTitle.trim()}
+                </p>
+              )}
+              {activeHeading.officeTitle.trim() && (
+                <h2
+                  style={{ fontSize: px(14) }}
+                  className="font-bold leading-[1.3] mt-0.5"
+                >
+                  {activeHeading.officeTitle.trim()}
+                </h2>
+              )}
+              {activeHeading.officeAddress.trim() && (
+                <p style={{ fontSize: px(10.5) }} className="font-medium leading-[1.3]">
+                  {activeHeading.officeAddress.trim()}
+                </p>
+              )}
+              {activeHeading.programTitle.trim() && (
+                <p
+                  style={{ fontSize: px(10) }}
+                  className="font-semibold leading-[1.3] max-w-[94%] mx-auto mt-0.5"
+                >
+                  {activeHeading.programTitle.trim()}
+                </p>
+              )}
+            </ReportHeaderBanner>
             <div className="mt-1.5 inline-block px-3.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold leading-[1.3]">
               <span style={{ fontSize: px(12) }}>
                 {activeHeading.sheetTitle.trim() || 'মাসিক হাজিরা সিট (ট্রেড ভিত্তিক)'} —{' '}

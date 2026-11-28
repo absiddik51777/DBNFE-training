@@ -19,7 +19,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '../../lib/safeHtml2Canvas';
 import type { DocumentPrintConfig, WeeklySignatureHeading } from '../../types';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getAppFontCssStack, getGoogleFontsStylesheetUrl } from '../../lib/theme';
@@ -623,7 +623,7 @@ export const DocumentPrintFrame: React.FC<DocumentPrintFrameProps> = ({
         }
         host.appendChild(clone);
 
-        const canvas = await html2canvas(host, {
+        const canvas = await safeHtml2Canvas(host, {
           scale: 2,
           backgroundColor: '#ffffff',
           useCORS: true,

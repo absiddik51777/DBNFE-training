@@ -119,8 +119,11 @@ export interface Trainee {
   nidOrBirthRegistration: string;
   mobileNumber: string;
   address: string;
+  addressEn?: string;
   permanentAddress?: string;
+  permanentAddressEn?: string;
   presentAddress?: string;
+  presentAddressEn?: string;
   sameAsPermanentAddress?: boolean;
   photoUrl?: string;
 
@@ -305,6 +308,9 @@ export interface WeeklySignatureHeading {
   officeAddress: string;
   programTitle: string;
   sheetTitle: string;
+  leftLogoUrl?: string;
+  rightLogoUrl?: string;
+  logoSizePx?: number;
 }
 
 export type WeeklySignaturePaperSize = 'a4' | 'legal' | 'letter';
@@ -367,16 +373,28 @@ export type ReportFieldKey =
   | 'nameBn'
   | 'nameEn'
   | 'fatherNameBn'
+  | 'fatherNameEn'
   | 'motherNameBn'
+  | 'motherNameEn'
   | 'dateOfBirth'
   | 'age'
   | 'gender'
+  | 'genderEn'
   | 'nidOrBirthRegistration'
+  | 'docType'
   | 'brnStatus'
+  | 'brnStatusEn'
+  | 'brnRemark'
+  | 'brnVerifiedAt'
+  | 'brnVerifiedBy'
   | 'mobileNumber'
   | 'address'
+  | 'addressEn'
+  | 'permanentAddress'
+  | 'permanentAddressEn'
   | 'instituteName'
   | 'tradeName'
+  | 'tradeNameEn'
   | 'batchName'
   | 'admissionDate'
   | 'status'
@@ -416,6 +434,9 @@ export interface ReportTemplate {
     showMemo: boolean;
     memoNumber: string;
     showMetaLine: boolean;
+    leftLogoUrl?: string;
+    rightLogoUrl?: string;
+    logoSizePx?: number;
   };
   columns: ReportTemplateColumn[];
   signatures: ReportTemplateSignature[]; // 0 to 4

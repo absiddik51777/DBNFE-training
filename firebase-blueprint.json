@@ -94,7 +94,10 @@
         "nidOrBirthRegistration": { "type": "string", "maxLength": 30 },
         "mobileNumber": { "type": "string", "maxLength": 20 },
         "permanentAddress": { "type": "string", "maxLength": 500 },
+        "permanentAddressEn": { "type": "string", "maxLength": 500 },
         "presentAddress": { "type": "string", "maxLength": 500 },
+        "presentAddressEn": { "type": "string", "maxLength": 500 },
+        "addressEn": { "type": "string", "maxLength": 500 },
         "sameAsPermanentAddress": { "type": "boolean" },
         "instituteId": { "type": "string", "maxLength": 128 },
         "tradeId": { "type": "string", "maxLength": 128 },
@@ -254,7 +257,10 @@
             "officeTitle": { "type": "string", "maxLength": 200 },
             "officeAddress": { "type": "string", "maxLength": 250 },
             "programTitle": { "type": "string", "maxLength": 400 },
-            "sheetTitle": { "type": "string", "maxLength": 200 }
+            "sheetTitle": { "type": "string", "maxLength": 200 },
+            "leftLogoUrl": { "type": "string", "maxLength": 160000 },
+            "rightLogoUrl": { "type": "string", "maxLength": 160000 },
+            "logoSizePx": { "type": "number" }
           }
         },
         "weeklySignaturePageConfig": {
@@ -355,7 +361,10 @@
             "reportTitle": { "type": "string", "maxLength": 250 },
             "showMemo": { "type": "boolean" },
             "memoNumber": { "type": "string", "maxLength": 200 },
-            "showMetaLine": { "type": "boolean" }
+            "showMetaLine": { "type": "boolean" },
+            "leftLogoUrl": { "type": "string", "maxLength": 160000 },
+            "rightLogoUrl": { "type": "string", "maxLength": 160000 },
+            "logoSizePx": { "type": "number" }
           }
         },
         "columns": { "type": "array" },

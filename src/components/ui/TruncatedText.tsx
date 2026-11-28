@@ -315,6 +315,7 @@ export const TruncatedTextProvider: React.FC<{ children: React.ReactNode }> = ({
       {overlay?.mode === 'pop' && (
         <div
           ref={popoverRef}
+          data-truncated-overlay="true"
           role="dialog"
           aria-label="সম্পূর্ণ লেখা"
           onClick={(e) => e.stopPropagation()}
@@ -333,6 +334,7 @@ export const TruncatedTextProvider: React.FC<{ children: React.ReactNode }> = ({
       {/* Shared Single Bottom Sheet Host */}
       {overlay?.mode === 'sheet' && (
         <div
+          data-truncated-overlay="true"
           role="dialog"
           aria-modal="true"
           aria-label={overlay.title || 'বিস্তারিত তথ্য'}

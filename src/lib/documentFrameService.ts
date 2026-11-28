@@ -146,6 +146,20 @@ export function mergeHeadingWithDefault(
       baseDefault.sheetTitle ??
       globalHeading?.sheetTitle ??
       DEFAULT_SHEET_HEADING.sheetTitle,
+    leftLogoUrl:
+      localOverride?.leftLogoUrl ??
+      globalHeading?.leftLogoUrl ??
+      baseDefault.leftLogoUrl ??
+      '',
+    rightLogoUrl:
+      localOverride?.rightLogoUrl ??
+      globalHeading?.rightLogoUrl ??
+      baseDefault.rightLogoUrl ??
+      '',
+    logoSizePx:
+      localOverride?.logoSizePx ??
+      globalHeading?.logoSizePx ??
+      baseDefault.logoSizePx,
   };
 }
 

@@ -5,6 +5,7 @@
     "": {
       "name": "react-example",
       "dependencies": {
+        "@capacitor/app": "^8.1.2",
         "@capacitor/core": "^8.6.2",
         "@capacitor/filesystem": "^8.0.0",
         "@capacitor/geolocation": "^8.0.0",
@@ -45,6 +46,8 @@
   },
   "packages": {
     "@babel/runtime": ["@babel/runtime@7.29.13", "", {}, "sha512-v+oN26xP4YIlQsbQ/CbTH1WG5m/l/DjKKZNy/Kp3f/AFvbgt7Em/D0FeMM3O2hX0YzeN2M16W8lOpyhIkfCBcQ=="],
+
+    "@capacitor/app": ["@capacitor/app@8.1.2", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-uKBlsrXH0IdvUn69e/KKYbZ32A06pcrUdG8LWuZ/6y33YMXZXLEEdNSwl+jKS/SrsTWqnePs8EqSWaiQM3mUGA=="],
 
     "@capacitor/core": ["@capacitor/core@8.6.2", "", { "dependencies": { "tslib": "^2.1.0" } }, "sha512-UEb9crRuqEAe2Iu2eGOEuQ8rLQxpwg7ZZIpl17UJoytEpnV1e4oXXW0K7yYS2NsCOGmJjyLeKjNlgG7tkAoX8g=="],
 

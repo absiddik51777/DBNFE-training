@@ -127,14 +127,19 @@ export function normalizeBirthDate(dob?: string | null): string {
   return cleaned;
 }
 
+export interface AgeBreakdown {
+  years: number;
+  months: number;
+}
+
 /**
- * Calculates completed age in years from dateOfBirth as of a reference date
+ * Calculates completed years and remaining months from dateOfBirth as of a reference date
  * (such as batch startDate). Returns null if dateOfBirth is invalid or in the future.
  */
-export function calculateAgeAtDate(
+export function calculateAgeYearsMonthsAtDate(
   dob?: string | null,
   referenceDateInput?: number | string | Date | { seconds?: number; toDate?: () => Date } | null
-): number | null {
+): AgeBreakdown | null {
   const normalized = normalizeBirthDate(dob);
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
   if (!match) return null;
@@ -177,10 +182,51 @@ export function calculateAgeAtDate(
   const refMonth = refDate.getMonth() + 1;
   const refDay = refDate.getDate();
 
-  let age = refYear - birthYear;
-  if (refMonth < birthMonth || (refMonth === birthMonth && refDay < birthDay)) {
-    age -= 1;
+  let years = refYear - birthYear;
+  let months = refMonth - birthMonth;
+  if (refDay < birthDay) {
+    months -= 1;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
   }
 
-  return age >= 0 ? age : null;
+  if (years < 0) return null;
+  return { years, months };
+}
+
+/**
+ * Formats age at referenceDateInput as "২০ বছর ৮ মাস" (or "২০ বছর" / "৮ মাস").
+ */
+export function formatAgeYearsMonthsAtDate(
+  dob?: string | null,
+  referenceDateInput?: number | string | Date | { seconds?: number; toDate?: () => Date } | null,
+  useBengaliDigits = true
+): string | null {
+  const breakdown = calculateAgeYearsMonthsAtDate(dob, referenceDateInput);
+  if (!breakdown) return null;
+  const { years, months } = breakdown;
+  const num = (n: number) => (useBengaliDigits ? toBn(n) : String(n));
+  if (years === 0 && months === 0) {
+    return useBengaliDigits ? '১ মাসের কম' : '1 মাসের কম';
+  }
+  if (years === 0) {
+    return `${num(months)} মাস`;
+  }
+  if (months === 0) {
+    return `${num(years)} বছর`;
+  }
+  return `${num(years)} বছর ${num(months)} মাস`;
+}
+
+/**
+ * Calculates completed age in years from dateOfBirth as of a reference date
+ * (such as batch startDate). Returns null if dateOfBirth is invalid or in the future.
+ */
+export function calculateAgeAtDate(
+  dob?: string | null,
+  referenceDateInput?: number | string | Date | { seconds?: number; toDate?: () => Date } | null
+): number | null {
+  return calculateAgeYearsMonthsAtDate(dob, referenceDateInput)?.years ?? null;
 }

@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from './safeHtml2Canvas';
 import {
   extractStructuredDocumentFromDom,
   extractStructuredDocumentFromHtml,
@@ -255,7 +255,7 @@ async function renderElementToPdfBlob(
 ): Promise<Blob> {
   const landscape = options.landscape ?? false;
 
-  const canvas = await html2canvas(element, {
+  const canvas = await safeHtml2Canvas(element, {
     scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',

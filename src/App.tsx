@@ -10,6 +10,7 @@ import { TruncatedTextProvider } from './components/ui/TruncatedText';
 import { RequireRole } from './components/auth/RequireRole';
 import { SessionToast } from './components/SessionToast';
 import { GlobalDocumentPrintHost } from './components/document-frame/GlobalDocumentPrintHost';
+import { AppBackButtonGuard, BackGuardPopstateBridge } from './components/navigation/AppBackButtonGuard';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TrainerDashboard from './pages/TrainerDashboard';
@@ -343,7 +344,9 @@ export default function App() {
             <SystemSettingsProvider>
               <ConfirmationProvider>
                 <TruncatedTextProvider>
+                  <BackGuardPopstateBridge />
                   <BrowserRouter>
+                    <AppBackButtonGuard />
                     <SessionToast />
                     <GlobalDocumentPrintHost />
                     <AppRoutes />

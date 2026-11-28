@@ -389,7 +389,10 @@ service cloud.firestore {
                'reportTitle',
                'showMemo',
                'memoNumber',
-               'showMetaLine'
+               'showMetaLine',
+               'leftLogoUrl',
+               'rightLogoUrl',
+               'logoSizePx'
              ]) &&
              h.govtTitle is string && h.govtTitle.size() <= 200 &&
              h.officeTitle is string && h.officeTitle.size() <= 200 &&
@@ -398,7 +401,10 @@ service cloud.firestore {
              h.reportTitle is string && h.reportTitle.size() <= 250 &&
              h.showMemo is bool &&
              h.memoNumber is string && h.memoNumber.size() <= 200 &&
-             h.showMetaLine is bool;
+             h.showMetaLine is bool &&
+             (!('leftLogoUrl' in h) || (h.leftLogoUrl is string && h.leftLogoUrl.size() <= 160000)) &&
+             (!('rightLogoUrl' in h) || (h.rightLogoUrl is string && h.rightLogoUrl.size() <= 160000)) &&
+             (!('logoSizePx' in h) || ((h.logoSizePx is int || h.logoSizePx is float) && h.logoSizePx >= 32 && h.logoSizePx <= 140));
     }
 
     function isValidReportTemplatePage(p) {

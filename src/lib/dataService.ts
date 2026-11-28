@@ -228,6 +228,15 @@ function normalizeDoc<T extends { id: string }>(col: string, data: any, docId: s
       showMemo: Boolean(rawHeading.showMemo),
       memoNumber: typeof rawHeading.memoNumber === 'string' ? rawHeading.memoNumber : '',
       showMetaLine: rawHeading.showMetaLine !== false,
+      ...(typeof rawHeading.leftLogoUrl === 'string' && rawHeading.leftLogoUrl.trim()
+        ? { leftLogoUrl: rawHeading.leftLogoUrl.trim() }
+        : {}),
+      ...(typeof rawHeading.rightLogoUrl === 'string' && rawHeading.rightLogoUrl.trim()
+        ? { rightLogoUrl: rawHeading.rightLogoUrl.trim() }
+        : {}),
+      ...(typeof rawHeading.logoSizePx === 'number' && Number.isFinite(rawHeading.logoSizePx)
+        ? { logoSizePx: rawHeading.logoSizePx }
+        : {}),
     };
     item.columns = Array.isArray(item.columns) ? item.columns : [];
     item.signatures = Array.isArray(item.signatures) ? item.signatures : [];

@@ -21,6 +21,8 @@ import {
   toBnDigits,
   type SignatureSheetHeading,
 } from './utils';
+import { clampReportLogoSize, sanitizeLogoUrl } from '../../lib/reportLogoUtils';
+import { ReportLogoControls } from '../reports/ReportLogoControls';
 
 interface HeadingSettingsModalProps {
   open: boolean;
@@ -95,6 +97,8 @@ export const HeadingSettingsModal: React.FC<HeadingSettingsModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
+    const safeLeft = sanitizeLogoUrl(draftHeading.leftLogoUrl);
+    const safeRight = sanitizeLogoUrl(draftHeading.rightLogoUrl);
     await onSave({
       heading: {
         govtTitle: draftHeading.govtTitle.trim(),
@@ -102,6 +106,9 @@ export const HeadingSettingsModal: React.FC<HeadingSettingsModalProps> = ({
         officeAddress: draftHeading.officeAddress.trim(),
         programTitle: draftHeading.programTitle.trim(),
         sheetTitle: draftHeading.sheetTitle.trim(),
+        leftLogoUrl: safeLeft,
+        rightLogoUrl: safeRight,
+        logoSizePx: clampReportLogoSize(draftHeading.logoSizePx),
       },
       pageConfig: normalizePageConfig(draftPage),
     });
@@ -230,6 +237,16 @@ export const HeadingSettingsModal: React.FC<HeadingSettingsModalProps> = ({
           <div className="p-4 sm:p-5 space-y-4 overflow-y-auto overscroll-contain">
             {activeTab === 'heading' ? (
               <div className="space-y-3.5">
+                <ReportLogoControls
+                  compact
+                  leftLogoUrl={draftHeading.leftLogoUrl}
+                  rightLogoUrl={draftHeading.rightLogoUrl}
+                  logoSizePx={draftHeading.logoSizePx}
+                  onChange={(patch) =>
+                    setDraftHeading((prev) => ({ ...prev, ...patch }))
+                  }
+                />
+
                 <div>
                   <label
                     htmlFor="ws-h-govt"

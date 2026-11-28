@@ -51,6 +51,7 @@ import { TraineeBulkImportModal } from '../../components/TraineeBulkImportModal'
 import { TableSkeleton } from '../../components/Skeleton';
 import { downloadCSV, downloadExcel, generateTraineesPDF, downloadPdfBlob } from '../../lib/exportUtils';
 import { TruncatedText } from '../../components/ui/TruncatedText';
+import { getTraineePermanentAddressEn, getTraineePresentAddressEn } from '../../lib/bengaliTransliteration';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -102,6 +103,7 @@ const TraineeList: React.FC = () => {
   // Group By State
   const [groupBy, setGroupBy] = useState<string>('none');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [addressLang, setAddressLang] = useState<'bn' | 'en'>('bn');
 
   // Export Dropdown State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -940,8 +942,10 @@ const TraineeList: React.FC = () => {
       'প্রশিক্ষণ প্রতিষ্ঠান',
       'বৃত্তিমূলক ট্রেড',
       'প্রশিক্ষণ ব্যাচ',
-      'বর্তমান ঠিকানা',
-      'স্থায়ী ঠিকানা',
+      'বর্তমান ঠিকানা (বাংলা)',
+      'বর্তমান ঠিকানা (ইংরেজি)',
+      'স্থায়ী ঠিকানা (বাংলা)',
+      'স্থায়ী ঠিকানা (ইংরেজি)',
       'সর্বশেষ পাসকৃত শ্রেণি',
       'স্ট্যাটাস'
     ];
@@ -952,6 +956,8 @@ const TraineeList: React.FC = () => {
       const btc = getBatchName(t.batchId);
       const perm = t.permanentAddress || t.address || '';
       const pres = t.presentAddress || t.address || '';
+      const permEn = getTraineePermanentAddressEn(t);
+      const presEn = getTraineePresentAddressEn(t);
       
       const dt = getDocumentType(t.nidOrBirthRegistration);
       const docTypeLabel = dt === 'BRN'
@@ -988,7 +994,9 @@ const TraineeList: React.FC = () => {
         trd,
         btc,
         pres,
+        presEn,
         perm,
+        permEn,
         t.lastClassCompleted || '',
         t.status || 'Active'
       ];
@@ -1005,7 +1013,7 @@ const TraineeList: React.FC = () => {
             'Trainees',
             headers,
             rows,
-            [18, 16, 24, 24, 20, 20, 20, 20, 14, 10, 26, 24, 20, 24, 16, 16, 26, 22, 20, 24, 24, 18, 14]
+            [18, 16, 24, 24, 20, 20, 20, 20, 14, 10, 26, 24, 20, 24, 16, 16, 26, 22, 20, 24, 26, 24, 26, 18, 14]
           )
         : await downloadCSV(baseFilename, headers, rows);
 
@@ -1456,6 +1464,27 @@ const TraineeList: React.FC = () => {
               </select>
             </div>
 
+            <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9" title="ঠিকানার ভাষা পরিবর্তন করুন">
+              <button
+                type="button"
+                onClick={() => setAddressLang('bn')}
+                className={`h-7 px-2 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                  addressLang === 'bn' ? 'bg-theme-surface text-theme-text-primary shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
+                }`}
+              >
+                ঠিকানা: বাংলা
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddressLang('en')}
+                className={`h-7 px-2 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                  addressLang === 'en' ? 'bg-theme-info text-theme-info-fg shadow-2xs' : 'text-theme-text-secondary hover:text-theme-text-primary'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
             <div className="flex items-center bg-theme-surface-subtle p-0.5 rounded-xl border border-theme-border h-9">
               <button
                 onClick={() => setViewMode('table')}
@@ -1792,6 +1821,11 @@ const TraineeList: React.FC = () => {
                                       <span>{t.nameBn || t.nameEn}</span>
                                       <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-theme-primary transition shrink-0" />
                                     </div>
+                                    {t.nameBn && t.nameEn && (
+                                      <div className="text-[11px] text-theme-text-secondary font-sans leading-tight mt-0.5">
+                                        {t.nameEn}
+                                      </div>
+                                    )}
                                   </Link>
                                   <div className="flex items-center space-x-1 text-[11px] font-mono tabular-nums text-theme-text-secondary mt-1">
                                     <Phone size={11} className="text-theme-text-muted shrink-0" />
@@ -1800,6 +1834,11 @@ const TraineeList: React.FC = () => {
                                   <div className="text-[10px] text-theme-text-muted mt-0.5">
                                     পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
                                   </div>
+                                  {t.fatherNameBn && t.fatherNameEn && (
+                                    <div className="text-[10px] text-theme-text-secondary/80 font-sans leading-tight">
+                                      Father: {t.fatherNameEn}
+                                    </div>
+                                  )}
                                 </td>
                               )}
 
@@ -1854,10 +1893,14 @@ const TraineeList: React.FC = () => {
                                 <td className="px-4 py-3.5">
                                   <TruncatedText
                                     as="div"
-                                    text={t.presentAddress || t.address || '-'}
+                                    text={
+                                      addressLang === 'en'
+                                        ? (getTraineePresentAddressEn(t) || '-')
+                                        : (t.presentAddress || t.address || '-')
+                                    }
                                     lines={2}
-                                    mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
-                                    title="বর্তমান ঠিকানা"
+                                    mode={(addressLang === 'en' ? getTraineePresentAddressEn(t) : (t.presentAddress || t.address)) ? 'sheet' : 'pop'}
+                                    title={addressLang === 'en' ? 'Present Address (English)' : 'বর্তমান ঠিকানা'}
                                     className="text-xs text-theme-text-secondary break-words"
                                   />
                                 </td>
@@ -1902,6 +1945,11 @@ const TraineeList: React.FC = () => {
                                   <div className="font-medium text-theme-text-primary">
                                     মাতা: {t.motherNameBn || t.motherNameEn || '-'}
                                   </div>
+                                  {t.motherNameBn && t.motherNameEn && (
+                                    <div className="text-[10.5px] text-theme-text-secondary/85 font-sans mt-0.5">
+                                      Mother: {t.motherNameEn}
+                                    </div>
+                                  )}
                                 </td>
                               )}
 
@@ -1910,10 +1958,14 @@ const TraineeList: React.FC = () => {
                                 <td className="px-4 py-3.5">
                                   <TruncatedText
                                     as="div"
-                                    text={t.permanentAddress || t.address || '-'}
+                                    text={
+                                      addressLang === 'en'
+                                        ? (getTraineePermanentAddressEn(t) || '-')
+                                        : (t.permanentAddress || t.address || '-')
+                                    }
                                     lines={2}
-                                    mode={(t.permanentAddress || t.address) ? 'sheet' : 'pop'}
-                                    title="স্থায়ী ঠিকানা"
+                                    mode={(addressLang === 'en' ? getTraineePermanentAddressEn(t) : (t.permanentAddress || t.address)) ? 'sheet' : 'pop'}
+                                    title={addressLang === 'en' ? 'Permanent Address (English)' : 'স্থায়ী ঠিকানা'}
                                     className="text-xs text-theme-text-secondary break-words"
                                   />
                                 </td>
@@ -2032,6 +2084,11 @@ const TraineeList: React.FC = () => {
                                 <span>{t.nameBn || t.nameEn}</span>
                                 <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-theme-primary transition shrink-0" />
                               </div>
+                              {t.nameBn && t.nameEn && (
+                                <div className="text-[11px] text-theme-text-secondary font-sans leading-tight mt-0.5">
+                                  {t.nameEn}
+                                </div>
+                              )}
                             </Link>
                             <div className="flex items-center space-x-1 text-[11px] font-mono tabular-nums text-theme-text-secondary mt-1">
                               <Phone size={11} className="text-theme-text-muted shrink-0" />
@@ -2040,6 +2097,11 @@ const TraineeList: React.FC = () => {
                             <div className="text-[10px] text-theme-text-muted mt-0.5">
                               পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
                             </div>
+                            {t.fatherNameBn && t.fatherNameEn && (
+                              <div className="text-[10px] text-theme-text-secondary/80 font-sans leading-tight">
+                                Father: {t.fatherNameEn}
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -2094,10 +2156,14 @@ const TraineeList: React.FC = () => {
                           <td className="px-4 py-3.5">
                             <TruncatedText
                               as="div"
-                              text={t.presentAddress || t.address || '-'}
+                              text={
+                                addressLang === 'en'
+                                  ? (getTraineePresentAddressEn(t) || '-')
+                                  : (t.presentAddress || t.address || '-')
+                              }
                               lines={2}
-                              mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
-                              title="বর্তমান ঠিকানা"
+                              mode={(addressLang === 'en' ? getTraineePresentAddressEn(t) : (t.presentAddress || t.address)) ? 'sheet' : 'pop'}
+                              title={addressLang === 'en' ? 'Present Address (English)' : 'বর্তমান ঠিকানা'}
                               className="text-xs text-theme-text-secondary break-words"
                             />
                           </td>
@@ -2142,6 +2208,11 @@ const TraineeList: React.FC = () => {
                             <div className="font-medium text-theme-text-primary">
                               মাতা: {t.motherNameBn || t.motherNameEn || '-'}
                             </div>
+                            {t.motherNameBn && t.motherNameEn && (
+                              <div className="text-[10.5px] text-theme-text-secondary/85 font-sans mt-0.5">
+                                Mother: {t.motherNameEn}
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -2150,10 +2221,14 @@ const TraineeList: React.FC = () => {
                           <td className="px-4 py-3.5">
                             <TruncatedText
                               as="div"
-                              text={t.permanentAddress || t.address || '-'}
+                              text={
+                                addressLang === 'en'
+                                  ? (getTraineePermanentAddressEn(t) || '-')
+                                  : (t.permanentAddress || t.address || '-')
+                              }
                               lines={2}
-                              mode={(t.permanentAddress || t.address) ? 'sheet' : 'pop'}
-                              title="স্থায়ী ঠিকানা"
+                              mode={(addressLang === 'en' ? getTraineePermanentAddressEn(t) : (t.permanentAddress || t.address)) ? 'sheet' : 'pop'}
+                              title={addressLang === 'en' ? 'Permanent Address (English)' : 'স্থায়ী ঠিকানা'}
                               className="text-xs text-theme-text-secondary break-words"
                             />
                           </td>
@@ -2296,6 +2371,7 @@ const TraineeList: React.FC = () => {
                                   </div>
                                   <div className="text-[10px] text-theme-text-muted mt-0.5">
                                     পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
+                                    {t.fatherNameBn && t.fatherNameEn ? ` (${t.fatherNameEn})` : ''}
                                   </div>
                                   {isColVisible('id_reg_status') && (
                                     <span className="text-[11px] text-theme-text-secondary block mt-1">
@@ -2353,12 +2429,18 @@ const TraineeList: React.FC = () => {
 
                               {isColVisible('present_address') && (
                                 <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
-                                  <span className="text-[10px] text-theme-text-muted block">বর্তমান ঠিকানা:</span>
+                                  <span className="text-[10px] text-theme-text-muted block">
+                                    {addressLang === 'en' ? 'বর্তমান ঠিকানা (English):' : 'বর্তমান ঠিকানা:'}
+                                  </span>
                                   <TruncatedText
-                                    text={t.presentAddress || t.address || '-'}
+                                    text={
+                                      addressLang === 'en'
+                                        ? (getTraineePresentAddressEn(t) || '-')
+                                        : (t.presentAddress || t.address || '-')
+                                    }
                                     lines={2}
-                                    mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
-                                    title="বর্তমান ঠিকানা"
+                                    mode={(addressLang === 'en' ? getTraineePresentAddressEn(t) : (t.presentAddress || t.address)) ? 'sheet' : 'pop'}
+                                    title={addressLang === 'en' ? 'Present Address (English)' : 'বর্তমান ঠিকানা'}
                                     className="text-theme-text-primary block"
                                   />
                                 </div>
@@ -2492,6 +2574,7 @@ const TraineeList: React.FC = () => {
                           </div>
                           <div className="text-[10px] text-theme-text-muted mt-0.5">
                             পিতা: {t.fatherNameBn || t.fatherNameEn || '-'}
+                            {t.fatherNameBn && t.fatherNameEn ? ` (${t.fatherNameEn})` : ''}
                           </div>
                           {isColVisible('id_reg_status') && (
                             <span className="text-[11px] text-theme-text-secondary block mt-1">
@@ -2549,12 +2632,18 @@ const TraineeList: React.FC = () => {
 
                       {isColVisible('present_address') && (
                         <div className="text-xs text-theme-text-secondary pt-2 border-t border-theme-border min-w-0">
-                          <span className="text-[10px] text-theme-text-muted block">বর্তমান ঠিকানা:</span>
+                          <span className="text-[10px] text-theme-text-muted block">
+                            {addressLang === 'en' ? 'বর্তমান ঠিকানা (English):' : 'বর্তমান ঠিকানা:'}
+                          </span>
                           <TruncatedText
-                            text={t.presentAddress || t.address || '-'}
+                            text={
+                              addressLang === 'en'
+                                ? (getTraineePresentAddressEn(t) || '-')
+                                : (t.presentAddress || t.address || '-')
+                            }
                             lines={2}
-                            mode={(t.presentAddress || t.address) ? 'sheet' : 'pop'}
-                            title="বর্তমান ঠিকানা"
+                            mode={(addressLang === 'en' ? getTraineePresentAddressEn(t) : (t.presentAddress || t.address)) ? 'sheet' : 'pop'}
+                            title={addressLang === 'en' ? 'Present Address (English)' : 'বর্তমান ঠিকানা'}
                             className="text-theme-text-primary block"
                           />
                         </div>

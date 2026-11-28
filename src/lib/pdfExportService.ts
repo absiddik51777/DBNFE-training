@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from './safeHtml2Canvas';
 import { Trainee, Institute, Trade, Batch } from '../types';
 import { toBn, safeFormatDate } from './dateUtils';
 import { saveFileToDevice, shareExportedFile, FileExportResult } from './fileExportService';
@@ -342,7 +342,7 @@ export async function generateTraineesPDF(options: TraineePdfExportOptions): Pro
       container.replaceChildren(pageEl);
 
       // Render DOM element to canvas via html2canvas with scale: 2 for ultra crisp borders
-      const canvas = await html2canvas(pageEl, {
+      const canvas = await safeHtml2Canvas(pageEl, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',

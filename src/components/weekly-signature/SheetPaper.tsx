@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getAppFontCssStack } from '../../lib/theme';
+import { ReportHeaderBanner } from '../reports/ReportHeaderBanner';
 import {
   DEFAULT_SHEET_HEADING,
   DEFAULT_SHEET_PAGE_CONFIG,
@@ -229,37 +230,44 @@ export const SheetPaper: React.FC<SheetPaperProps> = ({
 
   const renderHeaderAndMeta = () => (
     <>
-      {/* Centered Official Header */}
+      {/* Centered Official Header with Optional Top Left & Top Right Logos */}
       <div className="text-center pb-3">
-        {heading.govtTitle.trim() && (
-          <p style={{ fontSize: px(11) }} className="leading-[1.35] text-black">
-            {heading.govtTitle.trim()}
-          </p>
-        )}
-        {heading.officeTitle.trim() && (
-          <h2
-            style={{ fontSize: px(15.5) }}
-            className="font-bold leading-[1.35] text-black mt-0.5"
-          >
-            {heading.officeTitle.trim()}
-          </h2>
-        )}
-        {heading.officeAddress.trim() && (
-          <p
-            style={{ fontSize: px(12) }}
-            className="font-medium leading-[1.35] text-black"
-          >
-            {heading.officeAddress.trim()}
-          </p>
-        )}
-        {heading.programTitle.trim() && (
-          <p
-            style={{ fontSize: px(11.5) }}
-            className="font-semibold leading-[1.4] text-black max-w-[92%] mx-auto mt-1.5"
-          >
-            {heading.programTitle.trim()}
-          </p>
-        )}
+        <ReportHeaderBanner
+          leftLogoUrl={heading.leftLogoUrl}
+          rightLogoUrl={heading.rightLogoUrl}
+          logoSizePx={heading.logoSizePx}
+          scale={scale}
+        >
+          {heading.govtTitle.trim() && (
+            <p style={{ fontSize: px(11) }} className="leading-[1.35] text-black">
+              {heading.govtTitle.trim()}
+            </p>
+          )}
+          {heading.officeTitle.trim() && (
+            <h2
+              style={{ fontSize: px(15.5) }}
+              className="font-bold leading-[1.35] text-black mt-0.5"
+            >
+              {heading.officeTitle.trim()}
+            </h2>
+          )}
+          {heading.officeAddress.trim() && (
+            <p
+              style={{ fontSize: px(12) }}
+              className="font-medium leading-[1.35] text-black"
+            >
+              {heading.officeAddress.trim()}
+            </p>
+          )}
+          {heading.programTitle.trim() && (
+            <p
+              style={{ fontSize: px(11.5) }}
+              className="font-semibold leading-[1.4] text-black max-w-[92%] mx-auto mt-1.5"
+            >
+              {heading.programTitle.trim()}
+            </p>
+          )}
+        </ReportHeaderBanner>
         {heading.sheetTitle.trim() && (
           <div className="mt-1.5 inline-block border-b-2 border-black pb-1 px-3">
             <h3

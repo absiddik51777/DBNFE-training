@@ -28,6 +28,8 @@ import {
   DEFAULT_DOCUMENT_PRINT_CONFIG,
   normalizeDocumentPrintConfig,
 } from '../../lib/documentFrameService';
+import { clampReportLogoSize, sanitizeLogoUrl } from '../../lib/reportLogoUtils';
+import { ReportLogoControls } from '../reports/ReportLogoControls';
 
 interface DocumentSettingsModalProps {
   open: boolean;
@@ -111,6 +113,8 @@ export const DocumentSettingsModal: React.FC<DocumentSettingsModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
+    const safeLeft = sanitizeLogoUrl(draftHeading.leftLogoUrl);
+    const safeRight = sanitizeLogoUrl(draftHeading.rightLogoUrl);
     await onSave({
       config: normalizeDocumentPrintConfig(draftConfig, defaultOrientation),
       heading: hasHeadingTab
@@ -120,6 +124,9 @@ export const DocumentSettingsModal: React.FC<DocumentSettingsModalProps> = ({
             officeAddress: draftHeading.officeAddress.trim(),
             programTitle: draftHeading.programTitle.trim(),
             sheetTitle: draftHeading.sheetTitle.trim(),
+            leftLogoUrl: safeLeft,
+            rightLogoUrl: safeRight,
+            logoSizePx: clampReportLogoSize(draftHeading.logoSizePx),
           }
         : undefined,
     });
@@ -553,6 +560,16 @@ export const DocumentSettingsModal: React.FC<DocumentSettingsModalProps> = ({
               </div>
             ) : (
               <div className="space-y-3.5">
+                <ReportLogoControls
+                  compact
+                  leftLogoUrl={draftHeading.leftLogoUrl}
+                  rightLogoUrl={draftHeading.rightLogoUrl}
+                  logoSizePx={draftHeading.logoSizePx}
+                  onChange={(patch) =>
+                    setDraftHeading((prev) => ({ ...prev, ...patch }))
+                  }
+                />
+
                 <div>
                   <label
                     htmlFor="doc-h-govt"

@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '../../lib/safeHtml2Canvas';
 import jsPDF from 'jspdf';
 import {
   AlignmentType,
@@ -51,6 +51,9 @@ export interface SignatureSheetHeading {
   officeAddress: string;
   programTitle: string;
   sheetTitle: string;
+  leftLogoUrl?: string;
+  rightLogoUrl?: string;
+  logoSizePx?: number;
 }
 
 export const DEFAULT_SHEET_HEADING: SignatureSheetHeading = {
@@ -678,7 +681,7 @@ export async function buildPdf(
 
     if (fullContentHeight <= usableHeightPx - 6 || !tableEl || tbodyRows.length === 0) {
       host.style.minHeight = `${hostHeightPx}px`;
-      const canvas = await html2canvas(host, captureOpts);
+      const canvas = await safeHtml2Canvas(host, captureOpts);
       const renderH = Math.min(pageH, (canvas.height / canvas.width) * pageW);
       const imgData = canvas.toDataURL('image/png');
       pdf.addImage(imgData, 'PNG', 0, 0, pageW, renderH, undefined, 'FAST');
@@ -771,7 +774,7 @@ export async function buildPdf(
           host.appendChild(footerBar);
         }
 
-        const canvas = await html2canvas(host, captureOpts);
+        const canvas = await safeHtml2Canvas(host, captureOpts);
         const renderH = Math.min(pageH, (canvas.height / canvas.width) * pageW);
         const imgData = canvas.toDataURL('image/png');
         if (p > 0) pdf.addPage();

@@ -5,7 +5,7 @@
  */
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from './safeHtml2Canvas';
 import {
   saveFileToDevice,
   saveCsvFile,
@@ -483,7 +483,7 @@ export async function generateBRNReportPDF(options: BRNPrintReportOptions): Prom
       `;
 
       container.replaceChildren(pageEl);
-      const canvas = await html2canvas(pageEl, {
+      const canvas = await safeHtml2Canvas(pageEl, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',

@@ -16,7 +16,7 @@ interface ActiveTokenMatch {
 }
 
 const SCOPE_GROUPS: Record<CodeAutocompleteScope, readonly string[]> = {
-  all: ['সাধারণ কোড', 'প্রশিক্ষণার্থী', 'হাজিরা', 'স্বাক্ষর'],
+  all: ['সাধারণ কোড', 'প্রশিক্ষণার্থী', 'BRN / NID যাচাই', 'হাজিরা', 'স্বাক্ষর'],
   document: ['সাধারণ কোড', 'স্বাক্ষর'],
   signature: ['স্বাক্ষর', 'সাধারণ কোড'],
 };
